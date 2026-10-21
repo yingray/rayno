@@ -15,6 +15,9 @@ import styles from './chat.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { useEventCallback } from '../components/useEventCallback';
 import { DraftComposer } from './DraftComposer';
+import { selectedImages } from '../happy/attachments';
+import { ResumeSession } from './ResumeSession';
+import { ChatSessionMenu } from './ChatSessionMenu';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
@@ -264,6 +267,11 @@ export const Chat = memo(function Chat({
     return () => URL.revokeObjectURL(url);
   }, [preview]);
 
+  function addImages(files: File[]) {
+    if (pendingRef.current) return;
+    try { setAttachments(mode === 'live' ? selectedImages(files, attachments) : [...attachments, ...files].slice(0, 5)); setError(''); }
+    catch (error) { setError(messageError(error)); }
+  }
   async function send(value: string) {
     if (pendingRef.current || disabled || (!value.trim() && !attachments.length)) return;
     pendingRef.current = true;
@@ -274,7 +282,7 @@ export const Chat = memo(function Chat({
       await adapter.sendMessage(
         session.id,
         value,
-        attachments.map(({ name, size, type }): Attachment => ({ name, size, type })),
+        attachments.map((file): Attachment => ({ name: file.name, size: file.size, type: file.type, ...(mode === 'live' ? { file } : {}) })),
         messageSettings,
       );
       setAttachments([]);
@@ -368,12 +376,7 @@ export const Chat = memo(function Chat({
           aria-label="Toggle session info"
           onClick={onInfo}
         />
-        <Button
-          className={styles.mobileOverflow}
-          icon="ellipsisHorizontal"
-          aria-label="Open session info"
-          onClick={onInfo}
-        />
+        <ChatSessionMenu session={session} settings={messageSettings} />
       </header>
       <OfflineStatus label="Conversation availability" />
       {view === 'chat' ? (
@@ -426,7 +429,7 @@ export const Chat = memo(function Chat({
                 </p>
               )}
               {session.messages.length ? (
-                <LazyBoundary><MessageList messages={renderedMessages} disabled={disabled} pending={pending} onOption={chooseReply} /></LazyBoundary>
+                <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending} onOption={chooseReply} /></LazyBoundary>
               ) : (
                 <Empty title={offline ? 'No saved messages' : 'The start of something good'}>
                   {offline ? 'Open this chat online to save its messages on this device.' : 'Give your agent a task to work on.'}
@@ -444,11 +447,11 @@ export const Chat = memo(function Chat({
                 <span className={styles.liveDot} />
                 {disabled
                   ? session.archived
-                    ? 'Archived session'
+                    ? 'Session ended'
                     : mode === 'live'
                       ? offline ? 'Offline · your draft stays on this device'
                         : connection !== 'connected' ? 'Connect to Happy…'
-                          : 'Agent offline · resume it in the Happy app'
+                          : 'Agent offline · resume this session'
                       : 'Computer offline'
                   : running
                     ? 'Working in your workspace'
@@ -486,24 +489,32 @@ export const Chat = memo(function Chat({
               </p>
             )}
             {mode === 'live' && disabled && connection === 'connected' && (
-              <p className={styles.resumeLink}>
-                Resume or manage this agent in the Happy app.
-              </p>
+              <ResumeSession session={session} />
             )}
-            <div className={styles.composer} data-focus-frame>
+            <div className={styles.composer} data-focus-frame
+              onPaste={event => {
+                if (mode !== 'live' || disabled || pending) return;
+                const files = Array.from(event.clipboardData.files).filter(file => file.type.startsWith('image/'));
+                if (files.length) { event.preventDefault(); addImages(files); }
+              }}
+              onDragOver={event => { if (!disabled && !pending && event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
+              onDrop={event => {
+                if (disabled || pending) return;
+                event.preventDefault(); addImages(Array.from(event.dataTransfer.files));
+              }}>
+
               {attachments.length > 0 && (
                 <div className={styles.attachments}>
                   {attachments.map((file, index) => (
                     <span key={`${file.name}-${index}`}>
-                      <button onClick={() => setPreview(file)}>
+                      <button disabled={pending} onClick={() => setPreview(file)}>
                         <Icon name="documentTextOutline" size={13} />
                         {file.name}
                       </button>
                       <button
                         aria-label={`Remove ${file.name}`}
-                        onClick={() =>
-                          setAttachments((items) => items.filter((_, i) => i !== index))
-                        }
+                        disabled={pending}
+                        onClick={() => setAttachments((items) => items.filter((_, i) => i !== index))}
                       >
                         <Icon name="close" size={13} />
                       </button>
@@ -519,13 +530,13 @@ export const Chat = memo(function Chat({
               >
                 <input
                   type="file"
+                  accept={mode === 'live' ? 'image/png,image/jpeg,image/gif,image/webp' : undefined}
+                  aria-label="Choose chat images"
                   multiple
                   hidden
                   ref={fileInput}
                   onChange={(event) => {
-                    setAttachments((items) =>
-                      [...items, ...Array.from(event.target.files || [])].slice(0, 5),
-                    );
+                    addImages(Array.from(event.target.files || []));
                     event.target.value = '';
                   }}
                 />
@@ -534,8 +545,8 @@ export const Chat = memo(function Chat({
                   variant="ghost"
                   icon="add"
                   aria-label="Attach files"
-                  disabled={disabled || mode === 'live'}
-                  title={mode === 'live' ? 'File uploads are available in the Happy app' : undefined}
+                  disabled={disabled || pending || session.agent === 'Happy Agent'}
+                  title={mode === 'live' ? 'Attach images (up to 20, smaller than 10 MB each)' : undefined}
                   onClick={() => fileInput.current?.click()}
                 />
                 <Button
@@ -779,7 +790,7 @@ export const Chat = memo(function Chat({
         </Dialog>
       )}
       {preview && (
-        <Dialog title={preview.name} onClose={() => setPreview(null)}>
+        <Dialog className={styles.imageDialog} title={preview.name} onClose={() => setPreview(null)}>
           {previewUrl ? (
             <img className={styles.attachmentPreview} src={previewUrl} alt={preview.name} />
           ) : (
@@ -787,7 +798,7 @@ export const Chat = memo(function Chat({
               {preview.type || 'File'} · {(preview.size / 1024).toFixed(1)} KB
             </p>
           )}
-          <p>This file stays local. Only its name appears in the saved conversation.</p>
+          <p>{mode === 'live' ? 'This image is encrypted before upload when you send.' : 'This file stays local. Only its name appears in the saved conversation.'}</p>
         </Dialog>
       )}
     </section>

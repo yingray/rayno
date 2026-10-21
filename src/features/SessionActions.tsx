@@ -5,6 +5,7 @@ import { useDemo } from '../data/store';
 import { titleOf } from '../data/reducer';
 import type { Session } from '../data/types';
 import styles from './sessions.module.css';
+import { ResumeSession } from './ResumeSession';
 
 export function SessionActions({ session, onClose }: { session: Session; onClose: () => void }) {
   const { adapter, mode } = useDemo((store) => ({ adapter: store.adapter, mode: store.mode }));
@@ -29,6 +30,7 @@ export function SessionActions({ session, onClose }: { session: Session; onClose
     <Dialog title="Session actions" onClose={onClose}>
       <p>{titleOf(session)}</p>
       {error && <p role="alert">{error}</p>}
+      {needsResume && <ResumeSession session={session} />}
       <div className={styles.actions}>
         <Button
           variant="ghost"

@@ -97,6 +97,24 @@ export class HappyCrypto {
     const key = await deriveKey(secret, 'Happy EnCoder', ['content']);
     return new HappyCrypto(secret, sodium.crypto_box_seed_keypair(key).privateKey);
   }
+  blobKey(key: Uint8Array | null) {
+    return deriveKey(key || this.secret, 'Happy Blobs', [key ? 'session' : 'master']);
+  }
+  async encryptBlob(data: Uint8Array, key: Uint8Array | null) {
+    await sodium.ready;
+    const nonce = crypto.getRandomValues(new Uint8Array(24));
+    const encrypted = sodium.crypto_secretbox_easy(data, nonce, await this.blobKey(key));
+    const bundle = new Uint8Array(nonce.length + encrypted.length);
+    bundle.set(nonce); bundle.set(encrypted, nonce.length);
+    return bundle;
+  }
+  async decryptBlob(data: Uint8Array, key: Uint8Array | null) {
+    await sodium.ready;
+    if (data.length < 40) throw new Error('The image is incomplete.');
+    try {
+      return sodium.crypto_secretbox_open_easy(data.slice(24), data.slice(0, 24), await this.blobKey(key));
+    } catch { throw new Error('Could not decrypt this image.'); }
+  }
   async unwrapKey(encrypted: string | null | undefined): Promise<Uint8Array | null> {
     if (!encrypted) return null;
     let pending = this.recordKeys.get(encrypted);

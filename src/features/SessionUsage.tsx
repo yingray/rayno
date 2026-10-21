@@ -119,7 +119,7 @@ export const SessionUsage = memo(function SessionUsage() {
           return (
             <span className={`${styles.agent} ${reading && stale(reading) ? styles.stale : ''} ${agent && agent !== currentAgent ? styles.secondary : ''}`}
               key={currentAgent} title={reading ? `${currentAgent} · ${reading.machineName || 'Demo'} · ${reading.usedPercent}% of week used${stale(reading) ? ' · stale' : ''}` : `${currentAgent} · No weekly usage reported`}>
-              <span>{currentAgent}</span>
+              <img className={styles.agentIcon} src={`/icons/${currentAgent === 'Claude' ? 'claude' : 'codex'}.png`} alt={currentAgent} />
               {reading ? bar(reading) : <span className={styles.bar}><span className={styles.track} /></span>}
               <b style={{ color: reading ? tone(reading) || undefined : undefined }}>{reading ? `${reading.usedPercent}%` : '—'}</b>
             </span>

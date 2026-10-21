@@ -56,7 +56,7 @@ The default list hides explicitly archived sessions and ended CLI sessions, as t
 Open the list options button above the list and choose Archived to read their history. A disconnected Rig session stays visible.
 The same glass menu contains search, Flat/Projects grouping, and Reset. Command/Ctrl+K opens it and focuses search.
 An ended CLI session has no archive or restore action in Rayno.
-Resume it in the Happy app, or use Hand Off to start a new session from it.
+Use Resume session when the original computer is online and its daemon advertises recovery support. Otherwise use Hand Off to start a new session.
 
 ## Connected features
 
@@ -65,19 +65,23 @@ Resume it in the Happy app, or use Hand Off to start a new session from it.
 - Encrypted sends with stable local IDs, explicit acknowledgement, retained failed drafts, and deduplicated retries.
 - Socket.IO updates and history catch-up after reconnect. Background tabs announce background state.
 - Legacy NaCl records and per-record AES-GCM keys, with account key derivation and key unwrap.
-- Stop the current response, terminate an agent, and handle one-time permission requests.
-- Answer supported agent question forms. For unsupported forms and legacy AskUserQuestion, use the Happy app.
+- Stop the current response, terminate an agent, and allow a tool once or for the session.
+- Answer agent question forms and Claude AskUserQuestion with selected options and custom text.
+- Upload encrypted PNG, JPEG, GIF, and WebP images in chat or a new session; open received images and download a decrypted copy. Each message accepts up to 20 images, smaller than 10 MB each.
+- Expand tool calls to read arguments and results, including reported edits and diffs.
 - Spawn a real agent on an online machine, including optional Git worktree creation.
 - Hand Off from Session info to an editable new-session draft on the same computer and checkout.
-- A full-height conversation that scrolls beneath a transparent floating header with a raised title capsule; Session info provides Hand Off and workspace changes.
+- A full-width conversation and composer that scroll beneath a transparent floating header with a raised title capsule; Session info provides Hand Off and workspace changes.
 - Soft dark gradients at the message viewport's top and bottom, below the floating controls.
 - Mermaid code fences render with `beautiful-mermaid`, with source copying, scrollable diagrams, and readable source when a preview is unavailable.
 - Searchable model/effort selection with visible Claude and Codex choices.
 - Recent workspace selection from real session activity and Rayno's own per-computer history.
+- A chat-header menu provides archive, delete, Fork, and Duplicate. Fork copies the full provider conversation; Duplicate lets you choose the final message to keep. Both create a new session on the original computer with explicit model, effort, and permission choices.
 - Rename with optimistic concurrency, archive, restore, and delete with server error handling.
 - Read-only directory and file previews, Git status, and staged/unstaged diffs through the session RPC.
 - Computer health and Claude/Codex quota reads on explicit Monitor refresh.
-- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation.
+- Agent icons identify the compact weekly-usage bars and retain accessible names.
+- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. Appearance omits the fixed Rayno-theme toggle.
 
 Existing sessions prefer the daemon's model catalog. New sessions offer agent, model, effort, and permission mode selection before Start.
 Permission mode always has a selected value. It restores the last explicit choice for that agent from a new session or chat, or selects Auto without a valid choice.
@@ -102,7 +106,10 @@ The diagram renderer loads only when a Mermaid preview comes into view. Once loa
 Diagram layout runs in a Web Worker, and SVG images stay outside the page's executable markup.
 Browser storage availability and eviction can affect saved content. A cache failure does not replace live data with demo data.
 
-File uploads, voice, account notifications, and cold-session resume are available in the Happy app, not in Rayno.
+Voice, push notifications, and general file uploads are not implemented. Image uploads use the Happy API and its local PUT or S3 POST storage contract. The storage service must allow this Rayno origin through CORS.
+Failed image uploads retain the draft and attachments. Retrying a send with no confirmation reuses the encrypted message IDs. Selected image files remain in memory and must be selected again after a reload.
+Received images load when they enter the viewport. Rayno stores verified images in the encrypted account/server cache so they can reopen after an offline reload. Browser quotas and eviction can affect availability. Sign-out clears this cache.
+Session recovery supports Claude and Codex on the original online computer. Old daemons and sessions without a provider recovery ID show the reason recovery is unavailable. The account master secret never enters a resume request.
 Preview supports UTF-8 files up to 1 MB. Files and Git commands require daemon support.
 The app reports unsupported or failed operations instead of substituting local results.
 

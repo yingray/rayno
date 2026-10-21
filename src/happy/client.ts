@@ -23,17 +23,20 @@ import {
   currentModel,
   currentPermission,
   normalizeMessage,
+  pendingPermissions,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
 import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
-import { permissionOptions, canSelectPermission } from './permissionOptions';
-import type { SentModes } from './modelPreferences';
+import { permissionOptions, canSelectPermission, resolveNewSessionPermission } from './permissionOptions';
+import { latestSentModes, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
+import { imageMime, transferUrl, validateImages } from './attachments';
+import { resumeUnavailable } from './resume';
 import type { Message } from '../data/types';
 
 const emptyJson: Json = Object.freeze({});
@@ -79,7 +82,7 @@ export const emptySnapshot: Snapshot = {
 import { messageError } from './errors';
 export { messageError } from './errors';
 export const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
-type Outbox = { fingerprint: string; localId: string; content: string };
+type Outbox = { fingerprint: string; localId: string; content: string; files?: { localId: string; content: string }[] };
 
 export class HappyClient implements DemoAdapter {
   private socket: Socket | null = null;
@@ -95,6 +98,8 @@ export class HappyClient implements DemoAdapter {
   private historyRequests = new Map<string, Promise<void>>();
   private activeSessions = new Set<string>();
   private sending = new Set<string>();
+  private resuming = new Map<string, Promise<void>>();
+  private branching = new Map<string, Promise<string>>();
   private acknowledged = new Set<string>();
   private attention = new Map<string, SessionAttention>();
   private attentionRequests = new Map<string, Promise<void>>();
@@ -980,13 +985,12 @@ export class HappyClient implements DemoAdapter {
     options: MessageSettings = {},
   ) {
     if (this.snapshot.offline) throw new Error('Reconnect before you send this message. Your draft stays on this device.');
-    if (attachments.length)
-      throw new Error('File uploads are not available in Rayno yet. Use the Happy app to attach a file.');
-    if (!content.trim()) return;
+    validateImages(attachments);
+    if (!content.trim() && !attachments.length) return;
     if (this.sending.has(id)) throw new Error('This message is already in progress.');
     const source = this.getSession(id);
     if (!source.wire.active || source.metadata.lifecycleState === 'archived')
-      throw new Error('This agent is offline or archived. Resume it in the Happy app.');
+      throw new Error('Resume this session before you send a message.');
     this.sending.add(id);
     try {
       const metadata = source.metadata;
@@ -1016,12 +1020,14 @@ export class HappyClient implements DemoAdapter {
         if (effort) meta.effort = effort;
         else delete meta.effort;
       }
+      if (attachments.length && isRig(metadata)) throw new Error('Images are available for Claude and Codex sessions.');
+      const imageHashes = await Promise.all(attachments.map(async file => base64(new Uint8Array(await crypto.subtle.digest('SHA-256', await file.file!.arrayBuffer())), true)));
       const raw = { role: 'user', content: { type: 'text', text: content.trim() }, meta };
       const fingerprint = base64(
         new Uint8Array(
           await crypto.subtle.digest(
             'SHA-256',
-            new TextEncoder().encode(JSON.stringify({ text: content.trim(), options })),
+            new TextEncoder().encode(JSON.stringify({ text: content.trim(), options, ...(attachments.length ? { imageHashes } : {}) })),
           ),
         ),
         true,
@@ -1038,26 +1044,36 @@ export class HappyClient implements DemoAdapter {
           'A previous send has no confirmation. Retry the original draft and model/effort/permission choices, or check the message in the Happy app.',
         );
       if (!packet) {
+        const files: { localId: string; content: string }[] = [];
+        for (const attachment of attachments) {
+          const ref = await this.uploadImage(id, attachment);
+          const rawFile = { role: 'session', content: { type: 'session', data: {
+            id: crypto.randomUUID(), time: Date.now(), role: 'user', ev: {
+              t: 'file', ref, name: attachment.name, size: attachment.size,
+            },
+          } } };
+          files.push({ localId: crypto.randomUUID(), content: await this.encryption.encrypt(rawFile, source.key) });
+        }
         packet = {
           fingerprint,
           localId: crypto.randomUUID(),
-          content: await this.encryption.encrypt(raw, source.key),
+          content: await this.encryption.encrypt(raw, source.key), files,
         };
         sessionStorage.setItem(key, JSON.stringify(packet));
       }
+      const packets = [...(packet.files || []), { localId: packet.localId, content: packet.content }];
       const result = await this.request(`/v3/sessions/${encodeURIComponent(id)}/messages`, {
-        method: 'POST',
-        body: JSON.stringify({ messages: [{ localId: packet.localId, content: packet.content }] }),
+        method: 'POST', body: JSON.stringify({ messages: packets }),
       });
       if (
         !Array.isArray(result.messages) ||
-        !result.messages.some((row: Json) => row.localId === packet!.localId)
+        !packets.every(item => result.messages.some((row: Json) => row.localId === item.localId))
       )
         throw new Error('Happy did not confirm the message. Retry this same draft.');
       sessionStorage.removeItem(key);
       const rows = result.messages.map((wire: Json) => ({
         ...wire,
-        content: { t: 'encrypted', c: packet!.content },
+        content: { t: 'encrypted', c: packets.find(item => item.localId === wire.localId)!.content },
       }));
       await this.mergeMessages(id, rows);
       this.publish(id);
@@ -1065,13 +1081,218 @@ export class HappyClient implements DemoAdapter {
       this.sending.delete(id);
     }
   }
-  async respondPermission(id: string, requestId: string, approved: boolean) {
+  private async transfer(value: string, init: RequestInit) {
+    const url = transferUrl(value, this.credentials.server);
+    const controller = new AbortController();
+    this.controllers.add(controller);
+    const timer = window.setTimeout(() => controller.abort(), 45000);
+    try {
+      const headers = new Headers(init.headers);
+      if (url.origin === new URL(this.credentials.server).origin) headers.set('Authorization', `Bearer ${this.credentials.token}`);
+      const response = await fetch(url, { ...init, headers, signal: controller.signal, credentials: 'omit', redirect: 'error' });
+      this.assertAlive();
+      if (!response.ok) throw new Error(`Image transfer failed (${response.status}). Retry with your images still attached.`);
+      return response;
+    } finally { window.clearTimeout(timer); this.controllers.delete(controller); }
+  }
+  private async uploadImage(id: string, attachment: Attachment) {
+    const encrypted = await this.encryption.encryptBlob(new Uint8Array(await attachment.file!.arrayBuffer()), this.getSession(id).key);
+    const upload = await this.request(`/v1/sessions/${encodeURIComponent(id)}/attachments/request-upload`, {
+      method: 'POST', body: JSON.stringify({ filename: attachment.name, size: encrypted.length }),
+    });
+    if (typeof upload.ref !== 'string' || typeof upload.uploadUrl !== 'string') throw new Error('The image server returned an invalid upload request.');
+    if (upload.method === 'POST') {
+      const form = new FormData();
+      for (const [name, value] of Object.entries(record(upload.formFields))) {
+        if (typeof value !== 'string') throw new Error('The image upload policy is invalid.');
+        form.append(name, value);
+      }
+      form.append('file', new Blob([encrypted as BlobPart], { type: 'application/octet-stream' }), 'blob');
+      await this.transfer(upload.uploadUrl, { method: 'POST', body: form });
+    } else if (!upload.method || upload.method === 'PUT') {
+      await this.transfer(upload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: encrypted as BodyInit });
+    } else throw new Error('This image upload method is not supported.');
+    return upload.ref as string;
+  }
+  async loadImage(id: string, ref: string): Promise<Blob> {
+    const source = this.getSession(id);
+    const cached = await this.cache.image(id, ref);
+    this.assertAlive();
+    if (cached) {
+      try {
+        const bytes = await this.encryption.decryptBlob(unbase64(cached), source.key);
+        this.assertAlive();
+        return new Blob([bytes as BlobPart], { type: imageMime(bytes) });
+      } catch { /* A damaged cached image can be fetched again while online. */ }
+    }
+    if (this.snapshot.offline) throw new Error('This image is not saved on this device. Open it once while online.');
+    const result = await this.request(`/v1/sessions/${encodeURIComponent(id)}/attachments/request-download`, {
+      method: 'POST', body: JSON.stringify({ ref }),
+    });
+    if (typeof result.downloadUrl !== 'string') throw new Error('The image server returned an invalid download request.');
+    const response = await this.transfer(result.downloadUrl, {});
+    const encrypted = new Uint8Array(await response.arrayBuffer());
+    const bytes = await this.encryption.decryptBlob(encrypted, source.key);
+    const type = imageMime(bytes);
+    this.assertAlive();
+    this.cacheWrite = this.cacheWrite.then(async () => {
+      if (!this.disposed && !this.cacheDisabled) await this.cache.saveImage(id, ref, encrypted);
+    });
+    await this.cacheWrite;
+    this.assertAlive();
+    return new Blob([bytes as BlobPart], { type });
+  }
+  branchUnavailable(id: string) {
+    const metadata = this.getSession(id).metadata;
+    if (isRig(metadata) || metadata.bot || metadata.capabilities?.fork === false || !['claude', 'codex'].includes(metadata.flavor || 'claude'))
+      return 'This agent cannot fork or duplicate conversations.';
+    if (!metadata.machineId || !metadata.path) return 'The original computer and workspace are required.';
+    if (!(metadata.flavor === 'codex' ? metadata.codexThreadId : metadata.claudeSessionId))
+      return 'The original provider conversation ID is unavailable.';
+    if (!this.machines.get(metadata.machineId)?.wire.active) return 'Bring the original computer online first.';
+    return '';
+  }
+  async rewindPoints(id: string): Promise<{ id: string; text: string; timestamp: number }[]> {
+    const reason = this.branchUnavailable(id);
+    if (reason) throw new Error(reason);
+    const metadata = this.getSession(id).metadata;
+    const codex = metadata.flavor === 'codex';
+    const result = await this.rpc(metadata.machineId, codex ? 'codex-list-rewind-points' : 'claude-list-rewind-points', {
+      directory: metadata.path, [codex ? 'codexThreadId' : 'claudeSessionId']: codex ? metadata.codexThreadId : metadata.claudeSessionId,
+    }, true);
+    if (result.type !== 'success' || !Array.isArray(result.points)) throw new Error(result.errorMessage || 'This Happy CLI could not read the conversation history.');
+    return result.points.flatMap((point: Json) => {
+      const key = codex ? point.itemId : point.uuid;
+      return typeof key === 'string' && key ? [{ id: key, text: typeof point.text === 'string' ? point.text : 'Message', timestamp: Number(point.timestamp) || 0 }] : [];
+    }).reverse();
+  }
+  branchSession(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
+    const key = JSON.stringify([id, kind, point]);
+    const existing = this.branching.get(key);
+    if (existing) return existing;
+    const pending = this.performBranch(id, kind, point, options).finally(() => this.branching.delete(key));
+    this.branching.set(key, pending);
+    return pending;
+  }
+  private async performBranch(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
+    if (this.snapshot.connection !== 'connected' || this.snapshot.offline) throw new Error('Reconnect before you create a session.');
+    const reason = this.branchUnavailable(id);
+    if (reason) throw new Error(reason);
+    if (kind === 'duplicate' && !point) throw new Error('Choose a message to duplicate from.');
+    const metadata = this.getSession(id).metadata;
+    const machineId = metadata.machineId, directory = metadata.path, codex = metadata.flavor === 'codex';
+    const choice = resolveModelChoice(metadata, [options]);
+    if (!choice.model) throw new Error('No model is available for this session.');
+    const permissionMode = resolveNewSessionPermission(metadata, [options.permissionMode, currentPermission(metadata)]);
+    const storageKey = this.storageKey + 'branch.' + JSON.stringify([id, kind, point]);
+    let pending: Json = {};
+    try { pending = record(JSON.parse(sessionStorage.getItem(storageKey) || '{}')); } catch { /* Ignore a damaged local marker. */ }
+    const save = () => sessionStorage.setItem(storageKey, JSON.stringify(pending));
+    if (!pending.providerId) {
+      if (pending.copyUnknown) throw new Error('The previous copy has no confirmation. Check your sessions before you retry.');
+      pending = { copyUnknown: true, model: choice.model, effort: choice.effort, permissionMode };
+      save();
+      const params: Json = { directory, [codex ? 'codexThreadId' : 'claudeSessionId']: codex ? metadata.codexThreadId : metadata.claudeSessionId };
+      if (kind === 'duplicate') params[codex ? 'cutAfterItemId' : 'cutAfterUuid'] = point;
+      const result = await this.rpc(machineId, codex ? kind === 'fork' ? 'codex-fork-thread' : 'codex-duplicate-thread' : kind === 'fork' ? 'claude-fork-session' : 'claude-duplicate-session', params, true);
+      if (result.type !== 'success') {
+        sessionStorage.removeItem(storageKey);
+        throw new Error(result.errorMessage || 'This Happy CLI could not copy the conversation.');
+      }
+      pending.providerId = result[codex ? 'newCodexThreadId' : 'newClaudeSessionId'];
+      if (typeof pending.providerId !== 'string' || !pending.providerId) throw new Error('The agent did not return the copied conversation ID. Check your sessions before you retry.');
+      pending.copyUnknown = false; save();
+    }
+    if (pending.spawnUnknown && !pending.sessionId) {
+      await this.refresh();
+      const found = [...this.sessions.values()].find(source => source.metadata.parentSessionId === id && source.metadata[codex ? 'codexThreadId' : 'claudeSessionId'] === pending.providerId);
+      if (!found) throw new Error('The new session has no confirmation. Check the session list before you retry.');
+      pending.sessionId = found.wire.id; save();
+    }
+    if (!pending.sessionId) {
+      const levels = effortOptions(metadata, pending.model);
+      if (!isConcreteModel(pending.model) || !modelOptions(metadata).some(option => !option.disabled && option.value === pending.model)
+        || (levels.length && !levels.includes(pending.effort)) || !permissionOptions(metadata).some(option => !option.disabled && option.value === pending.permissionMode))
+        throw new Error('The saved model or permission choice is no longer available. Check the copied conversation before you retry.');
+      if (this.branchUnavailable(id) || this.getSession(id).metadata.machineId !== machineId) throw new Error('The original computer is no longer available.');
+      pending.spawnUnknown = true; save();
+      const result = await this.rpc(machineId, 'spawn-happy-session', {
+        type: 'spawn-in-directory', directory, agent: codex ? 'codex' : 'claude', approvedNewDirectoryCreation: false,
+        [codex ? 'resumeCodexThreadId' : 'resumeClaudeSessionId']: pending.providerId,
+        parentSessionId: id, modelMode: pending.model, permissionMode: pending.permissionMode,
+        ...(pending.effort ? { effortLevel: pending.effort } : {}),
+      }, true);
+      if (result.type !== 'success' || typeof result.sessionId !== 'string') {
+        pending.spawnUnknown = false; save();
+        throw new Error(result.errorMessage || 'The new session did not start. Retry to use the same copied conversation.');
+      }
+      pending.sessionId = result.sessionId; save();
+    }
+    await this.refresh();
+    if (!this.sessions.has(pending.sessionId)) throw new Error('The new session is not in the list yet. Retry to load the same session.');
+    this.writeLocal(`composerModes.${pending.sessionId}`, JSON.stringify({ model: pending.model, effort: pending.effort, permission: pending.permissionMode, at: Date.now() }));
+    sessionStorage.removeItem(storageKey);
+    return pending.sessionId;
+  }
+  resumeUnavailable(id: string) {
+    const source = this.getSession(id);
+    const machine = this.machines.get(source.metadata.machineId);
+    return resumeUnavailable(source.metadata, machine?.metadata || {}, !!machine?.wire.active);
+  }
+  resumeSession(id: string): Promise<void> {
+    const existing = this.resuming.get(id);
+    if (existing) return existing;
+    const pending = this.performResume(id).finally(() => this.resuming.delete(id));
+    this.resuming.set(id, pending);
+    return pending;
+  }
+  private async performResume(id: string) {
+    if (this.snapshot.offline || this.snapshot.connection !== 'connected') throw new Error('Reconnect before you resume this session.');
+    const source = this.getSession(id);
+    const machineId = source.metadata.machineId;
+    if (source.wire.active) return;
+    const reason = this.resumeUnavailable(id);
+    if (reason) throw new Error(reason);
+    let saved: SessionModes | null = null;
+    try { saved = JSON.parse(this.readLocal(`composerModes.${id}`) || 'null'); } catch { /* Ignore an invalid saved choice. */ }
+    const sent = latestSentModes(this.snapshot.sessions.find(session => session.id === id)?.messages || []) || await this.findSentModes(id);
+    const ranked = rankSessionModes(saved, sent, currentPermission(source.metadata));
+    const choice = resolveModelChoice(source.metadata, ranked.modelCandidates);
+    if (!choice.model) throw new Error('No model is available for this session.');
+    const permission = ranked.permission || currentPermission(source.metadata);
+    // Recheck ownership and availability after the message lookup.
+    if (this.getSession(id).metadata.machineId !== machineId || this.resumeUnavailable(id))
+      throw new Error('The original computer is no longer available for recovery.');
+    const result = await this.rpc(machineId, 'resume-happy-session', {
+      sessionId: id, model: choice.model,
+      ...(permission && permissionOptions(source.metadata).some(option => option.value === permission && !option.disabled) ? { permissionMode: permission } : {}),
+      fallbackReason: source.key ? 'ok' : 'client-has-no-data-key',
+      ...(source.key ? { fallback: {
+        metadata: source.metadata, metadataVersion: source.wire.metadataVersion,
+        agentStateVersion: source.wire.agentStateVersion, seq: source.wire.seq,
+        encryptionKey: base64(source.key), encryptionVariant: 'dataKey',
+      } } : {}),
+    }, true);
+    if (result.type !== 'success' || result.sessionId !== id) throw new Error(result.errorMessage || result.message || 'The agent did not confirm session recovery. Check its status before retrying.');
+    if (source.metadata.lifecycleState === 'archived') await this.mutateMetadata(id, metadata => {
+      delete metadata.lifecycleState; return metadata;
+    });
+    await this.refresh();
+  }
+  async respondPermission(id: string, requestId: string, approved: boolean, sessionScope = false, updatedInput?: Json) {
     const key = id + ':' + requestId;
     if (this.acknowledged.has(key)) throw new Error('This request already has a reply.');
+    const sessionSource = this.getSession(id);
+    const request = pendingPermissions(sessionSource.agentState).find(request => request.id === requestId);
+    if (!request) throw new Error('This request is no longer pending.');
+    const codex = sessionSource.metadata.flavor === 'codex';
+    const args = record(request.arguments);
+    const tool = request.tool === 'Bash' && typeof args.command === 'string' ? `Bash(${args.command})` : request.tool;
     await this.rpc(id, 'permission', {
-      id: requestId,
-      approved,
-      decision: approved ? 'approved' : 'denied',
+      id: requestId, approved,
+      decision: approved ? sessionScope && codex ? 'approved_for_session' : 'approved' : 'denied',
+      ...(approved && sessionScope && !codex ? { allowedTools: [tool] } : {}),
+      ...(updatedInput ? { updatedInput } : {}),
     });
     this.acknowledged.add(key);
     const session = this.getSession(id);
@@ -1118,7 +1339,7 @@ export class HappyClient implements DemoAdapter {
     return result;
   }
   async createSession(draft: NewSessionDraft, attachments: Attachment[] = []) {
-    if (attachments.length) throw new Error('Use the Happy app to create a session with file attachments.');
+    validateImages(attachments);
     if (!this.socket?.connected) throw new Error('Reconnect before you start a session.');
     const machine = this.machines.get(draft.machineId);
     if (!machine?.wire.active) throw new Error('Choose an online computer.');
@@ -1234,7 +1455,7 @@ export class HappyClient implements DemoAdapter {
       throw new Error(
         'The session started, but it is not in the list yet. Retry to load the same session.',
       );
-    if (draft.prompt.trim()) await this.sendMessage(pending.sessionId, draft.prompt, [], {
+    if (draft.prompt.trim() || attachments.length) await this.sendMessage(pending.sessionId, draft.prompt, attachments, {
       model: draft.model,
       effort: draft.effort,
       permissionMode: draft.permissionMode,

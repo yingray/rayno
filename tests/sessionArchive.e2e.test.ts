@@ -40,7 +40,7 @@ test('ended CLI sessions should stay in the archive while disconnected Rig sessi
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeDisabled();
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toHaveAttribute(
     'placeholder',
-    'Resume this agent in the Happy app to send a message',
+    'Resume this session to send a message',
   );
   await workspace.info();
   await expect(workspace.archiveActions()).toHaveCount(0);

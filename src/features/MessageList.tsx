@@ -10,6 +10,7 @@ import { partsForMessage } from '../data/messageOptions';
 import type { BubbleColor, Message } from '../data/types';
 import styles from './chat.module.css';
 import { MermaidDiagram } from './MermaidDiagram';
+import { AttachmentImage } from './AttachmentImage';
 
 const remarkPlugins = [remarkGfm, remarkCjkFriendly];
 
@@ -36,7 +37,13 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block
         {block.tools.map((tool, index) => (
           <li key={index}>
             <Icon name="codeSlash" size={14} />
-            <span>{tool}</span>
+            {block.details?.[index] && (block.details[index]!.input !== undefined || block.details[index]!.result !== undefined) ? <details className={styles.toolDetails}>
+              <summary>{tool}</summary>
+              <h4>Arguments</h4><pre>{formatToolValue(block.details[index]!.input)}</pre>
+              <ToolDiff input={block.details[index]!.input} />
+              <h4>{block.details[index]!.isError ? 'Error' : 'Result'}</h4>
+              <pre>{block.details[index]!.result === undefined ? 'No result reported yet.' : formatToolValue(block.details[index]!.result)}</pre>
+            </details> : <span>{tool}</span>}
           </li>
         ))}
       </ul>
@@ -44,8 +51,23 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block
   );
 }, (previous, next) => previous.compactTools === next.compactTools
   && previous.block.id === next.block.id && previous.block.duration === next.block.duration
+  && previous.block.details === next.block.details
   && previous.block.tools.length === next.block.tools.length
   && previous.block.tools.every((tool, index) => tool === next.block.tools[index]));
+
+function formatToolValue(value: unknown) {
+  return typeof value === 'string' ? value : value === undefined ? 'Not reported.' : JSON.stringify(value, null, 2);
+}
+
+function ToolDiff({ input }: { input: unknown }) {
+  if (!input || typeof input !== 'object') return null;
+  const edit = input as Record<string, unknown>;
+  if (typeof edit.old_string !== 'string' || typeof edit.new_string !== 'string') return null;
+  return <><h4>Changes</h4><pre aria-label="Tool diff">
+    <span className={styles.diffRemoved}>{edit.old_string.split('\n').map(line => `- ${line}`).join('\n')}</span>{'\n'}
+    <span className={styles.diffAdded}>{edit.new_string.split('\n').map(line => `+ ${line}`).join('\n')}</span>
+  </pre></>;
+}
 
 const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify }: {
   content: string; codeFilename: string; notify: (message: string) => void;
@@ -99,7 +121,8 @@ const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename,
   );
 });
 
-const MessageBlock = memo(function MessageBlock({ message, optionsDisabled, onOption, bubble, notify }: {
+const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDisabled, onOption, bubble, notify }: {
+  sessionId: string;
   message: Message;
   optionsDisabled: boolean;
   onOption: (messageId: string, text: string) => void;
@@ -117,7 +140,7 @@ const MessageBlock = memo(function MessageBlock({ message, optionsDisabled, onOp
         <div className={styles.bubble}>
           {message.content}
           {message.attachments?.map((file) => (
-            <span className={styles.messageAttachment} key={file.name}>
+            file.ref ? <AttachmentImage key={file.ref} sessionId={sessionId} file={file} /> : <span className={styles.messageAttachment} key={file.name}>
               <Icon name="documentTextOutline" size={15} />
               {file.name}
             </span>
@@ -142,7 +165,7 @@ const MessageBlock = memo(function MessageBlock({ message, optionsDisabled, onOp
             <RenderedMarkdown key={index} content={part.content} codeFilename={codeFilename} notify={notify} />
           ))}
           {message.attachments?.map((file) => (
-            <span className={styles.messageAttachment} key={file.name}>
+            file.ref ? <AttachmentImage key={file.ref} sessionId={sessionId} file={file} /> : <span className={styles.messageAttachment} key={file.name}>
               <Icon name="documentTextOutline" size={15} />
               {file.name}
             </span>
@@ -153,8 +176,8 @@ const MessageBlock = memo(function MessageBlock({ message, optionsDisabled, onOp
   );
 });
 
-export const MessageList = memo(function MessageList({ messages, disabled, pending, onOption }: {
-  messages: Message[]; disabled: boolean; pending: boolean;
+export const MessageList = memo(function MessageList({ sessionId = '', messages, disabled, pending, onOption }: {
+  sessionId?: string; messages: Message[]; disabled: boolean; pending: boolean;
   onOption: (messageId: string, text: string) => void;
 }) {
   const { bubble, compactTools, notify } = useDemo((store) => ({
@@ -168,7 +191,7 @@ export const MessageList = memo(function MessageList({ messages, disabled, pendi
   }, [messages]);
   return blocks.map((block) => block.kind === 'tools'
     ? <ToolActivity key={block.id} block={block} compactTools={compactTools} />
-    : <MessageBlock key={block.id} message={block.message}
+    : <MessageBlock key={block.id} sessionId={sessionId} message={block.message}
         bubble={bubble} notify={notify}
         optionsDisabled={disabled || pending || !unanswered.has(block.message.id)} onOption={onOption} />);
 });

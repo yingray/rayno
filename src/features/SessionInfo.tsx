@@ -7,6 +7,7 @@ import { titleOf } from '../data/reducer';
 import { buildHandoffDraft } from '../happy/handoff';
 import type { Session } from '../data/types';
 import styles from './session-info.module.css';
+import { ResumeSession } from './ResumeSession';
 
 export function SessionInfo({
   session,
@@ -116,7 +117,7 @@ export function SessionInfo({
       label: 'Kill session',
       run: () => setConfirm('stop'),
     },
-    // An ended CLI session must resume in the Happy app before it can leave the archive.
+    // An ended CLI session must resume before it can leave the archive.
     ...(needsResume
       ? []
       : [{
@@ -239,6 +240,7 @@ export function SessionInfo({
           ))}
         </div>
         <span className={styles.sectionLabel}>SESSION ACTIONS</span>
+        {needsResume && <ResumeSession session={session} />}
         <div className={styles.actions}>
           {actions.filter((action) => action.label !== 'Hand Off' || handoff).map((action) => (
             <button

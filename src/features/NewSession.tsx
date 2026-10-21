@@ -13,6 +13,7 @@ import { draftInWorkspace, recentWorkspaceOptions } from '../data/workspaces';
 import { modelChoiceKey, recentModelChoice, resolveModelChoice } from '../happy/modelPreferences';
 import { permissionOptions, resolveNewSessionPermission } from '../happy/permissionOptions';
 import type { ModelChoice } from '../data/types';
+import { selectedImages } from '../happy/attachments';
 
 const NewModelPicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.NewModelPicker })));
 const WorkspacePicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.WorkspacePicker })));
@@ -71,7 +72,7 @@ export function NewSession() {
       { ...draft, permissionMode },
       !!machines.find((machine) => machine.id === draft.machineId)?.online,
     );
-    if (validation) {
+    if (validation && !(attachments.length && validation === 'Describe what the agent should do.')) {
       setError(validation);
       return;
     }
@@ -80,7 +81,7 @@ export function NewSession() {
     try {
       const id = await adapter.createSession(
         { ...draft, agent, model, effort, permissionMode },
-        attachments.map(({ name, size, type }) => ({ name, size, type })),
+        attachments.map(file => ({ name: file.name, size: file.size, type: file.type, ...(mode === 'live' ? { file } : {}) })),
       );
       if (mounted.current) navigate(`/session/${id}`);
     } catch (err) {
@@ -306,12 +307,16 @@ export function NewSession() {
                 <input
                   ref={fileInput}
                   type="file"
+                  accept={mode === 'live' ? 'image/png,image/jpeg,image/gif,image/webp' : undefined}
+                  aria-label="Choose new session images"
                   multiple
                   hidden
                   onChange={(event) => {
-                    setAttachments((files) =>
-                      [...files, ...Array.from(event.target.files || [])].slice(0, 5),
-                    );
+                    try {
+                      const files = Array.from(event.target.files || []);
+                      setAttachments(mode === 'live' ? selectedImages(files, attachments) : [...attachments, ...files].slice(0, 5));
+                      setError('');
+                    } catch (error) { setError(error instanceof Error ? error.message : 'Could not attach images.'); }
                     event.target.value = '';
                   }}
                 />
@@ -320,8 +325,7 @@ export function NewSession() {
                   icon="attachOutline"
                   variant="ghost"
                   aria-label="Attach files to new session"
-                  disabled={mode === 'live'}
-                  title={mode === 'live' ? 'File uploads are available in the Happy app' : undefined}
+                  title={mode === 'live' ? 'Attach images (up to 20, smaller than 10 MB each)' : undefined}
                   onClick={() => fileInput.current?.click()}
                 />
                 <span>{models.find((option) => option.value === model)?.label || 'No model available'}{effort ? ` · ${effortLabel(effort)}` : ''}</span>
@@ -352,7 +356,7 @@ export function NewSession() {
           <Icon name="shieldCheckmarkOutline" size={13} />
           {mode === 'demo'
             ? 'Local demo. Sessions and messages stay in this browser.'
-            : 'Starts a real agent on the selected computer. File uploads are available in the Happy app.'}
+            : 'Starts a real agent on the selected computer. Images are encrypted before upload.'}
         </p>
       </div>
       {picker === 'model' && <LazyBoundary><NewModelPicker agent={agent} model={model} models={models}

@@ -4,6 +4,8 @@
   margin: 20px 0;
 }
 .card {
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 18px;
   border: 1px solid #4b3b64;
   border-radius: 18px;
@@ -57,6 +59,7 @@
   border: 1px solid #4b3b64;
   border-radius: 8px;
   color: #fff;
+  font-size: 16px;
 }
 .actions {
   display: flex;
@@ -68,3 +71,7 @@
   color: #fca5a5;
   font-size: 12px;
 }
+
+.card .card { border: 0; padding: 0; background: transparent; }
+
+.actions button { min-height: 44px; min-width: 44px; }

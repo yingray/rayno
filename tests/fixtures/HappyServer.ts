@@ -1,3 +1,5 @@
+import { createServer } from 'node:http';
+import { Buffer } from 'node:buffer';
 import type { Page, WebSocketRoute } from '@playwright/test';
 import sodium from 'libsodium-wrappers';
 import { base64, deriveKey, HappyCrypto, unbase64 } from '../../src/happy/crypto';
@@ -31,15 +33,29 @@ export class HappyServer {
   authorized = false;
   denied = false;
   permissionReplies = 0;
+  permissionPayloads: Json[] = [];
+  resumeRequests: Json[] = [];
+  resumeFailure = false;
+  uploadMethod: 'PUT' | 'POST' = 'PUT';
+  uploadFailure = false;
+  uploadRequests: Json[] = [];
+  uploadHeaders: Record<string, string>[] = [];
+  blobs = new Map<string, Buffer>();
+  private storageUrl = '';
+  private storageServer?: ReturnType<typeof createServer>;
   communicationReplies: Json[] = [];
   machineActive = true;
   machineMetadata: Json = { host: 'Real computer', platform: 'darwin', homeDir: '/real' };
   spawns: Json[] = [];
+  branchCalls: { method: string; params: Json }[] = [];
+  failBranchSpawn = false;
+  rewindPoints = Array.from({ length: 18 }, (_, index) => ({ uuid: `claude-${index}`, itemId: `codex-${index}`, text: `Message ${index}: review the workspace`, timestamp: 1700000000000 + index * 1000 }));
   bashCommands: Json[] = [];
   worktreeListing = '';
   workspaceReady: Promise<void> = Promise.resolve();
   workspaceFailure = false;
   async install(page: Page, signedIn = true) {
+    page.on('close', () => { this.storageServer?.closeAllConnections(); this.storageServer?.close(); });
     this.encryption = await HappyCrypto.create(this.secret);
     await sodium.ready;
     const recipient = sodium.crypto_box_seed_keypair(
@@ -178,6 +194,17 @@ export class HappyServer {
             dataEncryptionKey: null,
           },
         ]);
+      if (path.endsWith('/attachments/request-upload')) {
+        await this.startStorage();
+        this.uploadRequests.push(request.postDataJSON());
+        const ref = `image-${this.uploadRequests.length}`;
+        return json({ ref, uploadUrl: `${this.storageUrl}/${ref}`, method: this.uploadMethod,
+          ...(this.uploadMethod === 'POST' ? { formFields: { key: ref, policy: 'fixture-policy' } } : {}),
+        });
+      }
+      if (path.endsWith('/attachments/request-download')) {
+        return json({ downloadUrl: `${this.storageUrl}/${request.postDataJSON().ref}` });
+      }
       if (/^\/v3\/sessions\/[^/]+\/messages$/.test(path)) {
         const sessionId = path.split('/')[3];
         const session = this.sessions.find((session) => session.id === sessionId)!;
@@ -185,7 +212,9 @@ export class HappyServer {
         if (sessionId !== 'real-session') this.otherMessages.set(sessionId, storedMessages);
         if (method === 'POST') {
           this.mutations.push('send');
-          const packet = request.postDataJSON().messages[0];
+          const packets = request.postDataJSON().messages;
+          const receipts: Json[] = [];
+          for (const packet of packets) {
           this.sends.push(packet);
           let stored = storedMessages.find((message) => message.localId === packet.localId);
           if (!stored) {
@@ -198,9 +227,11 @@ export class HappyServer {
             };
             storedMessages.push(stored);
           }
-          if (this.failFirstSend && this.sends.length === 1)
-            return json({ error: 'Send confirmation lost. Retry this draft.' }, 503);
-          return json({ messages: [{ ...stored, content: undefined }] });
+          receipts.push({ ...stored, content: undefined });
+          }
+          if (this.failFirstSend) { this.failFirstSend = false;
+            return json({ error: 'Send confirmation lost. Retry this draft.' }, 503); }
+          return json({ messages: receipts });
         }
         const before = Number(url.searchParams.get('before_seq'));
         const after = url.searchParams.get('after_seq');
@@ -273,6 +304,7 @@ export class HappyServer {
           let result: unknown = payload.method.endsWith(':abort') ? this.abortReply : {};
           if (payload.method.endsWith(':permission')) {
             this.permissionReplies++;
+            this.permissionPayloads.push(params);
             const session = this.sessions.find((session) => session.id === payload.method.split(':')[0])!;
             const state = await this.encryption.decrypt<Json>(session.agentState, this.dataKey);
             delete state.requests?.[params.id];
@@ -324,8 +356,18 @@ export class HappyServer {
                   : 'M README.md',
               stderr: '',
             };
+          if (/:(claude-list-rewind-points|codex-list-rewind-points)$/.test(payload.method))
+            result = { type: 'success', points: this.rewindPoints };
+          if (/:(claude-fork-session|claude-duplicate-session|codex-fork-thread|codex-duplicate-thread)$/.test(payload.method)) {
+            this.branchCalls.push({ method: payload.method, params });
+            result = { type: 'success', newClaudeSessionId: 'copied-claude-id', newCodexThreadId: 'copied-codex-id' };
+          }
           if (payload.method.endsWith(':spawn-happy-session')) {
             this.spawns.push(params);
+            if (params.parentSessionId && this.failBranchSpawn) {
+              this.failBranchSpawn = false;
+              result = { type: 'error', errorMessage: 'The copied conversation could not start. Retry.' };
+            } else {
             const session = {
               ...this.sessions[0],
               id: 'created-session',
@@ -335,6 +377,7 @@ export class HappyServer {
               metadata: await this.encryption.encrypt(
                 { ...metadata, flavor: params.agent, path: params.directory, summary: { text: 'Created workspace' },
                   modelMode: params.modelMode, effortLevel: params.effortLevel,
+                  parentSessionId: params.parentSessionId, claudeSessionId: params.resumeClaudeSessionId, codexThreadId: params.resumeCodexThreadId,
                   ...(params.agent === 'rig' ? {
                     flavor: 'rig', client: { id: 'rig' }, models: this.machineMetadata.models,
                     currentModelCode: params.modelId, currentModelProviderId: params.providerId,
@@ -346,6 +389,13 @@ export class HappyServer {
             };
             this.sessions.unshift(session);
             result = { type: 'success', sessionId: session.id };
+            }
+          }
+          if (payload.method.endsWith(':resume-happy-session')) {
+            this.resumeRequests.push(params);
+            const resumed = this.sessions.find(session => session.id === params.sessionId)!;
+            if (this.resumeFailure) result = { type: 'error', errorMessage: 'Recovery failed. Try again.' };
+            else { resumed.active = true; result = { type: 'success', sessionId: resumed.id }; }
           }
           if (payload.method.endsWith(':killSession')) result = { success: true };
           answer = { ok: true, result: await this.encryption.encrypt(result, key) };
@@ -353,6 +403,42 @@ export class HappyServer {
         socket.send('43' + match[1] + JSON.stringify([answer]));
       });
     });
+  }
+  private async startStorage() {
+    if (this.storageServer) return;
+    // A real HTTP sink exercises multipart bytes and CORS in WebKit. Route
+    // interception omits file parts there, so it cannot verify this contract.
+    const server = createServer(async (request, response) => {
+      response.setHeader('Access-Control-Allow-Origin', '*');
+      response.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,OPTIONS');
+      response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      if (request.method === 'OPTIONS') { response.end(); return; }
+      const ref = request.url!.slice(1);
+      if (request.method === 'GET') {
+        const blob = this.blobs.get(ref);
+        response.writeHead(blob ? 200 : 404, { 'Content-Type': 'application/octet-stream' });
+        response.end(blob); return;
+      }
+      this.uploadHeaders.push(Object.fromEntries(Object.entries(request.headers).map(([name, value]) => [name, String(value)])));
+      if (this.uploadFailure) { response.writeHead(503); response.end(); return; }
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(Buffer.from(chunk));
+      const body = Buffer.concat(chunks);
+      if (request.method === 'POST') {
+        const boundary = String(request.headers['content-type']).split('boundary=')[1].replace(/^"|"$/g, '');
+        const start = body.indexOf('name="file"');
+        const bytesStart = body.indexOf('\r\n\r\n', start) + 4;
+        const end = body.indexOf(`\r\n--${boundary}`, bytesStart);
+        if (start < 0 || end < bytesStart) { response.writeHead(400); response.end(); return; }
+        this.blobs.set(ref, body.subarray(bytesStart, end));
+      } else this.blobs.set(ref, body);
+      response.end();
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    this.storageServer = server;
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Could not start attachment storage.');
+    this.storageUrl = `http://127.0.0.1:${address.port}`;
   }
   private async message(id: string, seq: number, raw: Json, sessionId = 'real-session', createdAt = 1700000001000) {
     const key = this.sessions.find((session) => session.id === sessionId)?.dataEncryptionKey ? this.dataKey : null;

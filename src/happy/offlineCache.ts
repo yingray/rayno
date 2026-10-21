@@ -1,4 +1,4 @@
-import type { HappyCrypto } from './crypto';
+import { base64, type HappyCrypto } from './crypto';
 import type { History, Json, MessageRecord } from './normalize';
 
 export type CachedWorkspace = {
@@ -89,6 +89,24 @@ export class OfflineCache {
       // Storage limits or eviction must not prevent an online session from loading.
       return false;
     }
+  }
+
+  private async imageKey(id: string, ref: string) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${id}:${ref}`));
+    return 'image.' + base64(new Uint8Array(digest), true);
+  }
+
+  async image(id: string, ref: string): Promise<string | null> {
+    const value = await this.read<{ version: number; id: string; ref: string; data: string }>(await this.imageKey(id, ref));
+    return value?.version === 1 && value.id === id && value.ref === ref && typeof value.data === 'string' ? value.data : null;
+  }
+
+  async saveImage(id: string, ref: string, data: Uint8Array): Promise<void> {
+    try {
+      const key = this.scope + await this.imageKey(id, ref);
+      const encrypted = await this.encryption.encrypt({ version: 1, id, ref, data: base64(data) }, null);
+      await this.transaction<void>('readwrite', store => { store.put(encrypted, key); });
+    } catch { /* Storage limits do not block an online image preview. */ }
   }
 
   async clear(): Promise<void> {

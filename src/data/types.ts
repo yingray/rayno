@@ -1,12 +1,15 @@
 export type Agent = 'Claude' | 'Codex' | 'Happy Agent';
 export type Status = 'idle' | 'running' | 'blocked' | 'offline';
-export type Attachment = { name: string; size: number; type: string };
+export type Attachment = { name: string; size: number; type: string; file?: File; ref?: string };
+export type ToolCall = { id: string; name: string; input?: unknown; result?: unknown; isError?: boolean };
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
 export type Message = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   tools?: string[];
+  toolCalls?: ToolCall[];
+  toolResults?: { id: string; result: unknown; isError?: boolean }[];
   duration?: string;
   attachments?: Attachment[];
   // Modes that a user message carried in its meta, and the server time of that message.

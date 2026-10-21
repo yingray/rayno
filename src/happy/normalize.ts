@@ -1,4 +1,4 @@
-import type { Agent, Machine, Message, MessageSettings, Session, UsageReading } from '../data/types';
+import type { Agent, Machine, Message, MessageSettings, Session, ToolCall, UsageReading } from '../data/types';
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
 
@@ -220,7 +220,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       message.tools = [text(event.title || event.name, 'Tool call')];
     if (event.t === 'file')
       message.attachments = [
-        { name: text(event.name, 'Attachment'), size: event.size || 0, type: text(event.mimeType) },
+        { name: text(event.name, 'Attachment'), size: event.size || 0, type: text(event.mimeType), ...(typeof event.ref === 'string' ? { ref: event.ref } : {}) },
       ];
   } else if (raw.role === 'agent') {
     const data = record(content.data);
@@ -243,14 +243,37 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       if (data.type === 'tool-call') message.tools = [text(data.name, 'Tool call')];
     }
   }
+  const calls: ToolCall[] = [];
+  const results: NonNullable<Message['toolResults']> = [];
+  const addCall = (id: unknown, name: unknown, input: unknown) => calls.push({ id: text(id, row.id), name: text(name, 'Tool call'), input });
+  const addResult = (id: unknown, result: unknown, isError: unknown) => results.push({ id: text(id), result, isError: isError === true });
+  if (envelope) {
+    const event = record(envelope.ev);
+    if (event.t === 'tool-call-start') addCall(event.call, event.title || event.name, event.args);
+    if (event.t === 'tool-call-end') addResult(event.call, event.result, event.isError);
+  } else if (raw.role === 'agent') {
+    const data = record(content.data);
+    if (content.type === 'output') {
+      const chunks = data.message?.content;
+      if (Array.isArray(chunks)) for (const chunk of chunks) {
+        if (chunk.type === 'tool_use' || chunk.type === 'tool-call') addCall(chunk.callId || chunk.id, chunk.name, chunk.input);
+        if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result') addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, chunk.content ?? chunk.output, chunk.is_error);
+      }
+    } else if (content.type === 'codex' || content.type === 'acp') {
+      if (data.type === 'tool-call') addCall(data.callId, data.name, data.input);
+      if (data.type === 'tool-result' || data.type === 'tool-call-result') addResult(data.callId, data.output, data.isError);
+    }
+  }
+  if (calls.length) { message.toolCalls = calls; message.tools = calls.map(call => call.name); }
+  if (results.length) message.toolResults = results;
   message.content = stripLeadingTaskNotificationWrappers(message.content);
-  const result = message.content || message.tools?.length || message.attachments?.length ? message : null;
+  const result = message.content || message.tools?.length || message.toolResults?.length || message.attachments?.length || message.settings ? message : null;
   normalizedMessages.set(row, result);
   return result;
 }
 export function visibleMessages(rows: MessageRecord[]): Message[] {
   const seen = new Set<string>();
-  return [...rows]
+  const messages = [...rows]
     .sort((a, b) => a.seq - b.seq)
     .filter((row) => {
       const key = row.localId || row.id;
@@ -260,6 +283,36 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
     })
     .map(normalizeMessage)
     .filter((message): message is Message => !!message);
+  const results = new Map(messages.flatMap(message => (message.toolResults || []).map(result => [result.id, result] as const)));
+  const matched = new Set<string>();
+  const rendered = messages.map(message => {
+    if (!message.toolCalls) return message;
+    return { ...message, toolCalls: message.toolCalls.map(call => {
+      const result = results.get(call.id);
+      if (!result) return call;
+      matched.add(call.id);
+      return { ...call, result: result.result, isError: result.isError };
+    }) };
+  });
+  const output: Message[] = [];
+  for (const message of rendered) {
+    // Image-only sends still carry modes in the following empty text record.
+    // Keep those modes on the image without adding an empty chat bubble.
+    if (message.role === 'user' && message.settings && !message.content && !message.attachments?.length) {
+      const previous = output.at(-1);
+      if (previous?.role === 'user' && previous.attachments?.length)
+        output[output.length - 1] = { ...previous, settings: message.settings, sentAt: message.sentAt };
+      continue;
+    }
+    if (!message.toolResults?.length) { output.push(message); continue; }
+    const unmatched = message.toolResults.filter(result => !matched.has(result.id));
+    if (!unmatched.length && !message.content && !message.tools?.length) continue;
+    output.push({ ...message, ...(unmatched.length ? {
+      tools: unmatched.map(() => 'Earlier tool call'),
+      toolCalls: unmatched.map(result => ({ ...result, name: 'Earlier tool call' })),
+    } : {}) });
+  }
+  return output;
 }
 export function weeklyUsage(
   agent: Agent,

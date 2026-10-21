@@ -104,3 +104,6 @@
   .capsule { gap: 9px; padding-inline: 12px; }
   .agent { gap: 5px; font-size: 12px; }
 }
+
+.agentIcon { width: 20px; height: 20px; object-fit: contain; flex: none; }
+.agentIcon[alt="Codex"] { filter: brightness(0) invert(1); }

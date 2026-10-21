@@ -12,7 +12,7 @@ export const DraftComposer = memo(function DraftComposer({
   sessionId: string;
   input: RefObject<HTMLTextAreaElement | null>;
   archived: boolean;
-  /** An ended CLI session that only the Happy app can resume. */
+  /** An ended CLI session that requires recovery before sending. */
   needsResume: boolean;
   disabled: boolean;
   offline: boolean;
@@ -44,7 +44,7 @@ export const DraftComposer = memo(function DraftComposer({
       ref={input}
       aria-label="Message"
       placeholder={offline && !archived ? 'Draft a message while offline…'
-        : disabled ? needsResume ? 'Resume this agent in the Happy app to send a message'
+        : disabled ? needsResume ? 'Resume this session to send a message'
           : archived ? 'Restore this session to send a message' : 'This agent is offline'
           : 'Type a message…'}
       value={value}

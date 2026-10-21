@@ -532,4 +532,77 @@ describe('Happy client protocol', () => {
     // Assert
     expect(auth).toMatchObject({ appState: 'background', clientType: 'user-scoped' });
   });
+  it.each(['https://happy.test/blob', 'https://happy.test.evil.example/blob'])('should scope image authorization to the exact server origin for %s', async (address) => {
+    // Arrange
+    await start();
+    const bytes = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
+    const encrypted = await client.encryption.encryptBlob(bytes, null);
+    fetchMock.mockImplementation(async (url: string | URL) => String(url).includes('request-download')
+      ? response({ downloadUrl: address }) : new Response(encrypted as BodyInit));
+    // Act
+    const image = await client.loadImage('session', 'image-ref');
+    // Assert
+    expect(image.type).toBe('image/png');
+    expect(new Uint8Array(await image.arrayBuffer())).toEqual(bytes);
+    const headers = fetchMock.mock.calls.at(-1)![1].headers as Headers;
+    expect(headers.get('Authorization')).toBe(address === 'https://happy.test/blob' ? 'Bearer test-token' : null);
+  });
+  it('should resume a tracked legacy session without sending the account master secret', async () => {
+    // Arrange
+    metadata.claudeSessionId = 'provider-session';
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    session.active = false;
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ resumeSupport: { rpcAvailable: true } }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start();
+    socket.handlers.get('connect')?.();
+    await client.refresh();
+    socket.emitWithAck.mockImplementation(async () => {
+      session.active = true;
+      return { ok: true, result: await client.encryption.encrypt({ type: 'success', sessionId: 'session' }, null) };
+    });
+    // Act
+    const first = client.resumeSession('session'), second = client.resumeSession('session');
+    await Promise.all([first, second]);
+    // Assert
+    expect(first).toBe(second);
+    expect(socket.emitWithAck).toHaveBeenCalledTimes(1);
+    const params = await client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[0][1].params, null);
+    expect(params).toMatchObject({ sessionId: 'session', fallbackReason: 'client-has-no-data-key' });
+    expect(params.fallback).toBeUndefined();
+    expect(params.model).toBeTruthy();
+    expect(JSON.stringify(params)).not.toContain(credentials.secret);
+  });
+
+  it('should keep an unknown fork result from creating another provider copy on retry', async () => {
+    // Arrange
+    metadata.claudeSessionId = 'provider-session';
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({}, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start(); socket.handlers.get('connect')?.(); await client.refresh();
+    socket.emitWithAck.mockRejectedValue(new Error('Timeout'));
+    // Act / Assert
+    await expect(client.branchSession('session', 'fork', undefined, {})).rejects.toThrow('did not confirm');
+    await expect(client.branchSession('session', 'fork', undefined, {})).rejects.toThrow('previous copy has no confirmation');
+    expect(socket.emitWithAck).toHaveBeenCalledTimes(1);
+  });
+  it('should reject a duplicate without a selected provider message before a copy starts', async () => {
+    // Arrange
+    metadata.claudeSessionId = 'provider-session';
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({}, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start(); socket.handlers.get('connect')?.(); await client.refresh();
+    // Act / Assert
+    await expect(client.branchSession('session', 'duplicate', undefined, {})).rejects.toThrow('Choose a message');
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+  });
+
 });

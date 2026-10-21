@@ -127,15 +127,6 @@ export function Settings() {
         </div>
         {category === 'appearance' ? (
           <>
-            <Group label="Rayno theme" footer="Ray’s own UI. Only this device.">
-              <Row
-                icon="sparklesOutline"
-                title="Rayno theme"
-                subtitle="The Floating Panels layout for this independent client"
-              >
-                <Toggle label="Rayno theme" checked disabled onChange={() => {}} />
-              </Row>
-            </Group>
             <Group label="Appearance">
               <Row icon="colorPaletteOutline" title="Theme">
                 <span className={styles.value}>

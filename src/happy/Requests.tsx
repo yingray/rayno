@@ -5,6 +5,7 @@ import { messageError } from './errors';
 import { pendingPermissions, record } from './normalize';
 import type { Json } from './normalize';
 import styles from './requests.module.css';
+import type { Permission } from './normalize';
 
 export const Requests = memo(function Requests({ sessionId }: { sessionId: string }) {
   const { live, state, unavailable } = useDemo((store) => ({
@@ -37,9 +38,11 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
         <section key={request.id} className={styles.card}>
           <strong>{request.tool}</strong>
           <p>The agent needs your permission.</p>
-          <pre>{JSON.stringify(request.arguments, null, 2)}</pre>
+          {request.tool !== 'AskUserQuestion' && <pre>{JSON.stringify(request.arguments, null, 2)}</pre>}
           {request.tool === 'AskUserQuestion' ? (
-            <p>Answer this question in the Happy app.</p>
+            <ClaudeQuestion key={request.id} request={request} busy={!!busy || unavailable}
+              onSubmit={answers => void run(request.id, () => live.respondPermission(sessionId, request.id, true, false, { answers }))}
+              onDismiss={() => void run(request.id, () => live.respondPermission(sessionId, request.id, false))} />
           ) : (
             <div className={styles.actions}>
               <Button
@@ -58,6 +61,10 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
                 }
               >
                 {busy === request.id ? 'Wait…' : 'Allow once'}
+              </Button>
+              <Button disabled={!!busy || unavailable}
+                onClick={() => void run(request.id, () => live.respondPermission(sessionId, request.id, true, true))}>
+                Allow for this session
               </Button>
             </div>
           )}
@@ -132,6 +139,7 @@ function QuestionForm({
                 <input
                   type={question.multiSelect ? 'checkbox' : 'radio'}
                   name={question.id}
+                  aria-label={option.label}
                   checked={answers[question.id]?.options.includes(option.label) || false}
                   onChange={(event) =>
                     setAnswers((previous) => ({
@@ -182,4 +190,18 @@ function QuestionForm({
       </fieldset>
     </form>
   );
+}
+
+function ClaudeQuestion({ request, busy, onSubmit, onDismiss }: { request: Permission; busy: boolean; onSubmit: (answers: Json) => void; onDismiss: () => void }) {
+  const questions = record(request.arguments).questions;
+  if (!Array.isArray(questions) || !questions.length) return <p>This question has no supported form.</p>;
+  return <QuestionForm form={{ form: { questions: questions.map((question: Json, index: number) => ({
+    ...question, id: `question-${index}`, required: true,
+  })) } }} busy={busy} onSubmit={answers => {
+    if (!answers) { onDismiss(); return; }
+    onSubmit(Object.fromEntries(questions.map((question: Json, index: number) => {
+      const answer = answers[`question-${index}`];
+      return [question.question, [...(answer?.options || []), ...(answer?.custom?.trim() ? [answer.custom.trim()] : [])].join(', ')];
+    })));
+  }} />;
 }

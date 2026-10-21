@@ -82,7 +82,9 @@ test('missing usage should stay unknown and the compact footer should fit narrow
   await workspace.openUsage();
   // Assert
   await expect(workspace.usageDetails().getByRole('alert').filter({ hasText: 'Usage unavailable' })).toBeVisible();
-  await expect(workspace.usageSummary()).toContainText('Claude—Codex—');
+  await expect(workspace.usageSummary()).toContainText('——');
+  await expect(workspace.usageSummary().getByRole('img', { name: 'Claude', exact: true })).toBeVisible();
+  await expect(workspace.usageSummary().getByRole('img', { name: 'Codex', exact: true })).toBeVisible();
   await expect(workspace.usageSummary().getByRole('meter')).toHaveCount(0);
   // Act
   await page.keyboard.press('Escape');

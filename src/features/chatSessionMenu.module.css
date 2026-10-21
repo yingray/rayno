@@ -1,0 +1,15 @@
+.trigger { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 50%; background: var(--panel); color: var(--secondary); cursor: pointer; }
+.menu { position: fixed; z-index: 50; width: min(272px, calc(100vw - 16px)); padding: 8px; border: 1px solid #ffffff24; border-radius: 20px; background: linear-gradient(155deg, #2a2532f5, #17151ef5); box-shadow: 0 18px 48px #0009; backdrop-filter: blur(24px); overflow: auto; overscroll-behavior: contain; }
+.title { margin: 4px 10px 8px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu > button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text); font-size: 14px; text-align: left; cursor: pointer; }
+.menu > button:hover:not(:disabled) { background: #ffffff0c; }
+.menu > button:disabled { opacity: .45; cursor: default; }
+.menu .danger { color: #fca5a5; }
+.reason, .error { margin: 8px 12px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; color: var(--muted); }
+.error { color: #fca5a5; }
+.duplicate footer button, .duplicate header button { min-width: 44px; min-height: 44px; }
+.points { display: grid; gap: 8px; margin: 12px 0; }
+.points button { min-height: 44px; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--well); color: var(--text); text-align: left; cursor: pointer; }
+.points button[aria-checked='true'] { border-color: var(--accent-soft); background: #8b5cf61a; }
+.points span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; line-height: 1.5; }
+.points small { display: block; margin-top: 6px; font-size: 11px; color: var(--muted); }

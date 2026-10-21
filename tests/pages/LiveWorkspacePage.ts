@@ -385,7 +385,7 @@ export class LiveWorkspacePage extends WorkspacePage {
     await this.page.getByRole('textbox', { name: 'Happy recovery key', exact: true }).fill(key);
     await this.page.getByRole('button', { name: 'Connect account', exact: true }).click();
   }
-  /** An ended CLI session offers no archive or restore action; it resumes in the Happy app. */
+  /** An ended CLI session uses recovery instead of the archive or restore action. */
   archiveActions() {
     return this.page.getByRole('button', { name: /^(Archive|Restore)( session)?$/ });
   }

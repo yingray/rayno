@@ -57,6 +57,7 @@ import {
   optionsOutline,
   textOutline,
   remove,
+  menuOutline,
 } from 'ionicons/icons';
 import { useDemo } from '../data/store';
 import type { Agent } from '../data/types';
@@ -116,6 +117,7 @@ const icons = {
   optionsOutline,
   textOutline,
   remove,
+  menuOutline,
 };
 export type IconName = keyof typeof icons;
 export const Icon = memo(function Icon({

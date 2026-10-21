@@ -282,3 +282,30 @@ Changes in this move:
 
 The CSP and phone layout probes were temporary test files. They are not in the repository.
 A Cloudflare Pages deployment was not made. These checks used the local Pages emulator.
+
+## Priority features in the isolated worktree (2026-10-21)
+
+Branch: `feat/priority-features`, based on `3685019`.
+
+- Build and TypeScript checks passed. All 150 unit tests passed.
+- The full browser sweep ran 392 cases: 373 passed, 15 existing project skips, and four failures from the old archive placeholder assertion. That assertion now matches the local recovery flow.
+- The subsequent chat, archive, mode, attention, and offline regression run passed 113 cases with three existing skips, including the corrected archive assertion in every browser project.
+- After the encrypted image cache change, the final connected, offline, and priority-feature run passed 97 cases with three existing skips. It includes all 56 new priority checks across desktop/mobile Chromium and WebKit.
+- Phone interactions cover 320, 360, 390, and 430px widths, a 360x350 keyboard-sized viewport, and 844x390 landscape. Tests select and submit answers, open and close images, expand tool details, resume the same session, remove attachments, and reach Start. Changed touch controls measure at least 44px.
+- Image tests use a real HTTP storage fixture for PUT, multipart POST, CORS, encrypted bytes, downloads, lost confirmations, and retries. WebKit route interception omits multipart file bytes, so it cannot verify that transfer by itself.
+- Received images reopen after an offline reload. IndexedDB stores encrypted image payloads under an account/server scope, and filenames do not appear in stored values. Account-isolation and sign-out checks passed.
+- A separate live browser check used the Pages origin against the official Happy API and `files.cluster-fluster.com`. Chromium and WebKit each returned upload 204 and download 200 for a tiny encrypted test image. The downloaded bytes decrypted to the original PNG. No chat messages or agent requests were sent.
+- The storage OPTIONS probe returned 403, while the browser's actual multipart POST and GET succeeded with readable CORS responses. The form upload does not need that preflight.
+- The Tailscale preview on port 5186 returned HTTP 200 and serves the current build. Existing routes and the original checkout remain unchanged.
+
+Voice, general file uploads, bot management, social features, and a browser terminal are outside this change.
+
+## Session actions and final regression (2026-10-21)
+
+- Added the chat-header menu beside session info, with archive/restore, delete confirmation, provider-native fork, and duplication through a selected message. Ended sessions offer the existing resume flow.
+- Claude and Codex copy/start contracts are covered with explicit model, effort, permission, and parent-session settings. A failed child start reuses the copied conversation; an unknown copy result does not silently create another copy.
+- Appearance omits the fixed Rayno theme option. The compact usage bar uses accessible agent icons. Messages and the composer span the available chat width with shared edge spacing.
+- All 152 unit tests passed. TypeScript and the production build passed.
+- The final full browser sweep ran 424 cases: 405 passed, 15 existing project skips, and four failures from the old usage-name assertion. After updating that assertion for agent icons, all 12 usage checks passed across desktop/mobile Chromium and WebKit. The combined runs cover all 409 non-skipped cases successfully.
+- The 32 session-action checks passed, including keyboard focus, confirmation/cancellation, duplicate-history scrolling, 44px targets, and full-width layout at 1440px, phone widths 320/360/390/430px, a 360x350 short viewport, and 844x390 landscape.
+- Provider mutation checks use the isolated backend fixture. Fork, duplicate, resume, and permission changes were not run against a real agent daemon.
