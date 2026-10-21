@@ -173,6 +173,7 @@ test('QR authorization should unlock the independent client with its own account
   const workspace = new LiveWorkspacePage(page);
   await page.goto('/session/real-session');
   await workspace.expectSignIn();
+  await workspace.showQrSignIn();
   await workspace.expectQr();
   // Act
   server.authorized = true;

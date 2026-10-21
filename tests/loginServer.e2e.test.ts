@@ -24,6 +24,7 @@ test('a custom Happy server should apply on blur and stay after sign-out', async
   const workspace = new LiveWorkspacePage(page);
   await page.goto('/');
   await workspace.expectSignIn();
+  await workspace.showQrSignIn();
   await expect.poll(() => pairingHosts.length).toBeGreaterThan(0);
   await workspace.openServerField();
   // Act

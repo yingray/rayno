@@ -105,7 +105,7 @@ test('saved data should stay account scoped and sign-out should clear only the c
   await page.evaluate((credentials) => localStorage.setItem('rayno.credentials', JSON.stringify(credentials)), server.credentials);
   await workspace.openSession();
   await workspace.signOut();
-  await expect(page.getByRole('button', { name: 'Recovery key', exact: true })).toBeVisible();
+  await workspace.expectSignIn();
   await expect.poll(() => workspace.offlineRecords()).toEqual([{ key: otherKey, value: 'other-account-sentinel' }]);
   expect(await page.evaluate(() => localStorage.getItem('v1-credentials'))).toBe('keep-v1');
   expect(server.mutations).toEqual([]);

@@ -3,12 +3,16 @@
   overflow: auto;
   height: 100dvh;
   display: grid;
-  place-items: center;
-  padding: 28px 16px;
+  justify-items: center;
+  padding:
+    max(28px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(28px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   background: radial-gradient(ellipse at 50% 0%, #261d3d 0%, #09090b 65%);
 }
 .card {
-  width: min(100%, 460px);
+  width: min(100%, 520px);
+  min-width: 0;
+  margin-block: auto;
   padding: 32px;
   border: 1px solid var(--border-control);
   border-radius: 28px;
@@ -41,9 +45,122 @@
   line-height: 1.6;
 }
 .tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   padding: 16px 0;
+}
+.card button {
+  min-height: 44px;
+}
+.tabs button {
+  padding-inline: 8px;
+}
+.signIn h2 {
+  font-size: 15px;
+  margin: 4px 0 12px;
+}
+.methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 20px;
+  background: var(--well);
+  border: 1px solid var(--border-control);
+  border-radius: 16px;
+}
+.methods button {
+  padding-inline: 6px;
+  border-radius: 12px;
+}
+.install > p:first-child {
+  margin-bottom: 20px;
+}
+.steps {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 0;
+}
+.steps li {
+  counter-increment: step;
+  margin-bottom: 24px;
+}
+.steps h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+.steps h2::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: 1px solid var(--border-control);
+  border-radius: 50%;
+  color: var(--accent-soft);
+  font-size: 12px;
+}
+.appLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.appLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-control);
+  border-radius: 12px;
+  color: var(--accent-soft);
+  font-size: 13px;
+}
+.appLinks a:hover {
+  background: var(--well);
+}
+.command {
+  margin-block: 10px;
+  padding: 4px 6px 4px 12px;
+  border: 1px solid var(--border-control);
+  border-radius: 14px;
+  background: var(--well);
+}
+.commandLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.command code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: 12px/1.6 'Geist Mono', monospace;
+  color: var(--body);
+  user-select: text;
+}
+.command button {
+  flex: none;
+  padding-inline: 10px;
+}
+.copyStatus {
+  display: block;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.copyStatus:empty {
+  display: none;
+}
+.card .alternative {
+  margin-bottom: 0;
 }
 .pairing {
   display: grid;
@@ -109,6 +226,8 @@
 }
 .card summary {
   cursor: pointer;
+  min-height: 44px;
+  align-content: center;
 }
 .card footer {
   display: flex;
@@ -133,9 +252,11 @@
 }
 @media (max-width: 480px) {
   .screen {
-    padding: 16px 12px;
+    padding:
+      max(16px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
   .card {
-    padding: 24px;
+    padding: 24px 20px;
   }
 }

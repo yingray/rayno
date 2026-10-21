@@ -40,7 +40,7 @@ The CLI also starts a background daemon. Rayno uses the daemon to start new sess
 
 ### 4. Open Rayno
 
-Go to https://rayno-co6.pages.dev and sign in with one of these methods:
+Go to https://rayno-co6.pages.dev, select **Sign in**, and choose one of these methods:
 
 | Method | In the Happy app | In Rayno |
 |---|---|---|
@@ -81,7 +81,8 @@ If you run your own Happy server, it must use HTTPS and allow CORS from the Rayn
 
 ## Sign in
 
-The login screen offers two methods:
+The login screen opens **How to install** first, with the setup steps above and commands that you can copy.
+After setup, select **Sign in**, then choose **Scan QR code** or **Recovery key**:
 
 - Scan the QR code with a signed-in Happy mobile app, then approve this browser.
 - Paste your Happy account recovery key. The key is the 32-byte account secret.

@@ -370,6 +370,13 @@ export class LiveWorkspacePage extends WorkspacePage {
   async expectQr() {
     await expect(this.page.getByRole('img', { name: 'Authorize Rayno in Happy' })).toBeVisible();
   }
+  async showSignIn() {
+    await this.page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  }
+  async showQrSignIn() {
+    await this.showSignIn();
+    await this.page.getByRole('button', { name: 'Scan QR code', exact: true }).click();
+  }
   async restore() {
     await this.page.getByRole('button', { name: /^Restore( session)?$/, exact: true }).click();
   }
@@ -377,10 +384,12 @@ export class LiveWorkspacePage extends WorkspacePage {
     return this.page.getByRole('textbox', { name: 'Happy server', exact: true });
   }
   async openServerField() {
+    await this.showSignIn();
     await this.page.getByText('Happy server', { exact: true }).click();
     await expect(this.serverField()).toBeVisible();
   }
   async signInWithKey(key: string) {
+    await this.showSignIn();
     await this.page.getByRole('button', { name: 'Recovery key', exact: true }).click();
     await this.page.getByRole('textbox', { name: 'Happy recovery key', exact: true }).fill(key);
     await this.page.getByRole('button', { name: 'Connect account', exact: true }).click();
