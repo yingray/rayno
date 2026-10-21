@@ -97,7 +97,7 @@ test('a selected permission mode should reach the spawn and encrypted first mess
 
 test('demo sessions should retain the selected permission mode in the new chat', async ({ page }) => {
   // Arrange
-  await page.addInitScript(() => localStorage.setItem('rayno.v2.mode', 'demo'));
+  await page.addInitScript(() => localStorage.setItem('rayno.mode', 'demo'));
   const workspace = new LiveWorkspacePage(page);
   await page.goto('/new');
   // Act

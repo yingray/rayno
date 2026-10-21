@@ -98,9 +98,9 @@ test('new-session controls should hide Happy Agent and migrate a saved legacy dr
   await page.goto('/new');
   await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => Object.keys(localStorage)
-    .some((key) => key.startsWith('rayno.v2.account.') && key.endsWith('.ui')))).toBe(true);
+    .some((key) => key.startsWith('rayno.account.') && key.endsWith('.ui')))).toBe(true);
   await page.evaluate(() => {
-    const key = Object.keys(localStorage).find((key) => key.startsWith('rayno.v2.account.') && key.endsWith('.ui'))!;
+    const key = Object.keys(localStorage).find((key) => key.startsWith('rayno.account.') && key.endsWith('.ui'))!;
     const saved = JSON.parse(localStorage.getItem(key)!);
     saved.newDraft.agent = 'Happy Agent';
     saved.newDraft.model = 'Agent default';

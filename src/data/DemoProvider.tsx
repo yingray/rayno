@@ -90,7 +90,7 @@ export function DemoProvider({
         await delay(650);
         const id = crypto.randomUUID();
         try {
-          localStorage.setItem(`rayno.v2.demo.composerModes.${id}`, JSON.stringify({
+          localStorage.setItem(`rayno.demo.composerModes.${id}`, JSON.stringify({
             model: draft.model, effort: draft.effort || null, permission: draft.permissionMode,
           }));
         } catch { /* Keep the session usable when browser storage is unavailable. */ }

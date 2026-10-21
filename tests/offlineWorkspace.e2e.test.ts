@@ -84,13 +84,13 @@ test('saved data should stay account scoped and sign-out should clear only the c
   const workspace = new LiveWorkspacePage(page);
   await workspace.openSession();
   await expectSaved(workspace, server, 'From the real protocol');
-  const otherKey = 'rayno.v2.account.other.workspace';
+  const otherKey = 'rayno.account.other.workspace';
   await workspace.addOfflineRecord(otherKey, 'other-account-sentinel');
   await page.evaluate(() => localStorage.setItem('v1-credentials', 'keep-v1'));
 
   // Act / Assert: another login must not read this account's saved content.
   await workspace.setNetwork(false);
-  await page.evaluate((credentials) => localStorage.setItem('rayno.v2.credentials', JSON.stringify(credentials)), {
+  await page.evaluate((credentials) => localStorage.setItem('rayno.credentials', JSON.stringify(credentials)), {
     ...server.credentials, secret: base64(new Uint8Array(32).fill(21), true),
   });
   await workspace.route('/sessions');
@@ -102,7 +102,7 @@ test('saved data should stay account scoped and sign-out should clear only the c
   await expect(page.getByText('From the real protocol', { exact: true })).toHaveCount(0);
 
   // The original account can still read its cache and sign out while offline.
-  await page.evaluate((credentials) => localStorage.setItem('rayno.v2.credentials', JSON.stringify(credentials)), server.credentials);
+  await page.evaluate((credentials) => localStorage.setItem('rayno.credentials', JSON.stringify(credentials)), server.credentials);
   await workspace.openSession();
   await workspace.signOut();
   await expect(page.getByRole('button', { name: 'Recovery key', exact: true })).toBeVisible();
@@ -160,7 +160,7 @@ test('the installed live PWA should reopen its session list and chat with the ne
     await expect(page.getByText('From the real protocol', { exact: true })).toBeVisible();
     await workspace.expectRendered();
     await expect.poll(() => page.evaluate(async () => {
-      const cache = await caches.open('rayno-v2-diagrams');
+      const cache = await caches.open('rayno-diagrams');
       return (await cache.keys()).some((request) => request.url.includes('mermaid.worker-'));
     })).toBe(true);
 

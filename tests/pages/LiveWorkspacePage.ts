@@ -47,7 +47,7 @@ export class LiveWorkspacePage extends WorkspacePage {
   }
   async offlineRecords(): Promise<{ key: string; value: string }[]> {
     return this.page.evaluate(() => new Promise((resolve, reject) => {
-      const open = indexedDB.open('rayno-v2-offline', 1);
+      const open = indexedDB.open('rayno-offline', 1);
       open.onupgradeneeded = () => open.result.createObjectStore('records');
       open.onerror = () => reject(open.error);
       open.onsuccess = () => {
@@ -66,7 +66,7 @@ export class LiveWorkspacePage extends WorkspacePage {
   }
   async addOfflineRecord(key: string, value: string) {
     await this.page.evaluate(({ key, value }) => new Promise<void>((resolve, reject) => {
-      const open = indexedDB.open('rayno-v2-offline', 1);
+      const open = indexedDB.open('rayno-offline', 1);
       open.onsuccess = () => {
         const db = open.result;
         const transaction = db.transaction('records', 'readwrite');

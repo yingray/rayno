@@ -48,11 +48,11 @@ test('a custom Happy server should apply on blur and stay after sign-out', async
   // Assert
   await expect.poll(() => authHost).toBe(customHost);
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('rayno.v2.server')))
+    .poll(() => page.evaluate(() => localStorage.getItem('rayno.server')))
     .toBe(`https://${customHost}`);
 
   // Act
-  await page.evaluate(() => localStorage.removeItem('rayno.v2.credentials'));
+  await page.evaluate(() => localStorage.removeItem('rayno.credentials'));
   await page.goto('/');
   await workspace.openServerField();
   // Assert

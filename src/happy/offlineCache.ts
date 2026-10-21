@@ -15,7 +15,7 @@ export type CachedHistory = {
   history: Pick<History, 'loaded' | 'hasMore'>;
 };
 
-const DATABASE = 'rayno-v2-offline';
+const DATABASE = 'rayno-offline';
 const STORE = 'records';
 
 // Keep account data out of the public service-worker cache and v1 storage.

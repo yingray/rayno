@@ -117,7 +117,7 @@ test('the worktree picker should still create a new checkout from a branch name'
 
 test('the demo should prepare a local handoff and explain a missing transcript', async ({ page }) => {
   // Arrange
-  await page.addInitScript(() => localStorage.setItem('rayno.v2.mode', 'demo'));
+  await page.addInitScript(() => localStorage.setItem('rayno.mode', 'demo'));
   const workspace = new LiveWorkspacePage(page);
   await page.goto('/session/floating-panels');
   // Act

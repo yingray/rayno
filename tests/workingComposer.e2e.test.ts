@@ -123,7 +123,7 @@ test('a failed send during work should retain the draft and retry the same packe
 
 test('the local demo should accept another instruction during a simulated response', async ({ page }) => {
   // Arrange
-  await page.addInitScript(() => localStorage.setItem('rayno.v2.mode', 'demo'));
+  await page.addInitScript(() => localStorage.setItem('rayno.mode', 'demo'));
   const workspace = new WorkspacePage(page);
   await workspace.open();
   await workspace.create('Prepare the first draft');

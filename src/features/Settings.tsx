@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dialog, Empty, Icon, Segment, Toggle } from '../components/ui';
+import { version } from '../../package.json';
 import type { IconName } from '../components/ui';
 import { useDemo } from '../data/store';
 import type { BubbleColor, FontSize } from '../data/types';
@@ -358,10 +359,10 @@ export function Settings() {
             <Group label="About">
               <Row
                 icon="informationCircleOutline"
-                title="Floating Panels"
+                title="Rayno"
                 subtitle="React · TypeScript · local PWA"
               >
-                <span className={styles.value}>2.0.0</span>
+                <span className={styles.value}>{version}</span>
               </Row>
             </Group>
           </>

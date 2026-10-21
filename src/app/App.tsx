@@ -35,7 +35,7 @@ export function App() {
   const path = location.pathname;
   const [expanded, setExpanded] = useState(() => {
     try {
-      return localStorage.getItem('rayno.v2.rail.expanded') === 'true';
+      return localStorage.getItem('rayno.rail.expanded') === 'true';
     } catch {
       return false;
     }
@@ -194,7 +194,7 @@ export function App() {
                 onClick={() =>
                   setExpanded((value) => {
                     try {
-                      localStorage.setItem('rayno.v2.rail.expanded', String(!value));
+                      localStorage.setItem('rayno.rail.expanded', String(!value));
                     } catch {
                       /* The rail still works without browser storage. */
                     }

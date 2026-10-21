@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
           })),
         },
         workbox: {
-          cacheId: 'rayno-v2',
+          cacheId: 'rayno',
           // Activate the new shell cache without a reload or a missing update prompt.
           // The open page stays intact; its next navigation uses the current release.
           skipWaiting: true,
@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => {
             urlPattern: /\/assets\/mermaid\.worker-[\w-]+\.js$/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'rayno-v2-diagrams',
+              cacheName: 'rayno-diagrams',
               expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 60 },
             },
           }],

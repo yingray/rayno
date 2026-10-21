@@ -120,11 +120,11 @@ export class HappyClient implements DemoAdapter {
     readonly encryption: HappyCrypto,
     scope: string,
   ) {
-    this.storageKey = `rayno.v2.account.${scope}.`;
+    this.storageKey = `rayno.account.${scope}.`;
     this.cache = new OfflineCache(this.storageKey, encryption);
     if (globalThis.navigator?.onLine === false)
       this.snapshot = { ...this.snapshot, offline: true, connection: 'disconnected', loading: false };
-    this.storage = localStorage.getItem('rayno.v2.credentials') ? localStorage : sessionStorage;
+    this.storage = localStorage.getItem('rayno.credentials') ? localStorage : sessionStorage;
     this.attentionInitialized = this.readLocal('attentionInitialized') === 'true';
   }
   static async create(credentials: Credentials) {

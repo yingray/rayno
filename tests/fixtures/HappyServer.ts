@@ -110,12 +110,12 @@ export class HappyServer {
     ];
     await page.addInitScript(
       ({ credentials, signedIn }) => {
-        localStorage.setItem('rayno.v2.mode', 'live');
+        localStorage.setItem('rayno.mode', 'live');
         // App-state checks can keep the static test server online for WebKit reloads.
         if (localStorage.getItem('fixture.online') === 'false')
           Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
         if (signedIn && !sessionStorage.getItem('fixture.initialized')) {
-          localStorage.setItem('rayno.v2.credentials', JSON.stringify(credentials));
+          localStorage.setItem('rayno.credentials', JSON.stringify(credentials));
           sessionStorage.setItem('fixture.initialized', 'true');
         }
       },

@@ -75,7 +75,7 @@ export const Chat = memo(function Chat({
   const modesKey = `composerModes.${session.id}`;
   const [savedModes] = useState(() => {
     try {
-      return JSON.parse((live ? live.readLocal(modesKey) : localStorage.getItem(`rayno.v2.demo.${modesKey}`)) || 'null');
+      return JSON.parse((live ? live.readLocal(modesKey) : localStorage.getItem(`rayno.demo.${modesKey}`)) || 'null');
     } catch { return null; }
   });
   const preferenceKey = modelChoiceKey(session.agent, session.machineId);
@@ -142,7 +142,7 @@ export const Chat = memo(function Chat({
     try {
       const value = JSON.stringify({ model, effort: selectedEffort, permission: selectedPermission });
       if (live) live.writeLocal(modesKey, value);
-      else localStorage.setItem(`rayno.v2.demo.${modesKey}`, value);
+      else localStorage.setItem(`rayno.demo.${modesKey}`, value);
     } catch { /* Keep the selection for this visit if storage is unavailable. */ }
   }, [live, modesKey, model, selectedEffort, selectedPermission]);
 

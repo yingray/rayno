@@ -14,7 +14,7 @@ test('a cached PWA shell should upgrade without closing every open tab or cleari
     serviceWorkers: 'allow',
   });
   try {
-    await context.addInitScript(() => localStorage.setItem('rayno.v2.mode', 'demo'));
+    await context.addInitScript(() => localStorage.setItem('rayno.mode', 'demo'));
     let oldRelease = true;
     await context.route('**/sw.js', async (route) => {
       if (!oldRelease) return route.continue();

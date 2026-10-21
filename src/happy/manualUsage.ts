@@ -1,7 +1,7 @@
 // Adapted from Happy (MIT). See PROTOCOL-SOURCES.md.
 /**
  * Reads the plan quota of Claude and Codex straight from a computer, without
- * a session. V2 uses this for the session-list status and Monitor refresh.
+ * a session. Rayno uses this for the session-list status and Monitor refresh.
  *
  * The script goes through the daemon's machine-wide `bash` RPC, like the
  * battery reading. It asks each agent with the call the CLI already uses in a

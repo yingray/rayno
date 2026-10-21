@@ -10,14 +10,14 @@ const Login = lazy(() => import('../happy/Login').then((module) => ({ default: m
 
 export function Root() {
   const [credentials, setCredentials] = useState<Credentials | null>(readCredentials);
-  const [demo, setDemo] = useState(() => localStorage.getItem('rayno.v2.mode') === 'demo');
+  const [demo, setDemo] = useState(() => localStorage.getItem('rayno.mode') === 'demo');
   const login = useCallback((value: Credentials) => {
-    localStorage.setItem('rayno.v2.mode', 'live');
+    localStorage.setItem('rayno.mode', 'live');
     setDemo(false);
     setCredentials(value);
   }, []);
   const switchMode = useCallback(() => {
-    localStorage.setItem('rayno.v2.mode', demo ? 'live' : 'demo');
+    localStorage.setItem('rayno.mode', demo ? 'live' : 'demo');
     setDemo(!demo);
   }, [demo]);
   const logout = useCallback(() => {

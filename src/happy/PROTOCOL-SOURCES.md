@@ -1,6 +1,6 @@
 # Happy protocol sources
 
-The v2 client owns these adapted copies. It does not import the v1 runtime or source tree.
+Rayno owns these adapted copies. It does not import the v1 runtime or source tree.
 In this file, v1 means the Happy app (https://github.com/slopus/happy), including the author's web overlay for it.
 The upstream source uses the MIT license in `HAPPY-LICENSE.txt`.
 
@@ -8,7 +8,7 @@ Upstream commit: `24d340d54ce8eba59167aa0d988d83cc07f069b3` in `slopus/happy`.
 Overlay: the author's Rayno patch for the Happy app, as inspected on 2026-10-20. The patch is not published.
 Paths under `rayno/` and `monitor/` below come from that overlay.
 
-| V2 file | Reference paths under `packages/happy-app/sources/` |
+| Rayno file | Reference paths under `packages/happy-app/sources/` |
 | --- | --- |
 | `crypto.ts` | `encryption/deriveKey.ts`, `encryption/libsodium.ts`, `encryption/aes.web.ts`, `sync/encryption/encryption.ts`, `auth/secretKeyBackup.ts` |
 | `auth.ts` | `auth/authQRStart.ts`, `auth/authQRWait.ts`, `auth/authGetToken.ts`, `app/(app)/restore/index.tsx` |
@@ -32,21 +32,21 @@ RPC replies from older CLIs; other reads still require JSON. Encrypted RPC error
 
 Archive classification follows the overlay's `sync/storage.ts`: a lifecycle marker or an inactive
 non-Rig CLI session belongs in the archive. An inactive Rig session remains live work unless marked.
-The Active/Archived selector in v2's list options menu changes list visibility only. CLI resume remains an explicit action in the Happy app.
+The Active/Archived selector in Rayno's list options menu changes list visibility only. CLI resume remains an explicit action in the Happy app.
 
 Model/effort writes also reference `packages/happy-cli/src/api/types.ts`,
 `packages/happy-cli/src/claude/runClaude.ts`, and `packages/happy-cli/src/codex/runCodex.ts`.
-V2 keeps composer choices in its own account-scoped storage and sends them with the next message.
+Rayno keeps composer choices in its own account-scoped storage and sends them with the next message.
 
-Session attention is an independent v2 implementation over session `seq`, encrypted message history,
+Session attention is an independent Rayno implementation over session `seq`, encrypted message history,
 formal agent-state requests/communications, and parsed reply options. Background scans use the existing
-v3 paginated message-read contract. Read cursors live only in v2 account-scoped browser storage and
+v3 paginated message-read contract. Read cursors live only in Rayno account-scoped browser storage and
 merge monotonically across tabs. They do not read or write v1's frontend store or cloud read receipts.
 
 The session-list usage capsule uses the same adapted `manualUsage.ts` reader as Monitor, through
-the machine's read-only `bash` RPC. V2 coalesces requests and keeps its own in-memory readings;
+the machine's read-only `bash` RPC. Rayno coalesces requests and keeps its own in-memory readings;
 it does not save into v1's shared usage KV. The connected provider reads once per minute while
-the tab is visible and focused, across all v2 routes. Blur or a hidden page stops the polling timer.
+the tab is visible and focused, across all Rayno routes. Blur or a hidden page stops the polling timer.
 Focus resumes stale reads. Offline computers do not receive reads, and concurrent refreshes share one request.
 Unavailable readings remain unknown or visibly stale.
 The current session's source computer is preferred in the compact summary; expanded details retain
@@ -56,23 +56,23 @@ Each computer receives one usage RPC per polling cycle. It starts a Claude SDK q
 messages and a short-lived Codex app-server request. This reads plan limits without a model turn.
 It still has process-start and network costs; it does not query once per session.
 
-Hand Off copies the v1 prompt and default provider switch into v2-owned code. It prepares only a local
+Hand Off copies the v1 prompt and default provider switch into Rayno-owned code. It prepares only a local
 new-session draft. The user can edit it before Start sends the normal spawn and encrypted first message.
 Claude/Codex transcript paths use provider session IDs from decrypted metadata. Unknown transcripts
 request context instead. An absolute worktree selection must match the daemon's Git worktree list;
-v2 reuses that exact directory without creating a branch or changing the source session.
+Rayno reuses that exact directory without creating a branch or changing the source session.
 
-The same-checkout draft helper now lives in `../data/workspaces.ts`, inside v2.
-Recent workspace choices combine normalized session activity with v2's own account-scoped,
+The same-checkout draft helper now lives in `../data/workspaces.ts`, inside Rayno.
+Recent workspace choices combine normalized session activity with Rayno's own account-scoped,
 per-computer browser history. They never read v1's draft or workspace settings.
 The new-session model picker uses the existing model/effort catalogs and spawn/message contracts.
 
 `modelPreferences.ts` validates remembered model/effort choices against those catalogs. UI controls omit
-agent-default aliases and send explicit model IDs and supported effort values. Preferences stay in v2's
+agent-default aliases and send explicit model IDs and supported effort values. Preferences stay in Rayno's
 own account store, separate by agent and, for legacy Happy Agent sessions, by computer. Existing chats
 retain their explicit session choices. Happy Agent is hidden from new-session and agent-switch controls.
 
-New-session permission choices use the same CLI catalogs as chat. V2 retains the latest explicit choice
+New-session permission choices use the same CLI catalogs as chat. Rayno retains the latest explicit choice
 for each agent in its account store and uses Auto when no valid choice exists. The machine's
 `spawn-happy-session` RPC receives `permissionMode`; the first encrypted message receives the same mode.
 The new chat retains that explicit selection in its own composer settings.

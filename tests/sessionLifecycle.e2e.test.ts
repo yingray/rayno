@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { WorkspacePage } from './pages/WorkspacePage';
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('rayno.v2.mode', 'demo'));
+  await page.addInitScript(() => localStorage.setItem('rayno.mode', 'demo'));
 });
 
 test('session lifecycle should preserve edits and honor stop, archive, and delete', async ({
@@ -155,7 +155,7 @@ test('installed app shell should load routes and local conversations while offli
     serviceWorkers: 'allow',
   });
   try {
-    await context.addInitScript(() => localStorage.setItem('rayno.v2.mode', 'demo'));
+    await context.addInitScript(() => localStorage.setItem('rayno.mode', 'demo'));
     const page = await context.newPage();
     const workspace = new WorkspacePage(page);
     await workspace.open();

@@ -1,10 +1,10 @@
 import { unbase64 } from './encoding';
 
-export const CLIENT_ID = 'web/2.0.0-rayno-v2';
+export const CLIENT_ID = 'web/1.0.0-rayno';
 export const DEFAULT_SERVER = 'https://api.cluster-fluster.com';
-export const CREDENTIALS_KEY = 'rayno.v2.credentials';
+export const CREDENTIALS_KEY = 'rayno.credentials';
 // Survives sign-out so the next login on this device starts with the same server.
-export const SERVER_KEY = 'rayno.v2.server';
+export const SERVER_KEY = 'rayno.server';
 export type Credentials = { server: string; token: string; secret: string };
 
 export function serverOrigin(value: string): string {

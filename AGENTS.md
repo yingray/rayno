@@ -12,6 +12,6 @@
 - Hide Happy Agent from creation and agent-switch controls. Keep existing sessions readable.
 - If no saved choice is available, select an available concrete model and supported effort. Do not offer an agent-default choice.
 - If no model is available, show the unavailable state and prevent a send or spawn with an implicit model.
-- Keep v2 account preferences independent from v1. Preserve existing Tailscale routes and services.
+- Keep Rayno account preferences independent from the Happy app. Preserve existing Tailscale routes and services.
 - Keep the session list and previously loaded chat pages available after an offline reload. Encrypt cached account content and isolate it by account and server.
 - Treat initial connection and workspace loading as normal states. Show the connection warning only after a failed attempt; keep it hidden during retry and known offline use.

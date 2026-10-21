@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { WorkspacePage } from './pages/WorkspacePage';
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('rayno.v2.mode', 'demo'));
+  await page.addInitScript(() => localStorage.setItem('rayno.mode', 'demo'));
 });
 
 const fontSizeControl = (page: Page) => page.getByRole('group', { name: 'Font size', exact: true });

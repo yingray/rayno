@@ -1,6 +1,6 @@
 {
-  "name": "rayno-floating-panels",
-  "version": "2.0.0",
+  "name": "rayno",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.10.0",

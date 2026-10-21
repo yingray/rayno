@@ -11,7 +11,7 @@ At that time, Rayno linked to a v1 web client. Those links are gone. See the las
 | Check | Result |
 | --- | --- |
 | TypeScript | Passed |
-| Production build | Passed; separate v2 manifest, service worker, and static output |
+| Production build | Passed; separate Rayno manifest, service worker, and static output |
 | New-session permission mode | TypeScript and production build passed; 128 unit tests passed; 84 focused Chromium/WebKit checks passed without retries, including per-agent choice restore, Auto fallback, spawn/message parity, chat picks, Hand Off, demo sessions, and phone controls at 320/360/390/430px, short height, and landscape |
 | Mermaid phone layout | TypeScript and production build passed; 120 unit tests passed; full suite passed with 146 Chromium and 143 serial WebKit checks, including smart fit at 0.7×, swipe hint, full screen viewer zoom, rotation refit, focus return, and 44px targets at 320/360/390/430px and landscape |
 | Chat font size setting | TypeScript and production build passed; 120 unit tests passed; full suite passed with 144 Chromium and 141 serial WebKit checks, including Small/Medium/Large scaling, reload restore, and phone fit and 44px touch targets at 320/360/390/430px and landscape |
@@ -53,9 +53,9 @@ At that time, Rayno linked to a v1 web client. Those links are gone. See the las
 | Stop appearance | Composer Stop and Session info termination icons use the normal neutral color; working sends and Stop behavior retain browser coverage |
 | Session-list menu | Search, grouping, Active/Archived, clear, and Reset share a glass popover; outside click, Done, nested Escape, focus restoration, active-filter dot, and Command/Ctrl+K pass across all four browser projects |
 | Standalone package | Fresh copy outside this repository; frozen offline install and production build passed |
-| V2 Tailscale origin | HTTPS page, JavaScript asset, manifest, and service worker return HTTP 200 on port 5178 |
+| Rayno Tailscale origin | HTTPS page, JavaScript asset, manifest, and service worker return HTTP 200 on port 5178 |
 | V1 Tailscale origin | Existing service remains available; Settings returns HTTP 200 |
-| Native browser navigation | Inspected the v1 Settings link and opened v2 through it |
+| Native browser navigation | Inspected the v1 Settings link and opened Rayno through it |
 | Apple Simulator | iPhone 17 / iOS 26.5 Safari and installed PWA: search/chat focus retains width, the outer rounded frame appears, the keyboard leaves the send control visible, and dismissal restores the layout |
 | Real authorization/read | Ray confirmed login and a real session list, with an actual session URL |
 
@@ -147,7 +147,7 @@ These are browser contract checks, not a live backend E2E run.
 | Creation | One daemon spawn and one encrypted initial prompt |
 | Management | Rename, archive, restore, and delete await confirmation; restore does not spawn an agent |
 | Version link | Current real session ID remains in the counterpart URL; no agent mutation occurs |
-| Logout | V2 clears its own authorization and returns to sign-in |
+| Logout | Rayno clears its own authorization and returns to sign-in |
 | Demo | Complete local lifecycle, drafts, preferences, drawers, responsive screens, offline shell |
 | Session list update | Initial progress appears during a held workspace load, disappears while an agent still runs, and activity dates control the order; side chats stay hidden |
 | Chat presentation update | Legacy and session tool events group in order; collapse state survives an appended event; GFM table headers, alignment, links, inline code, escaped pipes, and horizontal overflow render correctly |
@@ -206,7 +206,7 @@ An unknown checkout stops before any worktree creation, spawn, or send.
 Prefilled draft focus also applies after a reload.
 The final draft focus styling also passed the handoff checks in all four browser projects.
 
-Read tracking lives in v2's own account-scoped browser storage. It synchronizes v2 tabs on that browser;
+Read tracking lives in Rayno's own account-scoped browser storage. It synchronizes Rayno tabs on that browser;
 it is not a cloud read receipt shared with v1 or other devices. Existing history is initially treated as read.
 
 The session-list update runs in all four browser projects. It also checks desktop/mobile layouts across the six reference screens.
@@ -234,14 +234,14 @@ The independent copy also runs the send-retry checks against its own production 
 
 ## Live verification limits
 
-Ray confirmed the live session list after independent v2 authorization.
-The agent inspected the independent login page and v1-to-v2 link through Tailscale.
+Ray confirmed the live session list after independent Rayno authorization.
+The agent inspected the independent login page and v1-to-Rayno link through Tailscale.
 The browser used for automated checks has separate test credentials.
 
 The following checks remain manual and are not claimed as completed:
 
 - Send, stop, spawn, rename, archive, delete, files, or Monitor against a real daemon.
-- Simultaneous real v1/v2 writes and cross-client synchronization.
+- Simultaneous real Happy app and Rayno writes and cross-client synchronization.
 - A running real agent continuing through a version switch.
 - Live reads with the v1 frontend service stopped, or the reverse.
 - Physical iOS devices and hardware keyboards.

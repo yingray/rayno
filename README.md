@@ -1,4 +1,19 @@
-# Rayno
+<p align="center">
+  <img src="public/icons/icon-512.png" width="120" alt="Rayno rhino logo" />
+</p>
+
+<h1 align="center">Rayno</h1>
+
+<p align="center">A static web client for your own Happy CLI agents.</p>
+
+## About the name
+
+Rayno comes from "Ray no Happy CLI". "no" is the Japanese particle の, so the phrase means "Ray's Happy CLI".
+The initials R and H turn it into RHino, the rhino in the logo. Rayno is the same word, spelled after "Ray no".
+
+Rayno began as a personal patch of the Happy web app. It is now a separate product with its own code.
+
+## What it is
 
 Rayno is a static web client for [Happy](https://github.com/slopus/happy).
 It is written in React, TypeScript, and Vite.
@@ -182,7 +197,7 @@ pnpm dlx wrangler@4 pages dev dist --ip 127.0.0.1 --port 8788
 
 ## PWA
 
-The generated manifest identifies Rayno. Its service worker uses a `rayno-v2` cache prefix, kept from earlier builds.
+The generated manifest identifies Rayno. Its service worker uses a `rayno` cache prefix.
 Only static assets and the app shell enter the service worker cache.
 Live API calls and credentials do not enter that cache.
 Demo interactions work offline after the shell is cached. Real operations require the Happy server and daemon.

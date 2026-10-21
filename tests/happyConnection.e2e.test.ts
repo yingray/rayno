@@ -128,7 +128,7 @@ test('connected actions should use real permissions, files, usage, and independe
   expect(server.permissionReplies).toBe(1);
   await workspace.signOut();
   await workspace.expectSignIn();
-  expect(await page.evaluate(() => localStorage.getItem('rayno.v2.credentials'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('rayno.credentials'))).toBeNull();
 });
 
 test('session info should not link to another client', async ({ page }) => {
