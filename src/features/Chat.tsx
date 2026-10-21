@@ -18,6 +18,7 @@ import { DraftComposer } from './DraftComposer';
 import { selectedImages } from '../happy/attachments';
 import { ResumeSession } from './ResumeSession';
 import { ChatSessionMenu } from './ChatSessionMenu';
+import { needsSessionResume } from '../happy/resume';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
@@ -49,14 +50,14 @@ export const Chat = memo(function Chat({
   onInfo: () => void;
   onList: () => void;
 }) {
-  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, machines, live, history, connection, offline, usage } = useDemo((store) => ({
+  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline } = useDemo((store) => ({
     preferences: store.state.preferences,
     savedChoice: store.state.modelChoices?.[modelChoiceKey(session.agent, session.machineId)],
     liveMetadata: store.snapshot?.sessionData[session.id]?.metadata,
     agentState: store.snapshot?.sessionData[session.id]?.agentState,
     dispatch: store.dispatch, adapter: store.adapter, notify: store.notify,
-    mode: store.mode, machines: store.machines, live: store.live, history: store.snapshot?.histories[session.id],
-    connection: store.snapshot?.connection, offline: store.snapshot?.offline, usage: store.usage,
+    mode: store.mode, live: store.live, history: store.snapshot?.histories[session.id],
+    connection: store.snapshot?.connection, offline: store.snapshot?.offline,
   }));
   const hasRequests = useMemo(() => !!live && hasAgentRequests(agentState), [live, agentState]);
   // Let input interrupt reconciliation of a large live history.
@@ -69,10 +70,6 @@ export const Chat = memo(function Chat({
   const answeredOptions = useRef(new Set<string>());
   const metadata: Json = useMemo(() => mode === 'live' ? liveMetadata || {}
     : { flavor: session.agent === 'Happy Agent' ? 'rig' : session.agent.toLowerCase() }, [mode, liveMetadata, session.agent]);
-  const week = usage.find(
-    (item) =>
-      item.agent === session.agent && (!item.machineId || item.machineId === session.machineId),
-  );
   const location = useLocation();
   const navigate = useNavigate();
   const modesKey = `composerModes.${session.id}`;
@@ -114,8 +111,7 @@ export const Chat = memo(function Chat({
   const effectivePermission = selectedPermission || inheritedPermission;
   const permissionName = permissionLabel(metadata, effectivePermission);
   const permissions = useMemo(() => permissionOptions(metadata, effectivePermission), [metadata, effectivePermission]);
-  const [picker, setPicker] = useState<'model' | 'permission' | 'usage' | null>(null);
-  const [showTokens, setShowTokens] = useState(false);
+  const [picker, setPicker] = useState<'model' | 'permission' | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [preview, setPreview] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -334,6 +330,8 @@ export const Chat = memo(function Chat({
     <section
       className={styles.chat}
       data-view={view}
+      data-chat-width={preferences.chatWidth}
+      data-connection={mode === 'live' ? connection : undefined}
       data-keyboard-open={keyboardOpen}
       aria-label="Chat session"
     >
@@ -524,7 +522,7 @@ export const Chat = memo(function Chat({
               )}
               <DraftComposer
                 sessionId={session.id} input={input} archived={session.archived}
-                needsResume={mode === 'live' && session.archived && session.agent !== 'Happy Agent' && session.status === 'offline'}
+                needsResume={mode === 'live' && needsSessionResume(session)}
                 disabled={disabled} offline={!!offline} pending={pending}
                 hasAttachments={attachments.length > 0} onSend={send}
               >
@@ -580,30 +578,6 @@ export const Chat = memo(function Chat({
                 )}
               </DraftComposer>
             </div>
-            <div className={styles.usageRow}>
-              <span className={styles.demoLabel}>
-                {mode === 'demo'
-                  ? 'Local demo · simulated replies'
-                  : `Happy · ${connection}`}
-              </span>
-              {preferences.showUsage && mode === 'demo' && (
-                <>
-                  <button onClick={() => setPicker('usage')}>38% week</button>
-                  <button
-                    onClick={() => setShowTokens((value) => !value)}
-                    aria-label="Toggle context token count"
-                  >
-                    <span className={styles.contextRing} />
-                    {showTokens ? '48k / 200k tokens' : '24% context'}
-                  </button>
-                </>
-              )}
-              {preferences.showUsage && mode === 'live' && week && (
-                <button onClick={() => setPicker('usage')}>
-                  {week.usedPercent}% week{week.stale ? ' · stale' : ''}
-                </button>
-              )}
-            </div>
           </div>
         </>
       ) : mode === 'live' ? (
@@ -655,56 +629,10 @@ export const Chat = memo(function Chat({
       )}
       {picker && (
         <Dialog
-          title={
-            picker === 'model'
-              ? 'Model & effort'
-              : picker === 'permission'
-                ? 'Permission mode'
-                : 'Usage overview'
-          }
+          title={picker === 'model' ? 'Model & effort' : 'Permission mode'}
           onClose={() => setPicker(null)}
         >
-          {picker === 'usage' && mode === 'live' ? (
-            <>
-              <p>
-                {week
-                  ? `${week.usedPercent}% of week used · resets ${week.reset}${week.stale ? ' · stale reading' : ''}`
-                  : 'No usage reading yet. Refresh Monitor to read usage from the computer.'}
-              </p>
-              <Button
-                onClick={() => {
-                  setPicker(null);
-                  navigate('/monitor');
-                }}
-              >
-                Open Monitor
-              </Button>
-            </>
-          ) : picker === 'usage' ? (
-            <>
-              <p>
-                Sample usage for{' '}
-                {machines.find((machine) => machine.id === session.machineId)?.name}.
-              </p>
-              <div className={styles.usageDetail}>
-                <strong>38%</strong>
-                <span>of this week used</span>
-                <div>
-                  <i />
-                </div>
-                <span>Resets in 3d 18h · On pace</span>
-              </div>
-              <Button
-                icon="pulseOutline"
-                onClick={() => {
-                  setPicker(null);
-                  navigate('/monitor');
-                }}
-              >
-                Open Monitor
-              </Button>
-            </>
-          ) : picker === 'model' ? (
+          {picker === 'model' ? (
             <div className={styles.modelSettings}>
               <p>{mode === 'demo' ? 'Local demo. Applies to your next simulated reply.' : 'Applies to your next message.'}</p>
               {!canSelectModel(metadata) && <p>This session locks model selection.</p>}

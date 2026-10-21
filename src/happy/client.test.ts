@@ -376,7 +376,7 @@ describe('Happy client protocol', () => {
     await start();
     fetchMock.mockClear();
     // Act / Assert
-    await expect(client.archiveSession('session')).rejects.toThrow('Resume it in the Happy app');
+    await expect(client.archiveSession('session')).rejects.toThrow('Resume this session');
     expect(fetchMock).not.toHaveBeenCalled();
     expect(socket.emitWithAck).not.toHaveBeenCalled();
     expect(client.getSnapshot().sessions[0].archived).toBe(true);

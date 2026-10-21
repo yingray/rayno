@@ -58,11 +58,63 @@ test('a failed child start should retry the same copied conversation without ano
   expect(server.spawns[0].resumeClaudeSessionId).toBe(server.spawns[1].resumeClaudeSessionId);
 });
 
+for (const action of ['Hand Off', 'New session in same workspace']) {
+  test(`the session menu ${action} action should prepare an editable draft without starting an agent`, async ({ page }) => {
+    // Arrange
+    const server = new HappyServer();
+    await server.install(page);
+    await server.updateMetadata({ homeDir: '/real', claudeSessionId: 'original-provider-id' });
+    const workspace = new ChatActionsPage(page);
+    await workspace.openSession();
+    // Act
+    await workspace.openActions(); await workspace.chooseAction(action);
+    // Assert
+    await expect(page).toHaveURL(/\/new$/);
+    await expect(page.getByLabel('Computer', { exact: true })).toHaveValue('computer');
+    await expect(page.getByLabel('Folder', { exact: true })).toHaveValue('~/project');
+    const agent = action === 'Hand Off' ? 'Codex' : 'Claude';
+    await expect(page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: agent, exact: true }))
+      .toHaveAttribute('aria-pressed', 'true');
+    await expect(workspace.taskDescription()).toHaveValue(action === 'Hand Off' ? /original-provider-id\.jsonl/ : '');
+    await workspace.expectTaskCaretAtEnd();
+    expect(server.spawns).toHaveLength(0);
+    expect(server.sends).toHaveLength(0);
+    expect(server.mutations).toHaveLength(0);
+  });
+}
+
+for (const flavor of ['claude', 'codex'] as const) {
+  test(`an archived ${flavor} session that still reports active should offer Resume in chat, info, and the menu`, async ({ page }) => {
+    // Arrange
+    const server = new HappyServer();
+    server.machineMetadata.resumeSupport = { rpcAvailable: true };
+    await server.install(page); await prepare(server, flavor);
+    await server.updateMetadata({ lifecycleState: 'archived' });
+    const workspace = new ChatActionsPage(page);
+    await workspace.openSession();
+    // Act / Assert
+    await expect(page.getByRole('button', { name: 'Resume session', exact: true })).toBeVisible();
+    await workspace.info();
+    await expect(page.getByRole('region', { name: 'Session details', exact: true }).getByRole('button', { name: 'Resume session', exact: true })).toBeVisible();
+    await workspace.closeInfo();
+    await workspace.openActions(); await workspace.chooseAction('Resume session');
+    await expect(workspace.trigger()).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeEnabled();
+    expect(server.resumeRequests).toHaveLength(1);
+    expect(server.resumeRequests[0].sessionId).toBe('real-session');
+    expect(server.spawns).toHaveLength(0);
+    const metadata = await server.encryption.decrypt<Record<string, unknown>>(server.sessions[0].metadata, server.dataKey);
+    expect(metadata.lifecycleState).toBeUndefined();
+    await expect(page).toHaveURL(/\/session\/real-session$/);
+  });
+}
+
 test('the session menu, duplicate picker, and full-width chat should work at desktop and phone sizes', async ({ page }, testInfo) => {
   // Arrange
   const server = new HappyServer();
   await server.install(page); await prepare(server, 'claude');
   const workspace = new ChatActionsPage(page);
+  await workspace.chooseChatWidth('full');
   await workspace.openSession();
   // Act / Assert
   for (const [width, height] of [[1440, 900], [320, 640], [360, 740], [390, 844], [430, 900], [360, 350], [844, 390]]) {

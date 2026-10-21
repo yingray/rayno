@@ -175,13 +175,15 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         )
       )
         preferences.bubble = parsed.preferences.bubble as typeof preferences.bubble;
-      for (const key of ['compactTools', 'showUsage', 'enterToSend'] as const)
+      for (const key of ['compactTools', 'enterToSend'] as const)
         if (typeof parsed.preferences[key] === 'boolean')
           preferences[key] = parsed.preferences[key];
       if (parsed.preferences.avatar === 'provider' || parsed.preferences.avatar === 'initials')
         preferences.avatar = parsed.preferences.avatar;
       if (['small', 'medium', 'large'].includes(String(parsed.preferences.fontSize)))
         preferences.fontSize = parsed.preferences.fontSize as typeof preferences.fontSize;
+      if (['full', 'medium', 'standard'].includes(String(parsed.preferences.chatWidth)))
+        preferences.chatWidth = parsed.preferences.chatWidth as typeof preferences.chatWidth;
     }
     const drafts = record(parsed.drafts)
       ? (Object.fromEntries(

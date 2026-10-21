@@ -309,3 +309,15 @@ Voice, general file uploads, bot management, social features, and a browser term
 - The final full browser sweep ran 424 cases: 405 passed, 15 existing project skips, and four failures from the old usage-name assertion. After updating that assertion for agent icons, all 12 usage checks passed across desktop/mobile Chromium and WebKit. The combined runs cover all 409 non-skipped cases successfully.
 - The 32 session-action checks passed, including keyboard focus, confirmation/cancellation, duplicate-history scrolling, 44px targets, and full-width layout at 1440px, phone widths 320/360/390/430px, a 360x350 short viewport, and 844x390 landscape.
 - Provider mutation checks use the isolated backend fixture. Fork, duplicate, resume, and permission changes were not run against a real agent daemon.
+
+## Chat width and session menu follow-up (2026-10-21)
+
+- Settings > Appearance saves full, moderate, and standard chat widths. Moderate is the default; its maximum is 1120px. Standard uses 880px. Messages and the composer share the same centered width and fit smaller viewports.
+- The composer has no connection, weekly-usage, or context footer. The obsolete Show usage setting is removed. Connection-error and offline notices still use the existing availability flow.
+- The header menu offers Hand Off and New session in same workspace. Both prepare an editable draft on the same computer and checkout. Neither starts an agent before Start.
+- Archived Claude and Codex sessions show Resume in chat, session info, and the menu even if the server still marks them active. Resume calls the owning daemon before it removes the archive marker; the daemon checks existing process ownership.
+- All 152 unit tests and the production build passed. The final focused browser run passed all 84 cases across desktop/mobile Chromium and WebKit.
+- Broader browser runs also verified the working composer, Markdown, connections, archive filtering, encrypted image transfer, permissions, offline reloads, font size, and existing handoff flows. Five existing project skips remain in the offline/font-size selection.
+- Width choices survive reloads in both live and demo modes, and drafts remain intact. Responsive interactions cover 320/360/390/430px phones, 360x350 short height, and 844x390 landscape. The new selector uses 16px text and a single 1px focus indicator. Touch composer controls remain at least 44px in landscape.
+- Connection checks now observe the chat's connection state without requiring a visible footer. WebKit touch measurements round to a hundredth of a CSS pixel to avoid a false failure at 43.999992px.
+- Session mutations use the isolated backend fixture. This follow-up did not resume or start a real agent.

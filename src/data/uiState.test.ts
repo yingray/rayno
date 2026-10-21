@@ -36,12 +36,12 @@ describe('workspace state notifications', () => {
     store.dispatch({ type: 'draft', id: 'floating-panels', value: 'Keep this edit' });
     draft.mockClear();
     // Act
-    store.dispatch({ type: 'preferences', value: { showUsage: false } });
+    store.dispatch({ type: 'preferences', value: { chatWidth: 'standard' } });
     // Assert
     expect(workspace).toHaveBeenCalledTimes(1);
     expect(draft).not.toHaveBeenCalled();
     expect(store.getSnapshot().drafts['floating-panels']).toBe('Keep this edit');
-    expect(store.getSnapshot().preferences.showUsage).toBe(false);
+    expect(store.getSnapshot().preferences.chatWidth).toBe('standard');
   });
 
   it('should notify draft subscribers when a send clears the draft or a session is deleted', () => {

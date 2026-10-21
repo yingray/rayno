@@ -214,6 +214,18 @@
 .inlineSelect option {
   background: #1b1b20;
 }
+.widthSelect {
+  width: 180px;
+  max-width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: var(--well);
+  color: var(--text);
+  font-size: 16px;
+  padding: 8px 28px 8px 12px;
+  cursor: pointer;
+}
 .note {
   color: var(--muted);
   font-size: 10px;
@@ -489,6 +501,8 @@
     flex-wrap: wrap;
     row-gap: 12px;
   }
+  .chatWidthRow { flex-wrap: wrap; }
+  .widthSelect { width: calc(100% - 38px); margin-left: 38px; }
   /* Phones put the choices on their own line, aligned with the row text. */
   .fontSize {
     width: calc(100% - 38px);

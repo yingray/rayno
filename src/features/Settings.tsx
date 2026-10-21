@@ -5,7 +5,7 @@ import { Button, Dialog, Empty, Icon, Segment, Toggle } from '../components/ui';
 import { version } from '../../package.json';
 import type { IconName } from '../components/ui';
 import { useDemo } from '../data/store';
-import type { BubbleColor, FontSize } from '../data/types';
+import type { BubbleColor, ChatWidth, FontSize } from '../data/types';
 import styles from './settings.module.css';
 
 const categories: { key: string; label: string; icon: IconName }[] = [
@@ -148,6 +148,14 @@ export function Settings() {
                   onChange={(fontSize) => dispatch({ type: 'preferences', value: { fontSize } })}
                 />
               </Row>
+              <Row icon="expandOutline" title="Chat width" subtitle="Messages and the composer" className={styles.chatWidthRow}>
+                <select aria-label="Chat width" className={styles.widthSelect} value={preferences.chatWidth}
+                  onChange={event => dispatch({ type: 'preferences', value: { chatWidth: event.target.value as ChatWidth } })}>
+                  <option value="full">Full width</option>
+                  <option value="medium">Moderate width</option>
+                  <option value="standard">Standard width</option>
+                </select>
+              </Row>
               <Row icon="mailOutline" title="User message bubble">
                 <div
                   className={styles.swatches}
@@ -197,19 +205,6 @@ export function Settings() {
                       type: 'preferences',
                       value: { compactTools: !preferences.compactTools },
                     })
-                  }
-                />
-              </Row>
-              <Row
-                icon="speedometerOutline"
-                title="Show usage"
-                subtitle="Usage and context below the composer"
-              >
-                <Toggle
-                  label="Show usage"
-                  checked={preferences.showUsage}
-                  onChange={() =>
-                    dispatch({ type: 'preferences', value: { showUsage: !preferences.showUsage } })
                   }
                 />
               </Row>

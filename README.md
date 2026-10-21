@@ -104,6 +104,7 @@ Open the list options button above the list and choose Archived to read their hi
 The same glass menu contains search, Flat/Projects grouping, and Reset. Command/Ctrl+K opens it and focuses search.
 An ended CLI session has no archive or restore action in Rayno.
 Use Resume session when the original computer is online and its daemon advertises recovery support. Otherwise use Hand Off to start a new session.
+Archived Claude and Codex sessions show Resume even when the server still reports them as active. The owning daemon checks for an existing process.
 
 ## Connected features
 
@@ -117,8 +118,9 @@ Use Resume session when the original computer is online and its daemon advertise
 - Upload encrypted PNG, JPEG, GIF, and WebP images in chat or a new session; open received images and download a decrypted copy. Each message accepts up to 20 images, smaller than 10 MB each.
 - Expand tool calls to read arguments and results, including reported edits and diffs.
 - Spawn a real agent on an online machine, including optional Git worktree creation.
-- Hand Off from Session info to an editable new-session draft on the same computer and checkout.
-- A full-width conversation and composer that scroll beneath a transparent floating header with a raised title capsule; Session info provides Hand Off and workspace changes.
+- Hand Off from Session info or the chat menu to an editable new-session draft on the same computer and checkout.
+- A conversation and composer with full, moderate, and standard width choices in Settings > Appearance. Moderate width is the default.
+- The floating chat header includes session actions, Hand Off, and a new session in the same workspace.
 - Soft dark gradients at the message viewport's top and bottom, below the floating controls.
 - Mermaid code fences render with `beautiful-mermaid`, with source copying, scrollable diagrams, and readable source when a preview is unavailable.
 - Searchable model/effort selection with visible Claude and Codex choices.
@@ -128,7 +130,7 @@ Use Resume session when the original computer is online and its daemon advertise
 - Read-only directory and file previews, Git status, and staged/unstaged diffs through the session RPC.
 - Computer health and Claude/Codex quota reads on explicit Monitor refresh.
 - Agent icons identify the compact weekly-usage bars and retain accessible names.
-- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. Appearance omits the fixed Rayno-theme toggle.
+- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. The composer has no connection or usage footer.
 
 Existing sessions prefer the daemon's model catalog. New sessions offer agent, model, effort, and permission mode selection before Start.
 Permission mode always has a selected value. It restores the last explicit choice for that agent from a new session or chat, or selects Auto without a valid choice.

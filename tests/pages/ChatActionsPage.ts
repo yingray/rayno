@@ -2,6 +2,11 @@ import { expect } from '@playwright/test';
 import { PriorityFeaturesPage } from './PriorityFeaturesPage';
 
 export class ChatActionsPage extends PriorityFeaturesPage {
+  chatWidth() { return this.page.getByRole('combobox', { name: 'Chat width', exact: true }); }
+  async chooseChatWidth(value: 'full' | 'medium' | 'standard') {
+    await this.page.goto('/settings/appearance');
+    await this.chatWidth().selectOption(value);
+  }
   trigger() { return this.page.getByRole('button', { name: 'Session actions', exact: true }); }
   menu() { return this.page.getByRole('menu', { name: 'Session actions', exact: true }); }
   duplicateDialog() { return this.page.getByRole('dialog', { name: 'Duplicate session', exact: true }); }
@@ -19,12 +24,11 @@ export class ChatActionsPage extends PriorityFeaturesPage {
       const messages = element.querySelector<HTMLElement>('[data-font-size]')!;
       const textarea = element.querySelector('textarea')!;
       const composer = textarea.parentElement!.parentElement!.getBoundingClientRect();
-      const width = element.querySelector('[aria-label="Conversation messages"]')!.clientWidth;
-      return { maxWidth: getComputedStyle(messages).maxWidth, messageWidth: messages.getBoundingClientRect().width,
-        width, left: composer.left - bounds.left, right: bounds.right - composer.right };
+      return { maxWidth: getComputedStyle(messages).maxWidth, messageWidth: messages.getBoundingClientRect().width, composerWidth: composer.width,
+        left: composer.left - bounds.left, right: bounds.right - composer.right };
     });
     expect(dimensions.maxWidth).toBe('none');
-    expect(Math.abs(dimensions.messageWidth - dimensions.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(dimensions.messageWidth - dimensions.composerWidth)).toBeLessThanOrEqual(1);
     expect(dimensions.left).toBeGreaterThanOrEqual(0);
     expect(dimensions.right).toBeGreaterThanOrEqual(0);
     expect(dimensions.left).toBeLessThanOrEqual(12.1);

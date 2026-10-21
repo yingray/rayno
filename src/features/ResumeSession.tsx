@@ -3,6 +3,7 @@ import { Button } from '../components/ui';
 import { useDemo } from '../data/store';
 import type { Session } from '../data/types';
 import { messageError } from '../happy/errors';
+import { needsSessionResume } from '../happy/resume';
 
 export function ResumeSession({ session }: { session: Session }) {
   const { live, connection, offline, machine } = useDemo(store => ({ live: store.live,
@@ -12,7 +13,7 @@ export function ResumeSession({ session }: { session: Session }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
-  if (!live || session.agent === 'Happy Agent' || session.status !== 'offline') return null;
+  if (!live || !needsSessionResume(session)) return null;
   const reason = live.resumeUnavailable(session.id);
   return <div aria-label="Session recovery" style={{ margin: '8px 0', overflowWrap: 'anywhere' }}>
     <Button style={{ minHeight: 44, minWidth: 44 }} disabled={busy || !!reason || offline || connection !== 'connected' || !machine?.online}

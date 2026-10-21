@@ -8,6 +8,7 @@ import { buildHandoffDraft } from '../happy/handoff';
 import type { Session } from '../data/types';
 import styles from './session-info.module.css';
 import { ResumeSession } from './ResumeSession';
+import { needsSessionResume } from '../happy/resume';
 
 export function SessionInfo({
   session,
@@ -43,7 +44,7 @@ export function SessionInfo({
   const [name, setName] = useState(session.customTitle || '');
   const [confirm, setConfirm] = useState<'delete' | 'stop' | null>(null);
   const machine = machines.find((item) => item.id === session.machineId);
-  const needsResume = mode === 'live' && session.archived && session.agent !== 'Happy Agent' && session.status === 'offline';
+  const needsResume = mode === 'live' && needsSessionResume(session);
   const handoff = buildHandoffDraft({
     sessionId: session.id,
     machineId: session.machineId,

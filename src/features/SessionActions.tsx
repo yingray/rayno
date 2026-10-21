@@ -6,10 +6,11 @@ import { titleOf } from '../data/reducer';
 import type { Session } from '../data/types';
 import styles from './sessions.module.css';
 import { ResumeSession } from './ResumeSession';
+import { needsSessionResume } from '../happy/resume';
 
 export function SessionActions({ session, onClose }: { session: Session; onClose: () => void }) {
   const { adapter, mode } = useDemo((store) => ({ adapter: store.adapter, mode: store.mode }));
-  const needsResume = mode === 'live' && session.archived && session.agent !== 'Happy Agent' && session.status === 'offline';
+  const needsResume = mode === 'live' && needsSessionResume(session);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function run(action: () => void | Promise<void>) {

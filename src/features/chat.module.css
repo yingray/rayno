@@ -559,39 +559,6 @@
   height: 44px;
   color: var(--secondary);
 }
-.usageRow {
-  display: flex;
-  justify-content: flex-end;
-  padding: 9px 16px 0;
-  gap: 12px;
-  align-items: center;
-  min-height: 25px;
-}
-.usageRow > button {
-  background: transparent;
-  border: 0;
-  padding: 0;
-  color: var(--secondary);
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.demoLabel {
-  font-size: 9px;
-  color: var(--muted);
-  margin-right: auto;
-}
-.contextRing {
-  width: 11px;
-  height: 11px;
-  border: 2px solid #484450;
-  border-right-color: var(--accent-soft);
-  border-radius: 50%;
-  transform: rotate(-45deg);
-}
 .attachments {
   display: flex;
   gap: 6px;
@@ -672,34 +639,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.usageDetail {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 20px 0;
-}
-.usageDetail > strong {
-  font-size: 56px;
-  color: var(--green);
-  font-weight: 600;
-  line-height: 1;
-}
-.usageDetail > span {
-  font-size: 13px;
-  color: var(--secondary);
-}
-.usageDetail > div {
-  height: 8px;
-  border-radius: 999px;
-  background: #27272a;
-  overflow: hidden;
-}
-.usageDetail i {
-  display: block;
-  width: 38%;
-  height: 100%;
-  background: var(--green);
 }
 .fileView {
   flex: 1;
@@ -789,14 +728,6 @@
   .permission {
     max-width: 155px;
     overflow: hidden;
-  }
-  .demoLabel {
-    font-size: 8px;
-  }
-  .usageRow {
-    padding-left: 8px;
-    padding-right: 8px;
-    gap: 7px;
   }
 }
 @media (max-width: 767px) {
@@ -996,19 +927,6 @@
   .composer:has(.attachments) .send {
     grid-row: 3;
   }
-  .usageRow {
-    padding: 8px 8px 0;
-    justify-content: center;
-    gap: 10px;
-  }
-  .usageRow > button {
-    font-size: 11px;
-  }
-  .demoLabel {
-    font-size: 8px;
-    display: block;
-    margin-right: 0;
-  }
   .conversationEnd {
     font-size: 9px;
   }
@@ -1043,9 +961,6 @@
   .thinking {
     font-size: 11px;
   }
-  .usageDetail > strong {
-    font-size: 40px;
-  }
 }
 .sendError { color: #fca5a5; padding: 10px 14px; margin: 0 0 8px; border: 1px solid #653434; background: #221717; border-radius: 12px; font-size: 12px; line-height: 1.5; }
 .sendStatus, .resumeLink { display: block; font-size: 11px; color: #c4b5fd; padding: 8px 12px; margin: 0; }
@@ -1070,10 +985,16 @@
 .diffRemoved { color: #fca5a5; }
 .diffAdded { color: #86efac; }
 
-.chat { --chat-gutter: 12px; }
-.messages { max-width: none; width: 100%; margin-inline: 0; padding-inline: var(--chat-gutter); }
-.composerWrap { width: calc(100% - 2 * var(--chat-gutter)); max-width: none; }
+.chat { --chat-gutter: 12px; --chat-max-width: none; }
+.chat[data-chat-width='medium'] { --chat-max-width: 1120px; }
+.chat[data-chat-width='standard'] { --chat-max-width: 880px; }
+.messages, .composerWrap { width: calc(100% - 2 * var(--chat-gutter)); max-width: var(--chat-max-width); }
+.messages { margin-inline: auto; padding-inline: 0; }
 .sessionMenuButton { width: 44px; height: 44px; flex: none; }
+@media (hover: none) and (pointer: coarse) {
+  .send, .attach, .permission, .model { min-height: 44px; }
+  .send, .attach { min-width: 44px; }
+}
 @media (max-width: 767px) {
   .chat { --chat-gutter: 8px; }
   .infoButton { display: inline-flex; flex: none; }

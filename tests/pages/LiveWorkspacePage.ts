@@ -324,7 +324,7 @@ export class LiveWorkspacePage extends WorkspacePage {
     await expect(this.page.getByText('From the real protocol', { exact: true })).toBeVisible();
   }
   async expectConnected() {
-    await expect(this.page.getByText('Happy · connected', { exact: true })).toBeVisible();
+    await expect(this.page.getByRole('region', { name: 'Chat session', exact: true })).toHaveAttribute('data-connection', 'connected');
   }
   async expectWorkspaceReady() {
     await this.expectWorkspaceLoading(false);

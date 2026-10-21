@@ -940,7 +940,7 @@ export class HappyClient implements DemoAdapter {
     if (source.metadata.bot) throw new Error('Use the Happy app to manage this bot.');
     if (isSessionArchived(source)) {
       if (!isRig(source.metadata) && !source.wire.active)
-        throw new Error('This CLI session has ended. Resume it in the Happy app or use Hand Off.');
+        throw new Error('This CLI session has ended. Resume this session before you restore it.');
       await this.mutateMetadata(id, (metadata) => {
         delete metadata.lifecycleState;
         return metadata;
@@ -1250,7 +1250,7 @@ export class HappyClient implements DemoAdapter {
     if (this.snapshot.offline || this.snapshot.connection !== 'connected') throw new Error('Reconnect before you resume this session.');
     const source = this.getSession(id);
     const machineId = source.metadata.machineId;
-    if (source.wire.active) return;
+    if (source.wire.active && source.metadata.lifecycleState !== 'archived') return;
     const reason = this.resumeUnavailable(id);
     if (reason) throw new Error(reason);
     let saved: SessionModes | null = null;

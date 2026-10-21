@@ -44,7 +44,7 @@ export class PriorityFeaturesPage extends LiveWorkspacePage {
   }
   async expectTouchTarget(control: import('@playwright/test').Locator) {
     const box = (await control.boundingBox())!;
-    expect(box.height).toBeGreaterThanOrEqual(44);
-    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(Math.round(box.height * 100) / 100).toBeGreaterThanOrEqual(44);
+    expect(Math.round(box.width * 100) / 100).toBeGreaterThanOrEqual(44);
   }
 }

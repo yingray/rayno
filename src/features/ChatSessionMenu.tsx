@@ -8,14 +8,18 @@ import { titleOf } from '../data/reducer';
 import { messageError } from '../happy/errors';
 import styles from './chatSessionMenu.module.css';
 import chatStyles from './chat.module.css';
+import { needsSessionResume } from '../happy/resume';
+import { buildHandoffDraft } from '../happy/handoff';
+import { draftInWorkspace } from '../data/workspaces';
 
 type Point = { id: string; text: string; timestamp: number };
 
 export function ChatSessionMenu({ session, settings }: { session: Session; settings: MessageSettings }) {
-  const { live, adapter, mode, dispatch, connection, offline, machine } = useDemo(store => ({
+  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft } = useDemo(store => ({
     live: store.live, adapter: store.adapter, mode: store.mode, dispatch: store.dispatch,
     connection: store.snapshot?.connection, offline: store.snapshot?.offline,
     machine: store.machines.find(machine => machine.id === session.machineId),
+    metadata: store.snapshot?.sessionData[session.id]?.metadata, newDraft: store.state.newDraft,
   }));
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -29,7 +33,15 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
   const id = useId();
   const disconnected = mode === 'live' && (connection !== 'connected' || !!offline);
   const branchReason = live ? live.branchUnavailable(session.id) : '';
-  const ended = mode === 'live' && session.agent !== 'Happy Agent' && session.status === 'offline';
+  const ended = mode === 'live' && needsSessionResume(session);
+  const recoveryReason = ended ? live?.resumeUnavailable(session.id) : '';
+  const source = { sessionId: session.id, machineId: session.machineId, path: session.path,
+    homeDir: metadata?.homeDir || machine?.homeDir,
+    flavor: metadata?.flavor || (session.agent === 'Happy Agent' ? 'rig' : session.agent.toLowerCase()),
+    claudeSessionId: metadata?.claudeSessionId, codexThreadId: metadata?.codexThreadId,
+  };
+  const handoff = buildHandoffDraft(source, newDraft);
+  const workspaceDraft = draftInWorkspace(source, session.agent === 'Happy Agent' ? 'Claude' : session.agent);
   function close(focus = true) {
     setOpen(false);
     if (focus) trigger.current?.focus({ preventScroll: true });
@@ -108,11 +120,20 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
     </button>
     {open && createPortal(<div ref={panel} id={id} role="menu" aria-label="Session actions" className={styles.menu} style={position}>
       <p className={styles.title}>{titleOf(session)}</p>
-      {ended ? <button role="menuitem" disabled={busy || disconnected || !!live?.resumeUnavailable(session.id)}
+      {ended ? <button role="menuitem" disabled={busy || disconnected || !!recoveryReason}
         onClick={() => void run(() => live!.resumeSession(session.id))}><Icon name="refreshOutline" />Resume session</button>
         : <button role="menuitem" disabled={busy || disconnected} onClick={() => void run(async () => {
           await adapter.archiveSession(session.id); if (!session.archived) navigate('/sessions');
         })}><Icon name="archiveOutline" />{session.archived ? 'Restore session' : 'Archive session'}</button>}
+      {recoveryReason && <p className={styles.reason}>{recoveryReason}</p>}
+      <button role="menuitem" disabled={busy || !workspaceDraft} onClick={() => {
+        if (!workspaceDraft) return;
+        dispatch({ type: 'newDraft', value: workspaceDraft }); close(false); navigate('/new');
+      }}><Icon name="add" />New session in same workspace</button>
+      <button role="menuitem" disabled={busy || !handoff} onClick={() => {
+        if (!handoff) return;
+        dispatch({ type: 'newDraft', value: handoff }); close(false); navigate('/new');
+      }}><Icon name="swapHorizontalOutline" />Hand Off</button>
       <button role="menuitem" disabled={busy || disconnected || !!branchReason || !machine?.online}
         onClick={() => { close(); setDuplicate(true); }}><Icon name="copyOutline" />Duplicate</button>
       <button role="menuitem" disabled={busy || disconnected || !!branchReason || !machine?.online}

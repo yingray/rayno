@@ -70,11 +70,12 @@ export type UsageReading = {
 };
 export type BubbleColor = 'rayno' | 'gray' | 'blue' | 'green' | 'purple' | 'rose' | 'sand';
 export type FontSize = 'small' | 'medium' | 'large';
+export type ChatWidth = 'full' | 'medium' | 'standard';
 export type Preferences = {
   bubble: BubbleColor;
   fontSize: FontSize;
+  chatWidth: ChatWidth;
   compactTools: boolean;
-  showUsage: boolean;
   enterToSend: boolean;
   avatar: 'provider' | 'initials';
 };

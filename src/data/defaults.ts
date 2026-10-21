@@ -14,8 +14,8 @@ export const defaultNewDraft: NewSessionDraft = {
 export const defaultPreferences: Preferences = {
   bubble: 'rayno',
   fontSize: 'medium',
+  chatWidth: 'medium',
   compactTools: false,
-  showUsage: true,
   enterToSend: true,
   avatar: 'provider',
 };
