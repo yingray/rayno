@@ -1,0 +1,174 @@
+import { Children, isValidElement, memo, useId, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkCjkFriendly from 'remark-cjk-friendly/parseOnly';
+import { Button, copyText, Icon } from '../components/ui';
+import { useDemo } from '../data/store';
+import { groupChatActivity, type ToolActivityBlock } from '../data/chatBlocks';
+import { partsForMessage } from '../data/messageOptions';
+import type { BubbleColor, Message } from '../data/types';
+import styles from './chat.module.css';
+import { MermaidDiagram } from './MermaidDiagram';
+
+const remarkPlugins = [remarkGfm, remarkCjkFriendly];
+
+const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block: ToolActivityBlock; compactTools: boolean }) {
+  const rowsId = useId();
+  const [expanded, setExpanded] = useState(
+    !compactTools && window.innerWidth >= 768,
+  );
+  return (
+    <section className={styles.toolGroup} aria-label="Tool activity">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={rowsId}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <Icon name={expanded ? 'chevronDown' : 'chevronForwardOutline'} size={13} />
+        {block.duration ? `Worked for ${block.duration}` : 'Tool activity'}
+        <span>
+          · {block.tools.length} {block.tools.length === 1 ? 'tool' : 'tools'}
+        </span>
+      </button>
+      <ul className={styles.toolRows} id={rowsId} hidden={!expanded}>
+        {block.tools.map((tool, index) => (
+          <li key={index}>
+            <Icon name="codeSlash" size={14} />
+            <span>{tool}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}, (previous, next) => previous.compactTools === next.compactTools
+  && previous.block.id === next.block.id && previous.block.duration === next.block.duration
+  && previous.block.tools.length === next.block.tools.length
+  && previous.block.tools.every((tool, index) => tool === next.block.tools[index]));
+
+const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify }: {
+  content: string; codeFilename: string; notify: (message: string) => void;
+}) {
+  return (
+    <Markdown
+      remarkPlugins={remarkPlugins}
+      components={{
+        a: (props) => <a {...props} target="_blank" rel="noreferrer noopener" />,
+        table: ({ children }) => (
+          <div
+            className={styles.tableScroll}
+            role="region"
+            aria-label="Markdown table"
+            tabIndex={0}
+          >
+            <table>{children}</table>
+          </div>
+        ),
+        th: ({ children, style }) => <th scope="col" style={style}>{children}</th>,
+        pre: ({ children }) => {
+          const code = Children.toArray(children)[0];
+          if (isValidElement<{ className?: string; children?: ReactNode }>(code)
+            && /\blanguage-mermaid\b/i.test(code.props.className || '')) {
+            return <MermaidDiagram source={String(code.props.children || '').replace(/\n$/, '')} notify={notify} />;
+          }
+          return <div className={styles.codeBlock}>
+            <div className={styles.codeHeader}>
+              <span>{codeFilename}</span>
+              <button
+                aria-label="Copy code"
+                onClick={(event) =>
+                  copyText(
+                    event.currentTarget.closest(`.${styles.codeBlock}`)?.querySelector('pre')
+                      ?.textContent || '',
+                    notify,
+                  )
+                }
+              >
+                <Icon name="copyOutline" size={13} />
+                Copy
+              </button>
+            </div>
+            <pre>{children}</pre>
+          </div>;
+        },
+      }}
+    >
+      {content}
+    </Markdown>
+  );
+});
+
+const MessageBlock = memo(function MessageBlock({ message, optionsDisabled, onOption, bubble, notify }: {
+  message: Message;
+  optionsDisabled: boolean;
+  onOption: (messageId: string, text: string) => void;
+  bubble: BubbleColor;
+  notify: (message: string) => void;
+}) {
+  const parts = partsForMessage(message);
+  const codeFilename = message.content.match(/\/\* ([\w./-]+) \*\//)?.[1] || 'Code';
+  return (
+    <article
+      className={message.role === 'user' ? styles.userMessage : styles.agentMessage}
+      data-bubble={bubble}
+    >
+      {message.role === 'user' ? (
+        <div className={styles.bubble}>
+          {message.content}
+          {message.attachments?.map((file) => (
+            <span className={styles.messageAttachment} key={file.name}>
+              <Icon name="documentTextOutline" size={15} />
+              {file.name}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.markdown}>
+          {parts.map((part, index) => part.kind === 'options' ? (
+            <div className={styles.replyOptions} role="group" aria-label="Reply options" key={index}>
+              {part.items.map((item, optionIndex) => (
+                <Button
+                  key={optionIndex}
+                  disabled={optionsDisabled}
+                  onClick={() => onOption(message.id, item)}
+                  icon="arrowUp"
+                >
+                  {item}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <RenderedMarkdown key={index} content={part.content} codeFilename={codeFilename} notify={notify} />
+          ))}
+          {message.attachments?.map((file) => (
+            <span className={styles.messageAttachment} key={file.name}>
+              <Icon name="documentTextOutline" size={15} />
+              {file.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+});
+
+export const MessageList = memo(function MessageList({ messages, disabled, pending, onOption }: {
+  messages: Message[]; disabled: boolean; pending: boolean;
+  onOption: (messageId: string, text: string) => void;
+}) {
+  const { bubble, compactTools, notify } = useDemo((store) => ({
+    bubble: store.state.preferences.bubble, compactTools: store.state.preferences.compactTools,
+    notify: store.notify,
+  }));
+  const blocks = useMemo(() => groupChatActivity(messages), [messages]);
+  const unanswered = useMemo(() => {
+    const lastUser = messages.findLastIndex((message) => message.role === 'user');
+    return new Set(messages.slice(lastUser + 1).map((message) => message.id));
+  }, [messages]);
+  return blocks.map((block) => block.kind === 'tools'
+    ? <ToolActivity key={block.id} block={block} compactTools={compactTools} />
+    : <MessageBlock key={block.id} message={block.message}
+        bubble={bubble} notify={notify}
+        optionsDisabled={disabled || pending || !unanswered.has(block.message.id)} onOption={onOption} />);
+});

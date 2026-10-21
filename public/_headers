@@ -1,0 +1,12 @@
+# Cloudflare Pages response headers. See https://developers.cloudflare.com/pages/configuration/headers/
+# connect-src allows any HTTPS/WSS origin because each user enters their own Happy server.
+# 'wasm-unsafe-eval' lets libsodium compile its WebAssembly module; nothing else needs eval.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: wss:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Vite adds a content hash to every file name in /assets.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

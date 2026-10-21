@@ -1,0 +1,106 @@
+.usage {
+  flex: none;
+  position: relative;
+  min-width: 0;
+}
+.capsule {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px #ffffff0f;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.capsule:hover { border-color: #3a3645; }
+.capsule > :last-child { flex: none; }
+.agent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: #d4d4d8;
+}
+.agent b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.secondary { opacity: 0.62; }
+.stale { opacity: 0.55; }
+.bar {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 12px;
+  height: 10px;
+  position: relative;
+}
+.track {
+  display: flex;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: #27272a;
+  overflow: hidden;
+}
+.track > span { background: #71717a; }
+.bar > i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  max-width: 100%;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: #fafafa;
+}
+.details {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: 100%;
+  max-height: min(540px, calc(100dvh - 160px));
+  overflow: auto;
+  z-index: 15;
+  border-radius: 24px;
+  border: 1px solid var(--border-control);
+  background: linear-gradient(#202026, #18181c);
+  box-shadow: inset 0 1px #ffffff17, 0 18px 36px -12px #000;
+  padding: 16px;
+}
+.details header, .reading > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.details h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.details p { font-size: 11px; color: var(--secondary); margin: 5px 0 0; line-height: 1.5; }
+.reading { background: var(--well); border-radius: 14px; padding: 12px; margin-top: 10px; }
+.reading strong, .reading b { font-size: 12.5px; font-weight: 600; }
+.reading .bar { margin: 10px 0; }
+.details .empty { padding: 10px 0; }
+.details .error { color: var(--orange); overflow-wrap: anywhere; }
+.details .note { color: var(--muted); margin: 14px 0 8px; }
+@media (max-width: 767px) {
+  .usage { position: absolute; left: 37px; right: 37px; bottom: var(--mobile-usage-bottom); z-index: 10; }
+  .capsule {
+    height: 44px;
+    padding: 0 14px;
+    background: linear-gradient(#202026, #18181c);
+    border-color: var(--border-control);
+    box-shadow: inset 0 1px #ffffff17, 0 18px 36px -12px #000;
+    gap: 14px;
+  }
+  .agent { font-size: 13px; gap: 8px; }
+  .details { max-height: calc(100dvh - var(--mobile-usage-bottom) - 68px - env(safe-area-inset-top)); }
+}
+@media (max-width: 359px) {
+  .usage { left: 20px; right: 20px; }
+  .capsule { gap: 9px; padding-inline: 12px; }
+  .agent { gap: 5px; font-size: 12px; }
+}

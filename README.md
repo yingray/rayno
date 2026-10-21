@@ -1,0 +1,221 @@
+# Rayno v2 · Floating Panels
+
+Rayno is a static web client for [Happy](https://github.com/slopus/happy).
+It is written in React, TypeScript, and Vite.
+Rayno owns its UI, dependencies, authentication, encryption, realtime client, build, and browser storage.
+It talks only to the Happy server. The Happy CLI daemon on your computer connects to the same server.
+The server relays end-to-end encrypted session data and RPC calls between them.
+
+## How it connects
+
+```text
+browser (Rayno) ──HTTPS/WSS──▶ Happy server ◀──── Happy CLI daemon on your computer
+```
+
+Rayno does not connect to your computer directly.
+The "host" on the login screen is the Happy server that your CLI uses.
+The default is `https://api.cluster-fluster.com`, the hosted Happy server.
+If you run your own Happy server, it must use HTTPS and allow CORS from the Rayno origin.
+
+## Sign in
+
+The login screen offers two methods:
+
+- Scan the QR code with a signed-in Happy mobile app, then approve this browser.
+- Paste your Happy account recovery key. The key is the 32-byte account secret.
+
+To use another Happy server, open **Happy server** on the login screen and enter its HTTPS origin.
+The address applies when the field loses focus, when you press Enter, or when you connect with a key.
+Rayno does not send requests to a partial address while you type.
+An HTTP address is rejected, except for `localhost`.
+
+With **Remember** selected, the token, the account secret, and the server address stay in this origin's `localStorage`.
+Sign-out clears the token, the secret, drafts, pending packets, and the offline cache.
+The server address stays, so the next login starts with the same server.
+Without **Remember**, the login stays in this tab's session storage and the server address is not saved.
+Anyone with access to this browser profile can read a remembered secret.
+
+Server changes synchronize across clients. Rename, archive, and delete affect the shared session.
+Restore removes the archive marker. It does not start an offline agent.
+The default list hides explicitly archived sessions and ended CLI sessions, as the Happy app does.
+Open the list options button above the list and choose Archived to read their history. A disconnected Rig session stays visible.
+The same glass menu contains search, Flat/Projects grouping, and Reset. Command/Ctrl+K opens it and focuses search.
+An ended CLI session has no archive or restore action in Rayno.
+Resume it in the Happy app, or use Hand Off to start a new session from it.
+
+## Connected features
+
+- Paginated session lists and encrypted message history, with earlier-message loading.
+- An encrypted local session list and previously loaded chat pages that remain readable after an offline reload.
+- Encrypted sends with stable local IDs, explicit acknowledgement, retained failed drafts, and deduplicated retries.
+- Socket.IO updates and history catch-up after reconnect. Background tabs announce background state.
+- Legacy NaCl records and per-record AES-GCM keys, with account key derivation and key unwrap.
+- Stop the current response, terminate an agent, and handle one-time permission requests.
+- Answer supported agent question forms. For unsupported forms and legacy AskUserQuestion, use the Happy app.
+- Spawn a real agent on an online machine, including optional Git worktree creation.
+- Hand Off from Session info to an editable new-session draft on the same computer and checkout.
+- A full-height conversation that scrolls beneath a transparent floating header with a raised title capsule; Session info provides Hand Off and workspace changes.
+- Soft dark gradients at the message viewport's top and bottom, below the floating controls.
+- Mermaid code fences render with `beautiful-mermaid`, with source copying, scrollable diagrams, and readable source when a preview is unavailable.
+- Searchable model/effort selection with visible Claude and Codex choices.
+- Recent workspace selection from real session activity and v2's own per-computer history.
+- Rename with optimistic concurrency, archive, restore, and delete with server error handling.
+- Read-only directory and file previews, Git status, and staged/unstaged diffs through the session RPC.
+- Computer health and Claude/Codex quota reads on explicit Monitor refresh.
+- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation.
+
+Existing sessions prefer the daemon's model catalog. New sessions offer agent, model, effort, and permission mode selection before Start.
+Permission mode always has a selected value. It restores the last explicit choice for that agent from a new session or chat, or selects Auto without a valid choice.
+The spawn request, first encrypted message, and chat controls use the selected mode.
+Known current provider, permission, model, and effort fields remain in outbound messages.
+Unavailable battery, network, latency, or quota data never falls back to samples.
+Monitor usage reads do not send an AI prompt or start a model turn.
+While this v2 tab is visible and focused, usage refreshes once per minute on every route.
+Background or unfocused tabs stop polling. Offline computers receive no reads, and overlapping refreshes share one request.
+Each online computer runs one quota query per cycle, with short-lived Claude SDK and Codex app-server processes.
+
+The app opens saved content while it reads current data. Normal startup has no yellow connection warning.
+A failed workspace or realtime connection shows a warning with Retry; an active retry hides the warning.
+Known offline use shows a quiet status beside the list and conversation instead.
+Reconnect merges missed replies with saved pages. An offline draft stays local and is not sent automatically.
+File and Git views wait for the realtime connection before they read the computer.
+
+The offline cache uses IndexedDB on this v2 origin, encrypted with the current account key.
+Its keys include the account and server scope. It does not cache authentication headers or private API responses in the service worker.
+Only loaded message pages are available offline; unseen conversations explain how to save their content.
+The diagram renderer loads only when a Mermaid preview comes into view. Once loaded, the service worker caches its static code for offline previews.
+Diagram layout runs in a Web Worker, and SVG images stay outside the page's executable markup.
+Browser storage availability and eviction can affect saved content. A cache failure does not replace live data with demo data.
+
+File uploads, voice, account notifications, and cold-session resume are available in the Happy app, not in Rayno.
+Preview supports UTF-8 files up to 1 MB. Files and Git commands require daemon support.
+The app reports unsupported or failed operations instead of substituting local results.
+
+A legacy spawn timeout has no safe automatic retry ID.
+V2 asks you to check the Happy app before you repeat that draft.
+Happy Agent is hidden from creation and agent-switch controls. Existing sessions remain readable.
+A failed initial send retains the new session ID so a retry does not spawn another agent.
+
+Hand Off selects Codex for a Claude session and Claude for a Codex session.
+It fills the prompt with the old Happy session ID and the provider's local transcript path, when available.
+The cursor starts at the end so that you can add instructions. Start launches the new agent.
+For a Happy worktree, the draft retains the repository and the exact existing checkout path.
+The worktree picker accepts a branch name for a new checkout or an absolute path for an existing checkout.
+Model and supported effort controls always select a concrete value. They restore the last valid choice for that agent.
+When no saved choice is available, v2 selects a concrete model from the catalog and a supported effort.
+New sessions, same-workspace drafts, and handoffs share these v2 account preferences. They do not use an agent-default alias.
+Existing chats keep their explicit per-session choices. Later model changes also update the preference for future sessions.
+The workspace picker groups recent folders by computer, merges duplicate paths, and preserves the selected worktree.
+Successful starts save the workspace in this v2 account's browser storage, including when the session later disappears.
+
+## Explicit demo mode
+
+Use Explore the demo on the login screen, or Settings > Developer > Open demo.
+Demo mode uses a separate `rayno.demo.v1` schema store and simulated replies.
+That key's `v1` is a data schema version, not the frontend version.
+Demo computers, files, usage, and attachment names stay separate from real account data.
+Use Settings > Account > Connect to Happy to return to the connected client.
+Reset demo affects only demo data.
+
+## Local development
+
+Use Node.js 22.12 or newer and pnpm 11.10.0. `.nvmrc` pins Node.js 24.16.0.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm dev       # http://127.0.0.1:5180
+pnpm build
+pnpm preview   # production preview, http://127.0.0.1:5179
+pnpm serve     # production preview, http://127.0.0.1:5178
+```
+
+The servers listen on loopback only.
+To open them from another device, put a proxy in front, for example `tailscale serve`:
+
+```sh
+tailscale serve --bg --https=5180 http://127.0.0.1:5180
+```
+
+Vite accepts only known host names. Add the proxy's host name to `.env.local`:
+
+```sh
+RAYNO_ALLOWED_HOSTS=your-machine.your-tailnet.ts.net
+```
+
+`.env.local` stays out of git. `.env.example` lists the supported variables.
+Each origin has its own login and browser storage.
+
+## Deploy to Cloudflare Pages
+
+Rayno is a static site. Cloudflare Pages serves it without a server runtime.
+
+| Setting | Value |
+| --- | --- |
+| Framework preset | None |
+| Build command | `pnpm build` |
+| Build output directory | `dist` |
+| Environment variable | `NODE_VERSION=24.16.0` |
+| Environment variable | `PNPM_VERSION=11.10.0` |
+
+The Pages build image does not read the pnpm version from `package.json` or the lockfile, so set `PNPM_VERSION`.
+`pnpm build` runs the type check before the Vite build.
+
+`public/_headers` sets the response headers:
+
+- A Content Security Policy. `connect-src` allows any HTTPS and WSS origin, because each user enters a Happy server.
+  `'wasm-unsafe-eval'` lets libsodium compile its WebAssembly module.
+- A one-year immutable cache for `/assets/*`. Vite adds a content hash to those file names.
+
+Pages has no top-level `404.html` here, so it serves `index.html` for every unknown path.
+Routes such as `/session/<id>` work after a reload.
+A missing file under `/assets/` also returns `index.html` with status 200, not 404.
+
+Every Pages deployment, including each preview URL, is a separate origin.
+Each origin needs its own login.
+
+To check the Pages behavior locally, build and run the Pages emulator:
+
+```sh
+pnpm build
+pnpm dlx wrangler@4 pages dev dist --ip 127.0.0.1 --port 8788
+```
+
+## PWA
+
+The generated manifest identifies Rayno v2. Its service worker uses a v2 cache prefix.
+Only static assets and the app shell enter the service worker cache.
+Live API calls and credentials do not enter that cache.
+Demo interactions work offline after the shell is cached. Real operations require the Happy server and daemon.
+Adapted protocol copies have pinned provenance in `src/happy/PROTOCOL-SOURCES.md` and retain `HAPPY-LICENSE.txt`.
+
+## Checks
+
+```sh
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm exec playwright install chromium webkit
+pnpm test:e2e
+```
+
+Browser tests start an isolated production preview on port 5179.
+Stop another local preview there before the test run.
+The tests mock the Happy server and use a Vite preview, so they do not apply `public/_headers`.
+`MermaidPage.svg()` reads the diagram with `fetch()` on a `blob:` URL. The production CSP blocks that call, so run that test against a Vite preview.
+Tests use Page Objects and fresh browser contexts.
+Connected tests use encrypted fixtures and mock REST/WebSocket boundaries, with no production writes.
+They verify browser compatibility rather than a live daemon deployment.
+Every UI change also requires phone interactions at narrow widths, short keyboard heights, and landscape sizes.
+Check touch targets and action reachability, in addition to overflow and screenshots.
+See `VERIFICATION.md` for results, artifacts, and manual checks.
+See `PERFORMANCE.md` for render isolation, lazy modules, and the production benchmark.
+
+## Design and licenses
+
+The implementation follows a design handoff for dimensions, opaque gradients, nested corners, and responsive panels.
+Chromium and WebKit emulation do not verify a physical iOS keyboard or an installed iOS PWA.
+Fonts and icons remain local.
+
+Rayno uses the MIT license. See `LICENSE`.
+Third-party notices are in `THIRD-PARTY-NOTICES.md`, `HAPPY-LICENSE.txt`, and `public/fonts/OFL-Geist.txt`.
+Rayno is not affiliated with Happy, Anthropic, or OpenAI.

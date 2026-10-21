@@ -1,0 +1,80 @@
+.screen {
+  padding: 20px;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+.screen header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.path {
+  font-size: 11px;
+  color: #a1a1aa;
+  overflow-wrap: anywhere;
+}
+.layout {
+  display: flex;
+  gap: 20px;
+  min-height: 200px;
+  margin: 20px 0;
+}
+.layout nav {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+}
+.layout nav button {
+  text-align: left;
+  padding: 9px;
+  border: 1px solid #27272a;
+  background: #18181b;
+  color: #d4d4d8;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.content {
+  flex: 1;
+  min-width: 0;
+}
+.content small {
+  color: #a1a1aa;
+}
+.content pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.error {
+  color: #fca5a5;
+  padding: 15px 0;
+  font-size: 12px;
+}
+.error a {
+  color: #c4b5fd;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  font-size: 12px;
+  color: #a1a1aa;
+}
+@media (max-width: 767px) {
+  .layout {
+    flex-direction: column;
+  }
+  .layout nav {
+    width: 100%;
+    max-height: 220px;
+    overflow: auto;
+  }
+}

@@ -1,0 +1,147 @@
+.diagram {
+  margin: 14px 0;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid #27272a;
+  border-radius: 16px;
+  background: #0c0c0e;
+  overflow: hidden;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px 0 14px;
+  min-height: 44px;
+  background: #18181b;
+  color: var(--secondary);
+  font: 12px 'Geist Mono', monospace;
+}
+.header button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+}
+.viewport {
+  overflow: auto;
+  max-height: 640px;
+  min-height: 160px;
+  padding: 12px;
+  border-radius: 8px;
+  outline-offset: -3px;
+}
+.viewport img {
+  display: block;
+  max-width: none;
+  margin: auto;
+}
+.viewport p {
+  padding: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.source {
+  border-top: 1px solid #27272a;
+}
+.source summary {
+  padding: 12px 14px;
+  min-height: 44px;
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: 12px;
+}
+.source pre {
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  max-height: 320px;
+}
+.actions {
+  display: flex;
+}
+.swipeHint {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0;
+  padding: 0 14px 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.diagram[data-fit='fit'] .viewport img {
+  max-width: 100%;
+  height: auto;
+}
+/* Fade the cut edge so a wide diagram reads as "more to the right". */
+.diagram[data-fit='scroll'] .viewport {
+  mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+}
+.fullscreen {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+    calc(4px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+}
+.fullscreen > header {
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+.fullscreenView {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+  border-radius: 16px;
+  background: #0c0c0e;
+}
+/* Auto margins center the diagram without clipping it once zoom makes it overflow. */
+.fullscreenView img {
+  display: block;
+  flex: none;
+  max-width: none;
+  height: auto;
+  margin: auto;
+}
+.fullscreen .zoomBar {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px;
+  font-size: 13px;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+}
+.fullscreen .zoomBar > span {
+  min-width: 44px;
+  text-align: center;
+}
+.fullscreen > header button,
+.fullscreen .zoomBar button {
+  min-width: 44px;
+  min-height: 44px;
+}
+@media (max-width: 767px) {
+  .viewport {
+    min-height: 0;
+    padding: 4px;
+  }
+}

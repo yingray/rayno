@@ -1,0 +1,70 @@
+.requests {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+}
+.card {
+  padding: 18px;
+  border: 1px solid #4b3b64;
+  border-radius: 18px;
+  background: #231c30;
+  font-size: 13px;
+}
+.card p {
+  color: #c4b5d5;
+  line-height: 1.6;
+  margin: 8px 0 12px;
+}
+.card pre {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 11px;
+  color: #d4d4d8;
+  word-break: break-word;
+}
+.card a {
+  color: #c4b5fd;
+}
+.card fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+.card section + section {
+  margin-top: 20px;
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 9px 0;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px;
+}
+.option small {
+  display: block;
+  color: #a1a1aa;
+  margin-top: 4px;
+}
+.card input:not([type='radio']):not([type='checkbox']) {
+  width: 100%;
+  padding: 10px;
+  background: #131016;
+  border: 1px solid #4b3b64;
+  border-radius: 8px;
+  color: #fff;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.error {
+  color: #fca5a5;
+  font-size: 12px;
+}

@@ -1,0 +1,229 @@
+@font-face {
+  font-family: Geist;
+  src: url('/fonts/Geist-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: Geist;
+  src: url('/fonts/Geist-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: Geist;
+  src: url('/fonts/Geist-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: Geist;
+  src: url('/fonts/Geist-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/GeistMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+:root {
+  color-scheme: dark;
+  font-family:
+    Geist,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --page: #09090b;
+  --panel: linear-gradient(180deg, #151518, #111113);
+  --main: linear-gradient(180deg, #121214, #0f0f11);
+  --card: linear-gradient(180deg, #19191d, #141417);
+  --well: #0c0c0e;
+  --border: #232328;
+  --border-control: #2e2e35;
+  --text: #fafafa;
+  --body: #d4d4d8;
+  --secondary: #a1a1aa;
+  --muted: #91919c;
+  --accent: #8b5cf6;
+  --accent-soft: #a78bfa;
+  --focus-color: var(--accent);
+  --green: #4ade80;
+  --orange: #fb923c;
+  --red: #f87171;
+  --radius: 24px;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  background: var(--page);
+  color: var(--text);
+  font-size: 15px;
+}
+.panelLoading {
+  display: flex;
+  flex: 1;
+  min-height: 100px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--secondary);
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  color: inherit;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+:where(button, a, summary, [tabindex]) {
+  border-radius: 8px;
+}
+:is(button, a, summary, [tabindex]):focus-visible {
+  outline: 1px solid var(--focus-color);
+  outline-offset: 2px;
+}
+:where(input, textarea, select) {
+  border-radius: 10px;
+}
+:where(input:not([type='checkbox'], [type='radio'], [type='file']), select, textarea) {
+  min-height: 44px;
+}
+:root select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%2391919c' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  padding-right: 28px;
+}
+:root [data-focus-frame] select {
+  background-image: none;
+  padding-right: 0;
+}
+:is(input, textarea, select):focus {
+  outline: 1px solid var(--focus-color);
+  outline-offset: -1px;
+}
+[data-focus-frame]:has(:is(input, textarea, select):focus) {
+  border-color: var(--focus-color);
+  outline: 1px solid var(--focus-color);
+  outline-offset: -1px;
+}
+[data-focus-frame] :is(input, textarea, select):focus {
+  outline: none;
+}
+input[type='checkbox'] {
+  border-radius: 3px;
+  accent-color: var(--accent);
+}
+input[type='radio'] {
+  border-radius: 50%;
+  accent-color: var(--accent);
+}
+input:is([type='checkbox'], [type='radio']):focus {
+  outline-offset: 2px;
+}
+input,
+textarea {
+  min-width: 0;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+}
+textarea {
+  resize: none;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+h1,
+h2,
+h3 {
+  font-weight: 600;
+}
+::selection {
+  background: #8b5cf64d;
+}
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #ffffff18;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #ffffff18 transparent;
+}
+@media (max-width: 767px) {
+  :root {
+    --mobile-bottom: max(8px, env(safe-area-inset-bottom));
+    --mobile-nav-height: 62px;
+    --mobile-nav-reserve: calc(var(--mobile-bottom) + var(--mobile-nav-height) + 12px);
+    --mobile-usage-bottom: calc(var(--mobile-bottom) + var(--mobile-nav-height) + 10px);
+    --mobile-list-reserve: calc(var(--mobile-usage-bottom) + 44px + 10px);
+  }
+}
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  /* Keep text fields readable without Safari's automatic focus zoom. */
+  :root body :is(input, textarea, select):not([type='checkbox'], [type='radio'], [type='file']) {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,647 @@
+.monitor {
+  height: 100%;
+  overflow: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+}
+.header > div {
+  flex: 1;
+}
+.header h1 {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  margin: 0 0 7px;
+}
+.header p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.header p > span {
+  width: 4px;
+  height: 4px;
+  background: var(--green);
+  border-radius: 50%;
+}
+.refresh {
+  height: 38px;
+}
+.demoToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10.5px;
+  padding: 6px 0 2px;
+}
+.demoToolbar > span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.demoBadge {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: #bdabe0;
+  border: 1px solid #37303f;
+  border-radius: 4px;
+  padding: 3px 5px;
+  background: #211b29;
+}
+.demoToolbar label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.demoToolbar select {
+  background: #1b1b20;
+  color: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 10px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+.usageCard,
+.computerCard {
+  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid #26262b;
+  box-shadow: inset 0 1px #ffffff0f;
+  padding: 20px;
+  min-width: 0;
+}
+.usageCard {
+  grid-column: span 2;
+  position: relative;
+  overflow: hidden;
+}
+.usageCard header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.usageCard h2 {
+  font-size: 16px;
+  margin: 0;
+  flex: 1;
+  font-weight: 500;
+}
+.paceChip {
+  color: var(--pace-color);
+  background: color-mix(in srgb, var(--pace-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pace-color) 17%, transparent);
+  font-size: 9px;
+  white-space: nowrap;
+  padding: 5px 8px;
+  border-radius: 999px;
+}
+.percent {
+  font-size: 56px;
+  color: var(--pace-color);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.percent > span {
+  font-size: 40px;
+  letter-spacing: -0.05em;
+}
+.usedLabel {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 8px 0 24px;
+}
+.weekBar {
+  height: 10px;
+  background: #27272a;
+  border-radius: 999px;
+  position: relative;
+  margin: 0 0 10px;
+}
+.fill {
+  height: 100%;
+  background: var(--pace-color);
+  border-radius: 999px;
+}
+.tick {
+  position: absolute;
+  width: 1px;
+  height: 10px;
+  top: 0;
+  background: var(--page);
+  opacity: 0.8;
+}
+.paceMarker {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 18px;
+  background: var(--text);
+  border-radius: 1px;
+  box-shadow: 0 0 4px #0007;
+}
+.weekdays {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1px;
+  font: 8px 'Geist Mono';
+  color: var(--muted);
+}
+.usageCard footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--secondary);
+  margin-top: 24px;
+  gap: 10px;
+}
+.stale {
+  opacity: 0.4;
+}
+.sectionDivider {
+  grid-column: 1/-1;
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 2px 4px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 10px;
+}
+.sectionDivider > span:first-child {
+  letter-spacing: 0.07em;
+  font-size: 10px;
+}
+.computerCard {
+  grid-column: span 1;
+  padding: 16px;
+}
+.primaryComputer {
+  grid-column: span 2;
+}
+.computerHeading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  padding: 0;
+  color: var(--green);
+  margin-bottom: 16px;
+  text-align: left;
+}
+.computerHeading h2 {
+  font-size: 14px;
+  margin: 0;
+  flex: 1;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.computerHeading > span:nth-last-child(2) {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 9px;
+  white-space: nowrap;
+  color: var(--green);
+}
+.computerHeading i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.computerHeading > span:last-child {
+  color: var(--muted);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.stats > div,
+.stats > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  position: relative;
+  padding: 12px;
+  border: 1px solid #1d1d22;
+  border-radius: 14px;
+  background: var(--well);
+  text-align: left;
+  min-width: 0;
+  font-family: Geist;
+  color: var(--secondary);
+}
+.stats > button {
+  cursor: pointer;
+}
+.stats > button:hover {
+  border-color: #48404f;
+}
+.stats > div > span:first-child,
+.stats > button > span:first-child {
+  color: var(--green);
+  margin-bottom: 10px;
+}
+.stats > div:nth-child(2) > span:first-child {
+  color: #60a5fa;
+}
+.stats > button > span:first-child {
+  color: #a78bfa;
+}
+.stats > div > span:nth-child(2),
+.stats > button > span:nth-child(2) {
+  font-size: 9px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.stats strong {
+  font-size: 19px;
+  line-height: 1.2;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text);
+  margin-bottom: 7px;
+  letter-spacing: -0.03em;
+}
+.stats small {
+  font-size: 8px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.computerCard:not(.primaryComputer) .stats {
+  grid-template-columns: 1fr;
+}
+.computerCard:not(.primaryComputer) .stats > div,
+.computerCard:not(.primaryComputer) .stats > button {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 3px 8px;
+  padding: 10px;
+}
+.computerCard:not(.primaryComputer) .stats > div > span:first-child,
+.computerCard:not(.primaryComputer) .stats > button > span:first-child {
+  grid-row: 1/3;
+  margin: 0;
+}
+.computerCard:not(.primaryComputer) .stats > div > span:nth-child(2),
+.computerCard:not(.primaryComputer) .stats > button > span:nth-child(2) {
+  margin: 0;
+}
+.computerCard:not(.primaryComputer) .stats strong {
+  font-size: 13px;
+  margin: 0;
+}
+.computerCard:not(.primaryComputer) .stats small {
+  display: none;
+}
+.computerCard:not(.primaryComputer) .computerHeading > span:nth-last-child(2) {
+  display: none;
+}
+.warning {
+  display: flex;
+  gap: 9px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #5a3510;
+  background: #2a1a0c;
+  color: #fdba74;
+  margin-bottom: 14px;
+}
+.warning > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.warning strong {
+  font-size: 11px;
+  font-weight: 500;
+}
+.warning small {
+  font-size: 9px;
+  line-height: 1.5;
+  color: #e8b283;
+}
+.offlineCard {
+  opacity: 0.55;
+}
+.offlineCard .computerHeading,
+.offlineCard .computerHeading > span:nth-last-child(2) {
+  color: var(--muted);
+}
+.reading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 115px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+.emptyUsage {
+  grid-column: span 2;
+  border: 1px dashed #2e2e35;
+  border-radius: 20px;
+}
+.healthError {
+  grid-column: 1/-1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #5a3510;
+  background: #21190f;
+  border-radius: 20px;
+  padding: 32px;
+  color: var(--orange);
+}
+.healthError h2 {
+  font-size: 16px;
+  margin: 14px 0 8px;
+}
+.healthError p {
+  font-size: 12px;
+  color: var(--secondary);
+  margin-bottom: 18px;
+}
+.footnote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: auto;
+  padding: 8px 0 0;
+  flex-wrap: wrap;
+  min-height: 30px;
+}
+.footnote > span:last-child {
+  margin-left: auto;
+  font-size: 9px;
+}
+.machineIdentity {
+  text-align: center;
+  padding: 35px;
+}
+.machineIdentity > span:first-child {
+  display: grid;
+  place-items: center;
+  margin: 0 auto 20px;
+  width: 88px;
+  height: 88px;
+  border-radius: 26px;
+  border: 1px solid #3e354d;
+  background: linear-gradient(#27222f, #19161f);
+  color: var(--accent-soft);
+}
+.machineIdentity h2 {
+  font-size: 26px;
+  margin: 0 0 8px;
+}
+.machineIdentity p {
+  color: var(--secondary);
+  font-size: 13px;
+}
+.machineStatus {
+  display: inline-block;
+  color: var(--green);
+  background: #4ade8012;
+  border: 1px solid #4ade8022;
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 7px 12px;
+}
+.machineNote {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.7;
+}
+@media (max-width: 1100px) {
+  .monitor {
+    padding: 20px;
+  }
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .computerCard {
+    grid-column: span 1;
+  }
+  .primaryComputer {
+    grid-column: 1/-1;
+  }
+  .usageCard {
+    grid-column: span 1;
+  }
+  .usageCard header {
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 22px;
+  }
+  .paceChip {
+    margin-left: auto;
+  }
+  .usageCard h2 {
+    font-size: 14px;
+  }
+  .usageCard footer {
+    font-size: 9px;
+    gap: 6px;
+  }
+  .computerCard:not(.primaryComputer) .computerHeading > span:nth-last-child(2) {
+    display: flex;
+  }
+}
+@media (max-width: 767px) {
+  .monitor {
+    padding: 6px 10px 18px;
+    gap: 16px;
+  }
+  .header {
+    padding: 0 6px;
+  }
+  .header h1 {
+    font-size: 28px;
+    margin: 0;
+  }
+  .header p {
+    font-size: 10px;
+    margin-top: 8px;
+  }
+  .refresh {
+    height: 38px;
+    width: 38px;
+    padding: 0;
+  }
+  .refresh > span:last-child:not(:first-child) {
+    display: none;
+  }
+  .demoToolbar {
+    padding: 2px 6px 0;
+    font-size: 9px;
+  }
+  .demoToolbar label {
+    gap: 5px;
+    font-size: 9px;
+  }
+  .demoToolbar select {
+    font-size: 9px;
+    padding: 5px 6px;
+  }
+  .demoBadge {
+    font-size: 7px;
+    padding: 2px 4px;
+  }
+  .grid {
+    gap: 8px;
+  }
+  .usageCard {
+    padding: 16px 13px;
+    border-radius: 24px;
+  }
+  .usageCard header {
+    gap: 7px;
+    margin-bottom: 20px;
+  }
+  .usageCard header > span:first-child {
+    width: 26px !important;
+    height: 26px !important;
+  }
+  .usageCard h2 {
+    font-size: 13px;
+  }
+  .paceChip {
+    font-size: 8px;
+    padding: 4px 7px;
+    margin: 3px 0 0;
+  }
+  .percent {
+    font-size: 38px;
+  }
+  .percent > span {
+    font-size: 29px;
+  }
+  .usedLabel {
+    font-size: 11px;
+    margin: 6px 0 19px;
+  }
+  .weekBar {
+    height: 7px;
+  }
+  .tick {
+    height: 7px;
+  }
+  .paceMarker {
+    height: 15px;
+  }
+  .weekdays {
+    font-size: 6px;
+  }
+  .usageCard footer {
+    margin-top: 18px;
+    flex-direction: column;
+    font-size: 8.5px;
+    gap: 5px;
+  }
+  .computerCard,
+  .primaryComputer {
+    grid-column: 1/-1;
+    border-radius: 24px;
+    padding: 16px;
+  }
+  .computerCard:not(.primaryComputer) .stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .computerCard:not(.primaryComputer) .stats > div,
+  .computerCard:not(.primaryComputer) .stats > button {
+    display: flex;
+    gap: 0;
+    padding: 11px;
+  }
+  .computerCard:not(.primaryComputer) .stats small {
+    display: block;
+  }
+  .computerCard:not(.primaryComputer) .stats strong {
+    font-size: 17px;
+    margin-bottom: 6px;
+  }
+  .computerCard:not(.primaryComputer) .stats > div > span:first-child,
+  .computerCard:not(.primaryComputer) .stats > button > span:first-child {
+    margin-bottom: 9px;
+  }
+  .computerCard:not(.primaryComputer) .stats > div > span:nth-child(2),
+  .computerCard:not(.primaryComputer) .stats > button > span:nth-child(2) {
+    margin-bottom: 7px;
+  }
+  .stats {
+    gap: 7px;
+  }
+  .stats strong {
+    font-size: 17px;
+  }
+  .stats > div,
+  .stats > button {
+    padding: 11px;
+  }
+  .stats small {
+    font-size: 8px;
+  }
+  .computerHeading h2 {
+    font-size: 15px;
+  }
+  .sectionDivider {
+    padding: 10px 8px 3px;
+    font-size: 9px;
+  }
+  .sectionDivider > span:first-child {
+    font-size: 9px;
+  }
+  .footnote {
+    font-size: 9px;
+    padding: 0 6px;
+    gap: 6px;
+  }
+  .footnote > span:last-child {
+    margin: 4px 0 0 20px;
+    width: 100%;
+    font-size: 9px;
+  }
+  .emptyUsage {
+    grid-column: 1/-1;
+  }
+  .machineIdentity {
+    padding: 24px 12px;
+  }
+  .warning small {
+    font-size: 10px;
+  }
+  .warning strong {
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,141 @@
+.screen {
+  min-height: 100dvh;
+  overflow: auto;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+  background: radial-gradient(ellipse at 50% 0%, #261d3d 0%, #09090b 65%);
+}
+.card {
+  width: min(100%, 460px);
+  padding: 32px;
+  border: 1px solid var(--border-control);
+  border-radius: 28px;
+  background: var(--panel);
+  box-shadow: 0 30px 100px #0008;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 22px;
+  font-weight: 600;
+}
+.brand small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 5px;
+  font-weight: 400;
+}
+.card h1 {
+  font-size: 25px;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
+  margin: 28px 0 10px;
+}
+.card p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 16px 0;
+}
+.pairing {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 10px;
+}
+.qr {
+  width: 232px;
+  height: 232px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #111;
+  border-radius: 18px;
+}
+.pairing p {
+  max-width: 300px;
+  margin: 6px 0 0;
+}
+.card form {
+  display: grid;
+  gap: 14px;
+}
+.field {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.field input,
+.field textarea {
+  border-radius: 12px;
+  background: var(--well);
+  border: 1px solid var(--border-control);
+  color: var(--text);
+  padding: 12px;
+  width: 100%;
+  font: inherit;
+  resize: vertical;
+}
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 20px 0;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px;
+}
+.remember input {
+  accent-color: #8b5cf6;
+}
+.card details {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.card summary {
+  cursor: pointer;
+}
+.card footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 22px;
+}
+.card footer button {
+  min-height: 44px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 12px;
+}
+.card .error {
+  color: #fca5a5;
+  padding: 12px;
+  background: #7f1d1d20;
+  border: 1px solid #7f1d1d;
+  border-radius: 12px;
+}
+@media (max-width: 480px) {
+  .screen {
+    padding: 16px 12px;
+  }
+  .card {
+    padding: 24px;
+  }
+}
