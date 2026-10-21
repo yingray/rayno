@@ -20,9 +20,11 @@ import { ResumeSession } from './ResumeSession';
 import { ChatSessionMenu } from './ChatSessionMenu';
 import { needsSessionResume } from '../happy/resume';
 import { ChatHistoryStatus } from './ChatHistoryStatus';
+import { questionDemoId } from '../data/questionDemo';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
+const DemoQuestions = lazy(() => import('./DemoQuestions').then((module) => ({ default: module.DemoQuestions })));
 const WorkspaceFiles = lazy(() => import('../happy/WorkspaceFiles').then((module) => ({ default: module.WorkspaceFiles })));
 
 const scrollPositions = new Map<string, number>();
@@ -426,6 +428,7 @@ export const Chat = memo(function Chat({
                 </div>
               )}
               {hasRequests && <LazyBoundary><Requests sessionId={session.id} /></LazyBoundary>}
+              {mode === 'demo' && session.id === questionDemoId && <LazyBoundary><DemoQuestions /></LazyBoundary>}
               <div className={styles.conversationEnd}>
                 <span className={styles.liveDot} />
                 {disabled

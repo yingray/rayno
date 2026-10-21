@@ -6,6 +6,7 @@ import type { DemoAdapter, DemoState, NewSessionDraft, Attachment } from './type
 import { modelChoiceKey } from '../happy/modelPreferences';
 import { StoreProvider } from './store';
 import { useUIState } from './useUIState';
+import { questionDemoId, createQuestionDemo } from './questionDemo';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
@@ -30,7 +31,13 @@ export function DemoProvider({
   const [state, dispatch, ui] = useUIState(() => {
     const fallback = createInitialState();
     try {
-      return restoreState(localStorage.getItem(STORAGE_KEY), fallback);
+      const restored = restoreState(localStorage.getItem(STORAGE_KEY), fallback);
+      // An explicit demo link also works with data from an older visit.
+      if (window.location.pathname === `/session/${questionDemoId}`
+        && !restored.sessions.some(session => session.id === questionDemoId)) {
+        return { ...restored, sessions: [...restored.sessions, createQuestionDemo()] };
+      }
+      return restored;
     } catch {
       return fallback;
     }

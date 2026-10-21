@@ -93,7 +93,7 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
     </div>
   );
 });
-function QuestionForm({
+export function QuestionForm({
   form,
   busy,
   onSubmit,
