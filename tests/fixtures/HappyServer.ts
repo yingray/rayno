@@ -54,6 +54,8 @@ export class HappyServer {
   worktreeListing = '';
   workspaceReady: Promise<void> = Promise.resolve();
   workspaceFailure = false;
+  historyFailure = false;
+  historyReady: Promise<void> = Promise.resolve();
   async install(page: Page, signedIn = true) {
     page.on('close', () => { this.storageServer?.closeAllConnections(); this.storageServer?.close(); });
     this.encryption = await HappyCrypto.create(this.secret);
@@ -233,6 +235,8 @@ export class HappyServer {
             return json({ error: 'Send confirmation lost. Retry this draft.' }, 503); }
           return json({ messages: receipts });
         }
+        await this.historyReady;
+        if (this.historyFailure) return json({ error: 'Internal Server Error' }, 500);
         const before = Number(url.searchParams.get('before_seq'));
         const after = url.searchParams.get('after_seq');
         const candidates = storedMessages.filter((message) => after !== null

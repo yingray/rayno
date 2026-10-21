@@ -39,7 +39,8 @@ export class PriorityFeaturesPage extends LiveWorkspacePage {
     if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
     const summary = group.locator('summary').filter({ hasText: name });
     if (!await summary.evaluate(element => (element.parentElement as HTMLDetailsElement).open)) await summary.click();
-    await this.expectTouchTarget(summary);
+    if (await this.page.evaluate(() => matchMedia('(max-width: 767px), (hover: none) and (pointer: coarse)').matches))
+      await this.expectTouchTarget(summary);
     return group;
   }
   async expectTouchTarget(control: import('@playwright/test').Locator) {

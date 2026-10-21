@@ -19,7 +19,10 @@ export type MessageRecord = {
   createdAt: number;
   raw: Json;
 };
-export type History = { loading: boolean; hasMore: boolean; error: string; loaded: boolean };
+export type History = {
+  loading: boolean; hasMore: boolean; error: string; loaded: boolean;
+  direction?: 'initial' | 'older' | 'forward';
+};
 export type Permission = { id: string; tool: string; arguments: unknown };
 export const record = (value: unknown): Json =>
   value && typeof value === 'object' && !Array.isArray(value) ? (value as Json) : {};

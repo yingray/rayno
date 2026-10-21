@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkCjkFriendly from 'remark-cjk-friendly/parseOnly';
-import { Button, copyText, Icon } from '../components/ui';
+import { Button, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
 import { groupChatActivity, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
@@ -11,6 +11,7 @@ import type { BubbleColor, Message } from '../data/types';
 import styles from './chat.module.css';
 import { MermaidDiagram } from './MermaidDiagram';
 import { AttachmentImage } from './AttachmentImage';
+import { CodeBlock } from './CodeBlock';
 
 const remarkPlugins = [remarkGfm, remarkCjkFriendly];
 
@@ -94,25 +95,9 @@ const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename,
             && /\blanguage-mermaid\b/i.test(code.props.className || '')) {
             return <MermaidDiagram source={String(code.props.children || '').replace(/\n$/, '')} notify={notify} />;
           }
-          return <div className={styles.codeBlock}>
-            <div className={styles.codeHeader}>
-              <span>{codeFilename}</span>
-              <button
-                aria-label="Copy code"
-                onClick={(event) =>
-                  copyText(
-                    event.currentTarget.closest(`.${styles.codeBlock}`)?.querySelector('pre')
-                      ?.textContent || '',
-                    notify,
-                  )
-                }
-              >
-                <Icon name="copyOutline" size={13} />
-                Copy
-              </button>
-            </div>
-            <pre>{children}</pre>
-          </div>;
+          if (!isValidElement<{ className?: string; children?: ReactNode }>(code)) return <pre>{children}</pre>;
+          const language = /\blanguage-([\w+-]+)/i.exec(code.props.className || '')?.[1].toLowerCase() || '';
+          return <CodeBlock source={String(code.props.children || '')} language={language} filename={codeFilename} notify={notify} />;
         },
       }}
     >

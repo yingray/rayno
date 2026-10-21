@@ -124,6 +124,7 @@ Archived Claude and Codex sessions show Resume even when the server still report
 - The floating chat header includes session actions, Hand Off, and a new session in the same workspace.
 - Soft dark gradients at the message viewport's top and bottom, below the floating controls.
 - Mermaid code fences render with `beautiful-mermaid`, with source copying, scrollable diagrams, and readable source when a preview is unavailable.
+- Fenced code blocks show local syntax highlighting, a language label, and source copying. Unknown languages keep their plain source.
 - Searchable model/effort selection with visible Claude and Codex choices.
 - Recent workspace selection from real session activity and Rayno's own per-computer history.
 - A chat-header menu provides archive, delete, Fork, and Duplicate. Fork copies the full provider conversation; Duplicate lets you choose the final message to keep. Both create a new session on the original computer with explicit model, effort, and permission choices.
@@ -147,6 +148,7 @@ The app opens saved content while it reads current data. Normal startup has no y
 A failed workspace or realtime connection shows a warning with Retry; an active retry hides the warning.
 Known offline use shows a quiet status beside the list and conversation instead.
 Reconnect merges missed replies with saved pages. An offline draft stays local and is not sent automatically.
+Message-read failures stay inside the conversation, with a retry for the failed page and optional technical details.
 File and Git views wait for the realtime connection before they read the computer.
 
 The offline cache uses IndexedDB on this Rayno origin, encrypted with the current account key.

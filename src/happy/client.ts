@@ -385,7 +385,7 @@ export class HappyClient implements DemoAdapter {
       this.socket?.emit('app-state', { state: activity() });
       void this.refresh()
         .then(() =>
-          Promise.all([...this.activeSessions].map((id) => this.loadHistory(id, 'forward'))),
+          Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward'))),
         )
         .catch((error) => this.patch({ error: messageError(error) }));
     });
@@ -409,7 +409,7 @@ export class HappyClient implements DemoAdapter {
       if (activity() === 'active' && !this.snapshot.offline) {
         this.readingSessions.forEach((id) => this.setSessionReading(id, true));
         void this.refresh()
-          .then(() => Promise.all([...this.activeSessions].map((id) => this.loadHistory(id, 'forward'))))
+          .then(() => Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward'))))
           .catch((error) => this.patch({ error: messageError(error) }));
       }
     };
@@ -492,7 +492,7 @@ export class HappyClient implements DemoAdapter {
     if (!this.socket?.connected) this.socket?.connect();
     try {
       await this.refresh();
-      await Promise.all([...this.activeSessions].map((id) => this.loadHistory(id, 'forward')));
+      await Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward')));
     } catch (error) {
       this.patch({ loading: false, error: messageError(error) });
     } finally {
@@ -548,8 +548,8 @@ export class HappyClient implements DemoAdapter {
     await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
       while (pending.length && !this.disposed) {
         const id = pending.shift()!;
-        await this.inspectAttention(id).catch((error) => {
-          if (!this.disposed) this.patch({ error: messageError(error) });
+        await this.inspectAttention(id).catch(() => {
+          // Keep the last attention state; a background scan is not a workspace connection failure.
         });
       }
     }));
@@ -733,7 +733,7 @@ export class HappyClient implements DemoAdapter {
       if (Number.isSafeInteger(body.seq)) current.wire.seq = Math.max(current.wire.seq || 0, body.seq);
       this.publish(body.id);
       if ((current.wire.seq || 0) > this.sessionAttention(body.id).inspectedSeq)
-        void this.inspectAttention(body.id).catch((error) => !this.disposed && this.patch({ error: messageError(error) }));
+        void this.inspectAttention(body.id).catch(() => { /* Retain the last attention state until the next scan. */ });
       return;
     }
     if (body.t === 'delete-session') {
@@ -822,10 +822,10 @@ export class HappyClient implements DemoAdapter {
       this.patch({
         histories: {
           ...this.snapshot.histories,
-          [id]: { ...this.snapshot.histories[id], ...previous, ...value },
+          [id]: { ...this.snapshot.histories[id], ...previous, ...value, direction },
         },
       });
-    history({ loading: true, error: '' });
+    history({ loading: true, error: '', direction });
     try {
       const stored = [...(this.messages.get(id)?.values() || [])];
       let cursor =

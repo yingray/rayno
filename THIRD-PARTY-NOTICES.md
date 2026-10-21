@@ -35,5 +35,9 @@ Mermaid previews use [beautiful-mermaid](https://github.com/lukilabs/beautiful-m
 The complete notice appears in `public/licenses/beautiful-mermaid.txt`.
 The renderer and its ELK layout dependency run locally in a Web Worker.
 
+Code blocks use [lowlight](https://github.com/wooorm/lowlight) 3.3.0 and highlight.js under the MIT and BSD-3-Clause licenses.
+The grammars load locally when code enters the viewport. React renders the token tree without executable HTML.
+The complete notices appear in `public/licenses/lowlight.txt` and `public/licenses/highlight.js.txt`.
+
 The package manifest and lockfile identify exact direct versions and resolved dependency versions.
 The respective packages retain their source licenses.

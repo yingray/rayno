@@ -19,6 +19,7 @@ import { selectedImages } from '../happy/attachments';
 import { ResumeSession } from './ResumeSession';
 import { ChatSessionMenu } from './ChatSessionMenu';
 import { needsSessionResume } from '../happy/resume';
+import { ChatHistoryStatus } from './ChatHistoryStatus';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
@@ -133,6 +134,9 @@ export const Chat = memo(function Chat({
       ? 'files'
       : 'chat';
   const running = session.status === 'running';
+  const settingTiming = running
+    ? 'Applies to your next message. The current response keeps its settings. To switch now, stop it, then send a new instruction.'
+    : 'Applies to your next message.';
   const disabled =
     !model || session.archived ||
     session.status === 'offline' ||
@@ -404,35 +408,16 @@ export const Chat = memo(function Chat({
                 {mode === 'demo' ? 'Today' : new Date(session.createdAt).toLocaleDateString()}
                 <span />
               </div>
-              {history?.hasMore && (
-                <Button
-                  disabled={history.loading || offline}
-                  onClick={() =>
-                    void live
-                      ?.loadHistory(session.id, 'older')
-                      .catch((error) => setError(messageError(error)))
-                  }
-                >
-                  Load earlier messages
-                </Button>
-              )}
-              {history?.loading && <p role="status">Read messages…</p>}
-              {offline && !history?.loaded && <p role="status">Open this chat online to save its messages on this device.</p>}
-              {history?.error && (
-                <p role="alert">
-                  {history.error}{' '}
-                  <button onClick={() => void live?.loadHistory(session.id).catch(() => {})}>
-                    Retry history
-                  </button>
-                </p>
-              )}
+              <ChatHistoryStatus history={history} offline={offline}
+                retry={() => void live?.loadHistory(session.id, history?.direction).catch(() => {})}
+                loadEarlier={() => void live?.loadHistory(session.id, 'older').catch(() => {})} />
               {session.messages.length ? (
                 <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending} onOption={chooseReply} /></LazyBoundary>
-              ) : (
+              ) : !history?.loading && (!history?.error || offline) ? (
                 <Empty title={offline ? 'No saved messages' : 'The start of something good'}>
                   {offline ? 'Open this chat online to save its messages on this device.' : 'Give your agent a task to work on.'}
                 </Empty>
-              )}
+              ) : null}
               {running && (
                 <div className={styles.thinking} role="status">
                   <Spinner />
@@ -634,7 +619,7 @@ export const Chat = memo(function Chat({
         >
           {picker === 'model' ? (
             <div className={styles.modelSettings}>
-              <p>{mode === 'demo' ? 'Local demo. Applies to your next simulated reply.' : 'Applies to your next message.'}</p>
+              <p>{mode === 'demo' ? 'Local demo. Applies to your next simulated reply.' : settingTiming}</p>
               {!canSelectModel(metadata) && <p>This session locks model selection.</p>}
               <h3>Model</h3>
               <div className={styles.pickerOptions} role="radiogroup" aria-label="Model">
@@ -674,7 +659,7 @@ export const Chat = memo(function Chat({
             <>
               <p>
                 {mode === 'live'
-                  ? `Applies to your next message. Agent mode: ${permissionLabel(metadata, inheritedPermission)}${inheritedPermission ? ` (${inheritedPermission})` : ''}.`
+                  ? `${settingTiming} Agent mode: ${permissionLabel(metadata, inheritedPermission)}${inheritedPermission ? ` (${inheritedPermission})` : ''}.`
                   : 'This preference applies to the demo session. No tools run on your computer.'}
               </p>
               {!permissionSelectable && <p>This session locks permission mode selection.</p>}
