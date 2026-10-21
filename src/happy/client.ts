@@ -259,7 +259,7 @@ export class HappyClient implements DemoAdapter {
     this.publish(id);
   }
   private assertAlive() {
-    if (this.disposed) throw new Error('This v2 connection is closed.');
+    if (this.disposed) throw new Error('This Rayno connection is closed.');
   }
   private getSession(id: string) {
     const session = this.sessions.get(id);
@@ -340,7 +340,7 @@ export class HappyClient implements DemoAdapter {
       if (response.status === 401 || response.status === 403)
         this.patch({
           unauthorized: true,
-          error: 'Happy authorization expired. Sign in to v2 again.',
+          error: 'Happy authorization expired. Sign in to Rayno again.',
         });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -928,7 +928,7 @@ export class HappyClient implements DemoAdapter {
   ) {
     if (this.snapshot.offline) throw new Error('Reconnect before you send this message. Your draft stays on this device.');
     if (attachments.length)
-      throw new Error('File uploads are not available in v2 yet. Use the Happy app to attach a file.');
+      throw new Error('File uploads are not available in Rayno yet. Use the Happy app to attach a file.');
     if (!content.trim()) return;
     if (this.sending.has(id)) throw new Error('This message is already in progress.');
     const source = this.getSession(id);

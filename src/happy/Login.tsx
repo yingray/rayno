@@ -82,12 +82,10 @@ export function Login({
   }
   return (
     <main className={styles.screen}>
-      <section className={styles.card} aria-label="Sign in to Rayno v2">
+      <section className={styles.card} aria-label="Sign in to Rayno">
         <div className={styles.brand}>
           <Mark size={48} />
-          <span>
-            Rayno <small>v2 · Floating Panels</small>
-          </span>
+          <span>Rayno</span>
         </div>
         <h1>Your agents, in a new space.</h1>
         <p>Connect this independent client to your Happy account.</p>
@@ -107,7 +105,7 @@ export function Login({
                   value={code.uri}
                   size={200}
                   level="M"
-                  title="Authorize Rayno v2 in Happy"
+                  title="Authorize Rayno in Happy"
                 />
               ) : error ? (
                 <span>Code unavailable</span>
@@ -160,7 +158,7 @@ export function Login({
             checked={remember}
             onChange={(event) => setRemember(event.target.checked)}
           />
-          Remember this v2 login on this device
+          Remember this login on this device
         </label>
         <details>
           <summary>Happy server</summary>

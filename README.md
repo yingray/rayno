@@ -1,4 +1,4 @@
-# Rayno v2 · Floating Panels
+# Rayno
 
 Rayno is a static web client for [Happy](https://github.com/slopus/happy).
 It is written in React, TypeScript, and Vite.
@@ -58,7 +58,7 @@ Resume it in the Happy app, or use Hand Off to start a new session from it.
 - Soft dark gradients at the message viewport's top and bottom, below the floating controls.
 - Mermaid code fences render with `beautiful-mermaid`, with source copying, scrollable diagrams, and readable source when a preview is unavailable.
 - Searchable model/effort selection with visible Claude and Codex choices.
-- Recent workspace selection from real session activity and v2's own per-computer history.
+- Recent workspace selection from real session activity and Rayno's own per-computer history.
 - Rename with optimistic concurrency, archive, restore, and delete with server error handling.
 - Read-only directory and file previews, Git status, and staged/unstaged diffs through the session RPC.
 - Computer health and Claude/Codex quota reads on explicit Monitor refresh.
@@ -70,7 +70,7 @@ The spawn request, first encrypted message, and chat controls use the selected m
 Known current provider, permission, model, and effort fields remain in outbound messages.
 Unavailable battery, network, latency, or quota data never falls back to samples.
 Monitor usage reads do not send an AI prompt or start a model turn.
-While this v2 tab is visible and focused, usage refreshes once per minute on every route.
+While this Rayno tab is visible and focused, usage refreshes once per minute on every route.
 Background or unfocused tabs stop polling. Offline computers receive no reads, and overlapping refreshes share one request.
 Each online computer runs one quota query per cycle, with short-lived Claude SDK and Codex app-server processes.
 
@@ -80,7 +80,7 @@ Known offline use shows a quiet status beside the list and conversation instead.
 Reconnect merges missed replies with saved pages. An offline draft stays local and is not sent automatically.
 File and Git views wait for the realtime connection before they read the computer.
 
-The offline cache uses IndexedDB on this v2 origin, encrypted with the current account key.
+The offline cache uses IndexedDB on this Rayno origin, encrypted with the current account key.
 Its keys include the account and server scope. It does not cache authentication headers or private API responses in the service worker.
 Only loaded message pages are available offline; unseen conversations explain how to save their content.
 The diagram renderer loads only when a Mermaid preview comes into view. Once loaded, the service worker caches its static code for offline previews.
@@ -92,7 +92,7 @@ Preview supports UTF-8 files up to 1 MB. Files and Git commands require daemon s
 The app reports unsupported or failed operations instead of substituting local results.
 
 A legacy spawn timeout has no safe automatic retry ID.
-V2 asks you to check the Happy app before you repeat that draft.
+Rayno asks you to check the Happy app before you repeat that draft.
 Happy Agent is hidden from creation and agent-switch controls. Existing sessions remain readable.
 A failed initial send retains the new session ID so a retry does not spawn another agent.
 
@@ -102,11 +102,11 @@ The cursor starts at the end so that you can add instructions. Start launches th
 For a Happy worktree, the draft retains the repository and the exact existing checkout path.
 The worktree picker accepts a branch name for a new checkout or an absolute path for an existing checkout.
 Model and supported effort controls always select a concrete value. They restore the last valid choice for that agent.
-When no saved choice is available, v2 selects a concrete model from the catalog and a supported effort.
-New sessions, same-workspace drafts, and handoffs share these v2 account preferences. They do not use an agent-default alias.
+When no saved choice is available, Rayno selects a concrete model from the catalog and a supported effort.
+New sessions, same-workspace drafts, and handoffs share these Rayno account preferences. They do not use an agent-default alias.
 Existing chats keep their explicit per-session choices. Later model changes also update the preference for future sessions.
 The workspace picker groups recent folders by computer, merges duplicate paths, and preserves the selected worktree.
-Successful starts save the workspace in this v2 account's browser storage, including when the session later disappears.
+Successful starts save the workspace in this Rayno account's browser storage, including when the session later disappears.
 
 ## Explicit demo mode
 
@@ -182,7 +182,7 @@ pnpm dlx wrangler@4 pages dev dist --ip 127.0.0.1 --port 8788
 
 ## PWA
 
-The generated manifest identifies Rayno v2. Its service worker uses a v2 cache prefix.
+The generated manifest identifies Rayno. Its service worker uses a `rayno-v2` cache prefix, kept from earlier builds.
 Only static assets and the app shell enter the service worker cache.
 Live API calls and credentials do not enter that cache.
 Demo interactions work offline after the shell is cached. Real operations require the Happy server and daemon.

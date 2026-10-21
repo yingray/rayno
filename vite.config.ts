@@ -19,9 +19,9 @@ export default defineConfig(({ mode }) => {
         registerType: 'prompt',
         includeAssets: ['fonts/*', 'icons/*'],
         manifest: {
-          id: '/rayno-v2',
-          name: 'Rayno v2 · Floating Panels',
-          short_name: 'Rayno v2',
+          id: '/rayno',
+          name: 'Rayno',
+          short_name: 'Rayno',
           description: 'An independent, encrypted client for your Happy agents.',
           start_url: '/sessions',
           scope: '/',

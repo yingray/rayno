@@ -100,9 +100,7 @@ export function Settings() {
         ))}
         <div className={styles.navFooter}>
           <img src="/icons/rayno.svg" alt="" />
-          <span>
-            Rayno<span>Floating Panels · v2</span>
-          </span>
+          <span>Rayno</span>
         </div>
       </nav>
       <div className={styles.content}>
@@ -239,7 +237,7 @@ export function Settings() {
               </Row>
             </Group>
             <p className={styles.note}>
-              Appearance and drafts stay in v2 on this device.
+              Appearance and drafts stay in Rayno on this device.
             </p>
           </>
         ) : category === 'account' ? (
@@ -266,11 +264,11 @@ export function Settings() {
             <p className={styles.note}>
               {mode === 'demo'
                 ? 'This demo does not require sign-in.'
-                : 'This browser uses its own v2 authorization. Sign out clears v2 credentials and cached account data.'}
+                : 'This browser uses its own Rayno authorization. Sign out clears Rayno credentials and cached account data.'}
             </p>
             {mode === 'live' && (
               <Button icon="logOutOutline" onClick={logout}>
-                Sign out of v2
+                Sign out of Rayno
               </Button>
             )}
             {mode === 'demo' && (

@@ -232,7 +232,7 @@ export function App() {
                 title="This page is taking a break"
                 action={<Button onClick={() => navigate('/sessions')}>Back to sessions</Button>}
               >
-                The address does not match a v2 screen.
+                The address does not match a Rayno screen.
               </Empty>
             ) : path === '/new' ? (
               <NewSession />

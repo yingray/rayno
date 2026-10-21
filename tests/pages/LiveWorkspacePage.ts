@@ -354,7 +354,7 @@ export class LiveWorkspacePage extends WorkspacePage {
   }
   async signOut() {
     await this.page.goto('/settings/account');
-    await this.page.getByRole('button', { name: 'Sign out of v2' }).click();
+    await this.page.getByRole('button', { name: 'Sign out of Rayno' }).click();
   }
   async startRealSession(prompt: string) {
     await this.page.goto('/new');
@@ -368,7 +368,7 @@ export class LiveWorkspacePage extends WorkspacePage {
     ).toBeVisible();
   }
   async expectQr() {
-    await expect(this.page.getByRole('img', { name: 'Authorize Rayno v2 in Happy' })).toBeVisible();
+    await expect(this.page.getByRole('img', { name: 'Authorize Rayno in Happy' })).toBeVisible();
   }
   async restore() {
     await this.page.getByRole('button', { name: /^Restore( session)?$/, exact: true }).click();

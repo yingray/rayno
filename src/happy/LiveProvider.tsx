@@ -63,7 +63,7 @@ export function LiveProvider({
       <div className={styles.screen}>
         <div className={styles.card}>
           <Mark />
-          <h1>{error ? 'Could not open v2' : 'Open your workspace'}</h1>
+          <h1>{error ? 'Could not open Rayno' : 'Open your workspace'}</h1>
           {error ? <p role="alert">{error}</p> : <Spinner />}
           <Button onClick={logout}>Back to sign in</Button>
         </div>
