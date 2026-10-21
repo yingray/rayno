@@ -6,6 +6,53 @@
 
 <p align="center">A static web client for your own Happy CLI agents.</p>
 
+## Quick start
+
+You need three things:
+
+- A Happy account
+- The Happy CLI on your computer
+- Claude Code or Codex, signed in on the same computer
+
+### 1. Create a Happy account
+
+Install the Happy app on your phone ([iOS](https://apps.apple.com/us/app/happy-claude-code-client/id6748571505) or [Android](https://play.google.com/store/apps/details?id=com.ex3ndr.happy)).
+You can also use the [Happy web app](https://app.happy.engineering).
+Select **Create account**.
+
+### 2. Install the Happy CLI
+
+```bash
+npm install -g happy
+```
+
+### 3. Connect your computer
+
+Go to a project folder and start an agent:
+
+```bash
+happy claude   # or: happy codex
+```
+
+The first time, the CLI asks you to sign in.
+Scan the QR code with the Happy app, then approve the request.
+The CLI also starts a background daemon. Rayno uses the daemon to start new sessions on this computer.
+
+### 4. Open Rayno
+
+Go to https://rayno-co6.pages.dev and sign in with one of these methods:
+
+| Method | In the Happy app | In Rayno |
+|---|---|---|
+| Scan QR code | **Settings → Account → Link New Device** | Scan the QR code on the screen |
+| Recovery key | **Settings → Account → Secret Key**, then copy the key | Select **Recovery key** and paste it |
+
+Your sessions now show in Rayno.
+
+> [!WARNING]
+> Keep your secret key private. It decrypts all of your sessions.
+> Rayno keeps the key in this browser only when **Remember this login on this device** is selected.
+
 ## About the name
 
 Rayno comes from "Ray no Happy CLI". "no" is the Japanese particle の, so the phrase means "Ray's Happy CLI".
