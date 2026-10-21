@@ -354,12 +354,12 @@ export class HappyServer {
       });
     });
   }
-  private async message(id: string, seq: number, raw: Json, sessionId = 'real-session') {
+  private async message(id: string, seq: number, raw: Json, sessionId = 'real-session', createdAt = 1700000001000) {
     const key = this.sessions.find((session) => session.id === sessionId)?.dataEncryptionKey ? this.dataKey : null;
     return {
       id,
       seq,
-      createdAt: 1700000001000,
+      createdAt,
       content: { t: 'encrypted', c: await this.encryption.encrypt(raw, key) },
     };
   }
@@ -412,9 +412,9 @@ export class HappyServer {
     this.machineActive = active;
     this.socket?.send('42' + JSON.stringify(['ephemeral', { type: 'machine-activity', id: 'computer', active }]));
   }
-  async pushEvent(raw: Json, sessionId = 'real-session', broadcast = true) {
+  async pushEvent(raw: Json, sessionId = 'real-session', broadcast = true, createdAt?: number) {
     const seq = ++this.sessions.find((session) => session.id === sessionId)!.seq;
-    const message = await this.message('pushed-' + seq, seq, raw, sessionId);
+    const message = await this.message('pushed-' + seq, seq, raw, sessionId, createdAt);
     if (sessionId === 'real-session') this.messages.push(message);
     else this.otherMessages.set(sessionId, [...(this.otherMessages.get(sessionId) || []), message]);
     if (!broadcast) return;

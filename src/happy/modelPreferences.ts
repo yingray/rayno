@@ -1,4 +1,4 @@
-import type { Agent, ModelChoice, Session } from '../data/types';
+import type { Agent, Message, MessageSettings, ModelChoice, Session } from '../data/types';
 import { compareSessionActivity } from '../data/sessionList';
 import { canSelectModel, defaultEffort, effortOptions, isConcreteModel, modelOptions } from './modelOptions';
 import { currentEffort, currentModel, type Json } from './normalize';
@@ -37,4 +37,49 @@ export function resolveModelChoice(metadata: Json, candidates: (Partial<ModelCho
     return value === model || options.find((option) => option.value === model)?.label === value;
   }).map((candidate) => candidate?.effort).find((level): level is string => typeof level === 'string' && levels.includes(level));
   return { model, effort: effort || defaultEffort(metadata, model) };
+}
+
+/** Composer modes that the user picked for one session. `at` is absent in values that older builds saved on every render. */
+export type SessionModes = { model?: string; effort?: string | null; permission?: string | null; at?: number };
+export type SentModes = MessageSettings & { sentAt: number };
+
+export function latestSentModes(messages: Message[]): SentModes | undefined {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    if (message.role === 'user' && message.settings)
+      return { ...message.settings, sentAt: message.sentAt ?? 0 };
+  }
+  return undefined;
+}
+
+/**
+ * Rank the sources for the composer modes of an open session:
+ * the newer of an explicit pick and the last sent message, then the other one,
+ * then the reported session values, then values without a pick time.
+ */
+export function rankSessionModes(
+  saved: SessionModes | null | undefined,
+  sent: SentModes | undefined,
+  inheritedPermission?: string,
+) {
+  const picked = typeof saved?.at === 'number' ? saved : undefined;
+  const legacy = saved && !picked ? saved : undefined;
+  const sentChoice = sent && { model: sent.model, effort: sent.effort };
+  // A message sent with the pick repeats it; only a different newer message replaces the pick.
+  const sentPick = !!picked && !!sent &&
+    (sent.model === undefined || sent.model === picked.model) &&
+    (sent.effort === undefined || sent.effort === picked.effort) &&
+    (sent.permissionMode === undefined || sent.permissionMode === (picked.permission ?? inheritedPermission));
+  const pickedFirst = !!picked && (!sent || picked.at! >= sent.sentAt || sentPick);
+  const ordered = pickedFirst ? [picked, sentChoice] : [sentChoice, picked];
+  let permission: string | null | undefined;
+  if (pickedFirst && 'permission' in picked) permission = picked.permission;
+  else if (sent?.permissionMode) permission = sent.permissionMode;
+  else if (picked && 'permission' in picked) permission = picked.permission;
+  return {
+    modelCandidates: ordered as (Partial<ModelChoice> | undefined)[],
+    legacy,
+    /** undefined means that no pick and no sent message names a permission mode. */
+    permission: typeof permission === 'string' || permission === null ? permission : undefined,
+  };
 }

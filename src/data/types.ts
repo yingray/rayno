@@ -9,6 +9,9 @@ export type Message = {
   tools?: string[];
   duration?: string;
   attachments?: Attachment[];
+  // Modes that a user message carried in its meta, and the server time of that message.
+  settings?: MessageSettings;
+  sentAt?: number;
 };
 export type Session = {
   id: string;

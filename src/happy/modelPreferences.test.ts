@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../data/fixtures';
 import { demoReducer, restoreState } from '../data/reducer';
 import { isConcreteModel, modelOptions } from './modelOptions';
-import { modelChoiceKey, recentModelChoice, resolveModelChoice } from './modelPreferences';
+import { latestSentModes, modelChoiceKey, rankSessionModes, recentModelChoice, resolveModelChoice } from './modelPreferences';
 
 describe('Concrete model preferences', () => {
   it('should replace legacy defaults with a concrete model and supported effort', () => {
@@ -56,5 +56,67 @@ describe('Concrete model preferences', () => {
     // Assert
     expect(restored.modelChoices).toEqual({ Codex: { model: 'gpt-6-astra', effort: 'max' } });
     expect(restored.lastAgent).toBe('Codex');
+  });
+});
+
+describe('Session composer modes', () => {
+  const sent = { model: 'gpt-6.1-sol', effort: 'xhigh', permissionMode: 'yolo', sentAt: 2000 };
+
+  it('should read the modes of the last user message that carries them', () => {
+    // Arrange
+    const messages = [
+      { id: 'a', role: 'user' as const, content: 'one', settings: { model: 'old' }, sentAt: 1000 },
+      { id: 'b', role: 'user' as const, content: 'two', settings: { model: 'gpt-6.1-sol', effort: 'xhigh' }, sentAt: 2000 },
+      { id: 'c', role: 'user' as const, content: 'three' },
+      { id: 'd', role: 'assistant' as const, content: 'done' },
+    ];
+    // Act / Assert
+    expect(latestSentModes(messages)).toEqual({ model: 'gpt-6.1-sol', effort: 'xhigh', sentAt: 2000 });
+    expect(latestSentModes([])).toBeUndefined();
+  });
+
+  it('should show the sent modes when metadata reports none and an older build saved other values', () => {
+    // Arrange
+    const metadata = { flavor: 'codex' };
+    const legacy = { model: 'gpt-5.6-sol', effort: 'medium', permission: 'default' };
+    // Act
+    const ranked = rankSessionModes(legacy, sent);
+    const choice = resolveModelChoice(metadata, [...ranked.modelCandidates, ranked.legacy]);
+    // Assert
+    expect(choice).toEqual({ model: 'gpt-6.1-sol', effort: 'xhigh' });
+    expect(ranked.permission).toBe('yolo');
+    expect(ranked.legacy).toBe(legacy);
+  });
+
+  it('should keep a pick that is newer than the last sent message', () => {
+    // Act
+    const ranked = rankSessionModes({ model: 'gpt-5.6-sol', effort: 'low', permission: null, at: 3000 }, sent);
+    // Assert
+    expect(ranked.modelCandidates[0]).toMatchObject({ model: 'gpt-5.6-sol', effort: 'low' });
+    expect(ranked.permission).toBeNull();
+  });
+
+  it('should prefer a message that is newer than the pick, for example one sent from another device', () => {
+    // Act
+    const ranked = rankSessionModes({ model: 'gpt-5.6-sol', effort: 'low', permission: 'default', at: 1000 }, sent);
+    // Assert
+    expect(ranked.modelCandidates[0]).toEqual({ model: 'gpt-6.1-sol', effort: 'xhigh' });
+    expect(ranked.permission).toBe('yolo');
+  });
+
+  it('should keep a pick for agent mode after a message repeats the inherited mode', () => {
+    // Arrange
+    const picked = { model: 'gpt-6.1-sol', effort: 'xhigh', permission: null, at: 1000 };
+    // Act
+    const ranked = rankSessionModes(picked, sent, 'yolo');
+    // Assert
+    expect(ranked.permission).toBeNull();
+    expect(rankSessionModes(picked, sent, 'default').permission).toBe('yolo');
+  });
+
+  it('should report no permission when no pick and no message names one', () => {
+    // Act / Assert
+    expect(rankSessionModes({ permission: 'default' }, undefined).permission).toBeUndefined();
+    expect(rankSessionModes(null, { model: 'one', sentAt: 1 }).permission).toBeUndefined();
   });
 });

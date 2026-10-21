@@ -8,7 +8,7 @@ import { currentPermission, pendingPermissions, record, type Json } from '../hap
 import { permissionOptions, permissionLabel, canSelectPermission } from '../happy/permissionOptions';
 import { messageError } from '../happy/errors';
 import { titleOf } from '../data/reducer';
-import { modelChoiceKey, resolveModelChoice } from '../happy/modelPreferences';
+import { latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, type SentModes, type SessionModes } from '../happy/modelPreferences';
 import { OfflineStatus } from '../components/OfflineStatus';
 import type { Attachment, Session } from '../data/types';
 import styles from './chat.module.css';
@@ -73,26 +73,41 @@ export const Chat = memo(function Chat({
   const location = useLocation();
   const navigate = useNavigate();
   const modesKey = `composerModes.${session.id}`;
-  const [savedModes] = useState(() => {
+  const [savedModes, setSavedModes] = useState<SessionModes | null>(() => {
     try {
       return JSON.parse((live ? live.readLocal(modesKey) : localStorage.getItem(`rayno.demo.${modesKey}`)) || 'null');
     } catch { return null; }
   });
+  const inheritedPermission = currentPermission(metadata);
+  const loadedModes = useMemo(() => latestSentModes(session.messages), [session.messages]);
+  const [olderModes, setOlderModes] = useState<SentModes>();
+  const historyLoaded = !!history?.loaded;
+  useEffect(() => {
+    if (!live || !historyLoaded || loadedModes) return;
+    let active = true;
+    live.findSentModes(session.id).then((value) => { if (active) setOlderModes(value); })
+      .catch(() => { /* Fall back to the reported modes. */ });
+    return () => { active = false; };
+  }, [live, historyLoaded, !!loadedModes, session.id]);
+  const sentModes = loadedModes && (!olderModes || loadedModes.sentAt >= olderModes.sentAt) ? loadedModes : olderModes;
+  const ranked = useMemo(() => rankSessionModes(savedModes, sentModes, inheritedPermission),
+    [savedModes, sentModes, inheritedPermission]);
   const preferenceKey = modelChoiceKey(session.agent, session.machineId);
-  const sessionChoice = { model: session.model, effort: session.effort || session.model.split(' · ')[1]?.toLowerCase() || null };
-  const [modelSelection, setModelSelection] = useState(() => resolveModelChoice(metadata, [
-    savedModes, sessionChoice, savedChoice,
-  ]));
-  const selection = useMemo(() => resolveModelChoice(metadata, [modelSelection, sessionChoice, savedChoice]), [metadata, modelSelection, session.model, session.effort, savedChoice]);
+  const selection = useMemo(() => resolveModelChoice(metadata, [
+    ...ranked.modelCandidates,
+    { model: session.model, effort: session.effort || session.model.split(' · ')[1]?.toLowerCase() || null },
+    ranked.legacy, savedChoice,
+  ]), [metadata, ranked, session.model, session.effort, savedChoice]);
   const { model, effort: selectedEffort } = selection;
   const models = useMemo(() => modelOptions(metadata), [metadata]);
   const efforts = useMemo(() => effortOptions(metadata, model), [metadata, model]);
   const modelLabel = models.find((option) => option.value === model)?.label || model || 'No model available';
-  const [permission, setPermission] = useState<string | null>(() =>
-    typeof savedModes?.permission === 'string' ? savedModes.permission : mode === 'demo' ? 'default' : null);
+  // A reported agent mode outranks a value that an older build saved without a pick.
+  const permission = ranked.permission !== undefined ? ranked.permission
+    : !inheritedPermission && typeof ranked.legacy?.permission === 'string' ? ranked.legacy.permission
+      : mode === 'demo' ? 'default' : null;
   const permissionSelectable = canSelectPermission(metadata);
   const selectedPermission = permissionSelectable ? permission : null;
-  const inheritedPermission = currentPermission(metadata);
   const effectivePermission = selectedPermission || inheritedPermission;
   const permissionName = permissionLabel(metadata, effectivePermission);
   const permissions = useMemo(() => permissionOptions(metadata, effectivePermission), [metadata, effectivePermission]);
@@ -138,16 +153,18 @@ export const Chat = memo(function Chat({
       }
     : {}, [mode, model, efforts.length, selectedEffort, selectedPermission]);
 
-  useEffect(() => {
+  // Save only explicit picks. A value saved on every render would outrank the modes of later messages.
+  function pickModes(value: Omit<SessionModes, 'at'>) {
+    const next = { model, effort: selectedEffort, permission: selectedPermission, ...value, at: Date.now() };
+    setSavedModes(next);
     try {
-      const value = JSON.stringify({ model, effort: selectedEffort, permission: selectedPermission });
-      if (live) live.writeLocal(modesKey, value);
-      else localStorage.setItem(`rayno.demo.${modesKey}`, value);
+      const json = JSON.stringify(next);
+      if (live) live.writeLocal(modesKey, json);
+      else localStorage.setItem(`rayno.demo.${modesKey}`, json);
     } catch { /* Keep the selection for this visit if storage is unavailable. */ }
-  }, [live, modesKey, model, selectedEffort, selectedPermission]);
-
+  }
   function rememberChoice(value: typeof selection) {
-    setModelSelection(value);
+    pickModes(value);
     if (value.model) dispatch({ type: 'rememberModel', key: preferenceKey, value });
   }
   function chooseModel(value: string) {
@@ -728,7 +745,7 @@ export const Chat = memo(function Chat({
                     role="radio"
                     aria-checked={selectedPermission === null}
                     disabled={pending}
-                    onClick={() => { setPermission(null); setPicker(null); }}
+                    onClick={() => { pickModes({ permission: null }); setPicker(null); }}
                   >
                     <span>Use agent mode · {permissionLabel(metadata, inheritedPermission)}</span>
                     {selectedPermission === null && <Icon name="checkmark" size={16} />}
@@ -742,7 +759,7 @@ export const Chat = memo(function Chat({
                     aria-checked={option.value === selectedPermission}
                     disabled={option.disabled || !permissionSelectable || pending}
                     onClick={() => {
-                      setPermission(option.value);
+                      pickModes({ permission: option.value });
                       dispatch({ type: 'rememberPermission', key: preferenceKey, value: option.value });
                       setPicker(null);
                     }}

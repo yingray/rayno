@@ -248,3 +248,31 @@ describe('Happy record normalization', () => {
     expect(weeklyUsage('Claude', [], now, now)).toBeNull();
   });
 });
+
+describe('Sent message modes', () => {
+  it('should keep the modes from the meta of a user message', () => {
+    // Arrange
+    const rows = [
+      row('m1', 1, {
+        role: 'user',
+        content: { type: 'text', text: 'Fix the bug' },
+        meta: { sentFrom: 'web', permissionMode: 'yolo', model: 'gpt-6.1-sol', effort: 'xhigh' },
+      }),
+      row('m2', 2, {
+        role: 'user',
+        content: { type: 'text', text: 'Use the provider model' },
+        meta: { sentFrom: 'web', modelProviderId: 'anthropic', model: 'claude-opus-5-5', effort: null },
+      }),
+      row('m3', 3, { role: 'user', content: { type: 'text', text: 'No modes' }, meta: { sentFrom: 'web', model: null } }),
+    ];
+    // Act
+    const [first, second, third] = visibleMessages(rows);
+    // Assert
+    expect(first).toMatchObject({
+      settings: { permissionMode: 'yolo', model: 'gpt-6.1-sol', effort: 'xhigh' },
+      sentAt: 1000,
+    });
+    expect(second.settings).toEqual({ model: 'anthropic:claude-opus-5-5', effort: null });
+    expect(third.settings).toBeUndefined();
+  });
+});

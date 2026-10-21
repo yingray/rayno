@@ -176,6 +176,16 @@ export function normalizeMachine(
     homeDir: m.homeDir,
   };
 }
+// Some agents report their modes only through the meta of the last user message.
+function sentSettings(meta: Json): MessageSettings | undefined {
+  const settings: MessageSettings = {};
+  if (typeof meta.model === 'string' && meta.model)
+    settings.model = typeof meta.modelProviderId === 'string' && meta.modelProviderId
+      ? `${meta.modelProviderId}:${meta.model}` : meta.model;
+  if (typeof meta.effort === 'string' || meta.effort === null) settings.effort = meta.effort;
+  if (typeof meta.permissionMode === 'string' && meta.permissionMode) settings.permissionMode = meta.permissionMode;
+  return Object.keys(settings).length ? settings : undefined;
+}
 const normalizedMessages = new WeakMap<MessageRecord, Message | null>();
 export function normalizeMessage(row: MessageRecord): Message | null {
   if (normalizedMessages.has(row)) return normalizedMessages.get(row)!;
@@ -186,8 +196,14 @@ export function normalizeMessage(row: MessageRecord): Message | null {
     role: raw.role === 'user' ? 'user' : 'assistant',
     content: '',
   };
-  if (raw.role === 'user' && content.type === 'text')
+  if (raw.role === 'user' && content.type === 'text') {
     message.content = text(raw.meta?.displayText || content.text);
+    const settings = sentSettings(record(raw.meta));
+    if (settings) {
+      message.settings = settings;
+      message.sentAt = row.createdAt;
+    }
+  }
   const envelope =
     raw.role === 'session'
       ? content.type === 'session'

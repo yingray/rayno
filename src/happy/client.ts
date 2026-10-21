@@ -22,6 +22,7 @@ import {
   messageMeta,
   currentModel,
   currentPermission,
+  normalizeMessage,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -29,6 +30,7 @@ import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
 import { permissionOptions, canSelectPermission } from './permissionOptions';
+import type { SentModes } from './modelPreferences';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
@@ -96,6 +98,7 @@ export class HappyClient implements DemoAdapter {
   private acknowledged = new Set<string>();
   private attention = new Map<string, SessionAttention>();
   private attentionRequests = new Map<string, Promise<void>>();
+  private sentModeRequests = new Map<string, Promise<SentModes | undefined>>();
   private readingSessions = new Set<string>();
   private attentionInitialized = false;
   private refreshRequest: Promise<void> | null = null;
@@ -588,6 +591,56 @@ export class HappyClient implements DemoAdapter {
     this.saveAttention(id);
     this.scheduleCache(id);
     this.publish(id);
+  }
+  /**
+   * Find the modes of the last user message that carries them.
+   * Long turns push that message out of the first history page, so read older pages
+   * until the message or the result that this device saved before.
+   */
+  findSentModes(id: string): Promise<SentModes | undefined> {
+    const existing = this.sentModeRequests.get(id);
+    if (existing) return existing;
+    const request = this.fetchSentModes(id).finally(() => this.sentModeRequests.delete(id));
+    this.sentModeRequests.set(id, request);
+    return request;
+  }
+  private async fetchSentModes(id: string): Promise<SentModes | undefined> {
+    const source = this.getSession(id);
+    const key = 'sentModes.' + id;
+    let saved: (SentModes & { seq: number }) | undefined;
+    try {
+      const value = JSON.parse(this.readLocal(key) || 'null');
+      if (Number.isSafeInteger(value?.seq)) saved = value;
+    } catch { /* Read the history again. */ }
+    const find = (rows: MessageRecord[]) => {
+      for (const row of [...rows].sort((a, b) => b.seq - a.seq)) {
+        if (saved && row.seq <= saved.seq) return undefined;
+        const message = normalizeMessage(row);
+        if (message?.role === 'user' && message.settings)
+          return { ...message.settings, sentAt: row.createdAt, seq: row.seq };
+      }
+      return undefined;
+    };
+    const stored = [...(this.messages.get(id)?.values() || [])];
+    let found = find(stored);
+    let cursor = stored.length ? Math.min(...stored.map((row) => row.seq)) : 2147483647;
+    // Stop after 1000 messages. The composer then falls back to the reported modes.
+    for (let page = 0; !found && page < 10 && !(saved && cursor <= saved.seq + 1); page++) {
+      const result = await this.request(`/v3/sessions/${encodeURIComponent(id)}/messages?before_seq=${cursor}&limit=100`);
+      if (!Array.isArray(result.messages)) throw new Error('Could not read the message history.');
+      const rows: MessageRecord[] = [];
+      for (const wire of result.messages) {
+        if (!Number.isSafeInteger(wire.seq) || wire.seq < 0 || wire.seq >= cursor) continue;
+        rows.push(await this.decryptMessage(source, wire));
+        if (this.disposed) return undefined;
+      }
+      found = find(rows);
+      if (!result.hasMore || !rows.length) break;
+      cursor = Math.min(...rows.map((row) => row.seq));
+    }
+    if (!found) return saved;
+    try { this.writeLocal(key, JSON.stringify(found)); } catch { /* Read the history again next time. */ }
+    return found;
   }
   private async decryptMessage(source: SessionRecord, wire: Json): Promise<MessageRecord> {
     const raw = wire.content?.t === 'encrypted'
@@ -1190,6 +1243,7 @@ export class HappyClient implements DemoAdapter {
       model: draft.model,
       effort: draft.effort || null,
       permission: draft.permissionMode,
+      at: Date.now(),
     }));
     sessionStorage.removeItem(storageKey);
     return pending.sessionId as string;

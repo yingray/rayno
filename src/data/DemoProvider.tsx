@@ -91,7 +91,7 @@ export function DemoProvider({
         const id = crypto.randomUUID();
         try {
           localStorage.setItem(`rayno.demo.composerModes.${id}`, JSON.stringify({
-            model: draft.model, effort: draft.effort || null, permission: draft.permissionMode,
+            model: draft.model, effort: draft.effort || null, permission: draft.permissionMode, at: Date.now(),
           }));
         } catch { /* Keep the session usable when browser storage is unavailable. */ }
         const now = Date.now();
