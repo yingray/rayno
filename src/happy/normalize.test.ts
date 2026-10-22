@@ -9,7 +9,7 @@ import {
   weeklyUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
-import { agentSubagentTurn, agentSubagentWork, taskSubagentTurn } from './subagentEnvelopes.fixture';
+import { agentSubagentTurn, agentSubagentWork, codexCollabTurn, taskSubagentTurn } from './subagentEnvelopes.fixture';
 import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
@@ -515,6 +515,37 @@ describe('Subagent work in session envelopes', () => {
     ]);
     expect(messages[1]!.toolCalls![0].children!.map((child) => child.content)).toEqual([
       'Search the docs for TypeScript 5.6.', 'TypeScript 5.6 adds iterator helpers. <options><option>Task option</option></options>',
+    ]);
+  });
+  it('should show each Codex subagent row once, under the latest collab call before it', () => {
+    // Act
+    const messages = visibleMessages(rowsOf(codexCollabTurn));
+    // Assert
+    expect(messages.map((message) => [message.content, message.thinking, message.tools])).toEqual([
+      ['', 'Delegate the auth review.', undefined],
+      ['', undefined, ['Inspect auth flow']],
+      ['', undefined, ['Wait for Codex subagent']],
+      ['The auth handler is in src/auth.ts. <options><option>Open it</option></options>', undefined, undefined],
+    ]);
+    const [spawn, wait] = [messages[1]!.toolCalls![0], messages[2]!.toolCalls![0]];
+    expect(spawn.children!.map((child) => child.tools?.[0] ?? child.content)).toEqual([
+      'Run `rg login`', 'Found the auth handler. <options><option>Child option</option></options>',
+    ]);
+    expect(wait.children!.map((child) => child.content)).toEqual(['Codex subagent completed: found auth handler']);
+  });
+  it('should give subagent rows that come before every parent call to the first call', () => {
+    // Arrange
+    const rows = rowsOf(codexCollabTurn);
+    const spawn = rows.findIndex((item) => item.raw.content.ev.call === 'call_spawn');
+    const child = rows.findIndex((item) => item.raw.content.ev.t === 'tool-call-start' && item.raw.content.ev.call === 'call_rg');
+    // Act
+    const messages = visibleMessages([...rows.slice(0, spawn), ...rows.slice(spawn + 1, child + 1), rows[spawn]!,
+      ...rows.slice(child + 1)].map((item, index) => ({ ...item, seq: index + 1 })));
+    // Assert
+    const calls = messages.flatMap((message) => message.toolCalls || []);
+    expect(calls.map((call) => [call.name, call.children?.map((item) => item.tools?.[0] ?? item.content)])).toEqual([
+      ['Inspect auth flow', ['Run `rg login`', 'Found the auth handler. <options><option>Child option</option></options>']],
+      ['Wait for Codex subagent', ['Codex subagent completed: found auth handler']],
     ]);
   });
   it('should place tagged rows from the bounds on the loaded pages', () => {

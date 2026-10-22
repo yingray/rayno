@@ -372,13 +372,14 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
   const marks = markSubagents(new Map(), sorted);
   // Like the v1 reducer, subagent rows go under the tool call that names them in `sessionSubagent`.
   const messages: Message[] = [];
-  const work = new Map<string, Message[]>();
+  const work = new Map<string, { seq: number; message: Message }[]>();
+  const seqs = new WeakMap<Message, number>();
   const standalone = new WeakSet<Message>();
   for (const row of sorted) {
     const message = normalizeMessage(row);
     if (!message) continue;
     const subagent = subagentOf(row, marks);
-    if (!subagent) { messages.push(message); continue; }
+    if (!subagent) { messages.push(message); seqs.set(message, row.seq); continue; }
     let list = work.get(subagent);
     if (!list) {
       work.set(subagent, list = []);
@@ -388,9 +389,9 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
       standalone.add(holder);
       messages.push(holder);
     }
-    list.push(message);
+    list.push({ seq: row.seq, message });
   }
-  const results = new Map([...messages, ...[...work.values()].flat()]
+  const results = new Map([...messages, ...[...work.values()].flat().map(item => item.message)]
     .flatMap(message => (message.toolResults || []).map(result => [result.id, result] as const)));
   const matched = new Set<string>();
   const join = (message: Message): Message => !message.toolCalls ? message : { ...message, toolCalls: message.toolCalls.map(call => {
@@ -403,21 +404,32 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
     const id = record(call.input).sessionSubagent;
     return typeof id === 'string' && work.has(id) ? id : work.has(call.id) ? call.id : undefined;
   };
-  const owned = new Set(messages.filter(message => !standalone.has(message)).flatMap(message => message.toolCalls || []).map(ownerOf));
-  const childrenOf = (call: ToolCall, id: string) => {
-    const children = work.get(id)!.map(join).filter(shows);
+  // Codex names the subagent in every collab call (spawn, send, wait, close). Like the v1 tracer, a row goes to
+  // the latest call that names it before the row, or to the first call when the row comes before all of them.
+  const owners = new Map<string, { seq: number; call: ToolCall }[]>();
+  for (const message of messages) if (!standalone.has(message)) for (const call of message.toolCalls || []) {
+    const id = ownerOf(call);
+    if (id) owners.set(id, [...owners.get(id) || [], { seq: seqs.get(message)!, call }]);
+  }
+  const assigned = new Map<ToolCall, Message[]>();
+  for (const [id, calls] of owners) for (const { seq, message } of work.get(id)!) {
+    const { call } = calls.reduce((owner, next) => next.seq < seq ? next : owner, calls[0]);
+    assigned.set(call, [...assigned.get(call) || [], message]);
+  }
+  const childrenOf = (call: ToolCall, list: Message[]) => {
+    const children = list.map(join).filter(shows);
     // V1 drops the first subagent text when it repeats the prompt of the parent call.
     const prompt = text(record(call.input).prompt).trim();
     if (prompt && !children[0]?.tools?.length && children[0]?.content.trim() === prompt) children.shift();
     return children;
   };
   const rendered = messages.flatMap(message => {
-    if (standalone.has(message) && owned.has(message.toolCalls![0].id)) return [];
+    if (standalone.has(message) && owners.has(message.toolCalls![0].id)) return [];
     const joined = join(message);
     if (!joined.toolCalls) return [joined];
-    const toolCalls = joined.toolCalls.map(call => {
-      const id = ownerOf(call);
-      const children = id ? childrenOf(call, id) : [];
+    const toolCalls = joined.toolCalls.map((call, index) => {
+      const list = standalone.has(message) ? work.get(call.id)!.map(item => item.message) : assigned.get(message.toolCalls![index]);
+      const children = list ? childrenOf(call, list) : [];
       return children.length ? { ...call, children } : call;
     });
     return standalone.has(message) && !toolCalls[0].children ? [] : [{ ...joined, toolCalls }];

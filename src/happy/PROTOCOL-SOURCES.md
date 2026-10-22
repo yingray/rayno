@@ -48,6 +48,9 @@ and all later main rows of the turn carry it too. v1 nests those main rows as we
 `start` and `stop` events instead (`markSubagents`, `subagentOf` in `normalize.ts`): a tagged row belongs to the subagent only
 between its start and its stop. After the stop it is a main row. A subagent `service` event (Codex collab state) always belongs
 to the subagent. When no bound is on the loaded rows, the row stays in the main thread, so a main answer never disappears.
+The Codex mapper (`codex/utils/sessionProtocolMapper.ts`, `collabArgs`) puts the same `sessionSubagent` in every collab call
+(`spawnAgent`, `sendInput`, `wait`, `closeAgent`). Like `toolCallToMessageId` in the tracer, each subagent row goes under the
+latest of those calls before it, or under the first call when it comes before all of them, so every row shows only once.
 A `Task` call has no tool-call event, and the parent can be on an unloaded page; that work shows as its own collapsed tool row,
 named by the `start` title. Subagent rows never change attention or reply options. The client keeps the bounds of every row it
 reads in memory for each session, and a background scan reads the bounds of the full page before it classifies rows.
