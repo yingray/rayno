@@ -100,6 +100,17 @@ describe('tool result views', () => {
     expect(views[2]).not.toContain('Image');
   });
 
+  it('should show a finished session tool call that has no result', () => {
+    // Arrange: normalize.ts stores null for a tool-call-end without a result.
+    const done = call('Bash', null);
+    const failed = call('Bash', null, { isError: true });
+    // Act
+    const views = [done, failed].map(toolSections);
+    // Assert
+    expect(views[0]).toEqual([{ kind: 'note', text: 'The tool call finished. The agent sent no result text.' }]);
+    expect(views[1]).toEqual([{ kind: 'note', text: 'The tool call failed. The agent sent no details.', error: true }]);
+  });
+
   it('should show Task reports, background agents, and todo lists', () => {
     // Arrange
     const task = call('Task', { content: [{ type: 'text', text: '## 5 Major AI Breakthroughs in 2025' }], totalDurationMs: 51327,

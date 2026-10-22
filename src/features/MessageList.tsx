@@ -11,7 +11,7 @@ import type { RecapSegment } from '../data/messageRecap';
 import { remarkPlugins } from '../data/recapQuote';
 import type { BubbleColor, Message, ToolCall, ToolPermission } from '../data/types';
 import { toolAnswers, toolSections } from '../data/toolResults';
-import { completedForms, completedPermissions, mergedPermission, permissionSummary, type AnsweredForm } from '../happy/toolDecisions';
+import { completedForms, completedPermissions, mergedPermission, permissionSummary, toolName, type AnsweredForm } from '../happy/toolDecisions';
 import { permissionLabel } from '../happy/permissionOptions';
 import { ToolAnswers, ToolDecision, ToolSections, type ToolOutcome } from './ToolDetails';
 import { useEventCallback } from '../components/useEventCallback';
@@ -90,7 +90,7 @@ function toolOutcome(call: ToolCall | undefined, permissions: Map<string, ToolPe
   const outcome: ToolOutcome = {
     ...(permission ? { permission: permissionSummary(call, permission, modeLabel) } : {}),
     ...(answers.length ? { answers } : {}),
-    ...(!answers.length && (form?.status === 'cancelled' || (call.name === 'AskUserQuestion' && permission && permission.status !== 'approved'))
+    ...(!answers.length && (form?.status === 'cancelled' || (toolName(call) === 'AskUserQuestion' && permission && permission.status !== 'approved'))
       ? { dismissed: true } : {}),
   };
   return Object.keys(outcome).length ? outcome : undefined;

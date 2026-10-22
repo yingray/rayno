@@ -6,8 +6,10 @@ export type ToolPermission = {
   status: 'approved' | 'denied' | 'canceled'; mode?: string; allowedTools?: string[]; decision?: string; reason?: string;
 };
 // resultText is the tool result text that the agent got, when the result itself is a structured value.
+// tool is the tool name when name shows a session tool call title.
 export type ToolCall = {
-  id: string; name: string; input?: unknown; result?: unknown; resultText?: string; isError?: boolean; permission?: ToolPermission;
+  id: string; name: string; tool?: string; input?: unknown; result?: unknown; resultText?: string; isError?: boolean;
+  permission?: ToolPermission;
 };
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
 export type RecapMode = 'auto' | 'manual';

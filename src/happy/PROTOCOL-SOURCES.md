@@ -38,6 +38,19 @@ Rayno does not attach them to the parent tool call. Session envelopes with a `su
 main reply after a subagent carry it too. Agent `service` text shows as agent text. ACP `file-edit` is a tool call, and ACP
 `terminal-output` is a tool result that shows only when it matches a call. As in `sync/typesRaw.ts`, a Claude tool result
 uses the stored `toolUseResult` when it is set, as text or a structured value. The tool_result text stays as `resultText`.
+A session tool call keeps its tool name as `tool` because its row shows the title. As in `sync/typesRaw.ts`, a
+`tool-call-end` without a result ends the call with a `null` result, and the row says that no result text came.
+
+Structured results, the tool_result `permissions` field, and Claude AskUserQuestion answers exist only in legacy Claude
+`output` records from older CLIs. The current CLI sends every Claude record as a session envelope (`api/apiSession.ts`
+`sendClaudeSessionMessage`, `claude/utils/sessionProtocolMapper.ts`). Its `tool-call-end` has only `call`
+(`happy-wire/src/sessionProtocol.ts`), so it has no result, `toolUseResult`, or `permissions`. In legacy records, local
+mode carries `toolUseResult` from the Claude Code JSONL and no `permissions`. Remote mode carries `permissions`
+(`claude/claudeRemoteLauncher.ts`) and no `toolUseResult`, because `claude/utils/sdkToLogConverter.ts` copies only
+`message`, `parent_tool_use_id`, and `isMeta`. For a current Claude session, the reply comes only from
+`agentState.completedRequests`. That entry keeps the original `arguments` and not the answers
+(`claude/utils/permissionHandler.ts`), so answered Claude questions show only the Answered badge. Happy Web also shows
+no answers for a completed AskUserQuestion (`components/tools/views/AskUserQuestionView.tsx`).
 
 `../data/toolResults.ts` renders structured results in the style of `components/tools/knownTools.tsx`,
 `components/tools/views/*`, and `utils/toolResult.ts`: Bash stdout/stderr and exit status, Edit/MultiEdit/Write
@@ -46,12 +59,17 @@ Task/Agent reports, TodoWrite `newTodos`, AskUserQuestion `answers`, WebFetch, a
 `originalFile` do not render. Unknown values show the tool_result text, else JSON. Diffs show at most 400 lines.
 
 `toolDecisions.ts` follows `sync/reducer/reducer.ts` and `components/tools/PermissionFooter.tsx`. A tool call shows the
-past permission reply from the tool_result `permissions` field (`happy-cli/src/claude/claudeRemoteLauncher.ts`), else
-from `agentState.completedRequests` joined by `toolUseId` or the request ID. Both `allowedTools` and `allowTools` are read.
+past permission reply from `agentState.completedRequests`, joined by `toolUseId` or the request ID. A legacy tool_result
+`permissions` field (`happy-cli/src/claude/claudeRemoteLauncher.ts`) merges over it, and the agent-state `reason` and
+`decision` stay, as in the v1 reducer. Both `allowedTools` and `allowTools` are read.
 A session approval is a Codex `approved_for_session` decision or an allowed tool that names the tool or `Bash(command)`.
-AskUserQuestion answers come from the result `answers` map, keyed by question text. Answered
-`completedCommunications` forms join by `toolUseId` (`sync/agentCommunications.ts`). Answers stay visible in a
-collapsed tool group. Unlike v1, a completed request without a loaded tool call does not add a placeholder row.
+AskUserQuestion answers come from the legacy result `answers` map, keyed by question text. Answered
+`completedCommunications` forms join by `toolUseId` (`sync/agentCommunications.ts`). Answers show in a group above the
+tool rows, so the row does not repeat them.
+
+Unlike v1 (`sync/reducer/reducer.ts`), a completed request without a loaded tool call does not add a placeholder row.
+The effect: a denied or aborted Codex command does not show in the transcript. The Codex mapper does not map
+`exec_approval_request` (`codex/utils/sessionProtocolMapper.ts`), so a command has a tool call only after approval.
 
 Archive classification follows the overlay's `sync/storage.ts`: a lifecycle marker or an inactive
 non-Rig CLI session belongs in the archive. An inactive Rig session remains live work unless marked.

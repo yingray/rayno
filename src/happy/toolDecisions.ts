@@ -68,22 +68,25 @@ export function mergedPermission(fromResult: ToolPermission | undefined, fromSta
   return fromResult && fromState ? { ...fromState, ...fromResult } : fromResult || fromState;
 }
 
+// A session tool call shows its title as the name and keeps the tool name as `tool`.
+export const toolName = (call: ToolCall) => call.tool || call.name;
 // The PermissionFooter rule: a Claude session approval names the tool, or `Bash(command)` for one command.
 function allowedForSession(call: ToolCall, value: ToolPermission) {
   if (value.decision === 'approved_for_session') return true;
   const tools = value.allowedTools || [];
-  const command = record(call.input).command;
-  return tools.includes(call.name) || (call.name === 'Bash' && typeof command === 'string' && tools.includes(`Bash(${command})`));
+  const name = toolName(call), command = record(call.input).command;
+  return tools.includes(name) || (name === 'Bash' && typeof command === 'string' && tools.includes(`Bash(${command})`));
 }
 
 export type PermissionSummary = { label: string; detail: string; tone: 'approved' | 'denied' };
 export function permissionSummary(call: ToolCall, value: ToolPermission, modeLabel: (mode: string) => string): PermissionSummary {
+  const question = toolName(call) === 'AskUserQuestion';
   if (value.status !== 'approved') {
-    const label = call.name === 'AskUserQuestion' ? 'Dismissed'
+    const label = question ? 'Dismissed'
       : value.status === 'canceled' ? 'Canceled' : value.decision === 'abort' ? 'Aborted' : 'Denied';
     return { label, detail: value.reason ? `${label}: ${value.reason}` : `${label}.`, tone: 'denied' };
   }
-  if (call.name === 'AskUserQuestion') return { label: 'Answered', detail: 'Answered.', tone: 'approved' };
+  if (question) return { label: 'Answered', detail: 'Answered.', tone: 'approved' };
   const session = allowedForSession(call, value);
   const label = session ? 'Allowed for session' : value.mode ? `Allowed · ${modeLabel(value.mode)}` : 'Allowed once';
   // A Claude reply with a mode also changes the permission mode of the session.

@@ -161,6 +161,9 @@ function structured(call: ToolCall, result: Json): ToolSection[] {
 function resultSections(call: ToolCall): ToolSection[] {
   const { result } = call;
   if (result === undefined) return [{ kind: 'text', label: 'Result', text: 'No result reported yet.' }];
+  // A session-protocol tool-call-end can finish a call without a result (happy-wire sessionProtocol.ts).
+  if (result === null) return [{ kind: 'note', text: call.isError ? 'The tool call failed. The agent sent no details.'
+    : 'The tool call finished. The agent sent no result text.', error: call.isError }];
   if (typeof result === 'string') {
     // A failed Claude Bash call reports its exit code on the first line.
     const exit = call.isError ? /^(?:Error: )?Exit code (\d+)(?:\n|$)/.exec(result) : null;

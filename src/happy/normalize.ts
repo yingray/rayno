@@ -281,7 +281,9 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   const calls: ToolCall[] = [];
   const results: NonNullable<Message['toolResults']> = [];
   const addCall = (id: unknown, name: unknown, input: unknown, tool = name) => {
-    calls.push({ id: text(id, row.id), name: text(name, 'Tool call'), input });
+    // A session tool call shows its title. `tool` keeps the tool name for the permission and answer views.
+    calls.push({ id: text(id, row.id), name: text(name, 'Tool call'), input,
+      ...(typeof tool === 'string' && tool && tool !== name ? { tool } : {}) });
     const active = typeof tool === 'string' ? planTools.get(tool) : undefined;
     if (active !== undefined) message.planMode = { active, call: text(id, row.id), at: row.createdAt };
   };
@@ -293,7 +295,8 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   if (envelope) {
     const event = record(envelope.ev);
     if (event.t === 'tool-call-start') addCall(event.call, event.title || event.name, event.args, event.name);
-    if (event.t === 'tool-call-end') addResult(event.call, event.result, event.isError);
+    // Like v1 typesRaw.ts, a tool-call-end without a result still ends the call. The Claude CLI sends no result.
+    if (event.t === 'tool-call-end') addResult(event.call, event.result ?? null, event.isError);
   } else if (raw.role === 'agent') {
     const data = record(content.data);
     if (content.type === 'output') {

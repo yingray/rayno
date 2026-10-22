@@ -8,20 +8,50 @@ const output = (data: object) => ({ role: 'agent', content: { type: 'output', da
 const label = (mode: string) => ({ acceptEdits: 'Edits', bypassPermissions: 'Yolo' })[mode] || mode;
 
 describe('tool decisions', () => {
-  it('should pass the permissions field of a Claude tool result to its call', () => {
-    // Arrange: claudeRemoteLauncher.ts adds `permissions` to each answered tool_result.
-    const rows = [row(1, output({ type: 'assistant', uuid: 'a', message: { role: 'assistant', content: [
-      { type: 'tool_use', id: 'toolu_bash', name: 'Bash', input: { command: 'npm test' } }] } })),
-    row(2, output({ type: 'user', uuid: 'b', message: { role: 'user', content: [
-      { type: 'tool_result', tool_use_id: 'toolu_bash', content: 'ok',
-        permissions: { date: 1700000000000, result: 'approved', allowedTools: ['Bash(npm test)'] } }] },
-      toolUseResult: { stdout: 'ok', stderr: '', interrupted: false, isImage: false } }))];
+  it('should read the legacy Claude output records of local and remote mode', () => {
+    // Arrange: older CLIs sent output records. Local mode copied the JSONL record with `toolUseResult`.
+    // Remote mode (claudeRemoteLauncher.ts) added `permissions`, and sdkToLogConverter.ts sent no `toolUseResult`.
+    const use = (seq: number, id: string) => row(seq, output({ type: 'assistant', uuid: `a${seq}`, message: { role: 'assistant', content: [
+      { type: 'tool_use', id, name: 'Bash', input: { command: 'npm test' } }] } }));
+    const rows = [use(1, 'toolu_local'),
+      row(2, output({ type: 'user', uuid: 'b2', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_local', content: 'ok' }] },
+        toolUseResult: { stdout: 'ok', stderr: '', interrupted: false, isImage: false } })),
+      use(3, 'toolu_remote'),
+      row(4, output({ type: 'user', uuid: 'b4', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_remote', content: 'ok',
+        permissions: { date: 1700000000000, result: 'approved', allowedTools: ['Bash(npm test)'] } }] } }))];
     // Act
-    const [message] = visibleMessages(rows);
+    const [local, remote] = visibleMessages(rows).map((message) => message.toolCalls?.[0]);
     // Assert
-    expect(message.toolCalls?.[0]).toMatchObject({ result: { stdout: 'ok' }, resultText: 'ok',
-      permission: { status: 'approved', allowedTools: ['Bash(npm test)'] } });
+    expect(local).toMatchObject({ result: { stdout: 'ok' }, resultText: 'ok' });
+    expect(local?.permission).toBeUndefined();
+    expect(remote).toMatchObject({ result: 'ok', permission: { status: 'approved', allowedTools: ['Bash(npm test)'] } });
     expect(resultPermission({ date: 1, result: 'later' })).toBeUndefined();
+  });
+
+  it('should show the agent-state reply on a current session-protocol tool call', () => {
+    // Arrange: the current CLI maps Claude records to session envelopes (claude/utils/sessionProtocolMapper.ts).
+    // Its tool-call-end carries only `call`, so the reply exists only in agentState.completedRequests.
+    const envelope = (seq: number, ev: object) => row(seq, { role: 'session', content: { id: `cmh${seq}`, time: seq, role: 'agent',
+      turn: 'turn-1', ev }, meta: { sentFrom: 'cli' } });
+    const rows = [
+      envelope(1, { t: 'tool-call-start', call: 'toolu_bash', name: 'Bash', title: 'Run tests', description: 'Run tests',
+        args: { command: 'npm test', description: 'Run tests' } }),
+      envelope(2, { t: 'tool-call-end', call: 'toolu_bash' }),
+      envelope(3, { t: 'tool-call-start', call: 'toolu_question', name: 'AskUserQuestion', title: 'AskUserQuestion call',
+        description: 'AskUserQuestion call', args: { questions: [{ question: 'Go?', header: 'Go', multiSelect: false, options: [] }] } }),
+      envelope(4, { t: 'tool-call-end', call: 'toolu_question' })];
+    const state = { completedRequests: {
+      toolu_bash: { tool: 'Bash', arguments: { command: 'npm test' }, createdAt: 1, completedAt: 2, status: 'approved',
+        allowTools: ['Bash(npm test)'], allowedTools: ['Bash(npm test)'] },
+      toolu_question: { tool: 'AskUserQuestion', arguments: {}, createdAt: 3, completedAt: 4, status: 'denied' },
+    } };
+    // Act
+    const calls = visibleMessages(rows).map((message) => message.toolCalls![0]);
+    const permissions = completedPermissions(state);
+    const summaries = calls.map((call) => permissionSummary(call, permissions.get(call.id)!, label));
+    // Assert
+    expect(calls[0]).toMatchObject({ id: 'toolu_bash', name: 'Run tests', tool: 'Bash', result: null });
+    expect(summaries.map((summary) => summary.label)).toEqual(['Allowed for session', 'Dismissed']);
   });
 
   it('should keep the agent-state reason when the tool result also has a reply', () => {
