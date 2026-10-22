@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import { Button } from '../components/ui';
 import { useDemo } from '../data/store';
 import { messageError } from './errors';
-import { allowsSessionScope, pendingPermissions, record } from './normalize';
+import { allowsSessionScope, pendingCommunications, pendingPermissions, record } from './normalize';
 import type { Json } from './normalize';
 import styles from './requests.module.css';
 import type { Permission } from './normalize';
@@ -16,9 +16,7 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
   const [error, setError] = useState('');
   if (!live || !state) return null;
   const permissions = pendingPermissions(state);
-  const forms = Object.entries(record(state.communications)).filter(
-    ([id]) => !record(state.completedCommunications)[id],
-  );
+  const forms = pendingCommunications(state);
   async function run(id: string, action: () => Promise<void>) {
     if (busy) return;
     setBusy(id);
@@ -70,18 +68,24 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
           )}
         </section>
       ))}
-      {forms.map(([id, form]) =>
-        record(form).kind === 'form' && Array.isArray(record(form).form?.questions) ? (
+      {forms.map((form) =>
+        form.kind === 'form' ? (
           <QuestionForm
-            key={id}
-            form={record(form)}
+            key={form.id}
+            form={{ form: { questions: form.questions } }}
             busy={!!busy || unavailable}
-            onSubmit={(answers) => void run(id, () => live.answerQuestions(sessionId, id, answers))}
+            onSubmit={(answers) => void run(form.id, () => live.answerQuestions(sessionId, form.id, answers, form.kind))}
           />
         ) : (
-          <section className={styles.card} key={id}>
-            <strong>{record(form).title || 'The agent needs a reply'}</strong>
-            <p>Answer this request in the Happy app.</p>
+          <section className={styles.card} key={form.id}>
+            <strong>{form.title || 'Unsupported request'}</strong>
+            <p>Rayno cannot show a “{form.rawKind}” request. Dismiss it so that the agent does not wait for an answer.</p>
+            <div className={styles.actions}>
+              <Button disabled={!!busy || unavailable}
+                onClick={() => void run(form.id, () => live.answerQuestions(sessionId, form.id, null, form.rawKind))}>
+                {busy === form.id ? 'Wait…' : 'Dismiss'}
+              </Button>
+            </div>
           </section>
         ),
       )}
@@ -117,15 +121,13 @@ export function QuestionForm({
         event.preventDefault();
         if (!missing)
           onSubmit(
-            Object.fromEntries(
-              Object.entries(answers).map(([id, answer]) => [
-                id,
-                {
-                  options: answer.options,
-                  ...(answer.custom.trim() ? { custom: answer.custom.trim() } : {}),
-                },
-              ]),
-            ),
+            // Happy Web buildAnswers: blank drafts are not sent, and a single choice keeps one option.
+            Object.fromEntries(questions.flatMap((question) => {
+              const answer = answers[question.id];
+              const options = question.multiSelect ? answer?.options || [] : (answer?.options || []).slice(0, 1);
+              const custom = answer?.custom.trim() || '';
+              return options.length || custom ? [[question.id, { options, ...(custom ? { custom } : {}) }]] : [];
+            })),
           );
       }}
     >
@@ -134,6 +136,7 @@ export function QuestionForm({
           <section key={question.id}>
             <strong>{question.header}</strong>
             <p>{question.question}</p>
+            {question.multiSelect && (question.options || []).length > 1 && <small className={styles.hint}>Choose as many as apply</small>}
             {(question.options || []).map((option: Json) => (
               <label key={option.label} className={styles.option} data-focus-frame>
                 <input

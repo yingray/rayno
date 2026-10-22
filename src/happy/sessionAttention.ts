@@ -1,5 +1,5 @@
 import { partsForMessage } from '../data/messageOptions';
-import { normalizeMessage, subagentOf, type MessageRecord, type SubagentMarks } from './normalize';
+import { messageReceipt, normalizeMessage, subagentOf, type MessageRecord, type SubagentMarks } from './normalize';
 
 export type SessionAttention = {
   readSeq: number;
@@ -36,10 +36,22 @@ export function attentionMessage(row: MessageRecord, marks = noMarks): 'user' | 
   return subagentOf(row, marks) ? null : message.role;
 }
 
-export function receiveAttention(state: SessionAttention, row: MessageRecord, marks = noMarks): SessionAttention {
-  const kind = attentionMessage(row, marks);
-  if (kind === 'user') return { ...state, userSeq: Math.max(state.userSeq, row.seq) };
-  if (kind !== 'assistant') return state;
+// True when the row starts a user turn, with the receipt rules of `visibleMessages`. With `receipts`, a message that
+// expects a receipt starts its turn only with its accepted receipt, at the receipt's seq. A rejected message never does.
+// `sent` finds the row of a receipt ref, so an accepted hidden recap request does not count. An unknown ref counts.
+export function userTurn(row: MessageRecord, receipts = false, sent?: (id: string) => MessageRecord | undefined, marks = noMarks): boolean {
+  const receipt = messageReceipt(row.raw);
+  if (receipt) {
+    const message = receipt.reason === undefined ? sent?.(receipt.ref) : undefined;
+    return receipt.reason === undefined && (!message || attentionMessage(message, marks) === 'user');
+  }
+  return attentionMessage(row, marks) === 'user' && !(receipts && row.raw.meta?.expectsAcceptance === true);
+}
+
+export function receiveAttention(state: SessionAttention, row: MessageRecord, marks = noMarks, receipts = false,
+  sent?: (id: string) => MessageRecord | undefined): SessionAttention {
+  if (userTurn(row, receipts, sent, marks)) return { ...state, userSeq: Math.max(state.userSeq, row.seq) };
+  if (attentionMessage(row, marks) !== 'assistant') return state;
   const message = normalizeMessage(row)!;
   const options = partsForMessage(message).some((part) => part.kind === 'options');
   return { ...state, assistantSeq: Math.max(state.assistantSeq, row.seq),

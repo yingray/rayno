@@ -29,6 +29,9 @@ import {
   isExitPlanTool,
   markSubagents,
   WORKTREE_MARKER,
+  deliveryMeta,
+  messageReceipt,
+  sendsMessageReceipts,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord, SubagentMarks } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -37,7 +40,7 @@ import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
 import { permissionOptions, canSelectPermission, resolveNewSessionPermission, newSessionCatalog } from './permissionOptions';
 import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
-import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
+import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, userTurn, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
 import { imageMime, transferUrl, validateImages } from './attachments';
@@ -113,7 +116,7 @@ export class HappyClient implements DemoAdapter {
   private sessions = new Map<string, SessionRecord>();
   private machines = new Map<string, MachineRecord>();
   private messages = new Map<string, Map<string, MessageRecord>>();
-  private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; messages: Message[] }>();
+  private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; hold: boolean; messages: Message[] }>();
   private historyCursors = new Map<string, number>();
   private deletedSessions = new Set<string>();
   private historyRequests = new Map<string, Promise<void>>();
@@ -203,8 +206,9 @@ export class HappyClient implements DemoAdapter {
             return previous;
           const rows = this.messages.get(id);
           let history = this.visibleHistory.get(id);
-          if (!history || history.source !== rows || history.size !== (rows?.size || 0)) {
-            history = { source: rows, size: rows?.size || 0, messages: visibleMessages([...(rows?.values() || [])]) };
+          const hold = sendsMessageReceipts(source.metadata);
+          if (!history || history.source !== rows || history.size !== (rows?.size || 0) || history.hold !== hold) {
+            history = { source: rows, size: rows?.size || 0, hold, messages: visibleMessages([...(rows?.values() || [])], hold) };
             this.visibleHistory.set(id, history);
           }
           const attention = this.sessionAttention(source.wire.id);
@@ -688,12 +692,15 @@ export class HappyClient implements DemoAdapter {
         if (row) rows.push(row);
       }
       // A subagent stop can come after its rows on a newest-first page, so read the bounds of the full page first.
+      // A receipt can come before its message on the page. Look up the ref in the whole page.
       const marks = this.boundsFor(id, rows);
+      const page = new Map(rows.map((row) => [row.id, row]));
+      const receipts = sendsMessageReceipts(source.metadata);
+      const sent = (ref: string) => page.get(ref) || this.messages.get(id)?.get(ref);
       for (const row of rows) {
-        const kind = attentionMessage(row, marks);
-        foundUser ||= kind === 'user';
-        foundAssistant ||= kind === 'assistant';
-        this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks));
+        foundUser ||= userTurn(row, receipts, sent, marks);
+        foundAssistant ||= attentionMessage(row, marks) === 'assistant';
+        this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks, receipts, sent));
       }
       if (!result.hasMore || reachedBoundary || (foundUser && (foundAssistant || !needAssistant))) break;
       if (next >= cursor) throw new Error('The session activity cursor did not advance.');
@@ -726,11 +733,15 @@ export class HappyClient implements DemoAdapter {
       const value = JSON.parse(this.readLocal(key) || 'null');
       if (Number.isSafeInteger(value?.seq)) saved = value;
     } catch { /* Read the history again. */ }
+    // A rejected receipt has a higher seq than its message, so the newest-first scan sees it first.
+    const rejected = new Set<string>();
     const find = (rows: MessageRecord[]) => {
       for (const row of [...rows].sort((a, b) => b.seq - a.seq)) {
         if (saved && row.seq <= saved.seq) return undefined;
+        const receipt = messageReceipt(row.raw);
+        if (receipt?.reason !== undefined) rejected.add(receipt.ref);
         const message = normalizeMessage(row);
-        if (message?.role === 'user' && message.settings)
+        if (message?.role === 'user' && message.settings && !rejected.has(row.id))
           return { ...message.settings, sentAt: row.createdAt, seq: row.seq };
       }
       return undefined;
@@ -916,7 +927,8 @@ export class HappyClient implements DemoAdapter {
     const marks = this.boundsFor(id, added);
     for (const row of added) {
       session.wire.seq = Math.max(session.wire.seq || 0, row.seq);
-      this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks));
+      this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks, sendsMessageReceipts(session.metadata),
+        (ref) => messages.get(ref)));
     }
     this.saveAttention(id);
     this.scheduleCache(id);
@@ -1190,7 +1202,13 @@ export class HappyClient implements DemoAdapter {
       const levels = effortOptions(metadata, model);
       if (options.effort && !levels.includes(options.effort))
         throw new Error('This model does not support the selected effort. Choose another effort before you send.');
-      const meta = { ...messageMeta(metadata, options, recapMode, recapStyle), ...extraMeta };
+      const pendingSend = this.snapshot.sessions.find((session) => session.id === id)?.messages
+        .some((message) => message.delivery?.status === 'pending') === true;
+      const meta = {
+        ...messageMeta(metadata, options, recapMode, recapStyle),
+        ...deliveryMeta(metadata, source.agentState, !!(source.thinking ?? source.agentState.thinking), pendingSend),
+        ...extraMeta,
+      };
       if (options.model && model !== currentModel(metadata) && !levels.length) {
         if (isRig(metadata)) delete meta.effort;
         else meta.effort = null;

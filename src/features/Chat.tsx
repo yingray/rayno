@@ -4,7 +4,7 @@ import { Avatar, Button, copyText, Dialog, Empty, Icon, Spinner } from '../compo
 import { WorkspaceTag } from '../components/WorkspaceTag';
 import { useDemo } from '../data/store';
 import { modelOptions, effortOptions, effortLabel, canSelectModel } from '../happy/modelOptions';
-import { currentPermission, pendingPermissions, record, type Json } from '../happy/normalize';
+import { currentPermission, pendingCommunications, pendingPermissions, type Json } from '../happy/normalize';
 import { permissionOptions, permissionLabel, canSelectPermission } from '../happy/permissionOptions';
 import { messageError } from '../happy/errors';
 import { titleOf } from '../data/reducer';
@@ -21,7 +21,7 @@ import { ChatSessionMenu } from './ChatSessionMenu';
 import { needsSessionResume } from '../happy/resume';
 import { ChatHistoryStatus } from './ChatHistoryStatus';
 import { questionDemoId } from '../data/questionDemo';
-import { hasAgentReply, hasOpenRecapRequest, unansweredMessageIds } from '../data/replyTurns';
+import { hasAgentReply, hasOpenRecapRequest, isRejected, unansweredMessageIds } from '../data/replyTurns';
 import { stopRecapSpeech } from './recapSpeech';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
@@ -42,8 +42,7 @@ const sampleFiles: Record<string, string> = {
 const files = Object.keys(sampleFiles);
 
 function hasAgentRequests(state: Json = {}) {
-  return pendingPermissions(state).length > 0 || Object.keys(record(state.communications))
-    .some((id) => !record(state.completedCommunications)[id]);
+  return pendingPermissions(state).length > 0 || pendingCommunications(state).length > 0;
 }
 
 export const Chat = memo(function Chat({
@@ -73,6 +72,8 @@ export const Chat = memo(function Chat({
   const pendingRef = useRef(false);
   const stoppingRef = useRef(false);
   const answeredOptions = useRef(new Set<string>());
+  // A held Happy Agent answer does not answer its options yet. Keep the chosen options disabled until a rejection.
+  const [answeredIds, setAnsweredIds] = useState<ReadonlySet<string>>(() => new Set());
   const metadata: Json = useMemo(() => mode === 'live' ? liveMetadata || {}
     : { flavor: session.agent === 'Happy Agent' ? 'rig' : session.agent.toLowerCase() }, [mode, liveMetadata, session.agent]);
   const location = useLocation();
@@ -151,6 +152,12 @@ export const Chat = memo(function Chat({
     session.status === 'offline' ||
     (mode === 'live' && connection !== 'connected');
   const unansweredMessages = useMemo(() => unansweredMessageIds(session.messages), [session.messages]);
+  const rejections = useMemo(() => session.messages.filter(isRejected).length, [session.messages]);
+  useEffect(() => {
+    if (!rejections || !answeredOptions.current.size) return;
+    answeredOptions.current.clear();
+    setAnsweredIds(new Set());
+  }, [rejections]);
   const openRecap = useMemo(() => hasOpenRecapRequest(session.messages), [session.messages]);
   const canRecap = useMemo(() => hasAgentReply(session.messages), [session.messages]);
   // An open request without a working agent stays open. The user can then ask again.
@@ -337,6 +344,7 @@ export const Chat = memo(function Chat({
     try {
       await adapter.sendMessage(session.id, text, [], { ...messageSettings, preserveDraft: true });
       answeredOptions.current.add(messageId);
+      setAnsweredIds(new Set(answeredOptions.current));
     } catch (error) {
       setError(messageError(error));
     } finally {
@@ -420,6 +428,8 @@ export const Chat = memo(function Chat({
             role="region"
             aria-label="Conversation messages"
             className={styles.messageScroll}
+            // Focus and scrollIntoView keep a control above the composer that overlays the bottom of the list.
+            style={{ scrollPaddingBottom: `${composerHeight + keyboardInset}px` }}
             ref={scroll}
             onScroll={(event) => updateScrollPosition(event.currentTarget)}
             onPointerDownCapture={(event) => {
@@ -444,7 +454,7 @@ export const Chat = memo(function Chat({
                 retry={() => void live?.loadHistory(session.id, history?.direction).catch(() => {})}
                 loadEarlier={() => void live?.loadHistory(session.id, 'older').catch(() => {})} />
               {session.messages.length ? (
-                <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending}
+                <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending} answered={answeredIds}
                   running={running} recapBusy={recapBusy} scroll={scroll} railHost={railHost}
                   onOption={chooseReply} onRecap={requestRecap} onUnpin={unpin} /></LazyBoundary>
               ) : !history?.loading && (!history?.error || offline) ? (

@@ -1353,6 +1353,23 @@ describe('Happy client damaged records', () => {
     expect(client.getSnapshot().sessions[0].unread).toBe(true);
     expect(modes).toMatchObject({ permissionMode: 'plan', seq: 1 });
   });
+  it('should skip a message that the agent rejected when it finds the sent modes', async () => {
+    // Arrange
+    await start();
+    const wire = async (id: string, seq: number, raw: Json) => ({ id, seq, createdAt: 100 + seq,
+      content: { t: 'encrypted', c: await client.encryption.encrypt(raw, null) } });
+    const page = [
+      await wire('refusal', 3, { role: 'session', content: { id: 'refused:refused', time: 3000, role: 'agent',
+        ev: { t: 'user-message-rejected', ref: 'refused', reason: 'That model is not available.' } }, meta: { sentFrom: 'rig' } }),
+      await wire('refused', 2, { role: 'user', content: { type: 'text', text: 'Try it' }, meta: { permissionMode: 'read-only', expectsAcceptance: true } }),
+      await wire('sent', 1, { role: 'user', content: { type: 'text', text: 'Plan it' }, meta: { permissionMode: 'plan', expectsAcceptance: true } }),
+    ];
+    fetchMock.mockImplementation(async () => response({ messages: page, hasMore: false }));
+    // Act
+    const modes = await client.findSentModes('session');
+    // Assert
+    expect(modes).toMatchObject({ permissionMode: 'plan', seq: 1 });
+  });
   it('should restore the readable cached records around a damaged record key', async () => {
     // Arrange
     client.dispose();

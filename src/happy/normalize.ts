@@ -114,6 +114,46 @@ export function allowsSessionScope(tool: string): boolean {
 export const isExitPlanTool = (tool: string) => tool === 'ExitPlanMode' || tool === 'exit_plan_mode';
 // Happy Web utils/worktreePaths.ts: the path marker of a Happy-created git worktree.
 export const WORKTREE_MARKER = '/.dev/worktree/';
+// Happy Web sync/agentCommunications.ts: only `form` is answerable. Other kinds stay visible so the user can dismiss them.
+export type PendingCommunication = { id: string; createdAt: number } & (
+  | { kind: 'form'; questions: Json[] }
+  | { kind: 'unsupported'; rawKind: string; title: string | null });
+export function pendingCommunications(state: Json): PendingCommunication[] {
+  const completed = record(state.completedCommunications);
+  return Object.entries(record(state.communications)).flatMap(([id, value]): PendingCommunication[] => {
+    const communication = record(value);
+    if (completed[id]) return [];
+    const createdAt = typeof communication.createdAt === 'number' ? communication.createdAt : 0;
+    if (communication.kind !== 'form')
+      return [{ id, createdAt, kind: 'unsupported', rawKind: text(communication.kind, 'unknown'), title: text(communication.title) || null }];
+    // A question is answerable when it offers options or accepts written text. A form without one has nothing to show.
+    const questions = (Array.isArray(communication.form?.questions) ? communication.form.questions : [])
+      .map((question: unknown) => record(question))
+      .filter((question: Json) => typeof question.id === 'string')
+      .map((question: Json) => ({ ...question, options: Array.isArray(question.options) ? question.options : [] }))
+      .filter((question: Json) => question.options.length > 0 || question.allowCustom !== false);
+    return questions.length ? [{ id, createdAt, kind: 'form', questions }] : [];
+  }).sort((a, b) => a.createdAt - b.createdAt);
+}
+// Happy Web sync/rig.ts rigSendsMessageReceipts: strict, because a held message waits for a receipt.
+export const sendsMessageReceipts = (metadata: Json) =>
+  metadata.client?.id === 'rig' && (metadata.rigMetadataVersion ?? 0) >= 1 && metadata.capabilities?.messageReceipts === true;
+// Happy Web sync/messageMeta.ts resolveMessageDeliveryMeta. A pending question does not hold a new message.
+export function deliveryMeta(metadata: Json, state: Json, thinking: boolean, hasPendingMessage: boolean): Json {
+  if (!sendsMessageReceipts(metadata)) return {};
+  const busy = Object.keys(record(state.requests)).length > 0 || (!pendingCommunications(state).length && thinking);
+  return { expectsAcceptance: true, queuedWhileBusy: hasPendingMessage || busy };
+}
+// A `user-message-accepted` or `user-message-rejected` receipt. `ref` is the server ID of the user message.
+export function messageReceipt(raw: Json): { ref: string; reason?: string } | null {
+  const content = record(raw.content);
+  const envelope = raw.role === 'session' ? record(content.type === 'session' ? content.data : content)
+    : content.type === 'session' ? record(content.data) : null;
+  const event = envelope ? record(envelope.ev) : raw.role === 'agent' && content.type === 'event' ? record(content.data) : {};
+  const type = envelope ? event.t : event.type;
+  if (typeof event.ref !== 'string' || (type !== 'user-message-accepted' && type !== 'user-message-rejected')) return null;
+  return type === 'user-message-rejected' ? { ref: event.ref, reason: text(event.reason) } : { ref: event.ref };
+}
 export function normalizeSession(
   source: SessionRecord,
   messages: Message[],
@@ -131,9 +171,7 @@ export function normalizeSession(
     m.workspace?.name,
     worktreeIndex < 0 ? '' : path.slice(worktreeIndex + WORKTREE_MARKER.length),
   );
-  const pending =
-    pendingPermissions(a).length ||
-    Object.keys(record(a.communications)).some((id) => !record(a.completedCommunications)[id]);
+  const pending = pendingPermissions(a).length || pendingCommunications(a).length;
   return {
     id: wire.id,
     title: text(m.summary?.text, path.split('/').filter(Boolean).pop() || 'Untitled session'),
@@ -387,7 +425,9 @@ export function subagentOf(row: MessageRecord, marks: SubagentMarks): string | u
 const shows = (message: Message) => !!(message.content.trim() || message.tools?.length || message.attachments?.length);
 const onlyThinking = (message: Message) => message.role === 'assistant' && !!message.thinking && !shows(message)
   && !message.toolResults?.length && !message.settings;
-export function visibleMessages(rows: MessageRecord[]): Message[] {
+// Happy Web sync/reducer/reducer.ts: a receipt puts its user message at the place where the agent took it.
+// With `holdUntilAccepted`, a message that expects a receipt stays pending at the end until the receipt comes.
+export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false): Message[] {
   const seen = new Set<string>();
   const sorted = [...rows]
     .sort((a, b) => a.seq - b.seq)
@@ -400,15 +440,31 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
   const marks = markSubagents(new Map(), sorted);
   const reasoning = new Set(sorted.map(row => reasoningCall(record(row.raw))).filter((id): id is string => id !== undefined));
   // Like the v1 reducer, subagent rows go under the tool call that names them in `sessionSubagent`.
-  const messages: Message[] = [];
+  const receipts = new Map<string, { seq: number; reason?: string }>();
+  for (const row of sorted) {
+    const receipt = messageReceipt(record(row.raw));
+    if (receipt && !receipts.has(receipt.ref)) receipts.set(receipt.ref, { seq: row.seq, reason: receipt.reason });
+  }
+  const settle = (row: MessageRecord, message: Message): { at: number; message: Message } => {
+    if (message.role !== 'user') return { message, at: row.seq };
+    const receipt = receipts.get(row.id);
+    if (receipt) return { at: receipt.seq, message: receipt.reason === undefined ? message
+      : { ...message, delivery: { status: 'rejected' as const, reason: receipt.reason } } };
+    const meta = record(record(row.raw).meta);
+    if (holdUntilAccepted && meta.expectsAcceptance === true) return { at: Number.MAX_SAFE_INTEGER, message: {
+      ...message, delivery: { status: 'pending' as const, queued: meta.queuedWhileBusy === true, since: row.createdAt },
+    } };
+    return { message, at: row.seq };
+  };
+  const placed: { at: number; message: Message }[] = [];
   const work = new Map<string, { seq: number; message: Message }[]>();
   const seqs = new WeakMap<Message, number>();
   const standalone = new WeakSet<Message>();
   for (const row of sorted) {
-    const message = normalizeMessage(row);
-    if (!message) continue;
+    const normalized = normalizeMessage(row);
+    if (!normalized) continue;
     const subagent = subagentOf(row, marks);
-    if (!subagent) { messages.push(message); seqs.set(message, row.seq); continue; }
+    if (!subagent) { const item = settle(row, normalized); placed.push(item); seqs.set(item.message, row.seq); continue; }
     let list = work.get(subagent);
     if (!list) {
       work.set(subagent, list = []);
@@ -416,10 +472,11 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
       const name = marks.get(subagent)?.title || 'Subagent';
       const holder: Message = { id: `subagent:${subagent}`, role: 'assistant', content: '', tools: [name], toolCalls: [{ id: subagent, name }] };
       standalone.add(holder);
-      messages.push(holder);
+      placed.push({ at: row.seq, message: holder });
     }
-    list.push({ seq: row.seq, message });
+    list.push({ seq: row.seq, message: normalized });
   }
+  const messages = placed.sort((a, b) => a.at - b.at).map(({ message }) => message);
   const results = new Map([...messages, ...[...work.values()].flat().map(item => item.message)]
     .flatMap(message => (message.toolResults || []).map(result => [result.id, result] as const)));
   const matched = new Set<string>();

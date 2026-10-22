@@ -34,6 +34,8 @@ export type Message = {
   recapRequest?: boolean;
   // The agent's own plan-mode tool call, its call id, and the server time of its message.
   planMode?: { active: boolean; call: string; at: number };
+  // Happy Agent send state of a user message. An accepted message has none.
+  delivery?: { status: 'pending'; queued: boolean; since: number } | { status: 'rejected'; reason: string };
 };
 export type Session = {
   id: string;

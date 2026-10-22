@@ -23,7 +23,7 @@ describe('Session attention', () => {
     expect(restoreAttention('{broken', 12).readSeq).toBe(12);
     expect(restoreAttention(JSON.stringify({ ...incoming, readSeq: -1 }), 12).readSeq).toBe(12);
   });
-  it('should ignore tool activity and hidden receipts and not revive an old reply', () => {
+  it('should ignore tool activity, not count a receipt as a reply, and not revive an old reply', () => {
     // Arrange
     const state = receiveAttention(restoreAttention(null, 20), row(18, 'An old reply'));
     const tool: MessageRecord = { ...row(21, ''), raw: { role: 'session', content: {
@@ -35,7 +35,9 @@ describe('Session attention', () => {
     // Act / Assert
     expect(attentionMessage(tool)).toBeNull();
     expect(attentionMessage(receipt)).toBeNull();
-    expect(receiveAttention(receiveAttention(state, tool), receipt)).toEqual(state);
+    expect(receiveAttention(state, tool)).toEqual(state);
+    // The accepted receipt places its message at the receipt, as visibleMessages does.
+    expect(receiveAttention(state, receipt)).toEqual({ ...state, userSeq: 22 });
     expect(receiveAttention(state, row(5, 'History')).assistantSeq).toBe(18);
   });
   it('should keep real options pending until a later user reply and exclude code examples', () => {
