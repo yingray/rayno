@@ -42,6 +42,8 @@ import { RECAP_REQUEST } from './systemPrompt';
 import type { Message } from '../data/types';
 
 const emptyJson: Json = Object.freeze({});
+// Happy CLI handlers for these methods return void, so a successful reply is an empty plaintext.
+const voidRpcMethods = new Set(['abort', 'switch', 'permission']);
 // An incremental session read starts this far before the newest server update
 // that the client has seen, so a late commit with an older timestamp is not lost.
 const SESSION_CHANGE_OVERLAP = 30000;
@@ -924,7 +926,7 @@ export class HappyClient implements DemoAdapter {
     this.assertAlive();
     if (!result.ok) throw new Error(result.error || 'The agent refused this request.');
     const response = await this.encryption.decrypt<Json | null>(result.result, source.key, {
-      allowEmpty: method === 'abort',
+      allowEmpty: voidRpcMethods.has(method),
     });
     if (typeof response?.error === 'string') throw new Error(response.error);
     return response ?? {};
@@ -1340,7 +1342,7 @@ export class HappyClient implements DemoAdapter {
     await this.rpc(id, 'permission', {
       id: requestId, approved,
       decision: approved ? sessionScope && codex ? 'approved_for_session' : 'approved' : 'denied',
-      ...(approved && sessionScope && !codex ? { allowedTools: [tool] } : {}),
+      ...(approved && sessionScope && !codex ? { allowTools: [tool] } : {}),
       ...(updatedInput ? { updatedInput } : {}),
     });
     this.acknowledged.add(key);

@@ -307,6 +307,8 @@ export class HappyServer {
           if (payload.method.endsWith(':bash') && !usageRead) this.bashCommands.push(params);
           let result: unknown = payload.method.endsWith(':abort') ? this.abortReply : {};
           if (payload.method.endsWith(':permission')) {
+            // The CLI permission handler returns void, which encrypts as an empty plaintext.
+            result = undefined;
             this.permissionReplies++;
             this.permissionPayloads.push(params);
             const session = this.sessions.find((session) => session.id === payload.method.split(':')[0])!;

@@ -150,7 +150,7 @@ export class HappyCrypto {
         bytes.slice(13),
       ));
     }
-    // Older CLI stop handlers encrypt undefined as an empty plaintext.
+    // CLI handlers that return void encrypt JSON.stringify(undefined) as an empty plaintext.
     if (options.allowEmpty && plain.length === 0) return null as T;
     return JSON.parse(decoder.decode(plain)) as T;
   }

@@ -155,6 +155,37 @@ describe('Happy client protocol', () => {
     await expect(client.stopSession('session')).resolves.toBeUndefined();
     expect(socket.emitWithAck).toHaveBeenCalledWith('rpc-call', expect.objectContaining({ method: 'session:abort' }));
   });
+  it.each([
+    ['Allow for session', { tool: 'Bash', arguments: { command: 'npm test' } }, true, true, undefined,
+      { id: 'tool-1', approved: true, decision: 'approved', allowTools: ['Bash(npm test)'] }],
+    ['Deny', { tool: 'Edit', arguments: { file_path: 'a.ts' } }, false, false, undefined,
+      { id: 'tool-1', approved: false, decision: 'denied' }],
+    ['an AskUserQuestion answer', { tool: 'AskUserQuestion', arguments: { questions: [] } }, true, false, { answers: { Q: 'A' } },
+      { id: 'tool-1', approved: true, decision: 'approved', updatedInput: { answers: { Q: 'A' } } }],
+  ])('should complete %s when the CLI permission handler returns void', async (_name, request, approved, scope, updatedInput, sent) => {
+    // Arrange: claude/utils/permissionHandler.ts stores requests[id] = { tool, arguments, createdAt }.
+    session.agentState = await client.encryption.encrypt({ requests: { 'tool-1': { ...request, createdAt: 1 } } }, null);
+    await start();
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt(undefined, null) });
+    // Act
+    await client.respondPermission('session', 'tool-1', approved, scope, updatedInput);
+    // Assert
+    const [, payload] = socket.emitWithAck.mock.calls.find(([event]) => event === 'rpc-call')!;
+    expect(payload.method).toBe('session:permission');
+    expect(await client.encryption.decrypt(payload.params, null)).toEqual(sent);
+    expect(client.getAgentState('session').requests).toEqual({});
+  });
+  it('should reject a damaged permission reply and keep the request open', async () => {
+    // Arrange
+    session.agentState = await client.encryption.encrypt({ requests: { 'tool-1': { tool: 'Read', arguments: {}, createdAt: 1 } } }, null);
+    await start();
+    const damaged = Uint8Array.from(atob(await client.encryption.encrypt(undefined, null)), (char) => char.charCodeAt(0));
+    damaged[damaged.length - 1] ^= 1;
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: base64(damaged) });
+    // Act / Assert
+    await expect(client.respondPermission('session', 'tool-1', true)).rejects.toThrow();
+    expect(Object.keys(client.getAgentState('session').requests)).toEqual(['tool-1']);
+  });
   it('should report an encrypted stop failure and reject empty replies for data requests', async () => {
     // Arrange
     await start();
