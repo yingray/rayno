@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { HappyServer } from './fixtures/HappyServer';
 import { TranscriptPage } from './pages/TranscriptPage';
-import { agentSubagentWork } from '../src/happy/subagentEnvelopes.fixture';
+import { agentSubagentWork, codexCollabTurn } from '../src/happy/subagentEnvelopes.fixture';
 
 const phones = [[320, 740], [360, 800], [390, 844], [430, 932], [390, 360], [844, 390]];
 const answer = 'The config is config.json.';
@@ -63,6 +63,37 @@ test('subagent work and thinking should stay collapsed while the main answer and
   await expect(page.getByText('Now answer the user.', { exact: true })).toBeHidden();
   expect(server.sends).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+test('Codex subagent work should show once under the spawn call and not under the wait call', async ({ page }, testInfo) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  await server.setWorking(false);
+  await server.setMessages(codexCollabTurn);
+  const chat = new TranscriptPage(page);
+  const touch = !!testInfo.project.use.hasTouch;
+  // Act
+  await chat.openChat('The auth handler is in src/auth.ts.');
+  await chat.expandToolGroup(0);
+  const spawn = chat.toolRow('Inspect auth flow'), wait = chat.toolRow('Wait for Codex subagent');
+  await chat.toggle(spawn, touch);
+  await chat.toggle(wait, touch);
+  // Assert
+  await expect(chat.toolGroups().getByRole('button').first()).toContainText('· 2 tools');
+  await expect(chat.subagentWork()).toHaveCount(2);
+  await expect(chat.subagentWork().first().getByRole('listitem')).toHaveText([
+    'Read the login handler.', 'Run `rg login`', 'Found the auth handler. <options><option>Child option</option></options>',
+  ]);
+  await expect(chat.subagentWork().last().getByRole('listitem')).toHaveText(['Codex subagent completed: found auth handler']);
+  await expect(page.getByText(/Found the auth handler/)).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Child option', exact: true })).toHaveCount(0);
+  await expect(chat.replyOptions().getByRole('button', { name: 'Open it', exact: true })).toBeVisible();
+  for (const [width, height] of touch ? phones : [[1440, 900]]) {
+    await page.setViewportSize({ width, height });
+    for (const summary of [spawn, wait]) await chat.expectTarget(summary, touch);
+    await chat.expectNoPageOverflow();
+  }
 });
 
 test('options from a running subagent should not ask for input until the main answer offers them', async ({ page }) => {
