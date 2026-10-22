@@ -129,6 +129,21 @@ describe('tool result views', () => {
     expect(views[3][0]).toEqual({ kind: 'todos', items: [{ content: 'Write tests', status: 'in_progress' }] });
   });
 
+  it('should show the raw result of a todo list that TodoView does not accept', () => {
+    // Arrange
+    const loose = call('TodoWrite', { oldTodos: [], newTodos: [{ content: 'No status' }] },
+      { input: { todos: [{ content: 'Old task state', status: 'pending' }] }, resultText: 'Todos have been modified successfully.' });
+    const invalid = call('TodoWrite', { newTodos: [{ content: 'Wrong status', status: 'done' }] }, { input: { todos: [{ content: 'Wrong', status: 'done' }] } });
+    const empty = call('TodoWrite', { oldTodos: [{ content: 'Old task state', status: 'pending' }], newTodos: [] });
+    // Act
+    const views = [loose, invalid, empty].map(toolSections);
+    // Assert
+    expect(views[0]).toEqual([{ kind: 'todos', items: [{ content: 'Old task state', status: 'pending' }] },
+      { kind: 'text', label: 'Result', text: 'Todos have been modified successfully.', error: false }]);
+    expect(views[1]).toEqual([{ kind: 'text', label: 'Result', text: '{\n  "newTodos": [\n    {\n      "content": "Wrong status",\n      "status": "done"\n    }\n  ]\n}', error: false }]);
+    expect(views[2]).toEqual([]);
+  });
+
   it('should list AskUserQuestion answers by question', () => {
     // Arrange
     const question = call('AskUserQuestion', {

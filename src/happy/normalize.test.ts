@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   markSubagents,
+  restoreBoundsRange,
+  restoreSubagentMarks,
+  saveSubagentMarks,
+  subagentOf,
+  trustedSubagentMarks,
   contextUsage,
   messageMeta,
   normalizeMachine,
@@ -639,6 +644,43 @@ describe('Subagent work in session envelopes', () => {
     expect(markSubagents(new Map(), rows).get('c744020fe7d250cca47a5ae1')).toEqual({
       title: 'Find config', bounds: new Map([[rows[4].seq, true], [rows[stop].seq, false]]),
     });
+  });
+  it('should restore saved bounds so rows of a running subagent stay out of the main thread on a later page', () => {
+    // Arrange
+    const rows = rowsOf(agentSubagentWork);
+    const stop = rows.findIndex((item) => item.raw.content.ev.t === 'stop');
+    const saved = JSON.parse(JSON.stringify(saveSubagentMarks(markSubagents(new Map(), rows.slice(0, stop - 1)))));
+    // Act
+    const restored = restoreSubagentMarks([...saved, { id: 'damaged', bounds: [[-1, true], ['5', false]] }, { bounds: [[1, true]] }, 'broken']);
+    // Assert
+    expect(saved).toEqual([{ id: 'c744020fe7d250cca47a5ae1', title: 'Find config', bounds: [[rows[4].seq, true]] }]);
+    expect([...restored.keys()]).toEqual(['c744020fe7d250cca47a5ae1']);
+    expect(subagentOf(rows[stop - 1], restored)).toBe('c744020fe7d250cca47a5ae1');
+    expect(subagentOf(rows[stop - 1], new Map())).toBeUndefined();
+    expect(subagentOf(rows[stop + 3], markSubagents(restored, rows.slice(stop + 3)))).toBe('c744020fe7d250cca47a5ae1');
+    expect(subagentOf(rows[stop + 3], markSubagents(restored, rows.slice(stop)))).toBeUndefined();
+  });
+  it('should drop an open start below the read range so a tagged main answer after an unread stop stays main', () => {
+    // Arrange
+    const rows = rowsOf(agentSubagentWork);
+    const start = rows.findIndex((item) => item.raw.content.ev.t === 'start');
+    const stop = rows.findIndex((item) => item.raw.content.ev.t === 'stop');
+    const answer = rows.findIndex((item) => item.raw.content.ev.text?.startsWith('The config is config.json.'));
+    const open = markSubagents(new Map(), rows.slice(0, stop));
+    const closed = markSubagents(new Map(), rows);
+    // Act
+    const unread = trustedSubagentMarks(open, rows[stop + 1].seq);
+    const read = trustedSubagentMarks(open, rows[start].seq);
+    // Assert
+    expect(subagentOf(rows[answer], open)).toBe('c744020fe7d250cca47a5ae1');
+    expect(subagentOf(rows[answer], unread)).toBeUndefined();
+    expect(subagentOf(rows[stop - 1], read)).toBe('c744020fe7d250cca47a5ae1');
+    expect(read).toBe(open);
+    // A known stop closes the range, so the bounds count from any read range.
+    expect(trustedSubagentMarks(closed, rows[answer].seq)).toBe(closed);
+    expect(subagentOf(rows[answer], closed)).toBeUndefined();
+    expect([restoreBoundsRange([0, 9]), restoreBoundsRange([9, 3]), restoreBoundsRange([-1, 3]), restoreBoundsRange('0-9')])
+      .toEqual([{ from: 0, to: 9 }, undefined, undefined, undefined]);
   });
 });
 describe('Agent envelopes without a turn', () => {

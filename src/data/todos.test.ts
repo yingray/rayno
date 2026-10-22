@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { visibleMessages, type MessageRecord } from '../happy/normalize';
-import { latestTodos, todoItems, todoProgress, todoRowList, toolTodos } from './todos';
+import { markSubagents, visibleMessages, type MessageRecord } from '../happy/normalize';
+import { latestTodos, resultTodos, sameTodos, todoItems, todoProgress, todoRowList, toolTodos } from './todos';
 
 const row = (id: string, seq: number, raw: object): MessageRecord => ({ id, seq, raw, createdAt: 1000 + seq });
 const claude = { userType: 'external', cwd: '/Users/steve/Develop/slopus/happy-cli', sessionId: '2c74184e-6979-476d-a52f-0ac183bffe3a',
@@ -105,6 +105,45 @@ describe('todo list', () => {
     expect(latestTodos(done).map(todo => todo.content)).toEqual(['Main step', 'Main follow-up']);
   });
 
+  it('should skip a subagent TodoWrite whose start is only in the bounds that the client read before', () => {
+    // Arrange
+    const subagent = { subagent: 'c744020fe7d250cca47a5ae1' };
+    const older = [
+      row('agent', 3, envelope({ t: 'tool-call-start', call: 'toolu_agent', name: 'Agent', title: 'Find config', description: 'Find config',
+        args: { description: 'Find config', prompt: 'Find the config file.', subagent_type: 'general-purpose', sessionSubagent: subagent.subagent } })),
+      row('sub-start', 4, envelope({ t: 'start', title: 'Find config' }, subagent)),
+    ];
+    const main = [{ content: 'Main step', status: 'in_progress', activeForm: 'Doing the main step' }];
+    const child = [{ content: 'Subagent step', status: 'in_progress', activeForm: 'Doing the subagent step' }];
+    const loaded = [...todoCall('toolu_child', 5, child, subagent)];
+    const finished = [...loaded, row('sub-stop', 7, envelope({ t: 'stop' }, subagent)), ...todoCall('toolu_after', 8, main, subagent)];
+    const known = markSubagents(new Map(), older);
+    // Act
+    const running = visibleMessages(loaded);
+    // Assert
+    // The loaded page has no bound, so the call shows as a main row. The client bounds still keep it off the chip.
+    expect(running.flatMap(message => message.toolCalls || []).map(call => call.id)).toEqual(['toolu_child']);
+    expect(latestTodos(running)).toHaveLength(1);
+    expect(latestTodos(running, loaded, known)).toEqual([]);
+    expect(latestTodos(visibleMessages(finished), finished, known).map(todo => todo.content)).toEqual(['Main step']);
+    expect(known.get(subagent.subagent)?.bounds.size).toBe(1);
+  });
+  it('should keep a main TodoWrite after an unread subagent stop on the chip', () => {
+    // Arrange
+    const subagent = { subagent: 'c744020fe7d250cca47a5ae1' };
+    const known = markSubagents(new Map(), [row('sub-start', 4, envelope({ t: 'start', title: 'Find config' }, subagent))]);
+    const main = [{ content: 'Main step', status: 'in_progress', activeForm: 'Doing the main step' }];
+    // The stop is at seq 7, on a page that the client did not read. The mapper tags the main call after it.
+    const loaded = todoCall('toolu_after', 8, main, subagent);
+    // Act
+    const unread = latestTodos(visibleMessages(loaded), loaded, known, 8);
+    const read = latestTodos(visibleMessages(loaded), loaded, known, 4);
+    // Assert
+    expect(unread.map(todo => todo.content)).toEqual(['Main step']);
+    // When the client read every row from the start, no stop came before the call, so it is subagent work.
+    expect(read).toEqual([]);
+  });
+
   it('should clear the list after the CLI context reset event', () => {
     // Arrange
     const rows = [
@@ -127,6 +166,33 @@ describe('todo list', () => {
     expect(todoItems([{ id: '1', content: 'Fix errors', status: 'completed', priority: 'high' }]))
       .toEqual([{ id: '1', content: 'Fix errors', status: 'completed', priority: 'high' }]);
     expect(toolTodos({ id: 'x', name: 'TodoWrite', input: { todos: invalid } })).toEqual([]);
+  });
+
+  it('should keep the previous list when the items are the same', () => {
+    // Arrange
+    const previous = [{ content: 'Main step', status: 'in_progress' as const }];
+    // Act
+    const same = sameTodos(previous, [{ content: 'Main step', status: 'in_progress' }]);
+    const changed = sameTodos(previous, [{ content: 'Main step', status: 'completed' }]);
+    // Assert
+    expect(same).toBe(previous);
+    expect(changed).toEqual([{ content: 'Main step', status: 'completed' }]);
+    expect(sameTodos(undefined, [])).toBe(sameTodos(previous, []));
+  });
+  it('should parse the input and the result as TodoView does', () => {
+    // Arrange
+    const input = { todos: [{ content: 'From the input', status: 'pending' }] };
+    const call = { id: 'toolu_todo', name: 'TodoWrite', input, ended: true };
+    const next = [{ content: 'From the result', status: 'completed', activeForm: 'Finishing' }];
+    // Act / Assert
+    expect(toolTodos({ ...call, result: { oldTodos: input.todos, newTodos: next } })).toEqual([{ content: 'From the result', status: 'completed' }]);
+    expect(toolTodos({ ...call, result: { oldTodos: [{ content: 'Old', status: 'done' }], newTodos: next } })).toEqual(input.todos);
+    expect(toolTodos({ ...call, result: { newTodos: [{ content: 'No status' }] } })).toEqual(input.todos);
+    expect(toolTodos({ ...call, result: 'Todos have been modified successfully.' })).toEqual(input.todos);
+    expect(toolTodos({ ...call, result: { oldTodos: input.todos, newTodos: [] } })).toEqual([]);
+    expect(toolTodos({ ...call, input: { todos: null } })).toEqual([]);
+    expect(resultTodos({ oldTodos: [] })).toBeNull();
+    expect(resultTodos([next])).toBeNull();
   });
 
   it('should show the raw values of a TodoWrite row without a valid list or with an error', () => {

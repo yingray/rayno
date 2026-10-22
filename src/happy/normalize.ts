@@ -420,6 +420,46 @@ export function markSubagents(marks: SubagentMarks, rows: Iterable<MessageRecord
   }
   return marks;
 }
+// The plain JSON shape of subagent bounds for the encrypted offline cache: [seq, true for a start] pairs.
+export type SavedSubagent = { id: string; title?: string; bounds: [number, boolean][] };
+export function saveSubagentMarks(marks: SubagentMarks): SavedSubagent[] {
+  return [...marks].map(([id, entry]) => ({ id, ...(entry.title ? { title: entry.title } : {}), bounds: [...entry.bounds] }));
+}
+// A damaged entry or bound is dropped. Without a bound, a row stays in the main thread.
+export function restoreSubagentMarks(value: unknown, marks: SubagentMarks = new Map()): SubagentMarks {
+  for (const item of Array.isArray(value) ? value : []) {
+    const saved = record(item), id = saved.id;
+    if (typeof id !== 'string' || !id || !Array.isArray(saved.bounds)) continue;
+    const bounds = saved.bounds.filter((bound: unknown): bound is [number, boolean] => Array.isArray(bound) && bound.length === 2
+      && Number.isSafeInteger(bound[0]) && bound[0] >= 0 && typeof bound[1] === 'boolean');
+    if (!bounds.length) continue;
+    let entry = marks.get(id);
+    if (!entry) marks.set(id, entry = { bounds: new Map() });
+    for (const [seq, start] of bounds) entry.bounds.set(seq, start);
+    if (!entry.title && typeof saved.title === 'string' && saved.title.trim()) entry.title = saved.title.trim();
+  }
+  return marks;
+}
+// The seq range in which the client read every row, so it knows every subagent bound in that range.
+export type BoundsRange = { from: number; to: number };
+export function restoreBoundsRange(value: unknown): BoundsRange | undefined {
+  if (!Array.isArray(value) || value.length !== 2) return undefined;
+  const [from, to] = value;
+  return Number.isSafeInteger(from) && Number.isSafeInteger(to) && from >= 0 && from <= to ? { from, to } : undefined;
+}
+// The bounds that can classify rows at `from` or later. The stop of a start below `from` can be in rows that the client
+// did not read, and the mapper tags the main rows after a stop with the subagent id. So when no stop is known, the start
+// does not count, and its tagged rows stay main rows: a main answer is never hidden.
+export function trustedSubagentMarks(marks: SubagentMarks, from: number): SubagentMarks {
+  let trusted: SubagentMarks | undefined;
+  for (const [id, entry] of marks) {
+    const bounds = [...entry.bounds];
+    if (bounds.some(([, start]) => !start) || !bounds.some(([seq]) => seq < from)) continue;
+    trusted ??= new Map(marks);
+    trusted.delete(id);
+  }
+  return trusted ?? marks;
+}
 // The subagent that a row belongs to. The Claude CLI mapper passes the subagent id on through `parentUuid`,
 // so main rows after the subagent stops carry it too. A tagged row belongs to the subagent only between
 // its start and its stop. When no bound is known, the row stays in the main thread.

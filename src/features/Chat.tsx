@@ -404,7 +404,8 @@ export const Chat = memo(function Chat({
   const unpin = useCallback(() => { pinned.current = false; }, []);
   const goal = useMemo(() => mode === 'live' ? visibleGoal(agentState, liveMetadata, session.status !== 'offline') : null,
     [mode, agentState, liveMetadata, session.status]);
-  const todos = useMemo(() => session.archived ? [] : latestTodos(session.messages), [session.archived, session.messages]);
+  const todos = useMemo(() => session.archived ? [] : session.todos ?? latestTodos(session.messages),
+    [session.archived, session.todos, session.messages]);
   const goalAction = useCallback(async (params: { action: GoalAction; objective?: string }) => {
     if (!live) throw new Error('Connect to Happy before you change the goal.');
     await live.goalAction(session.id, params);

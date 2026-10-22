@@ -1,11 +1,14 @@
 import { base64, type HappyCrypto } from './crypto';
-import type { History, Json, MessageRecord } from './normalize';
+import type { History, Json, MessageRecord, SavedSubagent } from './normalize';
 
 export type CachedWorkspace = {
   version: 1;
   savedAt: number;
   sessions: { wire: Json; metadata: Json; agentState: Json }[];
   machines: { wire: Json; metadata: Json }[];
+  // Subagent bounds by session id. A background attention scan after a reload needs the bounds from older pages.
+  // `read` is the [from, to] seq range in which the client read every row, so a scan knows which starts it can trust.
+  subagents?: Record<string, { marks: SavedSubagent[]; read?: [number, number] }>;
 };
 export type CachedHistory = {
   version: 1;

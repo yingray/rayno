@@ -68,3 +68,14 @@ export const codexReasoningSection = [
   { role: 'session', content: { id: 'ss03t1btzvztuoecd6yhafo7', time: 1792680000016, role: 'agent', turn: 'wq4f0b7mzk2c9h1x8r3t5yde', ev: { t: 'text', text: 'Check the parser first.', thinking: true } }, meta: { sentFrom: 'cli' } },
   { role: 'session', content: { id: 'swmmpcq2i0auosrvepbfehgl', time: 1792680000017, role: 'agent', turn: 'wq4f0b7mzk2c9h1x8r3t5yde', ev: { t: 'tool-call-end', call: 'reason-1' } }, meta: { sentFrom: 'cli' } },
 ];
+// Main Read calls after the agentSubagentWork stop, as the same mapper sends them: start and end pairs that keep the
+// subagent id through `parentUuid` until the turn ends. Put them before the main answer to move the stop to an older page.
+export const taggedMainReads = (pairs: number) => Array.from({ length: pairs }, (_, index) => {
+  const call = `toolu_read_${index}`, id = (side: string) => `mainread${side}${String(index).padStart(15, '0')}`;
+  const envelope = (side: string, ev: object) => ({ role: 'session', content: { id: id(side), time: 1792678304099, role: 'agent',
+    turn: 'w3cn3ht73qf295i3adyacvvq', subagent: 'c744020fe7d250cca47a5ae1', ev }, meta: { sentFrom: 'cli' } });
+  return [
+    envelope('s', { t: 'tool-call-start', call, name: 'Read', title: 'Read call', description: 'Read call', args: { file_path: 'config.json' } }),
+    envelope('e', { t: 'tool-call-end', call }),
+  ];
+}).flat();
