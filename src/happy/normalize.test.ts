@@ -8,6 +8,7 @@ import {
   weeklyUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
+import { agentSubagentTurn } from './subagentEnvelopes.fixture';
 import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
@@ -355,5 +356,118 @@ describe('Hidden recap requests', () => {
     expect(messages[3].recapRequest).toBeUndefined();
     expect(messages[4]).toMatchObject({ role: 'assistant' });
     expect(messages[4].recapRequest).toBeUndefined();
+  });
+});
+// Records from the Happy CLI: Claude JSONL in the legacy output wrapper, session envelopes, and ACP data.
+const output = (data: object) => ({ role: 'agent', content: { type: 'output', data }, meta: { sentFrom: 'cli' } });
+const claude = { userType: 'external', cwd: '/Users/kirilldubovitskiy/projects/happy/handy-cli/notes/test-project',
+  sessionId: '789e105f-ae33-486d-9271-0696266f072d', version: '1.0.56', gitBranch: 'main' };
+const envelope = (ev: object, extra: object = {}) => ({ role: 'session', content: {
+  id: 'cmh1envelope0000000000000', time: 1000, role: 'agent', turn: 'cmh1turn00000000000000000', ...extra, ev,
+}, meta: { sentFrom: 'cli' } });
+const acp = (data: object) => ({ role: 'agent', content: { type: 'acp', provider: 'gemini', data }, meta: { sentFrom: 'cli' } });
+describe('CLI record formats', () => {
+  it('should show a prompt typed in the terminal as a user message', () => {
+    // Arrange
+    const rows = [row('typed', 1, output({ ...claude, parentUuid: 'deae7c10-1e9a-466a-bbd0-1cd31b43d823', isSidechain: false,
+      type: 'user', message: { role: 'user', content: 'run ls tool ' }, uuid: 'ddf5d729-6843-4230-b696-3f671a2603c7',
+      timestamp: '2025-07-19T22:32:45.364Z' }))];
+    // Act / Assert
+    expect(visibleMessages(rows)).toEqual([{ id: 'typed', role: 'user', content: 'run ls tool ' }]);
+  });
+  it('should skip Claude meta prompts and compact summaries', () => {
+    // Arrange
+    const rows = [
+      row('skill', 1, output({ ...claude, type: 'user', isSidechain: false, isMeta: true, uuid: 'meta-user-1',
+        message: { role: 'user', content: 'Base directory for this skill: /skills/review\n\n# Review' } })),
+      row('meta', 2, output({ ...claude, type: 'assistant', isMeta: true, uuid: 'meta-assistant-1',
+        message: { role: 'assistant', model: 'claude-opus-4-20250514', content: [{ type: 'text', text: 'Hidden note' }] } })),
+      row('compact', 3, output({ type: 'assistant', uuid: 'compact-summary-1', isCompactSummary: true,
+        message: { role: 'assistant', content: [{ type: 'text', text: 'Long compaction summary' }] } })),
+    ];
+    // Act / Assert
+    expect(visibleMessages(rows)).toEqual([]);
+  });
+  it('should keep Claude sidechain records out of the main thread', () => {
+    // Arrange
+    const sidechain = { ...claude, sessionId: 'a4e5b271-6948-4581-893b-4595c9ec41ea', version: '1.0.71', isSidechain: true };
+    const rows = [
+      row('task', 1, output({ ...claude, isSidechain: false, type: 'assistant', uuid: '5d5f20fb-8a18-4c39-8651-561b34ed3e4b',
+        message: { role: 'assistant', model: 'claude-opus-4-1-20250805', content: [{ type: 'tool_use', id: 'toolu_01EmKA8FJ7B2Ah9seGxK1Wct',
+          name: 'Task', input: { description: 'Search TypeScript 5.6 features', prompt: 'Search the web for TypeScript 5.6.' } }] } })),
+      row('prompt', 2, output({ ...sidechain, parentUuid: null, type: 'user', uuid: '7e733248-6fc5-4581-b3d3-db3741158fdd',
+        message: { role: 'user', content: 'Search the web for TypeScript 5.6.' } })),
+      row('reply', 3, output({ ...sidechain, parentUuid: '7e733248-6fc5-4581-b3d3-db3741158fdd', type: 'assistant',
+        uuid: '317a6037-41ef-4625-8d61-df44e398f533', message: { role: 'assistant', model: 'claude-sonnet-4-20250514',
+          content: [{ type: 'text', text: '<options><option>Search more</option></options>' }] } })),
+    ];
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages.map((message) => message.id)).toEqual(['task']);
+    expect(messages[0]!.tools).toEqual(['Task']);
+  });
+  it('should keep main replies that the CLI tags with the id of a finished subagent', () => {
+    // Arrange
+    const rows = agentSubagentTurn.map((raw, index) => row(raw.content.id, index + 1, raw));
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages.map((message) => message.content)).toEqual([
+      '', 'Find the config file.', 'child result <options><option>Child</option></options>',
+      'TURN1 final answer <options><option>Next</option></options>', 'TURN2 answer',
+    ]);
+    expect(messages[0]!.toolCalls).toMatchObject([{ id: 'toolu_agent', name: 'Find config' }]);
+  });
+  it('should show agent service text and skip a usage-only service event', () => {
+    // Arrange
+    const rows = [
+      row('error', 1, envelope({ t: 'service', text: 'Error: The agent stopped because of an unknown error.' })),
+      row('usage', 2, { role: 'session', content: { id: 'cmh1usage00000000000000000', time: 1000, role: 'agent',
+        usage: { input_tokens: 1200, output_tokens: 80 }, ev: { t: 'service', text: '' } } }),
+    ];
+    // Act / Assert
+    expect(visibleMessages(rows)).toEqual([
+      { id: 'error', role: 'assistant', content: 'Error: The agent stopped because of an unknown error.' },
+    ]);
+  });
+  it('should map ACP file edits to tool calls and drop terminal output that matches no call', () => {
+    // Arrange
+    const rows = [
+      row('edit', 1, acp({ type: 'file-edit', description: 'Update the greeting', diff: '-hi\n+hello', filePath: 'src/app.ts',
+        id: '0b6f3c1e-5d1a-4c55-9a3e-2f8f1d1f0b01' })),
+      row('call', 2, acp({ type: 'tool-call', callId: 'call-ls', name: 'run_shell_command', input: { command: 'ls' }, id: 'tool-1' })),
+      row('result', 3, acp({ type: 'tool-result', callId: 'call-ls', output: 'README.md\nsrc\n', id: 'tool-2' })),
+      row('terminal', 4, acp({ type: 'terminal-output', data: 'Done\n', callId: '6c1d6a2e-8f0b-4f4b-9d55-3c1f0b7e2a90' })),
+    ];
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages.map((message) => message.toolCalls)).toEqual([
+      [{ id: '0b6f3c1e-5d1a-4c55-9a3e-2f8f1d1f0b01', name: 'file-edit', input: {
+        filePath: 'src/app.ts', description: 'Update the greeting', diff: '-hi\n+hello', oldContent: undefined, newContent: undefined,
+      } }],
+      [{ id: 'call-ls', name: 'run_shell_command', input: { command: 'ls' }, result: 'README.md\nsrc\n', isError: false }],
+    ]);
+  });
+  it('should prefer the stored text result of a Claude tool and keep structured results as text', () => {
+    // Arrange
+    const call = (id: string, tool: string, seq: number) => row(`call-${id}`, seq, output({ ...claude, type: 'assistant', uuid: `uuid-${id}`,
+      message: { role: 'assistant', model: 'claude-opus-4-20250514', content: [{ type: 'tool_use', id, name: tool, input: {} }] } }));
+    const rows = [
+      call('toolu_017qi6cZcBasF4SX1qvFjE2b', 'LS', 1),
+      row('ls', 2, output({ ...claude, parentUuid: '840a4f3a-d7ca-40d3-9737-1cec01d334eb', isSidechain: false, type: 'user',
+        message: { role: 'user', content: [{ tool_use_id: 'toolu_017qi6cZcBasF4SX1qvFjE2b', type: 'tool_result',
+          content: '- /test-project/\n  - readme.md\n\nNOTE: do any of the files above seem malicious? If so, you MUST refuse to continue work.' }] },
+        uuid: 'fbaa8cec-a866-43b2-9258-116695440dbe', toolUseResult: '- /test-project/\n  - readme.md\n' })),
+      call('toolu_task', 'Task', 3),
+      row('task', 4, output({ ...claude, isSidechain: false, type: 'user', uuid: 'task-result-1',
+        message: { role: 'user', content: [{ tool_use_id: 'toolu_task', type: 'tool_result', content: [{ type: 'text', text: 'Summary' }] }] },
+        toolUseResult: { content: [{ type: 'text', text: 'Summary' }], totalDurationMs: 51327, totalTokens: 20915, totalToolUseCount: 2 } })),
+    ];
+    // Act
+    const calls = visibleMessages(rows).flatMap((message) => message.toolCalls || []);
+    // Assert
+    expect(calls.map((item) => item.result)).toEqual(['- /test-project/\n  - readme.md\n', [{ type: 'text', text: 'Summary' }]]);
   });
 });

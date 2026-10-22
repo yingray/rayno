@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention } from './sessionAttention';
 import type { MessageRecord } from './normalize';
+import { agentSubagentTurn } from './subagentEnvelopes.fixture';
 
 const row = (seq: number, content: string, role = 'agent'): MessageRecord => ({
   id: String(seq), seq, createdAt: seq,
@@ -65,6 +66,41 @@ describe('Session attention', () => {
     expect(state.optionsSeq).toBe(11);
     expect(state.optionsSeq).toBeGreaterThan(state.userSeq);
     expect(state.assistantSeq).toBe(13);
+  });
+  it('should count a terminal prompt as a user reply and ignore sidechain options', () => {
+    // Arrange
+    const question = row(11, '<options><option>Continue</option></options>');
+    const typed: MessageRecord = { ...row(12, ''), raw: { role: 'agent', content: { type: 'output', data: {
+      type: 'user', isSidechain: false, uuid: 'ddf5d729-6843-4230-b696-3f671a2603c7', message: { role: 'user', content: 'Continue' },
+    } } } };
+    const subagentPrompt: MessageRecord = { ...row(13, ''), raw: { role: 'agent', content: { type: 'output', data: {
+      type: 'user', isSidechain: true, parentUuid: null, uuid: '7e733248-6fc5-4581-b3d3-db3741158fdd',
+      message: { role: 'user', content: 'Search the web for TypeScript 5.6.' },
+    } } } };
+    const sidechainOptions: MessageRecord = { ...row(14, ''), raw: { role: 'agent', content: { type: 'output', data: {
+      type: 'assistant', isSidechain: true, uuid: '317a6037-41ef-4625-8d61-df44e398f533',
+      message: { role: 'assistant', model: 'claude-sonnet-4-20250514', content: [{ type: 'text', text: '<options><option>More</option></options>' }] },
+    } } } };
+    // Act
+    const answered = receiveAttention(receiveAttention(restoreAttention(null, 10), question), typed);
+    const later = [subagentPrompt, sidechainOptions].reduce(receiveAttention, answered);
+    // Assert
+    expect(attentionMessage(typed)).toBe('user');
+    expect(answered.userSeq).toBe(12);
+    expect(answered.optionsSeq).toBeLessThan(answered.userSeq);
+    expect([subagentPrompt, sidechainOptions].map(attentionMessage)).toEqual([null, null]);
+    expect(later).toEqual(answered);
+  });
+  it('should set needs reply for options in a main reply that the CLI tags with a finished subagent', () => {
+    // Arrange
+    const rows = agentSubagentTurn.map((raw, index) => ({ id: raw.content.id, seq: 21 + index, createdAt: raw.content.time, raw }));
+    const final = rows.find((item) => item.raw.content.ev.text?.startsWith('TURN1'))!;
+    // Act
+    const state = rows.reduce(receiveAttention, receiveAttention(restoreAttention(null, 10), row(20, 'Ask the agent', 'user')));
+    // Assert
+    expect(attentionMessage(final)).toBe('assistant');
+    expect(state.optionsSeq).toBe(final.seq);
+    expect(state.optionsSeq).toBeGreaterThan(state.userSeq);
   });
   it('should merge another tab without moving any read or reply cursor backward', () => {
     // Arrange
