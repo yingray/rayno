@@ -9,9 +9,9 @@ test('the latest-message shortcut should preserve history reading and restore au
   await server.setWorking(false);
   await server.setMessages([
     { role: 'user', content: { type: 'text', text: 'Review the conversation' } },
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text: 'From the real protocol' } } },
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text: 'From the real protocol' } } },
     ...Array.from({ length: 18 }, (_, index) => ({
-      role: 'session', content: { role: 'agent', ev: { t: 'text', text:
+      role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text:
         `### Workspace update ${index + 1}\n\nKeep the session history readable while the agent sends more replies.\n\nEach update stays in this conversation.`,
       } },
     })),
@@ -113,7 +113,7 @@ test('chat should group consecutive tool events and keep Markdown tables readabl
   const legacyTool = { role: 'agent', content: { type: 'output', data: {
     type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read' }] },
   } } };
-  const tool = (name: string) => ({ role: 'session', content: { role: 'agent', ev: {
+  const tool = (name: string) => ({ role: 'session', content: { role: 'agent', turn: 't1', ev: {
     t: 'tool-call-start', name,
   } } });
   const table = [

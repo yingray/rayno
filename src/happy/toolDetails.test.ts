@@ -4,7 +4,7 @@ const row = (seq: number, raw: object): MessageRecord => ({ id: String(seq), seq
 describe('tool details', () => {
   it('should pair session call results by ID when tools finish in a different order', () => {
     // Arrange
-    const event = (ev: object) => ({ role: 'session', content: { type: 'session', data: { role: 'agent', ev } } });
+    const event = (ev: object) => ({ role: 'session', content: { type: 'session', data: { role: 'agent', turn: 't1', ev } } });
     const rows = [row(1, event({ t: 'tool-call-start', call: 'a', name: 'Read', args: { file: 'a' } })),
       row(2, event({ t: 'tool-call-start', call: 'b', name: 'Edit', args: { old_string: 'a', new_string: 'b' } })),
       row(3, event({ t: 'tool-call-end', call: 'b', result: 'diff: -a +b' })),

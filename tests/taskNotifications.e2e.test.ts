@@ -12,8 +12,8 @@ test('stored task notifications should stay hidden while following user text sta
   await server.setMessages([
     { role: 'user', content: { type: 'text', text: notification } },
     { role: 'session', content: { role: 'user', ev: { t: 'text', text: notification } } },
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text: notification } } },
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text: 'From the real protocol' } } },
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text: notification } } },
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text: 'From the real protocol' } } },
     { role: 'session', content: { role: 'user', ev: { t: 'text', text: `${notification}\nContinue with the fix` } } },
   ]);
   const workspace = new LiveWorkspacePage(page);

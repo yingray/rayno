@@ -10,7 +10,7 @@ test('chat should preserve existing Markdown during input, activity events, and 
   await server.setMessages([
     { role: 'user', content: { type: 'text', text: 'Prepare a report' } },
     ...Array.from({ length: 100 }, (_, index) => ({ role: 'session', content: {
-      role: 'agent', ev: { t: 'text', text: `${index === 99 ? 'From the real protocol\n\n' : ''}### Report ${index}\n\nA **result** with a [reference](https://example.com).\n\n| Item | Status |\n| --- | --- |\n| Chat | Ready |` },
+      role: 'agent', turn: 't1', ev: { t: 'text', text: `${index === 99 ? 'From the real protocol\n\n' : ''}### Report ${index}\n\nA **result** with a [reference](https://example.com).\n\n| Item | Status |\n| --- | --- |\n| Chat | Ready |` },
     } })),
   ]);
   const workspace = new PerformancePage(page);

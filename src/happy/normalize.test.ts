@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  markSubagents,
   messageMeta,
   normalizeMachine,
   normalizeSession,
@@ -8,7 +9,7 @@ import {
   weeklyUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
-import { agentSubagentTurn } from './subagentEnvelopes.fixture';
+import { agentSubagentTurn, agentSubagentWork, taskSubagentTurn } from './subagentEnvelopes.fixture';
 import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
@@ -26,7 +27,7 @@ describe('Happy record normalization', () => {
     const rows = [
       row('legacy', 1, { role: 'user', content: { type: 'text', text: notification } }),
       row('user', 2, { role: 'session', content: { role: 'user', ev: { t: 'text', text: notification } } }),
-      row('agent', 3, { role: 'session', content: { role: 'agent', ev: { t: 'text', text: notification } } }),
+      row('agent', 3, { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text: notification } } }),
       row('codex', 4, { role: 'agent', content: { type: 'codex', data: { type: 'message', message: notification } } }),
       row('followup', 5, { role: 'session', content: { type: 'session', data: {
         role: 'user', ev: { t: 'text', text: `${notification}\nContinue with the fix` },
@@ -109,7 +110,7 @@ describe('Happy record normalization', () => {
     const rows = [
       row('c', 4, {
         role: 'session',
-        content: { role: 'agent', ev: { t: 'text', text: 'Modern reply' } },
+        content: { role: 'agent', turn: 't1', ev: { t: 'text', text: 'Modern reply' } },
       }),
       row('b', 3, {
         role: 'agent',
@@ -414,10 +415,12 @@ describe('CLI record formats', () => {
     const messages = visibleMessages(rows);
     // Assert
     expect(messages.map((message) => message.content)).toEqual([
-      '', 'Find the config file.', 'child result <options><option>Child</option></options>',
-      'TURN1 final answer <options><option>Next</option></options>', 'TURN2 answer',
+      '', 'TURN1 final answer <options><option>Next</option></options>', 'TURN2 answer',
     ]);
     expect(messages[0]!.toolCalls).toMatchObject([{ id: 'toolu_agent', name: 'Find config' }]);
+    expect(messages[0]!.toolCalls![0].children!.map((child) => child.content)).toEqual([
+      'child result <options><option>Child</option></options>',
+    ]);
   });
   it('should show agent service text and skip a usage-only service event', () => {
     // Arrange
@@ -469,5 +472,112 @@ describe('CLI record formats', () => {
     const calls = visibleMessages(rows).flatMap((message) => message.toolCalls || []);
     // Assert
     expect(calls.map((item) => item.result)).toEqual(['- /test-project/\n  - readme.md\n', [{ type: 'text', text: 'Summary' }]]);
+  });
+});
+
+const rowsOf = (raws: { content: { id: string } }[], first = 1) => raws.map((raw, index) => row(raw.content.id, first + index, raw));
+describe('Subagent work in session envelopes', () => {
+  it('should put subagent text and tools under the parent Agent call and keep the main answer', () => {
+    // Arrange
+    const rows = rowsOf(agentSubagentWork);
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages.map((message) => [message.role, message.content, message.thinking, message.tools])).toEqual([
+      ['user', 'Check the config', undefined, undefined],
+      ['assistant', '', 'I should delegate the search.', undefined],
+      ['assistant', '', undefined, ['Find config']],
+      ['assistant', '', 'Now answer the user.', undefined],
+      ['assistant', 'The config is config.json. <options><option>Open it</option></options>', undefined, undefined],
+    ]);
+    const [agent] = messages[2]!.toolCalls!;
+    expect(agent).toMatchObject({ id: 'toolu_agent', input: { sessionSubagent: 'c744020fe7d250cca47a5ae1' } });
+    expect(agent.children!.map((child) => [child.content, child.toolCalls?.map((call) => call.name)])).toEqual([
+      ['', ['Glob call']],
+      ['Subagent found config.json <options><option>Child option</option></options>', undefined],
+    ]);
+  });
+  it('should keep the work of a running subagent out of the main thread', () => {
+    // Arrange
+    const stop = agentSubagentWork.findIndex((raw) => raw.content.ev.t === 'stop');
+    // Act
+    const messages = visibleMessages(rowsOf(agentSubagentWork.slice(0, stop)));
+    // Assert
+    expect(messages.map((message) => message.content)).toEqual(['Check the config', '', '']);
+    expect(messages[2]!.toolCalls![0].children!.at(-1)!.content).toContain('Subagent found config.json');
+  });
+  it('should show Task work without a parent call on its own row', () => {
+    // Act
+    const messages = visibleMessages(rowsOf(taskSubagentTurn));
+    // Assert
+    expect(messages.map((message) => [message.content, message.tools])).toEqual([
+      ['Search the docs', undefined], ['', ['Search docs']], ['TypeScript 5.6 adds iterator helpers.', undefined],
+    ]);
+    expect(messages[1]!.toolCalls![0].children!.map((child) => child.content)).toEqual([
+      'Search the docs for TypeScript 5.6.', 'TypeScript 5.6 adds iterator helpers. <options><option>Task option</option></options>',
+    ]);
+  });
+  it('should place tagged rows from the bounds on the loaded pages', () => {
+    // Arrange
+    const rows = rowsOf(agentSubagentWork);
+    const stop = rows.findIndex((item) => item.raw.content.ev.t === 'stop');
+    // Act
+    const newest = visibleMessages(rows.slice(stop + 1));
+    const withStop = visibleMessages(rows.slice(stop - 1));
+    // Assert
+    expect(newest.map((message) => message.tools?.[0] ?? message.thinking ?? message.content)).toEqual([
+      'Earlier tool call', 'Now answer the user.', 'The config is config.json. <options><option>Open it</option></options>',
+    ]);
+    expect(withStop.map((message) => message.tools?.[0] ?? message.thinking ?? message.content)).toEqual([
+      'Subagent', 'Earlier tool call', 'Now answer the user.', 'The config is config.json. <options><option>Open it</option></options>',
+    ]);
+    expect(withStop[0]!.toolCalls![0].children!.map((child) => child.content)).toEqual([
+      'Subagent found config.json <options><option>Child option</option></options>',
+    ]);
+    expect(markSubagents(new Map(), rows).get('c744020fe7d250cca47a5ae1')).toEqual({
+      title: 'Find config', bounds: new Map([[rows[4].seq, true], [rows[stop].seq, false]]),
+    });
+  });
+});
+describe('Agent envelopes without a turn', () => {
+  it('should drop agent rows without a turn and keep user rows, receipts, and usage-only events out of the chat', () => {
+    // Arrange
+    const rows = [
+      row('user', 1, { role: 'session', content: { id: 'cmh1user000000000000000000', time: 1000, role: 'user', ev: { t: 'text', text: 'Hello' } } }),
+      row('stray', 2, { role: 'session', content: { id: 'cmh1stray00000000000000000', time: 1000, role: 'agent', ev: { t: 'text', text: 'Stray reply' } } }),
+      row('tool', 3, { role: 'agent', content: { type: 'session', data: { id: 'cmh1tool000000000000000000', time: 1000, role: 'agent',
+        ev: { t: 'tool-call-start', call: 'c1', name: 'Read', title: 'Read', description: 'Read', args: {} } } } }),
+      row('receipt', 4, { role: 'session', content: { id: 'cmh1receipt000000000000000', time: 1000, role: 'agent',
+        ev: { t: 'user-message-accepted', id: 'cmh1receipt000000000000000', ref: 'user', runId: 'run-1' } } }),
+      row('reply', 5, envelope({ t: 'text', text: 'Turn reply' })),
+    ];
+    // Act / Assert
+    expect(visibleMessages(rows).map((message) => message.content)).toEqual(['Hello', 'Turn reply']);
+  });
+});
+describe('Thinking records', () => {
+  it('should keep thinking apart from the reply text across Claude, session, Codex, and ACP records', () => {
+    // Arrange
+    const rows = [
+      row('claude', 1, output({ ...claude, type: 'assistant', uuid: 'claude-thinking-1', message: { role: 'assistant', model: 'claude-opus-4-20250514',
+        content: [{ type: 'thinking', thinking: 'Check the README first.', signature: 'sig' }, { type: 'text', text: 'The README is current.' }] } })),
+      row('session', 2, envelope({ t: 'text', text: 'Plan the next step.', thinking: true })),
+      row('codex', 3, { role: 'agent', content: { type: 'codex', data: { type: 'reasoning', message: 'Compare the two files.' } } }),
+      row('answer', 4, envelope({ t: 'text', text: 'Both files match. <options><option>Done</option></options>' })),
+      row('acp-reasoning', 5, acp({ type: 'reasoning', message: 'Read the log.' })),
+      row('acp-1', 6, acp({ type: 'thinking', text: 'The log shows ' })),
+      row('acp-2', 7, acp({ type: 'thinking', text: 'a timeout.' })),
+      row('acp-answer', 8, acp({ type: 'message', message: 'The request timed out.' })),
+    ];
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages.map((message) => [message.content, message.thinking])).toEqual([
+      ['The README is current.', 'Check the README first.'],
+      ['', 'Plan the next step.\n\nCompare the two files.'],
+      ['Both files match. <options><option>Done</option></options>', undefined],
+      ['', 'Read the log.\n\nThe log shows a timeout.'],
+      ['The request timed out.', undefined],
+    ]);
   });
 });

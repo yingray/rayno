@@ -27,8 +27,9 @@ import {
   pendingPermissions,
   allowsSessionScope,
   isExitPlanTool,
+  markSubagents,
 } from './normalize';
-import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
+import type { History, Json, MachineRecord, MessageRecord, SessionRecord, SubagentMarks } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
 import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
@@ -114,6 +115,8 @@ export class HappyClient implements DemoAdapter {
   private branching = new Map<string, Promise<string>>();
   private acknowledged = new Set<string>();
   private attention = new Map<string, SessionAttention>();
+  // Subagent bounds from every row that this client read, so attention can place rows that arrive later.
+  private subagentBounds = new Map<string, SubagentMarks>();
   private attentionRequests = new Map<string, Promise<void>>();
   private sentModeRequests = new Map<string, Promise<SentModes | undefined>>();
   private readingSessions = new Set<string>();
@@ -276,6 +279,7 @@ export class HappyClient implements DemoAdapter {
     const messages = this.messages.get(id) || new Map<string, MessageRecord>();
     cached.messages.forEach((row) => { if (!messages.has(row.id)) messages.set(row.id, row); });
     this.messages.set(id, messages);
+    this.boundsFor(id, cached.messages);
     this.historyCursors.set(id, Math.max(this.historyCursors.get(id) || 0, cached.cursor));
     this.patch({ histories: { ...this.snapshot.histories, [id]: { ...cached.history, loading: false, error: '' } } });
     this.publish(id);
@@ -287,6 +291,11 @@ export class HappyClient implements DemoAdapter {
     const session = this.sessions.get(id);
     if (!session) throw new Error('The session is not available. Refresh the session list.');
     return session;
+  }
+  private boundsFor(id: string, rows: Iterable<MessageRecord> = []) {
+    let marks = this.subagentBounds.get(id);
+    if (!marks) this.subagentBounds.set(id, marks = markSubagents(new Map(), this.messages.get(id)?.values() || []));
+    return markSubagents(marks, rows);
   }
   private sessionAttention(id: string) {
     let state = this.attention.get(id);
@@ -314,8 +323,9 @@ export class HappyClient implements DemoAdapter {
     const state = this.sessionAttention(id);
     if (state.assistantSeq <= state.readSeq) return;
     let readSeq = state.readSeq;
+    const marks = this.boundsFor(id);
     for (const row of this.messages.get(id)?.values() || [])
-      if (attentionMessage(row) === 'assistant') readSeq = Math.max(readSeq, row.seq);
+      if (attentionMessage(row, marks) === 'assistant') readSeq = Math.max(readSeq, row.seq);
     if (readSeq <= state.readSeq) return;
     this.attention.set(id, { ...state, readSeq });
     this.saveAttention(id);
@@ -485,6 +495,7 @@ export class HappyClient implements DemoAdapter {
     this.listeners.clear();
     this.sessions.clear();
     this.messages.clear();
+    this.subagentBounds.clear();
     this.visibleHistory.clear();
     this.machines.clear();
     this.sessionPresence.clear();
@@ -556,6 +567,7 @@ export class HappyClient implements DemoAdapter {
         if (!seen.has(id)) {
           this.sessions.delete(id);
           this.messages.delete(id);
+          this.subagentBounds.delete(id);
         }
     const machines = Array.isArray(machineRows) ? machineRows : machineRows.machines;
     if (!Array.isArray(machines))
@@ -633,6 +645,7 @@ export class HappyClient implements DemoAdapter {
       if (!Array.isArray(result.messages)) throw new Error('Could not read session activity.');
       let reachedBoundary = false;
       let next = cursor;
+      const rows: MessageRecord[] = [];
       for (const wire of result.messages) {
         if (!Number.isSafeInteger(wire.seq) || wire.seq < 0) continue;
         next = Math.min(next, wire.seq);
@@ -640,11 +653,15 @@ export class HappyClient implements DemoAdapter {
         if (wire.seq <= boundary) { reachedBoundary = true; continue; }
         const row = await this.decryptMessage(source, wire).catch(() => undefined);
         if (this.disposed || !this.sessions.has(id)) return;
-        if (!row) continue;
-        const kind = attentionMessage(row);
+        if (row) rows.push(row);
+      }
+      // A subagent stop can come after its rows on a newest-first page, so read the bounds of the full page first.
+      const marks = this.boundsFor(id, rows);
+      for (const row of rows) {
+        const kind = attentionMessage(row, marks);
         foundUser ||= kind === 'user';
         foundAssistant ||= kind === 'assistant';
-        this.attention.set(id, receiveAttention(this.sessionAttention(id), row));
+        this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks));
       }
       if (!result.hasMore || reachedBoundary || (foundUser && (foundAssistant || !needAssistant))) break;
       if (next >= cursor) throw new Error('The session activity cursor did not advance.');
@@ -804,6 +821,7 @@ export class HappyClient implements DemoAdapter {
       this.deletedSessions.add(body.sid);
       this.sessions.delete(body.sid);
       this.messages.delete(body.sid);
+      this.subagentBounds.delete(body.sid);
       this.publish();
       return;
     }
@@ -861,11 +879,11 @@ export class HappyClient implements DemoAdapter {
       decrypted.push(row);
     }
     if (history && failure && !readable) throw failure;
-    for (const row of decrypted) {
-      if (messages.has(row.id)) continue;
-      messages.set(row.id, row);
+    const added = decrypted.filter((row) => !messages.has(row.id) && !!messages.set(row.id, row));
+    const marks = this.boundsFor(id, added);
+    for (const row of added) {
       session.wire.seq = Math.max(session.wire.seq || 0, row.seq);
-      this.attention.set(id, receiveAttention(this.sessionAttention(id), row));
+      this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks));
     }
     this.saveAttention(id);
     this.scheduleCache(id);
@@ -1049,6 +1067,7 @@ export class HappyClient implements DemoAdapter {
     this.deletedSessions.add(id);
     this.sessions.delete(id);
     this.messages.delete(id);
+    this.subagentBounds.delete(id);
     this.publish();
   }
   async stopSession(id: string) {
