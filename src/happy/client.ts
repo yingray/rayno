@@ -84,7 +84,7 @@ export const emptySnapshot: Snapshot = {
   sessionData: {},
   monitorErrors: [],
 };
-import { messageError } from './errors';
+import { DirectoryApprovalError, messageError } from './errors';
 export { messageError } from './errors';
 export const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
 // The recap mode and style change only the instructions. They are not part of a message fingerprint.
@@ -1387,7 +1387,8 @@ export class HappyClient implements DemoAdapter {
       throw new Error(result.error || result.stderr || 'The command failed on the computer.');
     return result;
   }
-  async createSession(draft: NewSessionDraft, attachments: Attachment[] = [], recapMode?: RecapMode, recapStyle?: string) {
+  async createSession(draft: NewSessionDraft, attachments: Attachment[] = [], { recapMode, recapStyle, approvedNewDirectoryCreation = false }:
+    { recapMode?: RecapMode; recapStyle?: string; approvedNewDirectoryCreation?: boolean } = {}) {
     validateImages(attachments);
     if (!this.socket?.connected) throw new Error('Reconnect before you start a session.');
     const machine = this.machines.get(draft.machineId);
@@ -1465,7 +1466,7 @@ export class HappyClient implements DemoAdapter {
         directory,
         agent,
         permissionMode: draft.permissionMode,
-        approvedNewDirectoryCreation: false,
+        approvedNewDirectoryCreation,
       };
       if (agent === 'rig') params.clientRequestId = pending.requestId;
       if (agent === 'rig') {
@@ -1488,6 +1489,8 @@ export class HappyClient implements DemoAdapter {
             pending.unknown = false;
             sessionStorage.setItem(storageKey, JSON.stringify(pending));
           }
+          if (result.type === 'requestToApproveDirectoryCreation')
+            throw new DirectoryApprovalError(typeof result.directory === 'string' && result.directory ? result.directory : directory);
           throw new Error(
             result.errorMessage ||
               result.message ||

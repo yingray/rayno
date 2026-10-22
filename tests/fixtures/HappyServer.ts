@@ -47,6 +47,7 @@ export class HappyServer {
   machineActive = true;
   machineMetadata: Json = { host: 'Real computer', platform: 'darwin', homeDir: '/real' };
   spawns: Json[] = [];
+  missingDirectories: string[] = [];
   branchCalls: { method: string; params: Json }[] = [];
   failBranchSpawn = false;
   rewindPoints = Array.from({ length: 18 }, (_, index) => ({ uuid: `claude-${index}`, itemId: `codex-${index}`, text: `Message ${index}: review the workspace`, timestamp: 1700000000000 + index * 1000 }));
@@ -371,6 +372,9 @@ export class HappyServer {
             if (params.parentSessionId && this.failBranchSpawn) {
               this.failBranchSpawn = false;
               result = { type: 'error', errorMessage: 'The copied conversation could not start. Retry.' };
+            } else if (this.missingDirectories.includes(params.directory) && !params.approvedNewDirectoryCreation) {
+              // happy-cli daemon/run.ts spawnSession: a missing folder needs approval first.
+              result = { type: 'requestToApproveDirectoryCreation', directory: params.directory };
             } else {
             const session = {
               ...this.sessions[0],

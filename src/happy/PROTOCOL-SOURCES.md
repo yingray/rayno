@@ -79,6 +79,8 @@ for each agent in its account store and uses Auto when no valid choice exists. T
 The new chat retains that explicit selection in its own composer settings.
 The selected computer's `happyCliVersion` gates the fixed new-session catalog, as in `filterPermissionModesForCli`
 from `hooks/useStartSessionFromDraft.ts`: a CLI older than `1.2.1-beta.2` does not get Auto. Model and effort catalogs have no version gate there.
+When the daemon answers `requestToApproveDirectoryCreation` (`happy-cli/src/daemon/run.ts`), Rayno asks before it creates
+the folder. The approved retry sends the same draft with `approvedNewDirectoryCreation: true` and keeps the pending request ID.
 
 `offlineCache.ts` adds independent, account-scoped IndexedDB persistence for session/machine records and loaded history pages.
 Each cached payload uses the existing account encryption helper. No bearer token or plaintext message body enters the database.

@@ -140,8 +140,9 @@ function Connected({
   }, [snapshot.machines, local.newDraft.machineId, local.newDraft.path]);
   const adapter = useMemo<DemoAdapter>(
     () => ({
-      async createSession(draft, attachments) {
-        const id = await client.createSession(draft, attachments, ui.getState().preferences.recap, ui.getState().preferences.recapStyle);
+      async createSession(draft, attachments, options) {
+        const id = await client.createSession(draft, attachments, { ...options,
+          recapMode: ui.getState().preferences.recap, recapStyle: ui.getState().preferences.recapStyle });
         dispatch({ type: 'rememberModel', key: modelChoiceKey(draft.agent, draft.machineId),
           value: { model: draft.model, effort: draft.effort || null } });
         dispatch({ type: 'rememberPermission', key: modelChoiceKey(draft.agent, draft.machineId), value: draft.permissionMode });

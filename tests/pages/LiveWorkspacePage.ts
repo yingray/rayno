@@ -220,6 +220,38 @@ export class LiveWorkspacePage extends WorkspacePage {
     expect(frame.outline).toBe('none');
     expect(frame.border).toBe('rgb(139, 92, 246)');
   }
+  folderDialog() { return this.page.getByRole('dialog', { name: 'Create this folder?', exact: true }); }
+  async expectFolderDialogUsable(path: string) {
+    const dialog = this.folderDialog();
+    const viewport = this.page.viewportSize()!;
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(path, { exact: true })).toBeVisible();
+    const bounds = (await dialog.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.y).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+    for (const name of ['Close Create this folder?', 'Cancel', 'Create folder']) {
+      const control = dialog.getByRole('button', { name, exact: true });
+      await control.scrollIntoViewIfNeeded();
+      const target = (await control.boundingBox())!;
+      expect(target.width).toBeGreaterThanOrEqual(44);
+      expect(target.height).toBeGreaterThanOrEqual(44);
+      expect(target.y).toBeGreaterThanOrEqual(0);
+      expect(target.y + target.height).toBeLessThanOrEqual(viewport.height);
+      expect(await control.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+      })).toBe(true);
+    }
+  }
+  async answerFolderDialog(name: 'Cancel' | 'Create folder', touch: boolean) {
+    const button = this.folderDialog().getByRole('button', { name, exact: true });
+    await button.scrollIntoViewIfNeeded();
+    if (touch) await button.tap();
+    else await button.click();
+    await expect(this.folderDialog()).toBeHidden();
+  }
   async startDraft() {
     await this.page.getByRole('button', { name: 'Start', exact: true }).click();
   }
