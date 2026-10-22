@@ -1,4 +1,4 @@
-import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading } from '../data/types';
+import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading, UsageWindow } from '../data/types';
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
 import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
@@ -355,26 +355,34 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
   }
   return output;
 }
+// Happy's usage popup shows only these two plan windows (AgentInput.tsx usageRows).
+const usageWindows = { five_hour: 5 * 3600000, seven_day: 7 * 86400000 } as const;
+function windowReading(windows: Json[], id: keyof typeof usageWindows, now: number): UsageWindow | null {
+  const window = windows.find((window) => window.id === id);
+  if (!window || typeof window.utilization !== 'number') return null;
+  const resetAt = typeof window.resetsAt === 'number' ? window.resetsAt : null;
+  const length = usageWindows[id];
+  return {
+    usedPercent: Math.round(window.utilization),
+    pacePercent: resetAt ? Math.max(0, Math.min(100, ((now - resetAt + length) / length) * 100)) : null,
+    reset: resetAt ? new Date(resetAt).toLocaleString() : 'Unknown',
+    resetAt,
+  };
+}
 export function weeklyUsage(
   agent: Agent,
   windows: Json[],
   capturedAt: number,
   now = Date.now(),
 ): UsageReading | null {
-  const window = windows.find((window) => window.id === 'seven_day');
-  if (!window || typeof window.utilization !== 'number') return null;
-  const resetAt = typeof window.resetsAt === 'number' ? window.resetsAt : null;
-  const week = 7 * 86400000;
-  const pacePercent = resetAt
-    ? Math.max(0, Math.min(100, ((now - resetAt + week) / week) * 100))
-    : null;
+  const week = windowReading(windows, 'seven_day', now);
+  if (!week) return null;
+  const fiveHour = windowReading(windows, 'five_hour', now);
   return {
     agent,
-    usedPercent: Math.round(window.utilization),
-    pacePercent,
-    reset: resetAt ? new Date(resetAt).toLocaleString() : 'Unknown',
-    resetAt,
+    ...week,
+    ...(fiveHour ? { fiveHour } : {}),
     capturedAt,
-    stale: (resetAt !== null && resetAt <= now) || now - capturedAt > 15 * 60000,
+    stale: (!!week.resetAt && week.resetAt <= now) || now - capturedAt > 15 * 60000,
   };
 }

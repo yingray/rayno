@@ -258,6 +258,20 @@ export class LiveWorkspacePage extends WorkspacePage {
   usageSummary() { return this.page.getByRole('button', { name: 'Agent usage summary', exact: true }); }
   usageDetails() { return this.page.getByRole('region', { name: 'Usage details', exact: true }); }
   async openUsage() { await this.usageSummary().click(); await expect(this.usageDetails()).toBeVisible(); }
+  async expectUsageDetailsFit() {
+    const details = this.usageDetails();
+    const viewport = this.page.viewportSize()!;
+    const box = (await details.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(await details.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    const monitor = details.getByRole('button', { name: 'Open Monitor', exact: true });
+    await monitor.scrollIntoViewIfNeeded();
+    await expect(monitor).toBeInViewport();
+    await details.evaluate((element) => { element.scrollTop = 0; });
+    await this.expectNoPageOverflow();
+  }
   async refreshUsage() { await this.usageDetails().getByRole('button', { name: 'Refresh usage', exact: true }).click(); }
   async expectUsagePlacement() {
     await this.sessionRows().last().scrollIntoViewIfNeeded();

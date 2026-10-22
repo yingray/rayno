@@ -63,12 +63,16 @@ export type Machine = {
   homeDir?: string;
   cliVersion?: string;
 };
-export type UsageReading = {
-  agent: Agent;
+export type UsageWindow = {
   usedPercent: number;
   pacePercent: number | null;
   reset: string;
   resetAt?: number | null;
+};
+// The weekly plan window, with the 5-hour window when the agent reports it.
+export type UsageReading = UsageWindow & {
+  agent: Agent;
+  fiveHour?: UsageWindow;
   capturedAt?: number;
   stale?: boolean;
   machineId?: string;

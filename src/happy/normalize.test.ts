@@ -8,6 +8,7 @@ import {
   weeklyUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
+import { claudeWindows, codexWindows } from './manualUsage';
 import { agentSubagentTurn } from './subagentEnvelopes.fixture';
 import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
 
@@ -302,6 +303,28 @@ describe('Happy record normalization', () => {
     expect(usage).toMatchObject({ usedPercent: 30, pacePercent: 50, stale: false });
     expect(expired?.stale).toBe(true);
     expect(weeklyUsage('Claude', [], now, now)).toBeNull();
+  });
+  it('should keep the 5-hour window next to the weekly window', () => {
+    // Arrange
+    const now = 7 * 86400000;
+    const rateLimits = {
+      five_hour: { utilization: 41.6, resets_at: new Date(now + 2.5 * 3600000).toISOString() },
+      seven_day: { utilization: 30, resets_at: new Date(now + 3.5 * 86400000).toISOString() },
+      seven_day_opus: null,
+    };
+    const codex = { rateLimits: {
+      primary: { usedPercent: 12, windowDurationMins: 300, resetsAt: (now + 4 * 3600000) / 1000 },
+      secondary: { usedPercent: 64, windowDurationMins: 10080, resetsAt: (now + 86400000) / 1000 },
+    } };
+    // Act
+    const claude = weeklyUsage('Claude', claudeWindows(rateLimits), now, now);
+    const codexReading = weeklyUsage('Codex', codexWindows(codex), now, now);
+    const weekOnly = weeklyUsage('Claude', claudeWindows({ seven_day: rateLimits.seven_day }), now, now);
+    // Assert
+    expect(claude).toMatchObject({ usedPercent: 30, pacePercent: 50, fiveHour: { usedPercent: 42, pacePercent: 50 } });
+    expect(codexReading).toMatchObject({ usedPercent: 64, fiveHour: { usedPercent: 12, pacePercent: 20, resetAt: now + 4 * 3600000 } });
+    expect(weekOnly).not.toHaveProperty('fiveHour');
+    expect(weeklyUsage('Claude', claudeWindows({ five_hour: rateLimits.five_hour }), now, now)).toBeNull();
   });
 });
 
