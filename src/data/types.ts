@@ -61,6 +61,7 @@ export type Machine = {
   capturedAt?: number;
   error?: string;
   homeDir?: string;
+  cliVersion?: string;
 };
 export type UsageReading = {
   agent: Agent;
@@ -128,7 +129,8 @@ export type Action =
 
 // This contract represents UI operations, not the Happy network protocol.
 export interface DemoAdapter {
-  createSession(draft: NewSessionDraft, attachments?: Attachment[]): Promise<string>;
+  // Rejects with DirectoryApprovalError (happy/errors.ts) until the user approves a missing folder.
+  createSession(draft: NewSessionDraft, attachments?: Attachment[], options?: { approvedNewDirectoryCreation?: boolean }): Promise<string>;
   renameSession(id: string, name: string): void | Promise<void>;
   archiveSession(id: string): void | Promise<void>;
   deleteSession(id: string): void | Promise<void>;

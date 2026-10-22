@@ -4,6 +4,7 @@ import { HappyClient } from './client';
 import type { Json } from './normalize';
 import { OfflineCache } from './offlineCache';
 import { defaultNewDraft } from '../data/defaults';
+import { DirectoryApprovalError } from './errors';
 
 const transport = vi.hoisted(() => ({ socket: null as any, options: null as any }));
 vi.mock('socket.io-client', () => ({
@@ -147,6 +148,58 @@ describe('Happy client protocol', () => {
     await expect(client.createSession(draft)).rejects.toThrow('Choose an available permission mode');
     expect(socket.emitWithAck).not.toHaveBeenCalled();
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+  });
+  it.each([['1.2.0', false], ['1.2.1-beta.2', true]])('should gate Auto by the computer happyCliVersion %s', async (happyCliVersion, allowed) => {
+    // Arrange
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Test computer', homeDir: '/real', happyCliVersion }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines')
+      ? response([machine]) : originalFetch(url));
+    await start();
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt({ type: 'success', sessionId: 'session' }, null) });
+    const draft = { ...defaultNewDraft, machineId: 'computer', path: '/real/project', permissionMode: 'auto' };
+    // Act
+    const created = client.createSession(draft);
+    // Assert
+    expect(client.getSnapshot().machines[0].cliVersion).toBe(happyCliVersion);
+    if (allowed) await expect(created).resolves.toBe('session');
+    else await expect(created).rejects.toThrow('Choose an available permission mode');
+    expect(socket.emitWithAck).toHaveBeenCalledTimes(allowed ? 1 : 0);
+  });
+  it('should ask before the daemon creates a missing folder and retry the same request with approval', async () => {
+    // Arrange
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Test computer', homeDir: '/real', happyCliVersion: '1.2.1' }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines')
+      ? response([machine]) : originalFetch(url));
+    await start();
+    // Wire shapes from happy-cli daemon/run.ts spawnSession and api/apiMachine.ts spawn-happy-session.
+    socket.emitWithAck
+      .mockResolvedValueOnce({ ok: true, result: await client.encryption.encrypt(
+        { type: 'requestToApproveDirectoryCreation', directory: '/real/new-project' }, null) })
+      .mockResolvedValueOnce({ ok: true, result: await client.encryption.encrypt({ type: 'success', sessionId: 'session' }, null) });
+    const draft = { ...defaultNewDraft, machineId: 'computer', path: '~/new-project' };
+    const pendingStarts = () => Object.keys(sessionStorage).filter((key) => key.includes('spawn.'))
+      .map((key) => JSON.parse(sessionStorage.getItem(key)!));
+    const spawnParams = (call: number) => client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[call][1].params, null);
+    // Act
+    const asked = await client.createSession(draft).catch((error) => error);
+    // Assert
+    expect(asked).toBeInstanceOf(DirectoryApprovalError);
+    expect(asked.directory).toBe('/real/new-project');
+    expect(await spawnParams(0)).toMatchObject({ type: 'spawn-in-directory', directory: '/real/new-project', approvedNewDirectoryCreation: false });
+    expect(pendingStarts()).toEqual([{ requestId: expect.any(String), unknown: false }]);
+    const uuids = vi.mocked(crypto.randomUUID).mock.calls.length;
+    // Act
+    const id = await client.createSession(draft, [], { approvedNewDirectoryCreation: true });
+    // Assert
+    expect(id).toBe('session');
+    expect(socket.emitWithAck.mock.calls[1][1].method).toBe('computer:spawn-happy-session');
+    expect(await spawnParams(1)).toMatchObject({ directory: '/real/new-project', approvedNewDirectoryCreation: true });
+    expect(vi.mocked(crypto.randomUUID).mock.calls.length).toBe(uuids);
+    expect(pendingStarts()).toEqual([]);
   });
   it.each([undefined, null])('should complete Stop for the CLI void reply %j', async (reply) => {
     // Arrange

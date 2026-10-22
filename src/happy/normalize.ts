@@ -186,6 +186,7 @@ export function normalizeMachine(
     capturedAt: previous?.capturedAt,
     error: previous?.error,
     homeDir: m.homeDir,
+    cliVersion: typeof m.happyCliVersion === 'string' ? m.happyCliVersion : undefined,
   };
 }
 // Some agents report their modes only through the meta of the last user message.

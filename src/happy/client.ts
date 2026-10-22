@@ -33,7 +33,7 @@ import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
 import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
-import { permissionOptions, canSelectPermission, resolveNewSessionPermission } from './permissionOptions';
+import { permissionOptions, canSelectPermission, resolveNewSessionPermission, newSessionCatalog } from './permissionOptions';
 import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
@@ -88,7 +88,7 @@ export const emptySnapshot: Snapshot = {
   sessionData: {},
   monitorErrors: [],
 };
-import { messageError } from './errors';
+import { DirectoryApprovalError, messageError } from './errors';
 export { messageError } from './errors';
 export const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
 // The recap mode and style change only the instructions. They are not part of a message fingerprint.
@@ -1455,13 +1455,15 @@ export class HappyClient implements DemoAdapter {
       throw new Error(result.error || result.stderr || 'The command failed on the computer.');
     return result;
   }
-  async createSession(draft: NewSessionDraft, attachments: Attachment[] = [], recapMode?: RecapMode, recapStyle?: string) {
+  async createSession(draft: NewSessionDraft, attachments: Attachment[] = [], { recapMode, recapStyle, approvedNewDirectoryCreation = false }:
+    { recapMode?: RecapMode; recapStyle?: string; approvedNewDirectoryCreation?: boolean } = {}) {
     validateImages(attachments);
     if (!this.socket?.connected) throw new Error('Reconnect before you start a session.');
     const machine = this.machines.get(draft.machineId);
     if (!machine?.wire.active) throw new Error('Choose an online computer.');
     const agent = draft.agent === 'Happy Agent' ? 'rig' : draft.agent.toLowerCase();
-    const catalog = agent === 'rig' ? { ...machine.metadata, flavor: 'rig', client: { id: 'rig' } } : { flavor: agent };
+    const catalog = agent === 'rig' ? { ...machine.metadata, flavor: 'rig', client: { id: 'rig' } }
+      : newSessionCatalog(agent, machine.metadata.happyCliVersion);
     if (!permissionOptions(catalog).some((option) => option.value === draft.permissionMode && !option.disabled))
       throw new Error('Choose an available permission mode before you start a session.');
     if (!isConcreteModel(draft.model) || !modelOptions(catalog).some((option) => option.value === draft.model && !option.disabled))
@@ -1532,7 +1534,7 @@ export class HappyClient implements DemoAdapter {
         directory,
         agent,
         permissionMode: draft.permissionMode,
-        approvedNewDirectoryCreation: false,
+        approvedNewDirectoryCreation,
       };
       if (agent === 'rig') params.clientRequestId = pending.requestId;
       if (agent === 'rig') {
@@ -1555,6 +1557,8 @@ export class HappyClient implements DemoAdapter {
             pending.unknown = false;
             sessionStorage.setItem(storageKey, JSON.stringify(pending));
           }
+          if (result.type === 'requestToApproveDirectoryCreation')
+            throw new DirectoryApprovalError(typeof result.directory === 'string' && result.directory ? result.directory : directory);
           throw new Error(
             result.errorMessage ||
               result.message ||

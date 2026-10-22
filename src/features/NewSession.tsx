@@ -1,19 +1,20 @@
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar, Button, Icon, Segment, Spinner } from '../components/ui';
+import { Avatar, Button, Dialog, Icon, Segment, Spinner } from '../components/ui';
 import { useDemo } from '../data/store';
 import { modelOptions, effortOptions, effortLabel } from '../happy/modelOptions';
 import { validateDraft } from '../data/reducer';
-import type { Agent } from '../data/types';
+import type { Agent, Attachment, NewSessionDraft } from '../data/types';
 import styles from './new-session.module.css';
 import { AgentChoices } from './AgentChoices';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { draftInWorkspace, recentWorkspaceOptions } from '../data/workspaces';
 import { modelChoiceKey, recentModelChoice, resolveModelChoice } from '../happy/modelPreferences';
-import { permissionOptions, resolveNewSessionPermission } from '../happy/permissionOptions';
+import { newSessionCatalog, permissionOptions, resolveNewSessionPermission } from '../happy/permissionOptions';
 import type { ModelChoice } from '../data/types';
 import { selectedImages } from '../happy/attachments';
+import { DirectoryApprovalError } from '../happy/errors';
 
 const NewModelPicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.NewModelPicker })));
 const WorkspacePicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.WorkspacePicker })));
@@ -28,7 +29,9 @@ export function NewSession() {
   }));
   const navigate = useNavigate();
   const agent = draft.agent === 'Happy Agent' ? lastAgent || 'Claude' : draft.agent;
-  const metadata = useMemo(() => ({ flavor: agent.toLowerCase() }), [agent]);
+  const machine = machines.find((item) => item.id === draft.machineId);
+  const cliVersion = machine?.cliVersion;
+  const metadata = useMemo(() => newSessionCatalog(agent.toLowerCase(), cliVersion), [agent, cliVersion]);
   const preferenceKey = modelChoiceKey(agent, draft.machineId);
   const selection = resolveModelChoice(metadata, [
     modelChoices?.[preferenceKey], draft,
@@ -40,12 +43,12 @@ export function NewSession() {
     permissionChoices?.[preferenceKey],
   ]);
   const models = modelOptions(metadata);
-  const machine = machines.find((item) => item.id === draft.machineId);
   const workspaces = useMemo(() => recentWorkspaceOptions(sessions, machines, recentWorkspaces || [], draft.machineId), [sessions, machines, recentWorkspaces, draft.machineId]);
   const efforts = effortOptions(metadata, model);
   const [picker, setPicker] = useState<'model' | 'workspace' | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [folderApproval, setFolderApproval] = useState<{ directory: string; draft: NewSessionDraft; attachments: Attachment[] } | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
   const taskInput = useRef<HTMLTextAreaElement>(null);
@@ -76,17 +79,22 @@ export function NewSession() {
       setError(validation);
       return;
     }
+    await launch({ ...draft, agent, model, effort, permissionMode },
+      attachments.map(file => ({ name: file.name, size: file.size, type: file.type, ...(mode === 'live' ? { file } : {}) })));
+  }
+  // An approved folder retry resends the same draft, so the client keeps its pending request.
+  async function launch(request: NewSessionDraft, files: Attachment[], approvedNewDirectoryCreation = false) {
+    if (busy) return;
     setError('');
+    setFolderApproval(null);
     setBusy(true);
     try {
-      const id = await adapter.createSession(
-        { ...draft, agent, model, effort, permissionMode },
-        attachments.map(file => ({ name: file.name, size: file.size, type: file.type, ...(mode === 'live' ? { file } : {}) })),
-      );
+      const id = await adapter.createSession(request, files, approvedNewDirectoryCreation ? { approvedNewDirectoryCreation } : undefined);
       if (mounted.current) navigate(`/session/${id}`);
     } catch (err) {
-      if (mounted.current)
-        setError(err instanceof Error ? err.message : 'Could not start the session. Try again.');
+      if (!mounted.current) return;
+      if (err instanceof DirectoryApprovalError) setFolderApproval({ directory: err.directory, draft: request, attachments: files });
+      else setError(err instanceof Error ? err.message : 'Could not start the session. Try again.');
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -97,12 +105,13 @@ export function NewSession() {
   }
   function chooseAgent(nextAgent: Agent) {
     if (nextAgent === agent || nextAgent === 'Happy Agent') return;
-    rememberChoice(resolveModelChoice({ flavor: nextAgent.toLowerCase() }, [
+    const catalog = newSessionCatalog(nextAgent.toLowerCase(), cliVersion);
+    rememberChoice(resolveModelChoice(catalog, [
       modelChoices?.[modelChoiceKey(nextAgent, draft.machineId)],
       recentModelChoice(sessions, nextAgent, draft.machineId),
     ]), nextAgent);
     dispatch({ type: 'newDraft', value: { permissionMode: resolveNewSessionPermission(
-      { flavor: nextAgent.toLowerCase() }, [permissionChoices?.[modelChoiceKey(nextAgent, draft.machineId)]],
+      catalog, [permissionChoices?.[modelChoiceKey(nextAgent, draft.machineId)]],
     ) } });
   }
   function chooseModel(value: string) {
@@ -363,6 +372,15 @@ export function NewSession() {
       {picker === 'model' && <LazyBoundary><NewModelPicker agent={agent} model={model} models={models}
         effort={effort} efforts={efforts} onAgent={chooseAgent} onModel={chooseModel}
         onEffort={(value) => rememberChoice(resolveModelChoice(metadata, [{ model, effort: value }]))} onClose={() => setPicker(null)} /></LazyBoundary>}
+      {folderApproval && <Dialog title="Create this folder?" className={styles.folderDialog} onClose={() => setFolderApproval(null)}>
+        <p>This folder does not exist on {machine?.name || 'the selected computer'}. Create it and start the session?</p>
+        <code className={styles.folderPath}>{folderApproval.directory}</code>
+        <footer>
+          <Button onClick={() => setFolderApproval(null)}>Cancel</Button>
+          <Button variant="accent" icon="folderOutline"
+            onClick={() => void launch(folderApproval.draft, folderApproval.attachments, true)}>Create folder</Button>
+        </footer>
+      </Dialog>}
       {picker === 'workspace' && <LazyBoundary><WorkspacePicker options={workspaces} path={draft.path}
         machineName={machine?.name || 'Selected computer'} onSelect={chooseWorkspace} onClose={() => setPicker(null)} /></LazyBoundary>}
     </section>
