@@ -26,6 +26,7 @@ Paths under `rayno/` and `monitor/` below come from that overlay.
 | `agentGoal.ts`, `../features/TaskDock.tsx` | `components/agentGoalStatus.ts`, `components/AgentGoalBar.tsx`, `-session/agentGoalActionHandler.ts`, `sync/ops.ts` (`sessionGoalAction`), `sync/storageTypes.ts` (`AgentGoalStatusSchema`) |
 | `../data/todos.ts`, `../features/TodoList.tsx` | `components/tools/views/TodoView.tsx`, `components/tools/knownTools.tsx` (`TodoWrite`), `sync/storageTypes.ts` (`TodoItemSchema`), `sync/reducer/reducer.ts` (`latestTodos`) |
 | `handoff.ts` | `rayno/handoffPrompt.ts`, `rayno/useHandoffAction.ts`, `utils/worktreePaths.ts` from overlay commit `ab8283b9f73b578d008cab7d4ffe48c4b372af4f` |
+| `suggestions.ts`, `../features/ComposerSuggestions.tsx` | `components/autocomplete/findActiveWord.ts`, `components/autocomplete/applySuggestion.ts`, `components/autocomplete/suggestions.ts`, `components/autocomplete/useActiveSuggestions.ts`, `sync/suggestionCommands.ts`, `sync/suggestionFile.ts`, `sync/rig.ts` |
 
 Server contracts also reference `happy-server/sources/app/api/routes/sessionRoutes.ts` and `v3SessionRoutes.ts`.
 Copies update only through an explicit compatibility review.
@@ -144,6 +145,21 @@ Session attention is an independent Rayno implementation over session `seq`, enc
 formal agent-state requests/communications, and parsed reply options. Background scans use the existing
 v3 paginated message-read contract. Read cursors live only in Rayno account-scoped browser storage and
 merge monotonically across tabs. They do not read or write v1's frontend store or cloud read receipts.
+
+The browser tab follows `sync/webTabTitle.ts` and `components/web/FaviconPermissionIndicator.tsx`. Rayno counts listed
+sessions with the unread or needs-input state above, so the `(N)` prefix clears when the user reads or answers the
+session, also after a reload. The badged favicon shows while a connected session waits for the user.
+The plaintext `session-event` ephemeral (`sync/apiTypes.ts`; sent by `happy-server/sources/app/api/routes/pushRoutes.ts`
+with kind `done`, `permission`, or `question`) starts the same attention read for that session; it does not keep its own counter.
+That read covers only the message history, so it recovers a missed reply. A permission request still needs `update-session`,
+because `happy-cli/src/claude/utils/permissionHandler.ts` sends the `permission` push before it writes the agent state.
+
+Composer suggestions use the v1 `@` and `/` prefixes. `/` lists the v1 default commands, then the session metadata
+`slashCommands` and `skills` (from the Claude SDK init message in `happy-cli/src/claude/claudeRemote.ts`), without the v1
+ignored names. `@` reads `rg --files --follow` once through the session `ripgrep` RPC
+(`happy-cli/src/modules/common/registerCommonHandlers.ts`), adds the parent folders, and keeps the index for five minutes.
+A failed read is not kept, so the next `@` tries again. Rig v1 sessions must advertise file search and the RPC.
+Rayno ranks matches with its own matcher instead of Fuse.js. The list never takes focus, so the phone keyboard stays open.
 
 The session-list usage capsule uses the same adapted `manualUsage.ts` reader as Monitor, through
 the machine's read-only `bash` RPC. Rayno coalesces requests and keeps its own in-memory readings;

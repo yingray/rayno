@@ -67,6 +67,9 @@ export class HappyServer {
   bashCommands: Json[] = [];
   goalActions: Json[] = [];
   goalFailure = '';
+  // `rg --files --follow` output from the CLI `ripgrep` handler (modules/common/registerCommonHandlers.ts).
+  ripgrepStdout = 'src/app/App.tsx\nsrc/app/app.module.css\nsrc/components/Panel.tsx\nREADME.md\n';
+  ripgrepCalls: Json[] = [];
   worktreeListing = '';
   // `git status --porcelain` output for a worktree check. Other commands keep the dirty default.
   gitStatus = ' M README.md\n';
@@ -315,7 +318,8 @@ export class HappyServer {
           const key = machine ? null : this.dataKey;
           const params = await this.encryption.decrypt<Json>(payload.params, key);
           const usageRead = payload.method.endsWith(':bash') && params.command.includes('HAPPY_CLI_DIR=');
-          if (usageRead) {
+          if (payload.method.endsWith(':ripgrep')) this.ripgrepCalls.push(params);
+          else if (usageRead) {
             this.usageReads++;
             await this.usageReady;
           }
@@ -355,6 +359,8 @@ export class HappyServer {
               result = { ok: true };
             }
           }
+          if (payload.method.endsWith(':ripgrep'))
+            result = { success: true, exitCode: 0, stdout: this.ripgrepStdout, stderr: '' };
           if (payload.method.endsWith(':listDirectory'))
             result = { success: true, entries: [{ name: 'README.md', type: 'file', size: 17 }] };
           if (payload.method.endsWith(':readFile'))
@@ -577,6 +583,12 @@ export class HappyServer {
       t: 'update-session', id: session.id,
       agentState: { version: session.agentStateVersion, value: session.agentState },
     } }]));
+  }
+  // The plaintext ephemeral from `buildSessionEventEphemeral` in happy-server `app/events/eventRouter.ts`.
+  sendSessionEvent(sessionId: string, kind: 'done' | 'permission' | 'question') {
+    this.socket?.send('42' + JSON.stringify(['ephemeral', {
+      type: 'session-event', sessionId, kind, title: 'Claude finished', body: 'Ready for your next message', timestamp: Date.now(),
+    }]));
   }
   setMachineActive(active: boolean) {
     this.machineActive = active;
