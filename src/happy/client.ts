@@ -19,7 +19,7 @@ import {
   record,
   visibleMessages,
   contextUsage,
-  weeklyUsage,
+  planUsage,
   isRig,
   isSessionArchived,
   messageMeta,
@@ -1843,7 +1843,7 @@ export class HappyClient implements DemoAdapter {
         const result = await this.bash(machine.id, buildManualUsageCommand(), undefined, true);
         const parsed = parseManualUsage(result.stdout);
         for (const item of parsed.usages) {
-          const reading = weeklyUsage(agentName(item.agent), item.windows, item.capturedAt);
+          const reading = planUsage(agentName(item.agent), item.windows, item.capturedAt);
           if (reading) readings.set(`${machine.id}:${reading.agent}`, {
             ...reading, stale: !!reading.stale, machineId: machine.id, machineName: machine.name,
           });

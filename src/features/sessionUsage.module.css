@@ -29,6 +29,7 @@
   color: #d4d4d8;
 }
 .agent b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.agent .window5h { flex: none; margin-left: -3px; font-size: 10px; color: var(--muted); }
 .secondary { opacity: 0.62; }
 .stale { opacity: 0.55; }
 .bar {

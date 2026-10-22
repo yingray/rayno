@@ -38,6 +38,8 @@ export class HappyServer {
   // The 5-hour windows that Claude get_usage and Codex account/rateLimits/read also report.
   fiveHourPercent = 12;
   codexFiveHourPercent = 44;
+  // False when a plan reports only its 5-hour window: Claude sends `seven_day: null` and Codex sends no secondary window.
+  weekReported = true;
   sends: Json[] = [];
   failFirstSend = false;
   abortReply: unknown = undefined;
@@ -383,20 +385,20 @@ export class HappyServer {
                           resets_at: new Date(Date.now() + 2 * 3600000).toISOString(),
                         },
                         seven_day_opus: null,
-                        seven_day: {
+                        seven_day: this.weekReported ? {
                           utilization: this.usagePercent,
                           resets_at: new Date(Date.now() + 3 * 86400000).toISOString(),
-                        },
+                        } : null,
                       },
                     },
                     codex: this.usageFailure ? { ok: false, error: 'Codex unavailable' } : {
                       ok: true, data: { rateLimits: { primary: {
                         usedPercent: this.codexFiveHourPercent, windowDurationMins: 300,
                         resetsAt: Math.round((Date.now() + 3 * 3600000) / 1000),
-                      }, secondary: {
+                      }, secondary: this.weekReported ? {
                         usedPercent: this.codexPercent, windowDurationMins: 10080,
                         resetsAt: Math.round((Date.now() + 3 * 86400000) / 1000),
-                      } } },
+                      } : null } },
                     },
                   })
                 : params.command === 'git worktree list --porcelain'

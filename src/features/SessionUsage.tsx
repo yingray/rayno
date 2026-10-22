@@ -7,6 +7,9 @@ import type { Agent, UsageReading, UsageWindow } from '../data/types';
 import styles from './sessionUsage.module.css';
 
 const agents: Agent[] = ['Claude', 'Codex'];
+// The compact summary shows the weekly window. A provider without one shows its 5-hour window, as Happy's usage popup does.
+const mainWindow = (reading: UsageReading) => reading.week ?? reading.fiveHour;
+const mainLabel = (reading: UsageReading) => (reading.week ? 'weekly' : '5-hour');
 
 export const SessionUsage = memo(function SessionUsage() {
   const location = useLocation();
@@ -48,11 +51,12 @@ export const SessionUsage = memo(function SessionUsage() {
   }, [open]);
 
   function stale(reading: UsageReading) {
+    const resetAt = mainWindow(reading).resetAt;
     return reading.stale || (reading.capturedAt && now - reading.capturedAt > 15 * 60000) ||
-      (reading.resetAt && reading.resetAt <= now) ||
+      (resetAt && resetAt <= now) ||
       (reading.machineId && !machines.some((machine) => machine.id === reading.machineId && machine.online));
   }
-  function tone(reading: UsageReading, window: UsageWindow = reading) {
+  function tone(reading: UsageReading, window: UsageWindow = mainWindow(reading)) {
     if (stale(reading) || (window.resetAt && window.resetAt <= now)) return 'var(--muted)';
     const ahead = window.pacePercent === null ? 0 : window.usedPercent - window.pacePercent;
     return window.usedPercent >= 100 || ahead > 10 ? 'var(--red)' : ahead > 3 ? 'var(--orange)' : '';
@@ -63,7 +67,7 @@ export const SessionUsage = memo(function SessionUsage() {
       Number(!!stale(a)) - Number(!!stale(b)) || (b.capturedAt || 0) - (a.capturedAt || 0),
     )[0];
   }
-  function bar(reading: UsageReading, window: UsageWindow = reading, label = 'weekly') {
+  function bar(reading: UsageReading, window: UsageWindow = mainWindow(reading), label = mainLabel(reading)) {
     return (
       <span className={styles.bar} role="meter" aria-label={`${reading.agent} ${label} usage`}
         aria-valuenow={window.usedPercent} aria-valuemin={0} aria-valuemax={100}>
@@ -108,10 +112,10 @@ export const SessionUsage = memo(function SessionUsage() {
               <div className={styles.reading} key={`${agent}:${reading.machineId || ''}`}>
                 <div><strong>{agent}</strong><span>{reading.machineName || (mode === 'demo' ? 'Demo' : 'Computer not reported')}</span></div>
                 {reading.fiveHour && windowRow(reading, reading.fiveHour, '5-hour limit', '5-hour')}
-                {windowRow(reading, reading, 'Weekly limit', 'weekly')}
+                {reading.week && windowRow(reading, reading.week, 'Weekly limit', 'weekly')}
                 <p>{stale(reading) ? 'Stale reading · ' : ''}{mode === 'demo' ? 'Simulated data' : reading.capturedAt ? `Read ${new Date(reading.capturedAt).toLocaleString()}` : 'Not read yet'}</p>
               </div>
-            )) : <p className={styles.empty} key={agent}>{agent} · {loading ? 'Reading…' : 'No weekly usage reported'}</p>;
+            )) : <p className={styles.empty} key={agent}>{agent} · {loading ? 'Reading…' : 'No usage reported'}</p>;
           })}
           {usageErrors?.map((error, index) => <p className={styles.error} role="alert" key={index}>{error}</p>)}
           {!canRead && <p className={styles.empty}>Connect a computer to refresh usage.</p>}
@@ -123,12 +127,17 @@ export const SessionUsage = memo(function SessionUsage() {
         aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen((value) => !value)}>
         {agents.map((currentAgent) => {
           const reading = latest(currentAgent);
+          const main = reading && mainWindow(reading);
+          const summary = reading && (reading.week
+            ? `${reading.week.usedPercent}% of week used${reading.fiveHour ? ` · ${reading.fiveHour.usedPercent}% of 5 hours` : ''}`
+            : `${reading.fiveHour.usedPercent}% of 5 hours used`);
           return (
             <span className={`${styles.agent} ${reading && stale(reading) ? styles.stale : ''} ${agent && agent !== currentAgent ? styles.secondary : ''}`}
-              key={currentAgent} title={reading ? `${currentAgent} · ${reading.machineName || 'Demo'} · ${reading.usedPercent}% of week used${reading.fiveHour ? ` · ${reading.fiveHour.usedPercent}% of 5 hours` : ''}${stale(reading) ? ' · stale' : ''}` : `${currentAgent} · No weekly usage reported`}>
+              key={currentAgent} title={reading ? `${currentAgent} · ${reading.machineName || 'Demo'} · ${summary}${stale(reading) ? ' · stale' : ''}` : `${currentAgent} · No usage reported`}>
               <img className={styles.agentIcon} src={`/icons/${currentAgent === 'Claude' ? 'claude' : 'codex'}.png`} alt={currentAgent} />
               {reading ? bar(reading) : <span className={styles.bar}><span className={styles.track} /></span>}
-              <b style={{ color: reading ? tone(reading) || undefined : undefined }}>{reading ? `${reading.usedPercent}%` : '—'}</b>
+              <b style={{ color: reading ? tone(reading) || undefined : undefined }}>{main ? `${main.usedPercent}%` : '—'}</b>
+              {reading && !reading.week && <small className={styles.window5h} aria-hidden="true">5h</small>}
             </span>
           );
         })}

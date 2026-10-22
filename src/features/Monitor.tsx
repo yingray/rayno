@@ -248,11 +248,13 @@ export function Monitor() {
           </div>
         ) : (
           usageReadings.map((usage) => {
-            const usedPercent = scenario === 'hot' ? 86 : usage.usedPercent;
-            const ahead = usage.pacePercent !== null && usedPercent - usage.pacePercent > 3;
+            // A provider without a weekly window shows its 5-hour window as the main reading.
+            const main = usage.week ?? usage.fiveHour;
+            const usedPercent = scenario === 'hot' ? 86 : main.usedPercent;
+            const ahead = main.pacePercent !== null && usedPercent - main.pacePercent > 3;
             const hot =
               usedPercent >= 100 ||
-              (usage.pacePercent !== null && usedPercent - usage.pacePercent > 10);
+              (main.pacePercent !== null && usedPercent - main.pacePercent > 10);
             const tone = hot ? '#f87171' : ahead ? '#fb923c' : '#4ade80';
             return (
               <article
@@ -266,7 +268,7 @@ export function Monitor() {
                   <span className={styles.paceChip}>
                     {usage.stale
                       ? 'Stale reading'
-                      : usage.pacePercent === null
+                      : main.pacePercent === null
                         ? 'Pace unavailable'
                         : hot
                           ? 'Over pace'
@@ -280,30 +282,31 @@ export function Monitor() {
                   <span>%</span>
                 </div>
                 <p className={styles.usedLabel}>
-                  of week used{usage.machineName ? ` · ${usage.machineName}` : ''}
+                  {usage.week ? 'of week used' : 'of 5 hours used'}{usage.machineName ? ` · ${usage.machineName}` : ''}
                 </p>
-                <div className={styles.weekBar}>
+                <div className={styles.weekBar} role="meter" aria-label={`${usage.agent} ${usage.week ? 'weekly' : '5-hour'} usage`}
+                  aria-valuenow={usedPercent} aria-valuemin={0} aria-valuemax={100}>
                   <div className={styles.fill} style={{ width: `${usedPercent}%` }} />
-                  {[1, 2, 3, 4, 5, 6].map((tick) => (
+                  {usage.week && [1, 2, 3, 4, 5, 6].map((tick) => (
                     <span
                       className={styles.tick}
                       style={{ left: `${(tick * 100) / 7}%` }}
                       key={tick}
                     />
                   ))}
-                  {usage.pacePercent !== null && (
-                    <span className={styles.paceMarker} style={{ left: `${usage.pacePercent}%` }} />
+                  {main.pacePercent !== null && (
+                    <span className={styles.paceMarker} style={{ left: `${main.pacePercent}%` }} />
                   )}
                 </div>
-                <div className={styles.weekdays}>
+                {usage.week && <div className={styles.weekdays}>
                   {(mode === 'demo'
                     ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                     : ['Day 1', '2', '3', '4', '5', '6', '7']
                   ).map((day) => (
                     <span key={day}>{day}</span>
                   ))}
-                </div>
-                {usage.fiveHour && (
+                </div>}
+                {usage.week && usage.fiveHour && (
                   <div className={styles.fiveHour} role="meter" aria-label={`${usage.agent} 5-hour usage`}
                     aria-valuenow={usage.fiveHour.usedPercent} aria-valuemin={0} aria-valuemax={100}>
                     <div><span>5-hour limit</span><b>{usage.fiveHour.usedPercent}%</b></div>
@@ -313,7 +316,7 @@ export function Monitor() {
                 )}
                 <footer>
                   <span>
-                    {usage.fiveHour ? 'Week resets' : 'Resets'}{mode === 'demo' ? ' in' : ''} {usage.reset}
+                    {usage.week && usage.fiveHour ? 'Week resets' : 'Resets'}{mode === 'demo' ? ' in' : ''} {main.reset}
                   </span>
                   <span>
                     {mode === 'live'

@@ -173,7 +173,10 @@ warning at 10% and 5% remaining. The Model & effort sheet shows the reading when
 Unlike the Happy reducer, subagent usage does not count, and a later record wins a timestamp tie. A subagent row is a row inside
 the subagent `start` and `stop` bounds (`subagentOf`), because the Claude mapper also tags the main answer after a subagent with its id.
 Usage details show the `five_hour` and `seven_day` windows, like the usage popup in `components/AgentInput.tsx`.
-The compact summary keeps the weekly window. Other provider windows stay hidden.
+Like that popup, each window shows when the provider reports it, so a plan with only a `five_hour` window still has a reading.
+The compact summary and the Monitor card show the weekly window. Without one, they show the 5-hour window:
+the summary marks it `5h`, and the Monitor card says `of 5 hours used`.
+Other provider windows stay hidden. The composer warning and the Model & effort reading show context use, not plan windows.
 Codex effort choices follow `CODEX_EFFORTS_BY_MODEL` in `components/modelModeOptions.ts`. A model outside
 that table gets `low` through `xhigh`. The `thinkingLevels` of a published computer catalog still win.
 The current session's source computer is preferred in the compact summary; expanded details retain

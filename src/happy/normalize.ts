@@ -609,7 +609,7 @@ export function contextUsage(rows: Iterable<MessageRecord>): ContextUsage | unde
   }
   return latest && { size: latest.size, ...(latest.window ? { window: latest.window } : {}) };
 }
-// Happy's usage popup shows only these two plan windows (AgentInput.tsx usageRows).
+// Happy's usage popup shows only these two plan windows (AgentInput.tsx usageRows), each one when the provider reports it.
 const usageWindows = { five_hour: 5 * 3600000, seven_day: 7 * 86400000 } as const;
 function windowReading(windows: Json[], id: keyof typeof usageWindows, now: number): UsageWindow | null {
   const window = windows.find((window) => window.id === id);
@@ -623,20 +623,20 @@ function windowReading(windows: Json[], id: keyof typeof usageWindows, now: numb
     resetAt,
   };
 }
-export function weeklyUsage(
+export function planUsage(
   agent: Agent,
   windows: Json[],
   capturedAt: number,
   now = Date.now(),
 ): UsageReading | null {
   const week = windowReading(windows, 'seven_day', now);
-  if (!week) return null;
   const fiveHour = windowReading(windows, 'five_hour', now);
+  const main = week ?? fiveHour;
+  if (!main) return null;
   return {
     agent,
-    ...week,
-    ...(fiveHour ? { fiveHour } : {}),
+    ...(week ? { week, ...(fiveHour ? { fiveHour } : {}) } : { fiveHour: main }),
     capturedAt,
-    stale: (!!week.resetAt && week.resetAt <= now) || now - capturedAt > 15 * 60000,
+    stale: (!!main.resetAt && main.resetAt <= now) || now - capturedAt > 15 * 60000,
   };
 }

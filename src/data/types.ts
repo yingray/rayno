@@ -96,10 +96,9 @@ export type UsageWindow = {
   reset: string;
   resetAt?: number | null;
 };
-// The weekly plan window, with the 5-hour window when the agent reports it.
-export type UsageReading = UsageWindow & {
+// The plan windows that the agent reports: the weekly window, the 5-hour window, or both.
+export type UsageReading = ({ week: UsageWindow; fiveHour?: UsageWindow } | { week?: undefined; fiveHour: UsageWindow }) & {
   agent: Agent;
-  fiveHour?: UsageWindow;
   capturedAt?: number;
   stale?: boolean;
   machineId?: string;

@@ -7,7 +7,7 @@ import {
   normalizeSession,
   pendingPermissions,
   visibleMessages,
-  weeklyUsage,
+  planUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
 import { agentSubagentTurn, agentSubagentWork, codexCollabTurn, codexReasoningSection, taskSubagentTurn } from './subagentEnvelopes.fixture';
@@ -320,22 +320,22 @@ describe('Happy record normalization', () => {
     const now = 7 * 86400000;
     const reset = now + 3.5 * 86400000;
     // Act
-    const usage = weeklyUsage(
+    const usage = planUsage(
       'Claude',
       [{ id: 'seven_day', utilization: 30, resetsAt: reset }],
       now,
       now,
     );
-    const expired = weeklyUsage(
+    const expired = planUsage(
       'Claude',
       [{ id: 'seven_day', utilization: 30, resetsAt: now - 1 }],
       now,
       now,
     );
     // Assert
-    expect(usage).toMatchObject({ usedPercent: 30, pacePercent: 50, stale: false });
+    expect(usage).toMatchObject({ week: { usedPercent: 30, pacePercent: 50 }, stale: false });
     expect(expired?.stale).toBe(true);
-    expect(weeklyUsage('Claude', [], now, now)).toBeNull();
+    expect(planUsage('Claude', [], now, now)).toBeNull();
   });
   it('should keep the 5-hour window next to the weekly window', () => {
     // Arrange
@@ -350,14 +350,34 @@ describe('Happy record normalization', () => {
       secondary: { usedPercent: 64, windowDurationMins: 10080, resetsAt: (now + 86400000) / 1000 },
     } };
     // Act
-    const claude = weeklyUsage('Claude', claudeWindows(rateLimits), now, now);
-    const codexReading = weeklyUsage('Codex', codexWindows(codex), now, now);
-    const weekOnly = weeklyUsage('Claude', claudeWindows({ seven_day: rateLimits.seven_day }), now, now);
+    const claude = planUsage('Claude', claudeWindows(rateLimits), now, now);
+    const codexReading = planUsage('Codex', codexWindows(codex), now, now);
+    const weekOnly = planUsage('Claude', claudeWindows({ seven_day: rateLimits.seven_day }), now, now);
     // Assert
-    expect(claude).toMatchObject({ usedPercent: 30, pacePercent: 50, fiveHour: { usedPercent: 42, pacePercent: 50 } });
-    expect(codexReading).toMatchObject({ usedPercent: 64, fiveHour: { usedPercent: 12, pacePercent: 20, resetAt: now + 4 * 3600000 } });
+    expect(claude).toMatchObject({ week: { usedPercent: 30, pacePercent: 50 }, fiveHour: { usedPercent: 42, pacePercent: 50 } });
+    expect(codexReading).toMatchObject({ week: { usedPercent: 64 }, fiveHour: { usedPercent: 12, pacePercent: 20, resetAt: now + 4 * 3600000 } });
     expect(weekOnly).not.toHaveProperty('fiveHour');
-    expect(weeklyUsage('Claude', claudeWindows({ five_hour: rateLimits.five_hour }), now, now)).toBeNull();
+  });
+  it('should keep a 5-hour window when the provider reports no weekly window', () => {
+    // Arrange
+    const now = 7 * 86400000;
+    // A Claude get_usage reading with only the session window, and a Codex bucket with only its primary window.
+    const rateLimits = {
+      five_hour: { utilization: 41.6, resets_at: new Date(now + 2.5 * 3600000).toISOString() },
+      seven_day: null,
+    };
+    const codex = { rateLimits: { primary: { usedPercent: 12, windowDurationMins: 300, resetsAt: (now + 4 * 3600000) / 1000 }, secondary: null } };
+    // Act
+    const claude = planUsage('Claude', claudeWindows(rateLimits), now, now);
+    const codexReading = planUsage('Codex', codexWindows(codex), now, now);
+    const expired = planUsage('Claude', claudeWindows({ five_hour: { utilization: 80, resets_at: new Date(now - 1).toISOString() } }), now, now);
+    // Assert
+    expect(claude).toMatchObject({ agent: 'Claude', fiveHour: { usedPercent: 42, pacePercent: 50 }, stale: false });
+    expect(claude).not.toHaveProperty('week');
+    expect(codexReading).toMatchObject({ fiveHour: { usedPercent: 12, pacePercent: 20, resetAt: now + 4 * 3600000 } });
+    expect(codexReading).not.toHaveProperty('week');
+    expect(expired?.stale).toBe(true);
+    expect(planUsage('Claude', claudeWindows({ seven_day: null, extra_usage: { utilization: 5 } }), now, now)).toBeNull();
   });
 });
 
