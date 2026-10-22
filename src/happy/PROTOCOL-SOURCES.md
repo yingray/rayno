@@ -20,6 +20,7 @@ Paths under `rayno/` and `monitor/` below come from that overlay.
 | `systemPrompt.ts` | `sync/prompt/systemPrompt.ts`, sent as `appendSystemPrompt` in `sync/sync.ts` |
 | `normalize.ts`, `../data/sessionList.ts` | `utils/sessionActivity.ts`, `utils/flatSessionList.ts`, `utils/worktreePaths.ts`, `utils/sessionListTimestamp.ts`, `utils/relativeTime.ts`, `sync/storage.ts` |
 | `../components/useMinuteNow.ts` | `hooks/useMinuteNow.ts` |
+| `normalize.ts` `contextUsage`, `../features/ContextMeter.tsx` | `sync/reducer/reducer.ts` (`processUsageData`, reset events), `sync/typesRaw.ts` (`usageDataSchema`), `components/AgentInput.tsx` (`getContextStatus`, `formatTokenCount`, `AgentInputUsageRow`) |
 | `modelOptions.ts` | `components/modelModeOptions.ts`, `sync/rig.ts`, `sync/storageTypes.ts` |
 | `permissionOptions.ts` | `components/modelModeOptions.ts`, `utils/permissionModeLabels.ts`, `sync/agentDefaults.ts`, `sync/storageTypes.ts` |
 | `handoff.ts` | `rayno/handoffPrompt.ts`, `rayno/useHandoffAction.ts`, `utils/worktreePaths.ts` from overlay commit `ab8283b9f73b578d008cab7d4ffe48c4b372af4f` |
@@ -68,6 +69,10 @@ it does not save into v1's shared usage KV. The connected provider reads once pe
 the tab is visible and focused, across all Rayno routes. Blur or a hidden page stops the polling timer.
 Focus resumes stale reads. Offline computers do not receive reads, and concurrent refreshes share one request.
 Unavailable readings remain unknown or visibly stale.
+Context use shows only when the usage carries `context_window`. Happy does not guess the window from a model table.
+Rayno has no `alwaysShowContextSize` setting and no usage footer, so the composer shows only Happy's near-limit
+warning at 10% and 5% remaining. The Model & effort sheet shows the reading whenever the window is known.
+Unlike the Happy reducer, subagent usage does not count, and a later record wins a timestamp tie.
 Usage details show the `five_hour` and `seven_day` windows, like the usage popup in `components/AgentInput.tsx`.
 The compact summary keeps the weekly window. Other provider windows stay hidden.
 Codex effort choices follow `CODEX_EFFORTS_BY_MODEL` in `components/modelModeOptions.ts`. A model outside

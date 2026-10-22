@@ -15,6 +15,7 @@ import styles from './chat.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { useEventCallback } from '../components/useEventCallback';
 import { DraftComposer } from './DraftComposer';
+import { ContextMeter, ContextWarning } from './ContextMeter';
 import { selectedImages } from '../happy/attachments';
 import { ResumeSession } from './ResumeSession';
 import { ChatSessionMenu } from './ChatSessionMenu';
@@ -614,6 +615,7 @@ export const Chat = memo(function Chat({
                 )}
               </DraftComposer>
             </div>
+            <ContextWarning context={session.context} />
           </div>
         </>
       ) : mode === 'live' ? (
@@ -704,6 +706,7 @@ export const Chat = memo(function Chat({
                   ))}
                 </div>
               ) : <p>This model does not offer effort selection.</p>}
+              <ContextMeter context={session.context} />
               <Button onClick={() => setPicker(null)}>Done</Button>
             </div>
           ) : (

@@ -416,6 +416,35 @@ export class LiveWorkspacePage extends WorkspacePage {
   async expectWorkspaceLoading(loading: boolean) {
     await expect(this.page.getByRole('progressbar', { name: 'Load workspace' })).toHaveCount(loading ? 1 : 0);
   }
+  contextMeter() { return this.page.getByRole('dialog', { name: 'Model & effort' }).getByRole('meter', { name: 'Context window', exact: true }); }
+  contextWarning() {
+    return this.page.getByRole('region', { name: 'Chat session', exact: true }).getByRole('meter', { name: 'Context window', exact: true });
+  }
+  async expectContextWarningFits() {
+    const warning = (await this.contextWarning().boundingBox())!;
+    const send = (await this.page.getByRole('button', { name: 'Send message', exact: true }).boundingBox())!;
+    const viewport = this.page.viewportSize()!;
+    expect(warning.y).toBeGreaterThanOrEqual(send.y + send.height);
+    expect(warning.y + warning.height).toBeLessThanOrEqual(viewport.height);
+    expect(warning.x).toBeGreaterThanOrEqual(0);
+    expect(warning.x + warning.width).toBeLessThanOrEqual(viewport.width);
+    await expect(this.page.getByRole('textbox', { name: 'Message', exact: true })).toBeInViewport();
+    await this.expectNoPageOverflow();
+  }
+  async expectContextMeterFits() {
+    const dialog = this.page.getByRole('dialog', { name: 'Model & effort' });
+    const viewport = this.page.viewportSize()!;
+    await this.contextMeter().scrollIntoViewIfNeeded();
+    await expect(this.contextMeter()).toBeInViewport();
+    const meter = (await this.contextMeter().boundingBox())!;
+    expect(meter.x).toBeGreaterThanOrEqual(0);
+    expect(meter.x + meter.width).toBeLessThanOrEqual(viewport.width);
+    expect(await dialog.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    const done = dialog.getByRole('button', { name: 'Done', exact: true });
+    await done.scrollIntoViewIfNeeded();
+    await expect(done).toBeInViewport();
+    await this.expectNoPageOverflow();
+  }
   async openSession() {
     await this.page.goto('/session/real-session');
     await expect(this.page.getByText('From the real protocol', { exact: true })).toBeVisible();

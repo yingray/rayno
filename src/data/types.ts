@@ -21,6 +21,8 @@ export type Message = {
   // The agent's own plan-mode tool call, its call id, and the server time of its message.
   planMode?: { active: boolean; call: string; at: number };
 };
+// Tokens in the agent's context after its latest reply, and the model's window when the CLI reports it.
+export type ContextUsage = { size: number; window?: number };
 export type Session = {
   id: string;
   title: string;
@@ -45,6 +47,7 @@ export type Session = {
   additions: number;
   deletions: number;
   gitReported?: boolean;
+  context?: ContextUsage;
   messages: Message[];
 };
 export type Machine = {

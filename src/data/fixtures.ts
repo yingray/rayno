@@ -68,6 +68,7 @@ export function createInitialState(now = Date.now()): DemoState {
       branch: 'feat/floating-panels',
       additions: 42,
       deletions: 9,
+      context: { size: 84000, window: 200000 },
       status: 'idle',
       unread: false,
       age: 2,

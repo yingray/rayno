@@ -8,6 +8,7 @@ import type {
   RecapMode,
   Session,
   UsageReading,
+  ContextUsage,
 } from '../data/types';
 import { CLIENT_ID, type Credentials } from './auth';
 import { base64, HappyCrypto, unbase64 } from './crypto';
@@ -17,6 +18,7 @@ import {
   normalizeSession,
   record,
   visibleMessages,
+  contextUsage,
   weeklyUsage,
   isRig,
   isSessionArchived,
@@ -104,7 +106,7 @@ export class HappyClient implements DemoAdapter {
   private sessions = new Map<string, SessionRecord>();
   private machines = new Map<string, MachineRecord>();
   private messages = new Map<string, Map<string, MessageRecord>>();
-  private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; messages: Message[] }>();
+  private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; messages: Message[]; context?: ContextUsage }>();
   private historyCursors = new Map<string, number>();
   private deletedSessions = new Set<string>();
   private historyRequests = new Map<string, Promise<void>>();
@@ -188,7 +190,8 @@ export class HappyClient implements DemoAdapter {
           const rows = this.messages.get(id);
           let history = this.visibleHistory.get(id);
           if (!history || history.source !== rows || history.size !== (rows?.size || 0)) {
-            history = { source: rows, size: rows?.size || 0, messages: visibleMessages([...(rows?.values() || [])]) };
+            const list = [...(rows?.values() || [])];
+            history = { source: rows, size: rows?.size || 0, messages: visibleMessages(list), context: contextUsage(list) };
             this.visibleHistory.set(id, history);
           }
           const attention = this.sessionAttention(source.wire.id);
@@ -199,6 +202,7 @@ export class HappyClient implements DemoAdapter {
             this.machines.get(source.metadata.machineId),
             attention.optionsSeq > attention.userSeq,
           );
+          if (history.context) next.context = history.context;
           return previous && shallowEqual(previous, next) ? previous : next;
         })
         .sort(compareSessionActivity);

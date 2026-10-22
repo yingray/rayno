@@ -1,4 +1,4 @@
-import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading, UsageWindow } from '../data/types';
+import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading, UsageWindow, ContextUsage } from '../data/types';
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
 import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
@@ -354,6 +354,42 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
     } : {}) });
   }
   return output;
+}
+const tokens = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
+const contextResets = new Set(['Context was reset', 'Compaction completed']);
+/**
+ * The context use of the main thread, as in Happy sync/reducer/reducer.ts processUsageData.
+ * The newest usage wins, and a later record wins a tie. A reset or compaction clears it. Subagent usage does not count.
+ */
+export function contextUsage(rows: Iterable<MessageRecord>): ContextUsage | undefined {
+  let latest: (ContextUsage & { at: number }) | undefined;
+  for (const row of [...rows].sort((a, b) => a.seq - b.seq)) {
+    const raw = record(row.raw), content = record(raw.content);
+    const envelope = raw.role === 'session' ? record(content.type === 'session' ? content.data : content)
+      : content.type === 'session' ? record(content.data) : null;
+    let usage: Json | null = null, at = row.createdAt;
+    if (envelope) {
+      if (envelope.role !== 'agent' || envelope.subagent) continue;
+      usage = record(envelope.usage);
+      if (typeof envelope.time === 'number') at = envelope.time;
+    } else if (raw.role === 'agent' && content.type === 'output') {
+      const data = record(content.data);
+      if (data.type !== 'assistant' || data.isSidechain) continue;
+      usage = record(data.message?.usage);
+    } else if (raw.role === 'agent' && content.type === 'event') {
+      const data = record(content.data);
+      if (data.type === 'message' && contextResets.has(data.message)) latest = { size: 0, at };
+      continue;
+    } else continue;
+    if (typeof usage.input_tokens !== 'number' || typeof usage.output_tokens !== 'number' || (latest && at < latest.at)) continue;
+    const window = tokens(usage.context_window);
+    latest = {
+      size: tokens(usage.input_tokens) + tokens(usage.cache_creation_input_tokens) + tokens(usage.cache_read_input_tokens),
+      ...(window ? { window } : {}),
+      at,
+    };
+  }
+  return latest && { size: latest.size, ...(latest.window ? { window: latest.window } : {}) };
 }
 // Happy's usage popup shows only these two plan windows (AgentInput.tsx usageRows).
 const usageWindows = { five_hour: 5 * 3600000, seven_day: 7 * 86400000 } as const;
