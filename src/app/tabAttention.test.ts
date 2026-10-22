@@ -32,6 +32,16 @@ describe('Tab attention', () => {
     expect(faviconFor(true)).toBe('/icons/rayno-attention.svg');
   });
 
+  it('should treat a blocked session without a reply flag as needs input, as the session list does', () => {
+    // Arrange
+    const { needsReply: _, ...rest } = base;
+    const sessions = [{ ...rest, id: 'blocked', status: 'blocked' as const }, { ...base, id: 'answered', status: 'blocked' as const }];
+    // Act
+    const attention = tabAttention(sessions);
+    // Assert
+    expect(attention).toEqual({ count: 1, needsInput: true });
+  });
+
   it.each([
     [0, 'Rayno · Sessions'],
     [1, '(1) Rayno · Sessions'],

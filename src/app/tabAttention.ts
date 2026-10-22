@@ -9,9 +9,10 @@ export function tabAttention(sessions: Session[]): TabAttention {
   let count = 0, needsInput = false;
   for (const session of sessions) {
     if (!listed(session)) continue;
-    if (session.unread || session.needsReply) count++;
+    const needs = session.needsReply ?? session.status === 'blocked';
+    if (session.unread || needs) count++;
     // As in v1, only a connected session that waits for the user changes the icon.
-    if (session.needsReply && session.status !== 'offline') needsInput = true;
+    if (needs && session.status !== 'offline') needsInput = true;
   }
   return { count, needsInput };
 }
