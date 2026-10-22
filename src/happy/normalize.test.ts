@@ -9,7 +9,8 @@ import {
   weeklyUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
-import { agentSubagentTurn, agentSubagentWork, codexCollabTurn, taskSubagentTurn } from './subagentEnvelopes.fixture';
+import { agentSubagentTurn, agentSubagentWork, codexCollabTurn, codexReasoningSection, taskSubagentTurn } from './subagentEnvelopes.fixture';
+import { groupChatActivity } from '../data/chatBlocks';
 import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
@@ -624,5 +625,29 @@ describe('Thinking records', () => {
       ['', 'Read the log.\n\nThe log shows a timeout.'],
       ['The request timed out.', undefined],
     ]);
+  });
+  it('should hide titled reasoning calls and keep their text as thinking, not as a tool', () => {
+    // Arrange
+    const call = { type: 'tool-call', name: 'GeminiReasoning', callId: 'b3c1d2e4-5f60-4718-9a2b-3c4d5e6f7a80',
+      input: { title: 'Checking the log' }, id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' };
+    const result = { type: 'tool-call-result', callId: call.callId, output: { content: 'The log shows a timeout.', status: 'completed' },
+      id: 'c2d3e4f5-a6b7-4c8d-9e0f-1a2b3c4d5e6f' };
+    const rows = [
+      ...rowsOf(codexReasoningSection),
+      row('answer', 4, envelope({ t: 'text', text: 'The parser is fine.' })),
+      row('gemini-call', 5, acp(call)),
+      row('gemini-result', 6, acp(result)),
+      row('gemini-answer', 7, acp({ type: 'message', message: 'The request timed out.' })),
+    ];
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages.map((message) => [message.content, message.thinking, message.tools])).toEqual([
+      ['', 'Check the parser first.', undefined],
+      ['The parser is fine.', undefined, undefined],
+      ['', 'The log shows a timeout.', undefined],
+      ['The request timed out.', undefined, undefined],
+    ]);
+    expect(groupChatActivity(messages).map((block) => block.kind)).toEqual(['thinking', 'message', 'thinking', 'message']);
   });
 });

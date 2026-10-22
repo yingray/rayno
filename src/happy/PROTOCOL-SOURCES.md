@@ -60,7 +60,10 @@ A scan after a reload that sees only rows from inside a running subagent cannot 
 Thinking follows the `thinking` content of `sync/typesRaw.ts`: Claude `thinking` chunks, session `text` events with
 `thinking: true`, and ACP `thinking` records (stream chunks that join without a break). Rayno also treats Codex and ACP
 `reasoning` records as thinking; v1 shows them as text. v1 hides thinking (`components/MessageView.tsx`); Rayno shows it in
-a closed `Thinking` disclosure. Thinking without reply text joins the tool activity row group. Thinking never counts for
+a closed `Thinking` disclosure. Thinking without reply text joins the tool activity row group. Like the `hidden` known tools in
+`components/tools/knownTools.tsx`, Rayno hides `CodexReasoning`, `GeminiReasoning`, and `think` calls. The Codex mapper
+(`mapCodexProcessorMessageToSessionEnvelopes`) sends their text as session thinking text. Older Codex and ACP records
+(`utils/BaseReasoningProcessor.ts`) keep it only in the call result, so Rayno shows that `output.content` as thinking. Thinking never counts for
 attention, reply options, or recaps.
 
 Archive classification follows the overlay's `sync/storage.ts`: a lifecycle marker or an inactive

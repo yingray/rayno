@@ -62,3 +62,9 @@ export const codexCollabTurn = [
   { role: 'session', content: { id: 'ern49e7eufi9zmwp9p55utu7', time: 1792680000013, role: 'agent', turn: 'lo0gh9flrv8ow6ccukjz7goe', subagent: 'cbfcb7f63ea32640670a9569', ev: { t: 'stop' } }, meta: { sentFrom: 'cli' } },
   { role: 'session', content: { id: 'e6wtznkpbo2kcow3knl27fmd', time: 1792680000014, role: 'agent', turn: 'lo0gh9flrv8ow6ccukjz7goe', ev: { t: 'turn-end', status: 'completed' } }, meta: { sentFrom: 'cli' } },
 ];
+// Output of mapCodexProcessorMessageToSessionEnvelopes for one titled reasoning section from the ReasoningProcessor.
+export const codexReasoningSection = [
+  { role: 'session', content: { id: 'ujcm6vbn0kkcrvx3zvpinccs', time: 1792680000015, role: 'agent', turn: 'wq4f0b7mzk2c9h1x8r3t5yde', ev: { t: 'tool-call-start', call: 'reason-1', name: 'CodexReasoning', title: 'Planning the fix', description: 'Planning the fix', args: { title: 'Planning the fix' } } }, meta: { sentFrom: 'cli' } },
+  { role: 'session', content: { id: 'ss03t1btzvztuoecd6yhafo7', time: 1792680000016, role: 'agent', turn: 'wq4f0b7mzk2c9h1x8r3t5yde', ev: { t: 'text', text: 'Check the parser first.', thinking: true } }, meta: { sentFrom: 'cli' } },
+  { role: 'session', content: { id: 'swmmpcq2i0auosrvepbfehgl', time: 1792680000017, role: 'agent', turn: 'wq4f0b7mzk2c9h1x8r3t5yde', ev: { t: 'tool-call-end', call: 'reason-1' } }, meta: { sentFrom: 'cli' } },
+];

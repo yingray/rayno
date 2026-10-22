@@ -207,6 +207,15 @@ function sessionEnvelope(raw: Json): Json | null {
   if (content.type === 'session') return record(content.data);
   return raw.role === 'session' ? content : null;
 }
+// V1 hides these known tools (`components/tools/knownTools.tsx`). Their text arrives as thinking or as the call result.
+const reasoningTools = new Set(['CodexReasoning', 'GeminiReasoning', 'think']);
+// The id of a hidden reasoning call that a row starts.
+function reasoningCall(raw: Json): string | undefined {
+  const event = record(sessionEnvelope(raw)?.ev), content = record(raw.content), data = record(content.data);
+  if (event.t === 'tool-call-start') return reasoningTools.has(event.name) ? text(event.call) : undefined;
+  if (raw.role === 'agent' && (content.type === 'codex' || content.type === 'acp') && data.type === 'tool-call')
+    return reasoningTools.has(data.name) ? text(data.callId) : undefined;
+}
 const normalizedMessages = new WeakMap<MessageRecord, Message | null>();
 // ACP thinking records are stream chunks. The chat joins neighbors without a break.
 const thinkingChunks = new WeakSet<Message>();
@@ -227,6 +236,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
     normalizedMessages.set(row, null);
     return null;
   }
+  const hidden = reasoningCall(raw) !== undefined;
   const message: Message = {
     id: row.id,
     role: raw.role === 'user' ? 'user' : 'assistant',
@@ -248,7 +258,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
     if (event.t === 'text' && event.thinking && message.role === 'assistant') message.thinking = text(event.text);
     if (event.t === 'service' && message.role === 'assistant') message.content = text(event.text);
     if (message.role === 'user' && event.t === 'text' && text(event.text).trim() === RECAP_REQUEST) message.recapRequest = true;
-    if (event.t === 'tool-call-start')
+    if (event.t === 'tool-call-start' && !hidden)
       message.tools = [text(event.title || event.name, 'Tool call')];
     if (event.t === 'file')
       message.attachments = [
@@ -283,7 +293,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
         message.thinking = text(data.text);
         thinkingChunks.add(message);
       }
-      if (data.type === 'tool-call') message.tools = [text(data.name, 'Tool call')];
+      if (data.type === 'tool-call' && !hidden) message.tools = [text(data.name, 'Tool call')];
     }
   }
   const calls: ToolCall[] = [];
@@ -295,7 +305,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   };
   const addResult = (id: unknown, result: unknown, isError: unknown) => results.push({ id: text(id), result, isError: isError === true });
   if (envelope) {
-    if (event.t === 'tool-call-start') addCall(event.call, event.title || event.name, event.args, event.name);
+    if (event.t === 'tool-call-start' && !hidden) addCall(event.call, event.title || event.name, event.args, event.name);
     if (event.t === 'tool-call-end') addResult(event.call, event.result, event.isError);
   } else if (raw.role === 'agent') {
     const data = record(content.data);
@@ -308,7 +318,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
         if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result') addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, stored ?? chunk.content ?? chunk.output, chunk.is_error);
       }
     } else if (content.type === 'codex' || content.type === 'acp') {
-      if (data.type === 'tool-call') addCall(data.callId, data.name, data.input);
+      if (data.type === 'tool-call' && !hidden) addCall(data.callId, data.name, data.input);
       if (data.type === 'tool-result' || data.type === 'tool-call-result') addResult(data.callId, data.output, data.isError);
       if (content.type === 'acp' && data.type === 'file-edit') addCall(data.id, 'file-edit', {
         filePath: data.filePath, description: data.description, diff: data.diff, oldContent: data.oldContent, newContent: data.newContent,
@@ -370,6 +380,7 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
       return true;
     });
   const marks = markSubagents(new Map(), sorted);
+  const reasoning = new Set(sorted.map(row => reasoningCall(record(row.raw))).filter((id): id is string => id !== undefined));
   // Like the v1 reducer, subagent rows go under the tool call that names them in `sessionSubagent`.
   const messages: Message[] = [];
   const work = new Map<string, { seq: number; message: Message }[]>();
@@ -435,7 +446,13 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
     return standalone.has(message) && !toolCalls[0].children ? [] : [{ ...joined, toolCalls }];
   });
   const output: Message[] = [];
-  for (const message of rendered) {
+  for (const item of rendered) {
+    // Older Codex and ACP records keep the text of a hidden reasoning call only in its result.
+    const folded = (item.toolResults || []).filter(result => reasoning.has(result.id))
+      .map(result => text(record(result.result).content).trim()).filter(Boolean);
+    const rest = item.toolResults?.filter(result => !reasoning.has(result.id));
+    const message = folded.length ? { ...item, thinking: [item.thinking, ...folded].filter(Boolean).join('\n\n'),
+      toolResults: rest?.length ? rest : undefined } : item;
     // Image-only sends still carry modes in the following empty text record.
     // Keep those modes on the image without adding an empty chat bubble.
     if (message.role === 'user' && message.settings && !message.content && !message.attachments?.length) {
@@ -453,7 +470,7 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
       continue;
     }
     if (!message.toolResults?.length) { output.push(message); continue; }
-    const unmatched = message.toolResults.filter(result => !matched.has(result.id) && !result.hideUnmatched);
+    const unmatched = message.toolResults.filter(result => !matched.has(result.id) && !result.hideUnmatched && !reasoning.has(result.id));
     if (!unmatched.length && !message.content && !message.tools?.length && !message.thinking) continue;
     output.push({ ...message, ...(unmatched.length ? {
       tools: unmatched.map(() => 'Earlier tool call'),
