@@ -8,6 +8,7 @@ import {
   weeklyUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
+import { systemPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
   id,
@@ -183,6 +184,15 @@ describe('Happy record normalization', () => {
     expect(
       messageMeta({ version: '1.2.1-beta.2', permissionMode: 'auto' }, {}).permissionMode,
     ).toBe('auto');
+  });
+  it('should send the option instructions with every message', () => {
+    // Arrange
+    const sessions = [{}, { client: { id: 'rig' } }];
+    // Act
+    const prompts = sessions.map((metadata) => messageMeta(metadata, {}).appendSystemPrompt);
+    // Assert
+    expect(prompts).toEqual([systemPrompt, systemPrompt]);
+    expect(systemPrompt).toContain('<options>');
   });
   it('should report unknown health without sample battery or latency values', () => {
     // Arrange

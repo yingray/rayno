@@ -17,6 +17,7 @@ Paths under `rayno/` and `monitor/` below come from that overlay.
 | `versionUtils.ts` | `utils/versionUtils.ts` |
 | `normalize.ts` | `sync/storageTypes.ts`, `sync/typesRaw.ts`, `../happy-wire/src/messages.ts`, `../happy-wire/src/sessionProtocol.ts` |
 | `controlMessages.ts` | `../happy-wire/src/controlMessages.ts` |
+| `systemPrompt.ts` | `sync/prompt/systemPrompt.ts`, sent as `appendSystemPrompt` in `sync/sync.ts` |
 | `normalize.ts`, `../data/sessionList.ts` | `utils/sessionActivity.ts`, `utils/flatSessionList.ts`, `utils/worktreePaths.ts`, `utils/sessionListTimestamp.ts`, `utils/relativeTime.ts`, `sync/storage.ts` |
 | `../components/useMinuteNow.ts` | `hooks/useMinuteNow.ts` |
 | `modelOptions.ts` | `components/modelModeOptions.ts`, `sync/rig.ts`, `sync/storageTypes.ts` |

@@ -1,6 +1,7 @@
 import type { Agent, Machine, Message, MessageSettings, Session, ToolCall, UsageReading } from '../data/types';
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
+import { systemPrompt } from './systemPrompt';
 
 // These records are protocol boundaries. Keep unknown metadata fields for CAS updates.
 export type Json = Record<string, any>;
@@ -55,7 +56,7 @@ export function messageMeta(
   options: MessageSettings,
 ): Json {
   const mode = record(metadata.draft || metadata.lastMode);
-  const meta: Json = { sentFrom: 'web' };
+  const meta: Json = { sentFrom: 'web', appendSystemPrompt: systemPrompt };
   const permission = options.permissionMode || currentPermission(metadata);
   if (!isRig(metadata) && permission === 'dontAsk')
     throw new Error(
