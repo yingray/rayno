@@ -418,11 +418,14 @@ export class HappyServer {
             if (killed) {
               const killedKey = killed.dataEncryptionKey ? this.dataKey : null;
               const current = await this.encryption.decrypt<Json>(killed.metadata, killedKey);
-              killed.metadata = await this.encryption.encrypt({ ...current, lifecycleState: 'archived',
-                lifecycleStateSince: Date.now(), archivedBy: 'cli', archiveReason: 'User terminated' }, killedKey);
-              killed.metadataVersion++;
-              this.socket?.send('42' + JSON.stringify(['update', { body: { t: 'update-session', id: killed.id,
-                metadata: { version: killed.metadataVersion, value: killed.metadata } } }]));
+              // A bot is a Rig session. Its agent is not in the Happy repo, so the client must not count on an archive marker.
+              if (!current.bot) {
+                killed.metadata = await this.encryption.encrypt({ ...current, lifecycleState: 'archived',
+                  lifecycleStateSince: Date.now(), archivedBy: 'cli', archiveReason: 'User terminated' }, killedKey);
+                killed.metadataVersion++;
+                this.socket?.send('42' + JSON.stringify(['update', { body: { t: 'update-session', id: killed.id,
+                  metadata: { version: killed.metadataVersion, value: killed.metadata } } }]));
+              }
               this.setSessionActive(killed.id, false);
             }
           }

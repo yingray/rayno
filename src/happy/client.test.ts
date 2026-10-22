@@ -999,18 +999,22 @@ describe('Happy client session lifecycle', () => {
     expect(socket.emitWithAck).not.toHaveBeenCalled();
     expect(requests()).toEqual(['DELETE /v1/sessions/session']);
   });
-  it('should archive a bot only through killSession', async () => {
+  // A bot is a Rig session. Shape from Happy Web sync/__testdata__/rigMetadata.ts and sync/storageTypes.spec.ts.
+  const rigBot = (): Json => ({ ...metadata, rigMetadataVersion: 1, client: { id: 'rig', name: 'Rig', version: '0.0.30' },
+    provider: { id: 'codex', kind: 'codex', name: 'OpenAI Codex' }, flavor: 'codex', startedBy: 'daemon', startedFromDaemon: true,
+    bot: { id: 'bot-1', name: 'Assistant', username: 'assistant', workspaceId: 'bot-workspace', orderKey: '1' } });
+  it('should archive a bot only through killSession and keep it inactive in the list', async () => {
     // Arrange: Happy Web hooks/useSessionQuickActions.ts archives a bot without the server archive.
-    session.metadata = await client.encryption.encrypt({ ...metadata, bot: { id: 'bot', username: 'helper' } }, null);
+    session.metadata = await client.encryption.encrypt(rigBot(), null);
     await start();
     fetchMock.mockClear();
-    socket.emitWithAck.mockResolvedValueOnce(await rpcReply({ success: true, message: 'Killing happy-cli process' }));
+    socket.emitWithAck.mockResolvedValueOnce(await rpcReply({ success: true }));
     // Act
     await client.archiveSession('session');
     // Assert
     expect(socket.emitWithAck.mock.calls).toEqual([['rpc-call', expect.objectContaining({ method: 'session:killSession' })]]);
     expect(requests()).toEqual([]);
-    expect(client.getSnapshot().sessions[0].archived).toBe(true);
+    expect(client.getSnapshot().sessions[0]).toMatchObject({ status: 'offline', archived: false });
   });
   it.each([
     ['a refused kill', { success: false, message: 'Not now' }, 'Not now'],
@@ -1018,18 +1022,29 @@ describe('Happy client session lifecycle', () => {
     ['a kill without a message', { success: false }, 'Connect to the bot’s computer to archive it.'],
   ])('should keep a bot after %s without a server archive', async (_name, reply, message) => {
     // Arrange
-    session.metadata = await client.encryption.encrypt({ ...metadata, bot: { id: 'bot', username: 'helper' } }, null);
+    session.metadata = await client.encryption.encrypt(rigBot(), null);
     await start();
     fetchMock.mockClear();
     socket.emitWithAck.mockResolvedValueOnce('ok' in reply ? reply : await rpcReply(reply));
     // Act / Assert
     await expect(client.archiveSession('session')).rejects.toThrow(message);
     expect(requests()).toEqual([]);
-    expect(client.getSnapshot().sessions[0].archived).toBe(false);
+    expect(socket.emitWithAck).toHaveBeenCalledTimes(1);
+    expect(client.getSnapshot().sessions[0]).toMatchObject({ status: 'idle', archived: false });
+  });
+  it('should refuse to restore an archived bot before any request', async () => {
+    // Arrange
+    session.metadata = await client.encryption.encrypt({ ...rigBot(), lifecycleState: 'archived' }, null);
+    await start();
+    fetchMock.mockClear();
+    // Act / Assert
+    await expect(client.archiveSession('session')).rejects.toThrow('Use the Happy app to restore this bot.');
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+    expect(requests()).toEqual([]);
   });
   it('should refuse to delete a bot conversation before any request', async () => {
     // Arrange: Happy Web sync/ops.ts sessionDelete refuses a bot.
-    session.metadata = await client.encryption.encrypt({ ...metadata, bot: { id: 'bot', username: 'helper' } }, null);
+    session.metadata = await client.encryption.encrypt(rigBot(), null);
     await start();
     fetchMock.mockClear();
     // Act / Assert

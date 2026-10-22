@@ -48,7 +48,9 @@ Archive and delete follow `hooks/useSessionQuickActions.ts` and `app/(app)/sessi
 lifecycle itself. A failed kill or an offline computer falls back to `POST /v1/sessions/:id/archive`. Rayno writes the
 archive marker only for Rig sessions. Delete sends a best-effort `killSession` to a connected session first.
 A bot archives only through `killSession`; a failed kill keeps the bot and shows the error, as in Happy Web.
+A bot is a Rig session, so after the kill it stays in the list as inactive. Rayno writes no bot metadata.
 Like `sync/ops.ts` `sessionDelete`, Rayno refuses to delete a bot and hides its delete actions.
+Happy Web has no bot restore, so Rayno refuses to restore an archived bot.
 
 Before an archive or a delete, `hooks/useWorktreeCleanup.ts` and `utils/worktree.ts` decide on a worktree prompt.
 The session path must contain `/.dev/worktree/`, no other connected session may use it, and the machine `bash` RPC

@@ -1053,6 +1053,8 @@ export class HappyClient implements DemoAdapter {
   async archiveSession(id: string) {
     const source = this.getSession(id);
     if (isSessionArchived(source)) {
+      // Happy Web has no bot restore, and the bot's agent owns its metadata.
+      if (source.metadata.bot) throw new Error('Use the Happy app to restore this bot.');
       if (!isRig(source.metadata) && !source.wire.active)
         throw new Error('This CLI session has ended. Resume this session before you restore it.');
       await this.mutateMetadata(id, (metadata) => {

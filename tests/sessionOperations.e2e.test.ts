@@ -60,12 +60,15 @@ test('delete should replace its confirmation with the worktree offer and keep th
   expect(server.sessions.some((session) => session.id === 'real-session')).toBe(false);
 });
 
-test('a bot should archive through its agent only and offer no delete action', async ({ page }) => {
+test('a bot should archive through its agent only, stay listed, and offer no delete action', async ({ page }) => {
   // Arrange
   const server = new HappyServer();
   server.gitStatus = '';
   await server.install(page);
-  await server.updateMetadata({ path: worktree, bot: { id: 'bot-1', username: 'helper' } });
+  // A bot is a Rig session. Shape from Happy Web sync/__testdata__/rigMetadata.ts and sync/storageTypes.spec.ts.
+  await server.updateMetadata({ path: worktree, rigMetadataVersion: 1, client: { id: 'rig', name: 'Rig', version: '0.0.30' },
+    provider: { id: 'codex', kind: 'codex', name: 'OpenAI Codex' }, flavor: 'codex', startedBy: 'daemon', startedFromDaemon: true,
+    bot: { id: 'bot-1', name: 'Assistant', username: 'assistant', workspaceId: 'bot-workspace', orderKey: '1' } });
   const workspace = new SessionOperationsPage(page);
   await page.goto('/session/real-session');
   await expect(page.getByText('From the real protocol', { exact: true })).toBeVisible();
@@ -80,6 +83,8 @@ test('a bot should archive through its agent only and offer no delete action', a
   await expect(page).toHaveURL(/\/sessions$/);
   expect(server.mutations).toEqual(['real-session:killSession']);
   expect(server.bashCommands).toEqual([]);
+  // The kill ends the bot's agent but keeps its one conversation in the active list.
+  await expect(workspace.sessionRow()).toBeVisible();
 });
 
 test('fork should ask before it creates a missing folder, copy again after Cancel, and start once after Create folder', async ({ page }, testInfo) => {
