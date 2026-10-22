@@ -446,10 +446,10 @@ describe('Happy client protocol', () => {
     const [request, normal] = await Promise.all(packets.map(decrypt));
     expect(request.content).toEqual({ type: 'text', text: '[rayno] Recap your previous reply.' });
     expect(request.meta).toMatchObject({ sentFrom: 'web', permissionMode: 'plan', raynoRecap: true, displayText: 'Recap' });
-    expect(request.meta.appendSystemPrompt).not.toContain('When your reply is long');
+    expect(request.meta.appendSystemPrompt).not.toContain('1,000 visible characters');
     expect(normal.meta.raynoRecap).toBeUndefined();
     expect(normal.meta.displayText).toBeUndefined();
-    expect(normal.meta.appendSystemPrompt).toContain('When your reply is long');
+    expect(normal.meta.appendSystemPrompt).toContain('only when the main reply exceeds 1,000 visible characters');
     expect(client.getSnapshot().sessions[0].messages).toMatchObject([
       { content: 'Recap', recapRequest: true },
       { content: 'A normal message' },

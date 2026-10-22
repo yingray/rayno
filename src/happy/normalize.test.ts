@@ -224,10 +224,13 @@ describe('Happy record normalization', () => {
     const auto = messageMeta({}, {}, 'auto');
     const manual = messageMeta({}, {}, 'manual');
     // Assert
-    expect(auto.appendSystemPrompt).toContain('When your reply is long');
-    expect(auto.appendSystemPrompt).toContain('Skip the recap for short replies');
-    expect(manual.appendSystemPrompt).not.toContain('When your reply is long');
-    expect(manual.appendSystemPrompt).not.toContain('Skip the recap for short replies');
+    expect(auto.appendSystemPrompt).toContain('only when the main reply exceeds 1,000 visible characters');
+    expect(auto.appendSystemPrompt).toContain('1,000 visible characters or fewer, including replies with code changes, findings, or decisions');
+    expect(auto.appendSystemPrompt).toContain('Exclude markup, the recap, and options');
+    expect(auto.appendSystemPrompt).toContain('An explicit recap request can ignore this length threshold');
+    expect(auto.appendSystemPrompt).not.toContain('600+ words');
+    expect(manual.appendSystemPrompt).not.toContain('1,000 visible characters');
+    expect(manual.appendSystemPrompt).not.toContain('Skip automatic recaps');
     expect(manual.appendSystemPrompt).toContain('<rayno-recap>');
     expect(manual.appendSystemPrompt).toContain('<options> stays last.');
     for (const prompt of [auto.appendSystemPrompt, manual.appendSystemPrompt]) {

@@ -234,7 +234,7 @@ test('recap followed by options should keep both parts and leave literal recap t
   expect(raw.meta.raynoRecap).toBeUndefined();
   expect(raw.meta.appendSystemPrompt).toContain('<options>');
   expect(raw.meta.appendSystemPrompt).toContain('<rayno-recap>');
-  expect(raw.meta.appendSystemPrompt).toContain('When your reply is long');
+  expect(raw.meta.appendSystemPrompt).toContain('only when the main reply exceeds 1,000 visible characters');
   await expect(recap.card()).toHaveCount(1);
 });
 
@@ -338,7 +338,7 @@ test('manual recap mode should drop the auto recap rule from the prompt', async 
   const raw = await server.encryption.decrypt<{ meta: Record<string, unknown> }>(server.sends[0].content, server.dataKey);
   expect(raw.meta.appendSystemPrompt).toContain('<rayno-recap>');
   expect(raw.meta.appendSystemPrompt).toContain(RECAP_REQUEST);
-  expect(raw.meta.appendSystemPrompt).not.toContain('When your reply is long');
+  expect(raw.meta.appendSystemPrompt).not.toContain('1,000 visible characters');
   expect(raw.meta.appendSystemPrompt).not.toContain('Skip the recap');
 });
 

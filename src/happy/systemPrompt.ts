@@ -38,7 +38,7 @@ export const PREVIOUS_RECAP_STYLES = [DEFAULT_RECAP_STYLE.replace('35 words in E
 // The user's style comes before the rules, and the rules win when the two conflict.
 export function recapPrompt(mode: 'auto' | 'manual', style = DEFAULT_RECAP_STYLE): string {
   const intro = mode === 'auto'
-    ? 'When your reply is long (roughly 600+ words, or it contains code changes, several findings, or a decision), end it with a recap the user can read or listen to:'
+    ? 'Append a recap automatically only when the main reply exceeds 1,000 visible characters. The user can read or listen to it. Use this format:'
     : 'Write a recap only when the user asks for one. The user can read or listen to it. Use this format:';
   const rules = [
     'Count the visible text, point phrases included. Use at most 100 characters in Chinese, or 35 words and 200 characters in English. Write in the user\'s language.',
@@ -48,7 +48,10 @@ export function recapPrompt(mode: 'auto' | 'manual', style = DEFAULT_RECAP_STYLE
     'Plain sentences that read well aloud: no markdown, code formatting, emoji, or lists inside the recap.',
     'Put "<rayno-recap>" and "</rayno-recap>" on dedicated lines. Do not wrap it in a code block.',
     'Place it after the reply text and before <options> if you output options. <options> stays last.',
-    ...(mode === 'auto' ? ['Skip the recap for short replies, questions, and plan-mode clarifications.'] : []),
+    ...(mode === 'auto' ? [
+      'Skip automatic recaps when the main reply is 1,000 visible characters or fewer, including replies with code changes, findings, or decisions.',
+      'Count only the visible characters in the main reply. Exclude markup, the recap, and options. An explicit recap request can ignore this length threshold.',
+    ] : []),
     `When the user message is exactly "${RECAP_REQUEST}", reply with only a <rayno-recap> block for your previous reply.`,
   ];
   const voice = style.trim().slice(0, RECAP_STYLE_LIMIT);
