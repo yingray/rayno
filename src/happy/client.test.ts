@@ -540,6 +540,27 @@ describe('Happy client protocol', () => {
     const reads = fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/v2/sessions'));
     expect(reads.at(-1)).not.toContain('changedSince=');
   });
+  it('should read a session after a session-event ephemeral so a missed reply becomes unread', async () => {
+    // Arrange
+    session.seq = 3;
+    await start();
+    const missed = { id: 'missed', seq: 4, createdAt: 200, content: { t: 'encrypted',
+      c: await client.encryption.encrypt({ role: 'agent', content: {
+        type: 'codex', data: { type: 'message', message: 'Finished while the socket missed it' },
+      } }, null) } };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.includes('/v1/machines') ? response([]) : response({ messages: [missed], hasMore: false }));
+    fetchMock.mockClear();
+    // Act
+    socket.handlers.get('ephemeral')?.({ type: 'session-event', sessionId: 'unknown', kind: 'done', title: 'Done', body: 'Done', timestamp: 1 });
+    socket.handlers.get('ephemeral')?.({ type: 'session-event', sessionId: 'session', kind: 'other', title: 'Done', body: 'Done', timestamp: 1 });
+    expect(fetchMock).not.toHaveBeenCalled();
+    socket.handlers.get('ephemeral')?.({ type: 'session-event', sessionId: 'session', kind: 'done', title: 'Claude finished', body: 'Ready', timestamp: 1 });
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].unread).toBe(true), { interval: 1 });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=2']);
+  });
   it('should read only the new messages when it checks a session for unread replies', async () => {
     // Arrange
     session.seq = 3;

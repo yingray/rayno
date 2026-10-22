@@ -518,6 +518,12 @@ export class HappyServer {
       agentState: { version: session.agentStateVersion, value: session.agentState },
     } }]));
   }
+  // The plaintext ephemeral from `buildSessionEventEphemeral` in happy-server `app/events/eventRouter.ts`.
+  sendSessionEvent(sessionId: string, kind: 'done' | 'permission' | 'question') {
+    this.socket?.send('42' + JSON.stringify(['ephemeral', {
+      type: 'session-event', sessionId, kind, title: 'Claude finished', body: 'Ready for your next message', timestamp: Date.now(),
+    }]));
+  }
   setMachineActive(active: boolean) {
     this.machineActive = active;
     this.socket?.send('42' + JSON.stringify(['ephemeral', { type: 'machine-activity', id: 'computer', active }]));

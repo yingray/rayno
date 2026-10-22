@@ -6,6 +6,7 @@ import { useDemo } from '../data/store';
 import { OfflineStatus } from '../components/OfflineStatus';
 import styles from './app.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
+import { applyFavicon, attentionTitle, tabAttention } from './tabAttention';
 const Chat = lazy(() => import('../features/Chat').then((module) => ({ default: module.Chat })));
 const NewSession = lazy(() => import('../features/NewSession').then((module) => ({ default: module.NewSession })));
 const SessionInfo = lazy(() => import('../features/SessionInfo').then((module) => ({ default: module.SessionInfo })));
@@ -105,9 +106,12 @@ export function App() {
       window.removeEventListener('offline', update);
     };
   }, []);
+  const attention = useDemo((store) => tabAttention(store.state.sessions));
   useEffect(() => {
-    document.title = `Rayno · ${infoOpen ? 'Session info' : path === '/new' ? 'New session' : sessionRoute && session ? session.customTitle || session.title : navigation.find((item) => item.key === active)?.name || 'Floating Panels'}`;
-  }, [path, active, session, infoOpen]);
+    document.title = attentionTitle(`Rayno · ${infoOpen ? 'Session info' : path === '/new' ? 'New session' : sessionRoute && session ? session.customTitle || session.title : navigation.find((item) => item.key === active)?.name || 'Floating Panels'}`, attention.count);
+  }, [path, active, session, infoOpen, attention.count]);
+  useEffect(() => applyFavicon(attention.needsInput), [attention.needsInput]);
+  useEffect(() => () => applyFavicon(false), []);
 
   const closeInfo = useCallback(() => navigate(`/session/${session?.id}`), [navigate, session?.id]);
   const openInfo = useCallback(() => navigate(infoOpen ? `/session/${session?.id}` : `/session/${session?.id}/info`), [navigate, infoOpen, session?.id]);

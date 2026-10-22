@@ -62,6 +62,12 @@ formal agent-state requests/communications, and parsed reply options. Background
 v3 paginated message-read contract. Read cursors live only in Rayno account-scoped browser storage and
 merge monotonically across tabs. They do not read or write v1's frontend store or cloud read receipts.
 
+The browser tab follows `sync/webTabTitle.ts` and `components/web/FaviconPermissionIndicator.tsx`. Rayno counts listed
+sessions with the unread or needs-input state above, so the `(N)` prefix clears when the user reads or answers the
+session, also after a reload. The badged favicon shows while a connected session waits for the user.
+The plaintext `session-event` ephemeral (`sync/apiTypes.ts`; sent by `happy-server/sources/app/api/routes/pushRoutes.ts`
+with kind `done`, `permission`, or `question`) starts the same attention read for that session; it does not keep its own counter.
+
 The session-list usage capsule uses the same adapted `manualUsage.ts` reader as Monitor, through
 the machine's read-only `bash` RPC. Rayno coalesces requests and keeps its own in-memory readings;
 it does not save into v1's shared usage KV. The connected provider reads once per minute while

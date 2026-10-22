@@ -832,6 +832,10 @@ export class HappyClient implements DemoAdapter {
       source.wire.active = event.active;
       this.publish(undefined, event.id);
     }
+    // The CLI push route sends `done`, `permission`, and `question`. Read the session so a missed update cannot hide them.
+    if (event.type === 'session-event' && typeof event.sessionId === 'string' && this.sessions.has(event.sessionId)
+      && ['done', 'permission', 'question'].includes(event.kind))
+      void this.inspectAttention(event.sessionId).catch(() => { /* Retain the last attention state until the next scan. */ });
   }
   /**
    * A message that does not decrypt keeps its id and seq with empty content, like Happy Web.
