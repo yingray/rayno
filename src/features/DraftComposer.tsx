@@ -63,6 +63,9 @@ export const DraftComposer = memo(function DraftComposer({
         icon="arrowUp"
         aria-label="Send message"
         disabled={pending || disabled || (!value.trim() && !hasAttachments)}
+        // Keep the focus in the message field. A blur closes the phone keyboard and moves this button
+        // before the click, so the first tap misses.
+        onMouseDown={(event) => { if (document.activeElement === input.current) event.preventDefault(); }}
         onClick={() => { if (!composing.current) void onSend(input.current?.value ?? value); }}
       />
     </div>

@@ -78,3 +78,28 @@ test('send confirmation should keep a newer draft typed while the request is pen
   await workspace.expectDraft('保留下一則草稿');
   await workspace.expectDraftAfterReload('保留下一則草稿');
 });
+
+test('one tap on send should send the draft and keep the keyboard field focused', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Touch keyboards use the mobile projects.');
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  const workspace = new PerformancePage(page);
+  await workspace.openSession();
+  await workspace.input().tap();
+  await workspace.input().pressSequentially('Send with one tap');
+  // A blur moves the composer while the phone keyboard closes, so the tap misses the button.
+  await workspace.input().evaluate((element) => {
+    (window as unknown as { blurs: number }).blurs = 0;
+    element.addEventListener('blur', () => { (window as unknown as { blurs: number }).blurs++; });
+  });
+  // Act
+  await page.getByRole('button', { name: 'Send message', exact: true }).tap();
+  // Assert
+  await expect.poll(() => server.sends.length).toBe(1);
+  await workspace.expectDraft('');
+  expect(await page.evaluate(() => (window as unknown as { blurs: number }).blurs)).toBe(0);
+  await expect(workspace.input()).toBeFocused();
+  const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[0].content, server.dataKey);
+  expect(message.content.text).toBe('Send with one tap');
+});
