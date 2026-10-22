@@ -5,7 +5,7 @@ import type { Json } from './normalize';
 import { OfflineCache } from './offlineCache';
 import { defaultNewDraft } from '../data/defaults';
 import { DirectoryApprovalError } from './errors';
-import { agentSubagentWork } from './subagentEnvelopes.fixture';
+import { agentSubagentWork, taggedMainReads } from './subagentEnvelopes.fixture';
 
 const transport = vi.hoisted(() => ({ socket: null as any, options: null as any }));
 vi.mock('socket.io-client', () => ({
@@ -633,7 +633,8 @@ describe('Happy client protocol', () => {
       client = await HappyClient.create(credentials);
       await start();
       // Assert
-      expect(workspace.subagents).toEqual({ session: [{ id: 'c744020fe7d250cca47a5ae1', title: 'Find config', bounds: [[5, true]] }] });
+      expect(workspace.subagents).toEqual({ session: {
+        marks: [{ id: 'c744020fe7d250cca47a5ae1', title: 'Find config', bounds: [[5, true]] }], read: [0, option] } });
       expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/messages?')).at(-1))
         .toBe(`https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=2`);
       // Without a bound, the subagent row counts as a main row, so a main answer is never hidden.
@@ -644,6 +645,81 @@ describe('Happy client protocol', () => {
       // Assert
       expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: true, unread: true });
     });
+  it('should show a tagged main answer after a reload when the subagent stop is on an older page than the answer', async () => {
+    // Arrange
+    const subagent = 'c744020fe7d250cca47a5ae1';
+    const stop = agentSubagentWork.findIndex((raw) => raw.content.ev.t === 'stop');
+    const answer = agentSubagentWork.findIndex((raw) => raw.content.ev.text?.startsWith('The config is config.json.'));
+    const raws = [...agentSubagentWork.slice(0, answer), ...taggedMainReads(60), ...agentSubagentWork.slice(answer)];
+    const wire = await Promise.all(raws.map(async (raw, index) => ({ id: raw.content.id, seq: index + 1, createdAt: raw.content.time,
+      content: { t: 'encrypted', c: await client.encryption.encrypt(raw, null) } })));
+    const save = vi.spyOn(OfflineCache.prototype, 'save').mockResolvedValue(true);
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/v2/sessions')) return response({ sessions: [session], hasNext: false });
+      if (url.includes('/v1/machines')) return response([]);
+      const query = new URL(url).searchParams, before = Number(query.get('before_seq')), limit = Number(query.get('limit'));
+      const rows = wire.slice(0, session.seq).filter((row) => row.seq < before).reverse();
+      return response({ messages: rows.slice(0, limit), hasMore: rows.length > limit });
+    });
+    // The cache keeps only the start: the subagent was still running.
+    session.seq = stop;
+    await start();
+    await (client as any).flushCache();
+    const workspace = save.mock.calls.at(-1)![0];
+    client.dispose();
+    vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue(workspace);
+    session.seq = wire.length;
+    // Act
+    client = await HappyClient.create(credentials);
+    await start();
+    await (client as any).flushCache();
+    // Assert
+    expect(workspace.subagents?.session.marks).toEqual([{ id: subagent, title: 'Find config', bounds: [[5, true]] }]);
+    // The newest page has the answer. The stop is on the second page, more than one page below the newest row.
+    expect(wire.length - (stop + 1)).toBeGreaterThan(100);
+    expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/messages?')).slice(-2)).toEqual([
+      `https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=100`,
+      `https://happy.test/v3/sessions/session/messages?before_seq=${wire.length - 99}&limit=100`,
+    ]);
+    expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: true, unread: true });
+    expect(save.mock.calls.at(-1)![0].subagents?.session).toEqual({
+      marks: [{ id: subagent, title: 'Find config', bounds: [[5, true], [stop + 1, false]] }], read: [0, wire.length] });
+  });
+  it('should not trust a cached open start when the cache read range ends before the attention boundary', async () => {
+    // Arrange
+    const stop = agentSubagentWork.findIndex((raw) => raw.content.ev.t === 'stop');
+    const answer = agentSubagentWork.findIndex((raw) => raw.content.ev.text?.startsWith('The config is config.json.'));
+    const wire = await Promise.all(agentSubagentWork.map(async (raw, index) => ({ id: raw.content.id, seq: index + 1, createdAt: raw.content.time,
+      content: { t: 'encrypted', c: await client.encryption.encrypt(raw, null) } })));
+    const save = vi.spyOn(OfflineCache.prototype, 'save').mockResolvedValue(true);
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/v2/sessions')) return response({ sessions: [session], hasNext: false });
+      if (url.includes('/v1/machines')) return response([]);
+      const query = new URL(url).searchParams, before = Number(query.get('before_seq')), limit = Number(query.get('limit'));
+      const rows = wire.slice(0, session.seq).filter((row) => row.seq < before).reverse();
+      return response({ messages: rows.slice(0, limit), hasMore: rows.length > limit });
+    });
+    session.seq = stop - 1;
+    await start();
+    await (client as any).flushCache();
+    const workspace = save.mock.calls.at(-1)![0];
+    // A later scan reads the stop and saves its boundary at once. The reload comes before the next cache save.
+    session.seq = answer;
+    await client.refresh(true);
+    client.dispose();
+    vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue(workspace);
+    session.seq = answer + 1;
+    // Act
+    client = await HappyClient.create(credentials);
+    await start();
+    // Assert
+    expect(workspace.subagents?.session).toEqual({
+      marks: [{ id: 'c744020fe7d250cca47a5ae1', title: 'Find config', bounds: [[5, true]] }], read: [0, stop - 1] });
+    expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/messages?')).at(-1))
+      .toBe(`https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=2`);
+    // The stop can be in the rows between the read range and the boundary, so the tagged answer stays a main answer.
+    expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: true, unread: true });
+  });
   it('should keep a subagent TodoWrite out of the todo chip when its start is only in the cached bounds', async () => {
     // Arrange
     const subagent = 'c744020fe7d250cca47a5ae1';
@@ -661,7 +737,7 @@ describe('Happy client protocol', () => {
     client.dispose();
     vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue({ version: 1, savedAt: 50, machines: [],
       sessions: [{ wire: { ...session, metadata: undefined }, metadata, agentState: {} }],
-      subagents: { session: [{ id: subagent, title: 'Find config', bounds: [[5, true]] }] } } as never);
+      subagents: { session: { marks: [{ id: subagent, title: 'Find config', bounds: [[5, true]] }], read: [0, 5] } } } as never);
     fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions') ? response({ sessions: [session], hasNext: false })
       : url.includes('/v1/machines') ? response([]) : response({ messages: [...wire].reverse(), hasMore: false }));
     client = await HappyClient.create(credentials);

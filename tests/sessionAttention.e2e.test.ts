@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { HappyServer } from './fixtures/HappyServer';
 import { LiveWorkspacePage } from './pages/LiveWorkspacePage';
-import { agentSubagentWork } from '../src/happy/subagentEnvelopes.fixture';
+import { agentSubagentWork, taggedMainReads } from '../src/happy/subagentEnvelopes.fixture';
 
 const agent = (text: string) => ({ role: 'agent', content: { type: 'codex', data: { type: 'message', message: text } } });
 const user = (text: string) => ({ role: 'user', content: { type: 'text', text } });
@@ -221,6 +221,36 @@ test('reload should keep a running subagent option out of needs input until the 
   await page.reload();
   await workspace.showSessions();
   // Assert
+  await expect(workspace.indicator('Needs input')).toBeVisible();
+  await expect(workspace.indicator('Unread')).toBeVisible();
+});
+
+test('reload should show a main answer whose subagent stop is on an older page than the answer', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  await server.setWorking(false);
+  const workspace = new LiveWorkspacePage(page);
+  await workspace.openOtherSession();
+  for (const raw of agentSubagentWork.slice(0, subagentOption + 1)) await server.pushEvent(raw, 'real-session', false);
+  await page.reload();
+  await workspace.showSessions();
+  await expect.poll(() => server.requests.some((request) => request.path.includes('/real-session/messages?'))).toBe(true);
+  // The scan saves only the subagent start with the encrypted workspace after the 500 ms cache delay.
+  await page.waitForTimeout(1000);
+  await expect(workspace.indicator('Needs input')).toHaveCount(0);
+  const stop = agentSubagentWork.findIndex((raw) => raw.content.ev.t === 'stop');
+  const answer = agentSubagentWork.findIndex((raw) => raw.content.ev.text?.startsWith('The config is config.json.'));
+  // Act
+  // The main Read calls after the stop keep the subagent id, so the tagged answer and the stop are on different pages.
+  for (const raw of [...agentSubagentWork.slice(stop, answer), ...taggedMainReads(60), ...agentSubagentWork.slice(answer)])
+    await server.pushEvent(raw, 'real-session', false);
+  const scanned = server.requests.length;
+  await page.reload();
+  await workspace.showSessions();
+  // Assert
+  await expect.poll(() => server.requests.slice(scanned).filter((request) => request.path.includes('/real-session/messages?before_seq=')
+    && !request.path.includes('before_seq=2147483647')).length).toBeGreaterThan(0);
   await expect(workspace.indicator('Needs input')).toBeVisible();
   await expect(workspace.indicator('Unread')).toBeVisible();
 });

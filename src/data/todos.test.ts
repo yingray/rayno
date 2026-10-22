@@ -128,6 +128,21 @@ describe('todo list', () => {
     expect(latestTodos(visibleMessages(finished), finished, known).map(todo => todo.content)).toEqual(['Main step']);
     expect(known.get(subagent.subagent)?.bounds.size).toBe(1);
   });
+  it('should keep a main TodoWrite after an unread subagent stop on the chip', () => {
+    // Arrange
+    const subagent = { subagent: 'c744020fe7d250cca47a5ae1' };
+    const known = markSubagents(new Map(), [row('sub-start', 4, envelope({ t: 'start', title: 'Find config' }, subagent))]);
+    const main = [{ content: 'Main step', status: 'in_progress', activeForm: 'Doing the main step' }];
+    // The stop is at seq 7, on a page that the client did not read. The mapper tags the main call after it.
+    const loaded = todoCall('toolu_after', 8, main, subagent);
+    // Act
+    const unread = latestTodos(visibleMessages(loaded), loaded, known, 8);
+    const read = latestTodos(visibleMessages(loaded), loaded, known, 4);
+    // Assert
+    expect(unread.map(todo => todo.content)).toEqual(['Main step']);
+    // When the client read every row from the start, no stop came before the call, so it is subagent work.
+    expect(read).toEqual([]);
+  });
 
   it('should clear the list after the CLI context reset event', () => {
     // Arrange

@@ -91,10 +91,16 @@ The Codex mapper (`codex/utils/sessionProtocolMapper.ts`, `collabArgs`) puts the
 latest of those calls before it, or under the first call when it comes before all of them, so every row shows only once.
 A `Task` call has no tool-call event, and the parent can be on an unloaded page; that work shows as its own collapsed tool row,
 named by the `start` title. Subagent rows never change attention or reply options. The client keeps the bounds of every row it
-reads for each session, and a background scan reads the bounds of the full page before it classifies rows. The bounds are saved
-with the encrypted, account-scoped offline workspace (`subagents` in `offlineCache.ts`) and restored before the first scan, so a
-scan after a reload that sees only rows from inside a running subagent still places them. A row whose bound is not known
-(no cache, or a damaged entry) stays a main row. The transcript still places rows only from the bounds on the loaded pages.
+reads for each session. The mapper tags the main rows after a `stop` with the subagent id until the turn ends, and the stop
+can be on an older page than those rows. So a background scan keeps every page it reads and classifies the rows only after
+it has the bounds of all of them. The bounds are saved with the encrypted, account-scoped offline workspace (`subagents` in
+`offlineCache.ts`) and restored before the first scan, so a scan after a reload that sees only rows from inside a running
+subagent still places them. With the bounds, the client saves `read`: the seq range that its scans read without a gap. A
+`start` without a known `stop` counts only for rows that the client can connect to it without a gap (the read range and the
+loaded pages). Otherwise its stop can be in rows that the client did not read, so the tagged rows stay main rows: a scan that
+stops above the start, or a cache whose range ends before the saved attention boundary, never hides a main answer. A row
+whose bound is not known (no cache, or a damaged entry) also stays a main row. The transcript still places rows only from
+the bounds on the loaded pages.
 
 Thinking follows the `thinking` content of `sync/typesRaw.ts`: Claude `thinking` chunks, session `text` events with
 `thinking: true`, and ACP `thinking` records (stream chunks that join without a break). Rayno also treats Codex and ACP
@@ -285,7 +291,9 @@ Subagent TodoWrite calls do not change the chip, as Happy Web skips sidechain me
 between a subagent's `start` and `stop` under the parent tool call (`subagentOf`), so the chip does not see them. The chip
 also checks each call row with `subagentOf` against the bounds that the client knows from other pages and the offline cache,
 so a call from a running subagent whose `start` is on an unloaded page does not replace the list. The CLI
-mapper keeps the id on later main records through `parentUuid`, so a call after `stop` still counts as a main call. The
+mapper keeps the id on later main records through `parentUuid`, so a call after `stop` still counts as a main call. The chip
+uses the same read-range rule as attention: an open `start` that the client cannot connect to the loaded pages does not count,
+so a main call after an unread `stop` still changes the list. The
 TodoWrite row shows its list in the row; the generic structured result view (`../data/toolResults.ts`) is the fallback.
 
 Terminal control follows `components/ChatFooter.tsx`, `components/ChatList.tsx`, `app/(app)/session/[id]/info.tsx`,

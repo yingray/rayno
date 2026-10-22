@@ -7,7 +7,8 @@ export type CachedWorkspace = {
   sessions: { wire: Json; metadata: Json; agentState: Json }[];
   machines: { wire: Json; metadata: Json }[];
   // Subagent bounds by session id. A background attention scan after a reload needs the bounds from older pages.
-  subagents?: Record<string, SavedSubagent[]>;
+  // `read` is the [from, to] seq range in which the client read every row, so a scan knows which starts it can trust.
+  subagents?: Record<string, { marks: SavedSubagent[]; read?: [number, number] }>;
 };
 export type CachedHistory = {
   version: 1;

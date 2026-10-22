@@ -1,4 +1,4 @@
-import { markSubagents, subagentOf, type MessageRecord, type SubagentMarks } from '../happy/normalize';
+import { markSubagents, subagentOf, trustedSubagentMarks, type MessageRecord, type SubagentMarks } from '../happy/normalize';
 import type { Message, Todo, ToolCall } from './types';
 
 // Adapted from Happy Web sync/storageTypes.ts (TodoItemSchema), components/tools/views/TodoView.tsx,
@@ -63,11 +63,13 @@ const copyMarks = (marks?: SubagentMarks): SubagentMarks =>
 // Calls without a valid list do not change the list. Subagent calls do not change it either, as Happy Web
 // sync/reducer/reducer.ts skips sidechain messages. `visibleMessages` nests the calls inside the loaded subagent bounds.
 // With `rows` and `known` (the bounds that the client read on other pages or before a reload), a call whose row is
-// inside a subagent is skipped too. A row without a known bound stays a main row.
-export function latestTodos(messages: readonly Message[], rows: Iterable<MessageRecord> = [], known?: SubagentMarks): Todo[] {
+// inside a subagent is skipped too. `from` is the lowest seq from which the client knows every bound up to the rows.
+// A known start below it without a known stop does not count, because its stop can be in the rows that the client did
+// not read. A row without a known bound stays a main row, so a main call after the stop still changes the list.
+export function latestTodos(messages: readonly Message[], rows: Iterable<MessageRecord> = [], known?: SubagentMarks, from = 0): Todo[] {
   const byId = new Map<string, MessageRecord>();
   for (const row of rows) byId.set(row.id, row);
-  const marks = markSubagents(copyMarks(known), byId.values());
+  const marks = trustedSubagentMarks(markSubagents(copyMarks(known), byId.values()), from);
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
     if (message.contextReset) return [];

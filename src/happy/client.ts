@@ -30,8 +30,10 @@ import {
   allowsSessionScope,
   isExitPlanTool,
   markSubagents,
+  restoreBoundsRange,
   restoreSubagentMarks,
   saveSubagentMarks,
+  trustedSubagentMarks,
   WORKTREE_MARKER,
   deliveryMeta,
   messageReceipt,
@@ -39,7 +41,7 @@ import {
   terminalControls,
   controlHandoff,
 } from './normalize';
-import type { History, Json, MachineRecord, MessageRecord, SessionRecord, SubagentMarks } from './normalize';
+import type { BoundsRange, History, Json, MachineRecord, MessageRecord, SessionRecord, SubagentMarks } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
 import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
@@ -129,7 +131,7 @@ export class HappyClient implements DemoAdapter {
   private machines = new Map<string, MachineRecord>();
   private messages = new Map<string, Map<string, MessageRecord>>();
   private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; hold: boolean; messages: Message[];
-    context?: ContextUsage; marked: number; todos: Todo[] }>();
+    context?: ContextUsage; marked: string; todos: Todo[] }>();
   private historyCursors = new Map<string, number>();
   private deletedSessions = new Set<string>();
   private historyRequests = new Map<string, Promise<void>>();
@@ -143,6 +145,8 @@ export class HappyClient implements DemoAdapter {
   private attention = new Map<string, SessionAttention>();
   // Subagent bounds from every row that this client read, so attention can place rows that arrive later.
   private subagentBounds = new Map<string, SubagentMarks>();
+  // The newest seq range that attention scans read without a gap. A start below it, without a known stop, does not count.
+  private subagentReads = new Map<string, BoundsRange>();
   private attentionRequests = new Map<string, Promise<void>>();
   private fileIndexes = new Map<string, { at: number; files: Promise<FileItem[]> }>();
   private sentModeRequests = new Map<string, Promise<SentModes | undefined>>();
@@ -223,16 +227,17 @@ export class HappyClient implements DemoAdapter {
           const rows = this.messages.get(id);
           let history = this.visibleHistory.get(id);
           const hold = sendsMessageReceipts(source.metadata);
-          const bounds = this.subagentBounds.get(id), marked = boundCount(bounds);
+          const bounds = this.subagentBounds.get(id), read = this.subagentReads.get(id);
+          const marked = `${boundCount(bounds)}:${read?.from}:${read?.to}`;
           if (!history || history.source !== rows || history.size !== (rows?.size || 0) || history.hold !== hold) {
             const list = [...(rows?.values() || [])];
             const messages = visibleMessages(list, hold);
             history = { source: rows, size: rows?.size || 0, hold, messages, context: contextUsage(list),
-              marked, todos: latestTodos(messages, list, bounds) };
+              marked, todos: latestTodos(messages, list, bounds, this.boundsFrom(id)) };
             this.visibleHistory.set(id, history);
           } else if (history.marked !== marked) {
-            // A scan of other pages can add bounds without new rows. The todo chip then checks its call again.
-            history = { ...history, marked, todos: latestTodos(history.messages, rows?.values(), bounds) };
+            // A scan of other pages can add bounds or read range without new rows. The todo chip then checks its call again.
+            history = { ...history, marked, todos: latestTodos(history.messages, rows?.values(), bounds, this.boundsFrom(id)) };
             this.visibleHistory.set(id, history);
           }
           const attention = this.sessionAttention(source.wire.id);
@@ -281,8 +286,12 @@ export class HappyClient implements DemoAdapter {
       sessions.forEach((source) => this.sessions.set(source.wire.id, source));
       machines.forEach((source) => this.machines.set(source.wire.id, source));
       // Restore the bounds before the first attention scan. A scan of only new rows can then place the rows of a running subagent.
-      for (const [id, saved] of Object.entries(cached.subagents && typeof cached.subagents === 'object' ? cached.subagents : {}))
-        if (this.sessions.has(id)) this.subagentBounds.set(id, restoreSubagentMarks(saved));
+      for (const [id, saved] of Object.entries(cached.subagents && typeof cached.subagents === 'object' ? cached.subagents : {})) {
+        if (!this.sessions.has(id) || !saved || typeof saved !== 'object') continue;
+        this.subagentBounds.set(id, restoreSubagentMarks(saved.marks));
+        const read = restoreBoundsRange(saved.read);
+        if (read) this.subagentReads.set(id, read);
+      }
       this.patch({ cachedAt: cached.savedAt });
       this.publish();
     } catch { /* An incompatible cache does not block a fresh server read. */ }
@@ -305,7 +314,10 @@ export class HappyClient implements DemoAdapter {
       sessions: [...this.sessions.values()].map(({ wire, metadata, agentState }) => ({ wire, metadata, agentState })),
       machines: [...this.machines.values()].map(({ wire, metadata }) => ({ wire, metadata })),
       subagents: Object.fromEntries([...this.subagentBounds].filter(([id, marks]) => this.sessions.has(id) && marks.size)
-        .map(([id, marks]) => [id, saveSubagentMarks(marks)])),
+        .map(([id, marks]) => {
+          const read = this.subagentReads.get(id);
+          return [id, { marks: saveSubagentMarks(marks), ...(read ? { read: [read.from, read.to] as [number, number] } : {}) }];
+        })),
     };
     const histories: CachedHistory[] = [...this.dirtyHistories].flatMap((id) => {
       const history = this.snapshot.histories[id];
@@ -347,6 +359,18 @@ export class HappyClient implements DemoAdapter {
     if (!marks) this.subagentBounds.set(id, marks = markSubagents(new Map(), this.messages.get(id)?.values() || []));
     return markSubagents(marks, rows);
   }
+  // The lowest seq from which the client knows every subagent bound up to the top of `range` (by default, the loaded
+  // history pages). The loaded pages and the range of the last attention scan extend it when they meet it.
+  private boundsFrom(id: string, range?: BoundsRange) {
+    let low = Infinity, high = -Infinity;
+    for (const row of this.messages.get(id)?.values() || []) { low = Math.min(low, row.seq); high = Math.max(high, row.seq); }
+    const pieces = [low <= high ? { from: low, to: high } : undefined, this.subagentReads.get(id)];
+    let { from, to } = range ?? pieces[0] ?? pieces[1] ?? { from: Infinity, to: -Infinity };
+    for (let pass = 0; pass < 2; pass++)
+      for (const piece of pieces)
+        if (piece && piece.from <= to + 1 && piece.to + 1 >= from) { from = Math.min(from, piece.from); to = Math.max(to, piece.to); }
+    return from;
+  }
   private sessionAttention(id: string) {
     let state = this.attention.get(id);
     if (!state) {
@@ -381,7 +405,8 @@ export class HappyClient implements DemoAdapter {
     const state = this.sessionAttention(id);
     if (state.assistantSeq <= state.readSeq) return;
     let readSeq = state.readSeq;
-    const marks = this.boundsFor(id);
+    // The same bounds as the attention scan, so reading the session clears the reply that the scan found.
+    const marks = trustedSubagentMarks(this.boundsFor(id), this.boundsFrom(id));
     for (const row of this.messages.get(id)?.values() || [])
       if (attentionMessage(row, marks) === 'assistant') readSeq = Math.max(readSeq, row.seq);
     if (readSeq <= state.readSeq) return;
@@ -559,6 +584,7 @@ export class HappyClient implements DemoAdapter {
     this.sessions.clear();
     this.messages.clear();
     this.subagentBounds.clear();
+    this.subagentReads.clear();
     this.visibleHistory.clear();
     this.machines.clear();
     this.sessionPresence.clear();
@@ -633,6 +659,7 @@ export class HappyClient implements DemoAdapter {
           this.sessions.delete(id);
           this.messages.delete(id);
           this.subagentBounds.delete(id);
+          this.subagentReads.delete(id);
         }
     const machines = Array.isArray(machineRows) ? machineRows : machineRows.machines;
     if (!Array.isArray(machines))
@@ -703,43 +730,59 @@ export class HappyClient implements DemoAdapter {
     const boundary = previous.inspectedSeq;
     let head = source.wire.seq || 0;
     const needAssistant = head > previous.readSeq;
-    let foundUser = false, foundAssistant = false;
+    const receipts = sendsMessageReceipts(source.metadata);
+    let foundUser = false, foundAssistant = false, checked = '';
     let cursor = 2147483647;
     // The first page needs only the new messages and the boundary message.
     let limit = boundary >= 0 ? Math.min(100, Math.max(2, head - boundary + 1)) : 100;
+    // A subagent stop can be on an older page than the main rows after it, which the mapper tags with the subagent id.
+    // So the scan keeps every page and classifies the rows only with the bounds of all the pages it read.
+    // A receipt can come before its message. Look up the ref in every page.
+    const rows = new Map<string, MessageRecord>();
+    const sent = (ref: string) => rows.get(ref) || this.messages.get(id)?.get(ref);
+    let oldest = Infinity, lost = -1, reachedBoundary = false, hasMore = true;
+    // The rows that this scan read, with the range of the last scan when the two meet. A row that did not decrypt ends it.
+    const read = (): BoundsRange => {
+      const last = this.subagentReads.get(id);
+      const from = !hasMore ? 0 : !reachedBoundary ? oldest
+        : last && last.to >= boundary && last.from <= boundary + 1 ? last.from : boundary + 1;
+      return { from: Math.max(from, lost + 1), to: head };
+    };
     while (!this.disposed && this.sessions.has(id)) {
       const result = await this.request(`/v3/sessions/${encodeURIComponent(id)}/messages?before_seq=${cursor}&limit=${limit}`);
       limit = 100;
       if (!Array.isArray(result.messages)) throw new Error('Could not read session activity.');
-      let reachedBoundary = false;
       let next = cursor;
-      const rows: MessageRecord[] = [];
+      const page: MessageRecord[] = [];
       for (const wire of result.messages) {
         if (!Number.isSafeInteger(wire.seq) || wire.seq < 0) continue;
         next = Math.min(next, wire.seq);
         head = Math.max(head, wire.seq);
         if (wire.seq <= boundary) { reachedBoundary = true; continue; }
+        oldest = Math.min(oldest, wire.seq);
         const row = await this.decryptMessage(source, wire).catch(() => undefined);
         if (this.disposed || !this.sessions.has(id)) return;
-        if (row) rows.push(row);
+        if (row) { page.push(row); rows.set(row.id, row); } else lost = Math.max(lost, wire.seq);
       }
-      // A subagent stop can come after its rows on a newest-first page, so read the bounds of the full page first.
-      // A receipt can come before its message on the page. Look up the ref in the whole page.
-      const marks = this.boundsFor(id, rows);
-      const page = new Map(rows.map((row) => [row.id, row]));
-      const receipts = sendsMessageReceipts(source.metadata);
-      const sent = (ref: string) => page.get(ref) || this.messages.get(id)?.get(ref);
-      for (const row of rows) {
+      hasMore = !!result.hasMore;
+      const marks = trustedSubagentMarks(this.boundsFor(id, page), this.boundsFrom(id, read()));
+      // A new bound or a lower read range can move rows between the threads. Then check every row again.
+      const key = `${boundCount(marks)}:${marks.size}`, changed = key !== checked;
+      if (changed) { foundUser = foundAssistant = false; checked = key; }
+      for (const row of changed ? rows.values() : page) {
         foundUser ||= userTurn(row, receipts, sent, marks);
         foundAssistant ||= attentionMessage(row, marks) === 'assistant';
-        this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks, receipts, sent));
       }
-      if (!result.hasMore || reachedBoundary || (foundUser && (foundAssistant || !needAssistant))) break;
+      if (!hasMore || reachedBoundary || (foundUser && (foundAssistant || !needAssistant))) break;
       if (next >= cursor) throw new Error('The session activity cursor did not advance.');
       cursor = next;
     }
     if (this.disposed || !this.sessions.has(id)) return;
-    const state = this.sessionAttention(id);
+    const range = read();
+    this.subagentReads.set(id, range);
+    const marks = trustedSubagentMarks(this.boundsFor(id), this.boundsFrom(id, range));
+    let state = this.sessionAttention(id);
+    for (const row of rows.values()) state = receiveAttention(state, row, marks, receipts, sent);
     this.attention.set(id, { ...state, inspectedSeq: Math.max(state.inspectedSeq, head) });
     this.saveAttention(id);
     this.scheduleCache(id);
@@ -901,6 +944,7 @@ export class HappyClient implements DemoAdapter {
       this.sessions.delete(body.sid);
       this.messages.delete(body.sid);
       this.subagentBounds.delete(body.sid);
+      this.subagentReads.delete(body.sid);
       if (this.sentTimes.has(body.sid)) this.saveSentTime(body.sid);
       this.publish();
       return;
@@ -965,6 +1009,9 @@ export class HappyClient implements DemoAdapter {
     }
     if (history && failure && !readable) throw failure;
     const added = decrypted.filter((row) => !messages.has(row.id) && !!messages.set(row.id, row));
+    // Every known bound counts here, so a row can count as subagent work too often, but never as main work too often.
+    // The next attention scan (a session update, a `done` event, or a refresh) decides with the read range, and
+    // attention keeps the highest seq that any classification found.
     const marks = this.boundsFor(id, added);
     for (const row of added) {
       session.wire.seq = Math.max(session.wire.seq || 0, row.seq);
@@ -1168,6 +1215,7 @@ export class HappyClient implements DemoAdapter {
     this.sessions.delete(id);
     this.messages.delete(id);
     this.subagentBounds.delete(id);
+    this.subagentReads.delete(id);
     this.saveSentTime(id);
     this.publish();
   }
