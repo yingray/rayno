@@ -68,6 +68,8 @@ sessions with the unread or needs-input state above, so the `(N)` prefix clears 
 session, also after a reload. The badged favicon shows while a connected session waits for the user.
 The plaintext `session-event` ephemeral (`sync/apiTypes.ts`; sent by `happy-server/sources/app/api/routes/pushRoutes.ts`
 with kind `done`, `permission`, or `question`) starts the same attention read for that session; it does not keep its own counter.
+That read covers only the message history, so it recovers a missed reply. A permission request still needs `update-session`,
+because `happy-cli/src/claude/utils/permissionHandler.ts` sends the `permission` push before it writes the agent state.
 
 Composer suggestions use the v1 `@` and `/` prefixes. `/` lists the v1 default commands, then the session metadata
 `slashCommands` and `skills` (from the Claude SDK init message in `happy-cli/src/claude/claudeRemote.ts`), without the v1

@@ -835,7 +835,8 @@ export class HappyClient implements DemoAdapter {
       source.wire.active = event.active;
       this.publish(undefined, event.id);
     }
-    // The CLI push route sends `done`, `permission`, and `question`. Read the session so a missed update cannot hide them.
+    // The CLI push route sends `done`, `permission`, and `question`. Read the messages so a missed update cannot hide a reply.
+    // Agent-state requests still come from update-session: the CLI pushes `permission` before it writes the agent state.
     if (event.type === 'session-event' && typeof event.sessionId === 'string' && this.sessions.has(event.sessionId)
       && ['done', 'permission', 'question'].includes(event.kind))
       void this.inspectAttention(event.sessionId).catch(() => { /* Retain the last attention state until the next scan. */ });
