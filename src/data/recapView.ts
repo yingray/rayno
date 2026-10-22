@@ -2,6 +2,7 @@ import { formatToolValue } from './chatBlocks';
 import { partsForMessage } from './messageOptions';
 import type { Recap } from './messageRecap';
 import { findRecapQuote, markdownText, RECAP_BLOCK_BREAK } from './recapQuote';
+import { isRejected } from './replyTurns';
 import type { Message } from './types';
 
 export type MessageRecap = {
@@ -81,6 +82,8 @@ export function recapView(messages: readonly Message[]): RecapView {
   // The text of the tool rows in the current turn.
   let turnTools: string[] = [];
   for (const message of messages) {
+    // A rejected message never reached the agent. A rejected recap request stays visible with its reason.
+    if (isRejected(message)) continue;
     if (message.role === 'user') {
       if (message.recapRequest) {
         hidden.add(message.id);

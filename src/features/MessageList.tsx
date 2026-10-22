@@ -5,7 +5,7 @@ import { Button, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
 import { formatToolValue, groupChatActivity, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
-import { unansweredMessageIds } from '../data/replyTurns';
+import { isRejected, unansweredMessageIds } from '../data/replyTurns';
 import { recapView, type MessageRecap } from '../data/recapView';
 import type { RecapSegment } from '../data/messageRecap';
 import { remarkPlugins } from '../data/recapQuote';
@@ -253,7 +253,7 @@ export const MessageList = memo(function MessageList({
     let afterUser = true;
     for (let index = visible.length - 1; index >= 0; index--) {
       const message = visible[index];
-      if (message.role === 'user') { afterUser = false; continue; }
+      if (message.role === 'user') { afterUser &&= isRejected(message); continue; }
       if (afterUser && !lastReply && (message.content.trim() || message.attachments?.length)) lastReply = message.id;
       const value = recaps.get(message.id);
       if (value && !latest) latest = message.id;

@@ -50,7 +50,8 @@ export type SentModes = MessageSettings & { sentAt: number };
 export function latestSentModes(messages: Message[]): SentModes | undefined {
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
-    if (message.role === 'user' && message.settings)
+    // The agent did not run a rejected message, so its settings are not the last sent modes.
+    if (message.role === 'user' && message.settings && message.delivery?.status !== 'rejected')
       return { ...message.settings, sentAt: message.sentAt ?? 0 };
   }
   return undefined;
@@ -90,7 +91,7 @@ export function modeBeforePlan(
   const picked = typeof saved?.at === 'number' && usable(saved.permission) ? saved.permission : undefined;
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
-    const mode = message.role === 'user' ? message.settings?.permissionMode : undefined;
+    const mode = message.role === 'user' && message.delivery?.status !== 'rejected' ? message.settings?.permissionMode : undefined;
     if (usable(mode)) return picked && saved!.at! >= (message.sentAt ?? 0) ? picked : mode;
   }
   if (usable(older?.permissionMode)) return picked && saved!.at! >= older.sentAt ? picked : older.permissionMode;

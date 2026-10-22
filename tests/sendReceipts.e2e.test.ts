@@ -106,6 +106,8 @@ for (const [width, height] of [[320, 640], [390, 844], [844, 390]]) {
     // Assert
     await workspace.expectSendState('Ship it', 'Not sent: That model is not available.');
     await expect(buttons.first()).toBeEnabled();
+    // The rejected message is not a turn, so the reply before it keeps its Recap action.
+    await expect(page.getByRole('button', { name: 'Recap this reply', exact: true })).toBeVisible();
     await workspace.expectReplyTargetsReachable();
     await workspace.showSessions();
     await expect(workspace.indicator('Needs input')).toBeVisible();

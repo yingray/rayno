@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { deliveryMeta, messageReceipt, sendsMessageReceipts, visibleMessages } from './normalize';
 import type { Json, MessageRecord } from './normalize';
-import { unansweredMessageIds } from '../data/replyTurns';
+import { hasOpenRecapRequest, unansweredMessageIds } from '../data/replyTurns';
+import { recapView } from '../data/recapView';
 import { receiveAttention, restoreAttention } from './sessionAttention';
+import { latestSentModes, modeBeforePlan } from './modelPreferences';
 import { RECAP_REQUEST } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: Json, createdAt = 1000, localId?: string): MessageRecord => ({ id, seq, raw, createdAt, localId });
@@ -154,5 +156,22 @@ describe('Happy Agent receipts in reply state', () => {
     expect(unansweredMessageIds(visibleMessages(recap, true)).has('options')).toBe(true);
     expect(attention(plain, false)).toBe(false);
     expect(attention(plain, true)).toBe(true);
+  });
+  it('should not let a rejected message close a recap request, hide the request, or set the last sent modes', () => {
+    // Arrange
+    const modes = { expectsAcceptance: true, queuedWhileBusy: false, model: 'gpt-5.4', effort: 'high', permissionMode: 'safe-yolo' };
+    const rows = [sent('first', 1, 'Start', modes), accepted('first', 2), reply('answer', 3, 'Done'), recapRequest('recap', 4), accepted('recap', 5),
+      sent('refused', 6, 'Try this', { ...modes, model: 'missing-model', permissionMode: 'read-only' }), rejected('refused', 7)];
+    const refusedRecap = [reply('answer', 1, 'Done'), recapRequest('recap', 2), rejected('recap', 3, 'Busy')];
+    // Act
+    const messages = visibleMessages(rows, true);
+    const refused = visibleMessages(refusedRecap, true);
+    // Assert
+    expect(hasOpenRecapRequest(messages)).toBe(true);
+    expect(recapView(messages).pending).toEqual({ requestId: 'recap', targetId: 'answer' });
+    expect(latestSentModes(messages)).toEqual({ model: 'gpt-5.4', effort: 'high', permissionMode: 'safe-yolo', sentAt: 1001 });
+    expect(modeBeforePlan(null, messages, undefined, { ...rig, operatingModes: [{ code: 'safe-yolo' }, { code: 'read-only' }] })).toBe('safe-yolo');
+    expect(hasOpenRecapRequest(refused)).toBe(false);
+    expect(recapView(refused).hidden.has('recap')).toBe(false);
   });
 });

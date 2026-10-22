@@ -28,6 +28,7 @@ import {
   allowsSessionScope,
   isExitPlanTool,
   deliveryMeta,
+  messageReceipt,
   sendsMessageReceipts,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
@@ -686,11 +687,15 @@ export class HappyClient implements DemoAdapter {
       const value = JSON.parse(this.readLocal(key) || 'null');
       if (Number.isSafeInteger(value?.seq)) saved = value;
     } catch { /* Read the history again. */ }
+    // A rejected receipt has a higher seq than its message, so the newest-first scan sees it first.
+    const rejected = new Set<string>();
     const find = (rows: MessageRecord[]) => {
       for (const row of [...rows].sort((a, b) => b.seq - a.seq)) {
         if (saved && row.seq <= saved.seq) return undefined;
+        const receipt = messageReceipt(row.raw);
+        if (receipt?.reason !== undefined) rejected.add(receipt.ref);
         const message = normalizeMessage(row);
-        if (message?.role === 'user' && message.settings)
+        if (message?.role === 'user' && message.settings && !rejected.has(row.id))
           return { ...message.settings, sentAt: row.createdAt, seq: row.seq };
       }
       return undefined;

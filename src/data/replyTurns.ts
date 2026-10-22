@@ -19,6 +19,7 @@ const hasContent = (message: Message) => !!message.content.trim() || !!message.a
 export function hasOpenRecapRequest(messages: readonly Message[]): boolean {
   let open = 0;
   for (const message of messages) {
+    if (isRejected(message)) continue;
     if (message.role === 'user') open = message.recapRequest ? open + 1 : 0;
     else if (open && hasContent(message)) open--;
   }
