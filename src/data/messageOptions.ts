@@ -23,23 +23,28 @@ export function parseMessageOptions(content: string): MessagePart[] {
 
   const parts: MessagePart[] = [];
   let cursor = 0;
-  for (const block of content.matchAll(/<options>([\s\S]*?)<\/options>/g)) {
-    const start = block.index;
-    const end = start + block[0].length;
+  for (const opening of content.matchAll(/<options>/g)) {
+    const start = opening.index;
+    // Skip literal opening tags before they can consume a later real block.
+    if (start < cursor || protectedRanges.some(([a, b]) => start >= a && start < b)) continue;
+    const closing = content.indexOf('</options>', start + opening[0].length);
+    if (closing === -1) break;
+    const end = closing + '</options>'.length;
     if (protectedRanges.some(([a, b]) => start < b && end > a)) continue;
+    const body = content.slice(start + opening[0].length, closing);
     const items: string[] = [];
     let itemCursor = 0;
     let valid = true;
-    for (const option of block[1].matchAll(/<option>([\s\S]*?)<\/option>/g)) {
+    for (const option of body.matchAll(/<option>([\s\S]*?)<\/option>/g)) {
       const label = option[1].trim();
-      if (!label || block[1].slice(itemCursor, option.index).trim()) {
+      if (!label || body.slice(itemCursor, option.index).trim()) {
         valid = false;
         break;
       }
       items.push(label);
       itemCursor = option.index + option[0].length;
     }
-    if (!valid || !items.length || block[1].slice(itemCursor).trim()) continue;
+    if (!valid || !items.length || body.slice(itemCursor).trim()) continue;
     if (start > cursor) parts.push({ kind: 'markdown', content: content.slice(cursor, start) });
     parts.push({ kind: 'options', items });
     cursor = end;

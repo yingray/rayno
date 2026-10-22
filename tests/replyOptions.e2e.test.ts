@@ -4,6 +4,45 @@ import { LiveWorkspacePage } from './pages/LiveWorkspacePage';
 
 const choices = '<options> <option>已按下全部 7 個 ✓</option> <option>我找不到 ✓ 按鈕</option> </options>';
 
+for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 430], [844, 390]]) {
+  test(`reply options should render after literal tags and send a reachable choice at ${width}x${height}`, async ({ page }, testInfo) => {
+    // Arrange
+    await page.setViewportSize({ width, height });
+    const server = new HappyServer();
+    await server.install(page);
+    const labels = ['A: TL;DR card in chat', 'B: Session headline in the list', 'C: Both'];
+    const reply = [
+      'From the real protocol',
+      'I recommend A first. It uses the same path that `<options>` uses.',
+      '| Topic | Recommendation |\n|---|---|\n| Position | At the end, before `<options>` |',
+      'Choose the summary behavior.',
+      '<options>\n' + labels.map((label) => `<option>${label}</option>`).join('\n') + '\n</options>',
+    ].join('\n\n');
+    await server.setMessages([
+      { role: 'user', content: { type: 'text', text: 'Let us discuss summaries' } },
+      { role: 'agent', content: { type: 'codex', data: { type: 'message', message: reply } } },
+    ]);
+    const workspace = new LiveWorkspacePage(page);
+    await workspace.openSession();
+    await expect(workspace.replyOptions().getByRole('button')).toHaveText(labels);
+    await expect(workspace.markdownTable()).toContainText('<options>');
+    await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Keep my draft');
+
+    // Act
+    await workspace.expectReplyTargetsReachable();
+    if (testInfo.project.use.hasTouch) await workspace.tapReply(labels[1]);
+    else await workspace.selectReply(labels[1]);
+
+    // Assert
+    await expect(workspace.replyOptions().getByRole('button').nth(1)).toBeDisabled();
+    await workspace.expectDraft('Keep my draft');
+    expect(server.sends).toHaveLength(1);
+    const raw = await server.encryption.decrypt(server.sends[0].content, server.dataKey);
+    expect(raw).toMatchObject({ role: 'user', content: { type: 'text', text: labels[1] } });
+    await workspace.expectNoPageOverflow();
+  });
+}
+
 test('reply options should send the exact encrypted choice, preserve the draft, and deduplicate a retry', async ({ page }, testInfo) => {
   // Arrange
   const server = new HappyServer();

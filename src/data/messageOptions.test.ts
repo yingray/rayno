@@ -38,4 +38,23 @@ describe('Happy reply options', () => {
       { kind: 'markdown', content: after },
     ]);
   });
+
+  it.each([
+    'The reply uses `<options>` for choices.',
+    '| Position | At the end, before `<options>` |',
+    '```xml\n<options>\n```',
+    '    <options>',
+    '> <options>',
+  ])('should parse real choices after a literal opening tag: %s', (example) => {
+    // Arrange
+    const before = example + '\n\n';
+    const choices = '<options>\n<option>A: TL;DR card in chat</option>\n<option>B: Session headline in the list</option>\n<option>C: Both</option>\n</options>';
+    // Act
+    const parts = parseMessageOptions(before + choices);
+    // Assert
+    expect(parts).toEqual([
+      { kind: 'markdown', content: before },
+      { kind: 'options', items: ['A: TL;DR card in chat', 'B: Session headline in the list', 'C: Both'] },
+    ]);
+  });
 });
