@@ -145,7 +145,7 @@ test('reload should recover a missed options message behind more than one page o
   await workspace.openOtherSession();
   // Act
   await server.pushEvent(agent(choices), 'real-session', false);
-  for (let index = 0; index < 145; index++) await server.pushEvent({ role: 'session', content: { role: 'agent', ev: {
+  for (let index = 0; index < 145; index++) await server.pushEvent({ role: 'session', content: { role: 'agent', turn: 't1', ev: {
     t: 'tool-call-start', name: `Tool ${index}`,
   } } }, 'real-session', false);
   await page.reload();

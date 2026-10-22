@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention } from './sessionAttention';
-import type { MessageRecord } from './normalize';
-import { agentSubagentTurn } from './subagentEnvelopes.fixture';
+import { markSubagents, type MessageRecord } from './normalize';
+import { agentSubagentTurn, agentSubagentWork } from './subagentEnvelopes.fixture';
 
 const row = (seq: number, content: string, role = 'agent'): MessageRecord => ({
   id: String(seq), seq, createdAt: seq,
@@ -27,7 +27,7 @@ describe('Session attention', () => {
     // Arrange
     const state = receiveAttention(restoreAttention(null, 20), row(18, 'An old reply'));
     const tool: MessageRecord = { ...row(21, ''), raw: { role: 'session', content: {
-      role: 'agent', ev: { t: 'tool-call-start', name: 'Read' },
+      role: 'agent', turn: 't1', ev: { t: 'tool-call-start', name: 'Read' },
     } } };
     const receipt: MessageRecord = { ...row(22, ''), raw: { role: 'session', content: {
       role: 'agent', ev: { t: 'user-message-accepted', ref: 'old' },
@@ -83,24 +83,44 @@ describe('Session attention', () => {
     } } } };
     // Act
     const answered = receiveAttention(receiveAttention(restoreAttention(null, 10), question), typed);
-    const later = [subagentPrompt, sidechainOptions].reduce(receiveAttention, answered);
+    const later = [subagentPrompt, sidechainOptions].reduce((state, item) => receiveAttention(state, item), answered);
     // Assert
     expect(attentionMessage(typed)).toBe('user');
     expect(answered.userSeq).toBe(12);
     expect(answered.optionsSeq).toBeLessThan(answered.userSeq);
-    expect([subagentPrompt, sidechainOptions].map(attentionMessage)).toEqual([null, null]);
+    expect([subagentPrompt, sidechainOptions].map((item) => attentionMessage(item))).toEqual([null, null]);
     expect(later).toEqual(answered);
   });
   it('should set needs reply for options in a main reply that the CLI tags with a finished subagent', () => {
     // Arrange
     const rows = agentSubagentTurn.map((raw, index) => ({ id: raw.content.id, seq: 21 + index, createdAt: raw.content.time, raw }));
     const final = rows.find((item) => item.raw.content.ev.text?.startsWith('TURN1'))!;
+    const child = rows.find((item) => item.raw.content.ev.text?.startsWith('child'))!;
+    const marks = markSubagents(new Map(), rows);
     // Act
-    const state = rows.reduce(receiveAttention, receiveAttention(restoreAttention(null, 10), row(20, 'Ask the agent', 'user')));
+    const state = rows.reduce((current, item) => receiveAttention(current, item, marks),
+      receiveAttention(restoreAttention(null, 10), row(20, 'Ask the agent', 'user')));
     // Assert
-    expect(attentionMessage(final)).toBe('assistant');
+    expect(attentionMessage(final, marks)).toBe('assistant');
+    expect(attentionMessage(child, marks)).toBeNull();
     expect(state.optionsSeq).toBe(final.seq);
     expect(state.optionsSeq).toBeGreaterThan(state.userSeq);
+  });
+  it('should ignore the options and text of a running subagent and its thinking', () => {
+    // Arrange
+    const rows = agentSubagentWork.map((raw, index) => ({ id: raw.content.id, seq: 31 + index, createdAt: raw.content.time, raw }));
+    const stop = rows.findIndex((item) => item.raw.content.ev.t === 'stop');
+    const running = rows.slice(0, stop);
+    // Act
+    const marks = markSubagents(new Map(), running);
+    const state = running.reduce((current, item) => receiveAttention(current, item, marks), restoreAttention(null, 30));
+    const done = markSubagents(new Map(), rows);
+    // Newest first, as a background scan reads a page.
+    const finished = [...rows].reverse().reduce((current, item) => receiveAttention(current, item, done), restoreAttention(null, 30));
+    // Assert
+    expect(running.map((item) => attentionMessage(item, marks)).filter(Boolean)).toEqual(['user']);
+    expect(state).toMatchObject({ userSeq: 31, assistantSeq: 0, optionsSeq: 0 });
+    expect(finished).toMatchObject({ userSeq: 31, assistantSeq: rows.at(-2)!.seq, optionsSeq: rows.at(-2)!.seq });
   });
   it('should merge another tab without moving any read or reply cursor backward', () => {
     // Arrange

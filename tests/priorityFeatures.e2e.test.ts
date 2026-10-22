@@ -150,14 +150,14 @@ test('tool details should display arguments, diffs, and a later result without l
   await server.install(page);
   const workspace = new PriorityFeaturesPage(page);
   await workspace.openSession();
-  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', ev: {
+  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', turn: 't1', ev: {
     t: 'tool-call-start', call: 'edit', name: 'Edit', title: 'Edit README', args: { file_path: 'README.md', old_string: 'old line', new_string: 'new line' },
   } } } });
   // Act
   const group = await workspace.expandTool('Edit README');
   await expect(group).toContainText('old_string');
   await expect(group).toContainText('No result reported yet.');
-  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', ev: {
+  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', turn: 't1', ev: {
     t: 'tool-call-end', call: 'edit', result: '@@ -1 +1 @@\n-old line\n+new line',
   } } } });
   // Assert
@@ -177,7 +177,7 @@ test('image preview, tool details, and new-session controls should remain usable
   await workspace.attachImage();
   await workspace.retrySend();
   await workspace.expectDraft('');
-  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', ev: {
+  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', turn: 't1', ev: {
     t: 'tool-call-start', call: 'read', name: 'Read', title: 'Read workspace', args: { file_path: 'a/long/path/to/README.md' },
   } } } });
   // Act / Assert: open and close real controls at each size, including a keyboard-sized viewport.

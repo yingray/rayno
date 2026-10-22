@@ -201,18 +201,42 @@ function sentSettings(meta: Json): MessageSettings | undefined {
 }
 // Tool calls that move a Claude agent into (true) or out of (false) plan mode, as in Happy sync/messagePlanMode.ts.
 const planTools = new Map([['EnterPlanMode', true], ['enter_plan_mode', true], ['ExitPlanMode', false], ['exit_plan_mode', false]]);
+// The session envelope of a record, in the new `role: 'session'` shape or the older wrapped shape.
+function sessionEnvelope(raw: Json): Json | null {
+  const content = record(raw.content);
+  if (content.type === 'session') return record(content.data);
+  return raw.role === 'session' ? content : null;
+}
+// V1 hides these known tools (`components/tools/knownTools.tsx`). Their text arrives as thinking or as the call result.
+const reasoningTools = new Set(['CodexReasoning', 'GeminiReasoning', 'think']);
+// The id of a hidden reasoning call that a row starts.
+function reasoningCall(raw: Json): string | undefined {
+  const event = record(sessionEnvelope(raw)?.ev), content = record(raw.content), data = record(content.data);
+  if (event.t === 'tool-call-start') return reasoningTools.has(event.name) ? text(event.call) : undefined;
+  if (raw.role === 'agent' && (content.type === 'codex' || content.type === 'acp') && data.type === 'tool-call')
+    return reasoningTools.has(data.name) ? text(data.callId) : undefined;
+}
 const normalizedMessages = new WeakMap<MessageRecord, Message | null>();
+// ACP thinking records are stream chunks. The chat joins neighbors without a break.
+const thinkingChunks = new WeakSet<Message>();
 export function normalizeMessage(row: MessageRecord): Message | null {
   if (normalizedMessages.has(row)) return normalizedMessages.get(row)!;
   const raw = record(row.raw),
     content = record(raw.content);
   // V1 skips Claude meta prompts and compact summaries. Sidechain records belong to their parent tool, not the main thread.
-  // Session envelopes stay: the CLI also tags main replies after a subagent with its `subagent` id.
+  // Session envelopes with a `subagent` id are split in visibleMessages, because the CLI also tags main replies with it.
   const output = raw.role === 'agent' && content.type === 'output' ? record(content.data) : null;
-  if (output?.isMeta || output?.isCompactSummary || output?.isSidechain) {
+  const envelope = sessionEnvelope(raw);
+  const event = record(envelope?.ev);
+  // V1 drops agent envelopes without a turn, except usage-only service events and send receipts. Neither has content here.
+  const turnless = envelope?.role === 'agent' && !envelope.turn
+    && !(event.t === 'service' && !text(event.text).trim() && envelope.usage)
+    && event.t !== 'user-message-accepted' && event.t !== 'user-message-rejected';
+  if (output?.isMeta || output?.isCompactSummary || output?.isSidechain || turnless) {
     normalizedMessages.set(row, null);
     return null;
   }
+  const hidden = reasoningCall(raw) !== undefined;
   const message: Message = {
     id: row.id,
     role: raw.role === 'user' ? 'user' : 'assistant',
@@ -228,21 +252,13 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       message.sentAt = row.createdAt;
     }
   }
-  const envelope =
-    raw.role === 'session'
-      ? content.type === 'session'
-        ? content.data
-        : content
-      : content.type === 'session'
-        ? content.data
-        : null;
   if (envelope) {
     message.role = envelope.role === 'user' ? 'user' : 'assistant';
-    const event = record(envelope.ev);
     if (event.t === 'text' && !event.thinking) message.content = text(event.text);
+    if (event.t === 'text' && event.thinking && message.role === 'assistant') message.thinking = text(event.text);
     if (event.t === 'service' && message.role === 'assistant') message.content = text(event.text);
     if (message.role === 'user' && event.t === 'text' && text(event.text).trim() === RECAP_REQUEST) message.recapRequest = true;
-    if (event.t === 'tool-call-start')
+    if (event.t === 'tool-call-start' && !hidden)
       message.tools = [text(event.title || event.name, 'Tool call')];
     if (event.t === 'file')
       message.attachments = [
@@ -257,6 +273,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
           .filter((x) => x.type === 'text')
           .map((x) => text(x.text))
           .join('\n\n');
+        message.thinking = chunks.filter((x) => x.type === 'thinking').map((x) => text(x.thinking)).join('\n\n');
         const tools = chunks
           .filter((x) => x.type === 'tool_use')
           .map((x) => text(x.name, 'Tool call'));
@@ -270,7 +287,13 @@ export function normalizeMessage(row: MessageRecord): Message | null {
         message.content = text(data.result, 'The agent reported an error.');
     } else if (content.type === 'codex' || content.type === 'acp') {
       if (data.type === 'message') message.content = text(data.message);
-      if (data.type === 'tool-call') message.tools = [text(data.name, 'Tool call')];
+      // V1 shows Codex and ACP reasoning as text. Rayno treats it as thinking, like ACP `thinking` records.
+      if (data.type === 'reasoning') message.thinking = text(data.message);
+      if (content.type === 'acp' && data.type === 'thinking') {
+        message.thinking = text(data.text);
+        thinkingChunks.add(message);
+      }
+      if (data.type === 'tool-call' && !hidden) message.tools = [text(data.name, 'Tool call')];
     }
   }
   const calls: ToolCall[] = [];
@@ -282,8 +305,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   };
   const addResult = (id: unknown, result: unknown, isError: unknown) => results.push({ id: text(id), result, isError: isError === true });
   if (envelope) {
-    const event = record(envelope.ev);
-    if (event.t === 'tool-call-start') addCall(event.call, event.title || event.name, event.args, event.name);
+    if (event.t === 'tool-call-start' && !hidden) addCall(event.call, event.title || event.name, event.args, event.name);
     if (event.t === 'tool-call-end') addResult(event.call, event.result, event.isError);
   } else if (raw.role === 'agent') {
     const data = record(content.data);
@@ -296,7 +318,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
         if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result') addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, stored ?? chunk.content ?? chunk.output, chunk.is_error);
       }
     } else if (content.type === 'codex' || content.type === 'acp') {
-      if (data.type === 'tool-call') addCall(data.callId, data.name, data.input);
+      if (data.type === 'tool-call' && !hidden) addCall(data.callId, data.name, data.input);
       if (data.type === 'tool-result' || data.type === 'tool-call-result') addResult(data.callId, data.output, data.isError);
       if (content.type === 'acp' && data.type === 'file-edit') addCall(data.id, 'file-edit', {
         filePath: data.filePath, description: data.description, diff: data.diff, oldContent: data.oldContent, newContent: data.newContent,
@@ -308,35 +330,129 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   if (calls.length) { message.toolCalls = calls; message.tools = calls.map(call => call.name); }
   if (results.length) message.toolResults = results;
   message.content = stripLeadingTaskNotificationWrappers(message.content);
-  const result = message.content || message.tools?.length || message.toolResults?.length || message.attachments?.length || message.settings ? message : null;
+  if (!message.thinking?.trim()) delete message.thinking;
+  const result = message.content || message.thinking || message.tools?.length || message.toolResults?.length
+    || message.attachments?.length || message.settings ? message : null;
   normalizedMessages.set(row, result);
   return result;
 }
+// Subagent start and stop markers by session `seq` (true marks a start), and the title from the start.
+export type SubagentMarks = Map<string, { title?: string; bounds: Map<number, boolean> }>;
+export function markSubagents(marks: SubagentMarks, rows: Iterable<MessageRecord>): SubagentMarks {
+  for (const row of rows) {
+    const envelope = sessionEnvelope(record(row.raw)), event = record(envelope?.ev), id = envelope?.subagent;
+    if (typeof id !== 'string' || !id || (event.t !== 'start' && event.t !== 'stop') || !Number.isSafeInteger(row.seq)) continue;
+    let entry = marks.get(id);
+    if (!entry) marks.set(id, entry = { bounds: new Map() });
+    entry.bounds.set(row.seq, event.t === 'start');
+    if (event.t === 'start' && text(event.title).trim()) entry.title = text(event.title).trim();
+  }
+  return marks;
+}
+// The subagent that a row belongs to. The Claude CLI mapper passes the subagent id on through `parentUuid`,
+// so main rows after the subagent stops carry it too. A tagged row belongs to the subagent only between
+// its start and its stop. When no bound is known, the row stays in the main thread.
+export function subagentOf(row: MessageRecord, marks: SubagentMarks): string | undefined {
+  const envelope = sessionEnvelope(record(row.raw)), id = envelope?.subagent;
+  if (typeof id !== 'string' || !id) return undefined;
+  const t = record(envelope!.ev).t;
+  // Only a subagent reports service status (Codex collab state) with its id.
+  if (t === 'start' || t === 'stop' || t === 'service') return id;
+  const bounds = marks.get(id)?.bounds;
+  let before: number | undefined, after: number | undefined;
+  for (const seq of bounds?.keys() || []) {
+    if (seq < row.seq && (before === undefined || seq > before)) before = seq;
+    if (seq > row.seq && (after === undefined || seq < after)) after = seq;
+  }
+  return (before !== undefined ? bounds!.get(before) : after !== undefined && !bounds!.get(after)) ? id : undefined;
+}
+const shows = (message: Message) => !!(message.content.trim() || message.tools?.length || message.attachments?.length);
+const onlyThinking = (message: Message) => message.role === 'assistant' && !!message.thinking && !shows(message)
+  && !message.toolResults?.length && !message.settings;
 export function visibleMessages(rows: MessageRecord[]): Message[] {
   const seen = new Set<string>();
-  const messages = [...rows]
+  const sorted = [...rows]
     .sort((a, b) => a.seq - b.seq)
     .filter((row) => {
       const key = row.localId || row.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    })
-    .map(normalizeMessage)
-    .filter((message): message is Message => !!message);
-  const results = new Map(messages.flatMap(message => (message.toolResults || []).map(result => [result.id, result] as const)));
+    });
+  const marks = markSubagents(new Map(), sorted);
+  const reasoning = new Set(sorted.map(row => reasoningCall(record(row.raw))).filter((id): id is string => id !== undefined));
+  // Like the v1 reducer, subagent rows go under the tool call that names them in `sessionSubagent`.
+  const messages: Message[] = [];
+  const work = new Map<string, { seq: number; message: Message }[]>();
+  const seqs = new WeakMap<Message, number>();
+  const standalone = new WeakSet<Message>();
+  for (const row of sorted) {
+    const message = normalizeMessage(row);
+    if (!message) continue;
+    const subagent = subagentOf(row, marks);
+    if (!subagent) { messages.push(message); seqs.set(message, row.seq); continue; }
+    let list = work.get(subagent);
+    if (!list) {
+      work.set(subagent, list = []);
+      // The CLI sends no tool call for Task, and the parent can be on an older page. That work shows on its own.
+      const name = marks.get(subagent)?.title || 'Subagent';
+      const holder: Message = { id: `subagent:${subagent}`, role: 'assistant', content: '', tools: [name], toolCalls: [{ id: subagent, name }] };
+      standalone.add(holder);
+      messages.push(holder);
+    }
+    list.push({ seq: row.seq, message });
+  }
+  const results = new Map([...messages, ...[...work.values()].flat().map(item => item.message)]
+    .flatMap(message => (message.toolResults || []).map(result => [result.id, result] as const)));
   const matched = new Set<string>();
-  const rendered = messages.map(message => {
-    if (!message.toolCalls) return message;
-    return { ...message, toolCalls: message.toolCalls.map(call => {
-      const result = results.get(call.id);
-      if (!result) return call;
-      matched.add(call.id);
-      return { ...call, result: result.result, isError: result.isError };
-    }) };
+  const join = (message: Message): Message => !message.toolCalls ? message : { ...message, toolCalls: message.toolCalls.map(call => {
+    const result = results.get(call.id);
+    if (!result) return call;
+    matched.add(call.id);
+    return { ...call, result: result.result, isError: result.isError };
+  }) };
+  const ownerOf = (call: ToolCall) => {
+    const id = record(call.input).sessionSubagent;
+    return typeof id === 'string' && work.has(id) ? id : work.has(call.id) ? call.id : undefined;
+  };
+  // Codex names the subagent in every collab call (spawn, send, wait, close). Like the v1 tracer, a row goes to
+  // the latest call that names it before the row, or to the first call when the row comes before all of them.
+  const owners = new Map<string, { seq: number; call: ToolCall }[]>();
+  for (const message of messages) if (!standalone.has(message)) for (const call of message.toolCalls || []) {
+    const id = ownerOf(call);
+    if (id) owners.set(id, [...owners.get(id) || [], { seq: seqs.get(message)!, call }]);
+  }
+  const assigned = new Map<ToolCall, Message[]>();
+  for (const [id, calls] of owners) for (const { seq, message } of work.get(id)!) {
+    const { call } = calls.reduce((owner, next) => next.seq < seq ? next : owner, calls[0]);
+    assigned.set(call, [...assigned.get(call) || [], message]);
+  }
+  const childrenOf = (call: ToolCall, list: Message[]) => {
+    const children = list.filter(child => shows(child) || !!child.thinking).map(join);
+    // V1 drops a subagent text that repeats the parent prompt, but only as the first row of its work.
+    const prompt = text(record(call.input).prompt).trim(), first = children[0];
+    if (prompt && first && !first.tools?.length && !first.thinking && first.content.trim() === prompt) children.shift();
+    return children;
+  };
+  const rendered = messages.flatMap(message => {
+    if (standalone.has(message) && owners.has(message.toolCalls![0].id)) return [];
+    const joined = join(message);
+    if (!joined.toolCalls) return [joined];
+    const toolCalls = joined.toolCalls.map((call, index) => {
+      const list = standalone.has(message) ? work.get(call.id)!.map(item => item.message) : assigned.get(message.toolCalls![index]);
+      const children = list ? childrenOf(call, list) : [];
+      return children.length ? { ...call, children } : call;
+    });
+    return standalone.has(message) && !toolCalls[0].children ? [] : [{ ...joined, toolCalls }];
   });
   const output: Message[] = [];
-  for (const message of rendered) {
+  for (const item of rendered) {
+    // Older Codex and ACP records keep the text of a hidden reasoning call only in its result.
+    const folded = (item.toolResults || []).filter(result => reasoning.has(result.id))
+      .map(result => text(record(result.result).content).trim()).filter(Boolean);
+    const rest = item.toolResults?.filter(result => !reasoning.has(result.id));
+    const message = folded.length ? { ...item, thinking: [item.thinking, ...folded].filter(Boolean).join('\n\n'),
+      toolResults: rest?.length ? rest : undefined } : item;
     // Image-only sends still carry modes in the following empty text record.
     // Keep those modes on the image without adding an empty chat bubble.
     if (message.role === 'user' && message.settings && !message.content && !message.attachments?.length) {
@@ -345,9 +461,17 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
         output[output.length - 1] = { ...previous, settings: message.settings, sentAt: message.sentAt };
       continue;
     }
+    const previous = output.at(-1);
+    if (previous && onlyThinking(previous) && onlyThinking(message)) {
+      const chunk = thinkingChunks.has(message);
+      const merged = { ...previous, thinking: previous.thinking + (chunk && thinkingChunks.has(previous) ? '' : '\n\n') + message.thinking };
+      if (chunk) thinkingChunks.add(merged);
+      output[output.length - 1] = merged;
+      continue;
+    }
     if (!message.toolResults?.length) { output.push(message); continue; }
-    const unmatched = message.toolResults.filter(result => !matched.has(result.id) && !result.hideUnmatched);
-    if (!unmatched.length && !message.content && !message.tools?.length) continue;
+    const unmatched = message.toolResults.filter(result => !matched.has(result.id) && !result.hideUnmatched && !reasoning.has(result.id));
+    if (!unmatched.length && !message.content && !message.tools?.length && !message.thinking) continue;
     output.push({ ...message, ...(unmatched.length ? {
       tools: unmatched.map(() => 'Earlier tool call'),
       toolCalls: unmatched.map(result => ({ ...result, name: 'Earlier tool call' })),

@@ -5,6 +5,7 @@ import type { Json } from './normalize';
 import { OfflineCache } from './offlineCache';
 import { defaultNewDraft } from '../data/defaults';
 import { DirectoryApprovalError } from './errors';
+import { agentSubagentWork } from './subagentEnvelopes.fixture';
 
 const transport = vi.hoisted(() => ({ socket: null as any, options: null as any }));
 vi.mock('socket.io-client', () => ({
@@ -551,6 +552,23 @@ describe('Happy client protocol', () => {
     // Assert
     const pages = fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/messages?'));
     expect(pages).toEqual(['https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=3']);
+  });
+  it('should keep subagent options out of needs reply until the main answer arrives', async () => {
+    // Arrange
+    const wire = await Promise.all(agentSubagentWork.map(async (raw, index) => ({ id: raw.content.id, seq: index + 1, createdAt: raw.content.time,
+      content: { t: 'encrypted', c: await client.encryption.encrypt(raw, null) } })));
+    const stop = agentSubagentWork.findIndex((raw) => raw.content.ev.t === 'stop');
+    session.seq = stop;
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions') ? response({ sessions: [session], hasNext: false })
+      : url.includes('/v1/machines') ? response([]) : response({ messages: wire.slice(0, stop).reverse(), hasMore: false }));
+    // Act
+    await start();
+    // Assert
+    expect(client.getSnapshot().sessions[0].needsReply).toBe(false);
+    // Act
+    for (const message of wire.slice(stop)) socket.handlers.get('update')?.({ body: { t: 'new-message', sid: 'session', message } });
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].needsReply).toBe(true), { interval: 1 });
   });
   it('should reuse the encrypted packet and local ID after a lost send acknowledgement', async () => {
     // Arrange

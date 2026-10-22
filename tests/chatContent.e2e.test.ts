@@ -68,7 +68,7 @@ test('code blocks should highlight known languages and preserve literal source w
   await server.setWorking(false);
   await server.setMessages([
     { role: 'user', content: { type: 'text', text: 'Show code examples' } },
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text:
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text:
       'From the real protocol\n\n```typescript\n' + source + '\n```\n\n```json\n{"ready": true, "count": 2}\n```\n\n```bash\necho "hello"\n```\n\n```unknown\n' + literal + '\n```\n\n```\nplain source\n```',
     } } },
   ]);
@@ -116,10 +116,10 @@ test('tool summaries should use compact rows and retain touch and keyboard expan
   await server.install(page);
   const chat = new ChatContentPage(page);
   await chat.openSession();
-  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', ev: {
+  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', turn: 't1', ev: {
     t: 'tool-call-start', call: 'read', name: 'Read', title: 'Read workspace', args: { file_path: 'README.md' },
   } } } });
-  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', ev: {
+  await server.pushEvent({ role: 'session', content: { type: 'session', data: { role: 'agent', turn: 't1', ev: {
     t: 'tool-call-end', call: 'read', result: '# Example workspace',
   } } } });
   await chat.expandToolGroup(0);

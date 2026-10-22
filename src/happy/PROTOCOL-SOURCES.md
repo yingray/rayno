@@ -32,12 +32,39 @@ Trailing user text and inline or incomplete examples remain visible. Stop accept
 RPC replies from older CLIs; other reads still require JSON. Encrypted RPC errors reach the caller.
 
 Message records follow `sync/typesRaw.ts` for these CLI shapes. A Claude prompt typed in the terminal shows as a user message.
-Claude meta prompts, compact summaries, and sidechain records do not show in the main thread and do not change attention.
-Rayno does not attach them to the parent tool call. Session envelopes with a `subagent` field still show: the CLI mapper
-(`claude/utils/sessionProtocolMapper.ts`) passes the subagent id on through `parentUuid`, so the parent tool result and the
-main reply after a subagent carry it too. Agent `service` text shows as agent text. ACP `file-edit` is a tool call, and ACP
-`terminal-output` is a tool result that shows only when it matches a call. A Claude tool result uses the stored
+Claude meta prompts, compact summaries, and legacy sidechain output records do not show in the main thread and do not change attention.
+Rayno does not attach those legacy records to the parent tool call. Agent `service` text shows as agent text. ACP `file-edit` is a
+tool call, and ACP `terminal-output` is a tool result that shows only when it matches a call. A Claude tool result uses the stored
 `toolUseResult` text only when it is a string.
+
+Like `normalizeSessionEnvelope` in `sync/typesRaw.ts`, Rayno drops an agent session envelope without a `turn`, except a usage-only
+`service` event and a `user-message-accepted` or `user-message-rejected` receipt. None of these three makes a chat row in Rayno.
+
+Subagent work follows `sync/reducer/reducerTracer.ts` and the sidechain phase of `sync/reducer/reducer.ts`: an envelope with a
+`subagent` id goes under the tool call whose `args.sessionSubagent` has that id, and the subagent text is dropped when it
+repeats the parent prompt and is the first row of the work (`isDuplicateSidechainPrompt`). Subagent thinking and file
+attachments stay in the work list; v1 shows sidechain thinking as italic text. The CLI mapper (`claude/utils/sessionProtocolMapper.ts`, `mapClaudeLogMessageToSessionEnvelopes`)
+passes the subagent id on through `parentUuid` (`claude/utils/sdkToLogConverter.ts` chains every row), so the parent tool result
+and all later main rows of the turn carry it too. v1 nests those main rows as well and hides the main answer. Rayno uses the
+`start` and `stop` events instead (`markSubagents`, `subagentOf` in `normalize.ts`): a tagged row belongs to the subagent only
+between its start and its stop. After the stop it is a main row. A subagent `service` event (Codex collab state) always belongs
+to the subagent. When no bound is on the loaded rows, the row stays in the main thread, so a main answer never disappears.
+The Codex mapper (`codex/utils/sessionProtocolMapper.ts`, `collabArgs`) puts the same `sessionSubagent` in every collab call
+(`spawnAgent`, `sendInput`, `wait`, `closeAgent`). Like `toolCallToMessageId` in the tracer, each subagent row goes under the
+latest of those calls before it, or under the first call when it comes before all of them, so every row shows only once.
+A `Task` call has no tool-call event, and the parent can be on an unloaded page; that work shows as its own collapsed tool row,
+named by the `start` title. Subagent rows never change attention or reply options. The client keeps the bounds of every row it
+reads in memory for each session, and a background scan reads the bounds of the full page before it classifies rows.
+A scan after a reload that sees only rows from inside a running subagent cannot place them and counts them as main rows.
+
+Thinking follows the `thinking` content of `sync/typesRaw.ts`: Claude `thinking` chunks, session `text` events with
+`thinking: true`, and ACP `thinking` records (stream chunks that join without a break). Rayno also treats Codex and ACP
+`reasoning` records as thinking; v1 shows them as text. v1 hides thinking (`components/MessageView.tsx`); Rayno shows it in
+a closed `Thinking` disclosure. Thinking without reply text joins the tool activity row group. Like the `hidden` known tools in
+`components/tools/knownTools.tsx`, Rayno hides `CodexReasoning`, `GeminiReasoning`, and `think` calls. The Codex mapper
+(`mapCodexProcessorMessageToSessionEnvelopes`) sends their text as session thinking text. Older Codex and ACP records
+(`utils/BaseReasoningProcessor.ts`) keep it only in the call result, so Rayno shows that `output.content` as thinking. Thinking never counts for
+attention, reply options, or recaps.
 
 Archive classification follows the overlay's `sync/storage.ts`: a lifecycle marker or an inactive
 non-Rig CLI session belongs in the archive. An inactive Rig session remains live work unless marked.

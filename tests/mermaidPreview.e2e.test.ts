@@ -55,7 +55,7 @@ test('unsupported Mermaid should retain readable source while normal code and un
   const unsupported = 'pie title Unsupported\n  "A" : 42';
   const untrusted = 'flowchart TD\n A["&lt;script&gt;window.diagramExecuted=true&lt;/script&gt;"] --> B[Safe]';
   await server.setMessages([
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text:
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text:
       'From the real protocol\n\n```ts\nconst value = 42;\n```\n\n' + fence(unsupported) + '\n\n' + fence(untrusted),
     } } },
   ]);
@@ -81,7 +81,7 @@ test('phone Mermaid previews should fit when labels stay readable and open wide 
   await server.install(page);
   await server.setWorking(false);
   await server.setMessages([
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text:
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text:
       'From the real protocol\n\n' + fence(flowchart) + '\n\nNext:\n\n' + fence(sequence) } } },
   ]);
   const workspace = new MermaidPage(page);
@@ -160,7 +160,7 @@ test('desktop Mermaid previews should fit wide diagrams without the full screen 
   await server.install(page);
   await server.setWorking(false);
   await server.setMessages([
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text: 'From the real protocol\n\n' + fence(flowchart) } } },
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text: 'From the real protocol\n\n' + fence(flowchart) } } },
   ]);
   const workspace = new MermaidPage(page);
   // Act

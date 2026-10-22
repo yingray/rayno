@@ -65,7 +65,7 @@ test('a plan exit request should show plan mode, stay reachable, and return to t
   const server = new HappyServer();
   await server.install(page);
   await server.setMessages([{ role: 'user', content: { type: 'text', text: 'Plan the change' }, meta: { sentFrom: 'web', permissionMode: 'bypassPermissions' } },
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text: 'From the real protocol' } } }]);
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text: 'From the real protocol' } } }]);
   await server.pushEvent(toolCall('toolu_enter', 'EnterPlanMode', 1700000002000), 'real-session', false, 1700000002000);
   await server.pushEvent(toolCall('toolu_exit', 'ExitPlanMode', 1700000003000), 'real-session', false, 1700000003000);
   server.sessions[0].agentState = await server.encryption.encrypt({ requests: {

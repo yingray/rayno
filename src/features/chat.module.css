@@ -1107,6 +1107,44 @@
 .imageDialog header button { min-width: 44px; min-height: 44px; }
 .receivedImage > button { min-width: 44px; }
 
+.thinking { min-width: 0; color: var(--muted); }
+.thinking > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 2px 6px 2px 0;
+  font-size: calc(13px * var(--font-scale));
+  cursor: pointer;
+  list-style: none;
+}
+.thinking > summary::marker { content: ''; }
+.thinking > summary::-webkit-details-marker { display: none; }
+.thinking > summary > svg { opacity: 0.7; transition: transform 0.15s ease; }
+.thinking[open] > summary > svg { transform: rotate(90deg); }
+.thinking > p, .thinkingRow > p {
+  margin: 4px 0 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  font-style: italic;
+  font-size: calc(14px * var(--font-scale));
+  line-height: calc(22px * var(--font-scale));
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow: auto;
+}
+.markdown > .thinking { margin-bottom: 8px; }
+.thinkingRow > p { font-family: inherit; font-size: 12px; line-height: 1.6; }
+.subagentWork { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.subagentWork > li { min-width: 0; padding-left: 10px; border-left: 1px solid var(--border); }
+.subagentWork > li > span { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.subagentWork pre { margin: 2px 0 0; }
+.subagentThinking { margin: 0; color: var(--muted); font-style: italic; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .thinking > summary { min-height: 44px; }
+}
+
 .diffRemoved { color: #fca5a5; }
 .diffAdded { color: #86efac; }
 

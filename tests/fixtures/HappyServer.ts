@@ -120,7 +120,7 @@ export class HappyServer {
       }),
       await this.message('reply', 2, {
         role: 'session',
-        content: { role: 'agent', ev: { t: 'text', text: 'From the real protocol' } },
+        content: { role: 'agent', turn: 't1', ev: { t: 'text', text: 'From the real protocol' } },
       }),
       await this.message('receipt', 3, {
         role: 'session',

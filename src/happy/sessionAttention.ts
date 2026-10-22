@@ -1,5 +1,5 @@
 import { partsForMessage } from '../data/messageOptions';
-import { normalizeMessage, type MessageRecord } from './normalize';
+import { normalizeMessage, subagentOf, type MessageRecord, type SubagentMarks } from './normalize';
 
 export type SessionAttention = {
   readSeq: number;
@@ -27,15 +27,17 @@ export function mergeAttention(a: SessionAttention, b: SessionAttention): Sessio
   };
 }
 
+const noMarks: SubagentMarks = new Map();
 // A hidden recap request is not a user turn. It must not answer pending options.
-export function attentionMessage(row: MessageRecord): 'user' | 'assistant' | null {
+// Subagent work and thinking are not replies. `marks` holds the subagent bounds that the caller knows.
+export function attentionMessage(row: MessageRecord, marks = noMarks): 'user' | 'assistant' | null {
   const message = normalizeMessage(row);
   if (!message || message.recapRequest || (!message.content.trim() && !message.attachments?.length)) return null;
-  return message.role;
+  return subagentOf(row, marks) ? null : message.role;
 }
 
-export function receiveAttention(state: SessionAttention, row: MessageRecord): SessionAttention {
-  const kind = attentionMessage(row);
+export function receiveAttention(state: SessionAttention, row: MessageRecord, marks = noMarks): SessionAttention {
+  const kind = attentionMessage(row, marks);
   if (kind === 'user') return { ...state, userSeq: Math.max(state.userSeq, row.seq) };
   if (kind !== 'assistant') return state;
   const message = normalizeMessage(row)!;
