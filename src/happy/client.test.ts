@@ -946,6 +946,114 @@ describe('Happy client session lifecycle', () => {
     expect(socket.emitWithAck).not.toHaveBeenCalled();
     expect(requests()).toEqual(['DELETE /v1/sessions/session']);
   });
+  it('should archive a bot only through killSession', async () => {
+    // Arrange: Happy Web hooks/useSessionQuickActions.ts archives a bot without the server archive.
+    session.metadata = await client.encryption.encrypt({ ...metadata, bot: { id: 'bot', username: 'helper' } }, null);
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce(await rpcReply({ success: true, message: 'Killing happy-cli process' }));
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls).toEqual([['rpc-call', expect.objectContaining({ method: 'session:killSession' })]]);
+    expect(requests()).toEqual([]);
+    expect(client.getSnapshot().sessions[0].archived).toBe(true);
+  });
+  it.each([
+    ['a refused kill', { success: false, message: 'Not now' }, 'Not now'],
+    ['an unavailable agent', { ok: false, error: 'RPC method not available' }, 'RPC method not available'],
+    ['a kill without a message', { success: false }, 'Connect to the bot’s computer to archive it.'],
+  ])('should keep a bot after %s without a server archive', async (_name, reply, message) => {
+    // Arrange
+    session.metadata = await client.encryption.encrypt({ ...metadata, bot: { id: 'bot', username: 'helper' } }, null);
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce('ok' in reply ? reply : await rpcReply(reply));
+    // Act / Assert
+    await expect(client.archiveSession('session')).rejects.toThrow(message);
+    expect(requests()).toEqual([]);
+    expect(client.getSnapshot().sessions[0].archived).toBe(false);
+  });
+  it('should refuse to delete a bot conversation before any request', async () => {
+    // Arrange: Happy Web sync/ops.ts sessionDelete refuses a bot.
+    session.metadata = await client.encryption.encrypt({ ...metadata, bot: { id: 'bot', username: 'helper' } }, null);
+    await start();
+    fetchMock.mockClear();
+    // Act / Assert
+    await expect(client.deleteSession('session')).rejects.toThrow('Archive the bot instead');
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+    expect(requests()).toEqual([]);
+  });
+});
+describe('Happy client worktree cleanup', () => {
+  const worktree = '/real/project/.dev/worktree/feature';
+  async function prepare(computerActive = true, extra: Json[] = []) {
+    metadata.path = worktree;
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const machine = { id: 'computer', active: computerActive, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Computer' }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session, ...extra], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([machine]) : response({ messages: [], hasMore: false }));
+    await start();
+  }
+  // Shape from happy-cli modules/common/registerCommonHandlers.ts bash handler.
+  const bashReply = (stdout: string) => rpcReply({ success: true, stdout, stderr: '', exitCode: 0 });
+  it('should offer a clean worktree after a git status check on its computer', async () => {
+    // Arrange
+    await prepare();
+    socket.emitWithAck.mockResolvedValueOnce(await bashReply(''));
+    // Act
+    const path = await client.worktreeCleanup('session');
+    // Assert
+    expect(path).toBe(worktree);
+    const [, payload] = socket.emitWithAck.mock.calls[0];
+    expect(payload.method).toBe('computer:bash');
+    expect(await client.encryption.decrypt(payload.params, null)).toMatchObject({ command: 'git status --porcelain', cwd: worktree });
+  });
+  it.each([
+    ['uncommitted changes', async () => bashReply(' M README.md\n')],
+    ['a failed git status', async () => rpcReply({ success: false, stdout: '', stderr: 'not a git repository', exitCode: 128 })],
+    ['a lost acknowledgement', async () => { throw new Error('Timeout'); }],
+  ])('should skip the offer after %s', async (_name, reply) => {
+    // Arrange
+    await prepare();
+    socket.emitWithAck.mockImplementationOnce(reply);
+    // Act / Assert
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+  });
+  it('should skip the offer without a computer request for a plain folder, a shared worktree, an offline computer, or a bot', async () => {
+    // Arrange
+    await start();
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    const other = { ...session, id: 'other', metadata: await client.encryption.encrypt({ ...metadata, path: worktree }, null) };
+    await prepare(true, [other]);
+    // Act / Assert
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    await prepare(false);
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    metadata.bot = { id: 'bot', username: 'helper' };
+    await prepare();
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+  });
+  it('should remove the worktree from the main checkout with a quoted path', async () => {
+    // Arrange: Happy Web utils/worktree.ts removeWorktree.
+    await prepare();
+    socket.emitWithAck.mockResolvedValueOnce(await bashReply(''));
+    // Act
+    await client.removeWorktree('session', worktree);
+    // Assert
+    const [, payload] = socket.emitWithAck.mock.calls[0];
+    expect(await client.encryption.decrypt(payload.params, null)).toMatchObject({
+      command: `git worktree remove '${worktree}' --force`, cwd: '/real/project' });
+  });
 });
 describe('Happy client session activity', () => {
   it('should sort an older CLI session by this device last send and keep it per account', async () => {

@@ -53,6 +53,8 @@ export class HappyServer {
   rewindPoints = Array.from({ length: 18 }, (_, index) => ({ uuid: `claude-${index}`, itemId: `codex-${index}`, text: `Message ${index}: review the workspace`, timestamp: 1700000000000 + index * 1000 }));
   bashCommands: Json[] = [];
   worktreeListing = '';
+  // `git status --porcelain` output for a worktree check. Other commands keep the dirty default.
+  gitStatus = ' M README.md\n';
   workspaceReady: Promise<void> = Promise.resolve();
   workspaceFailure = false;
   historyFailure = false;
@@ -358,6 +360,8 @@ export class HappyServer {
                   })
                 : params.command === 'git worktree list --porcelain'
                   ? this.worktreeListing
+                : params.command === 'git status --porcelain'
+                  ? this.gitStatus
                 : params.command.includes('power_source=')
                   ? 'os=Darwin\nbattery=77%; charging;\npower_source=AC Power\niface=en0\niface_port=Wi-Fi\nip=192.0.2.1\n'
                   : 'M README.md',

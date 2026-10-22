@@ -111,6 +111,8 @@ export function allowsSessionScope(tool: string): boolean {
   return !noSessionScope.has(tool);
 }
 export const isExitPlanTool = (tool: string) => tool === 'ExitPlanMode' || tool === 'exit_plan_mode';
+// Happy Web utils/worktreePaths.ts: the path marker of a Happy-created git worktree.
+export const WORKTREE_MARKER = '/.dev/worktree/';
 export function normalizeSession(
   source: SessionRecord,
   messages: Message[],
@@ -121,13 +123,12 @@ export function normalizeSession(
 ): Session {
   const { wire, metadata: m, agentState: a } = source;
   const path = text(m.path);
-  const worktreeMarker = '/.dev/worktree/';
-  const worktreeIndex = path.indexOf(worktreeMarker);
+  const worktreeIndex = path.indexOf(WORKTREE_MARKER);
   const projectPath = worktreeIndex < 0 ? path : path.slice(0, worktreeIndex);
   const project = text(m.project?.name, projectPath.split(/[\\/]/).filter(Boolean).pop());
   const workspace = text(
     m.workspace?.name,
-    worktreeIndex < 0 ? '' : path.slice(worktreeIndex + worktreeMarker.length),
+    worktreeIndex < 0 ? '' : path.slice(worktreeIndex + WORKTREE_MARKER.length),
   );
   const pending =
     pendingPermissions(a).length ||

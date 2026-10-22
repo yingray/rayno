@@ -27,6 +27,7 @@ import {
   pendingPermissions,
   allowsSessionScope,
   isExitPlanTool,
+  WORKTREE_MARKER,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -1049,7 +1050,6 @@ export class HappyClient implements DemoAdapter {
   }
   async archiveSession(id: string) {
     const source = this.getSession(id);
-    if (source.metadata.bot) throw new Error('Use the Happy app to manage this bot.');
     if (isSessionArchived(source)) {
       if (!isRig(source.metadata) && !source.wire.active)
         throw new Error('This CLI session has ended. Resume this session before you restore it.');
@@ -1057,6 +1057,16 @@ export class HappyClient implements DemoAdapter {
         delete metadata.lifecycleState;
         return metadata;
       });
+      return;
+    }
+    if (source.metadata.bot) {
+      // Happy Web archives a bot only through its agent. A server archive would end its one conversation.
+      const result: Json = await this.rpc(id, 'killSession', {}).catch((error) => ({ success: false, message: messageError(error) }));
+      if (result.success !== true)
+        throw new Error(typeof result.message === 'string' && result.message ? result.message : 'Connect to the bot’s computer to archive it.');
+      const current = this.sessions.get(id);
+      if (current) current.wire.active = false;
+      this.publish(id);
       return;
     }
     // Happy Web stops the agent first. The CLI kill handler writes the archived lifecycle itself.
@@ -1072,7 +1082,7 @@ export class HappyClient implements DemoAdapter {
   }
   async deleteSession(id: string) {
     const source = this.getSession(id);
-    if (source.metadata.bot) throw new Error('Use the Happy app to manage this bot.');
+    if (source.metadata.bot) throw new Error('Archive the bot instead of deleting its conversation.');
     // Happy Web stops a connected agent before the delete. A failed stop does not block the delete.
     if (source.wire.active) await this.rpc(id, 'killSession', {}).catch(() => undefined);
     await this.request(`/v1/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -1081,6 +1091,24 @@ export class HappyClient implements DemoAdapter {
     this.messages.delete(id);
     this.saveSentTime(id);
     this.publish();
+  }
+  /**
+   * Happy Web hooks/useWorktreeCleanup.ts: before an archive or a delete, offer to remove a Happy worktree
+   * that has no uncommitted changes and no other connected session. Returns the path to offer, or ''.
+   */
+  async worktreeCleanup(id: string): Promise<string> {
+    const { metadata } = this.getSession(id);
+    const path = typeof metadata.path === 'string' ? metadata.path : '', machineId = metadata.machineId;
+    if (metadata.bot || !path.includes(WORKTREE_MARKER) || !this.machines.get(machineId)?.wire.active) return '';
+    if ([...this.sessions.values()].some((other) => other.wire.id !== id && other.wire.active && other.metadata.path === path)) return '';
+    // A failed check (not a repository or an offline computer) and uncommitted changes skip the offer.
+    const status = await this.bash(machineId, 'git status --porcelain', path, true).catch(() => undefined);
+    return status && typeof status.stdout === 'string' && !status.stdout.trim() ? path : '';
+  }
+  async removeWorktree(id: string, path: string) {
+    const machineId = this.getSession(id).metadata.machineId, index = path.indexOf(WORKTREE_MARKER);
+    if (index < 1) throw new Error('This folder is not a Happy worktree.');
+    await this.bash(machineId, `git worktree remove ${shellQuote(path)} --force`, path.slice(0, index), true);
   }
   async stopSession(id: string) {
     await this.rpc(

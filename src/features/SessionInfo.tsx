@@ -9,6 +9,7 @@ import type { Session } from '../data/types';
 import styles from './session-info.module.css';
 import { ResumeSession } from './ResumeSession';
 import { needsSessionResume } from '../happy/resume';
+import { useWorktreeCleanup } from './SessionPrompts';
 
 export function SessionInfo({
   session,
@@ -26,13 +27,14 @@ export function SessionInfo({
   }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  async function run(action: () => void | Promise<void>, done?: () => void) {
+  const cleanup = useWorktreeCleanup();
+  // An action that resolves false was cancelled, so it skips done.
+  async function run(action: () => void | boolean | Promise<void | boolean>, done?: () => void) {
     if (busy) return;
     setBusy(true);
     setError('');
     try {
-      await action();
-      done?.();
+      if (await action() !== false) done?.();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'The action failed.');
     } finally {
@@ -67,11 +69,10 @@ export function SessionInfo({
       }),
     },
   ];
+  const bot = !!metadata?.bot;
   function archive() {
-    void run(
-      () => adapter.archiveSession(session.id),
-      () => navigate('/sessions'),
-    );
+    if (session.archived) void run(() => adapter.archiveSession(session.id));
+    else void run(() => cleanup.guard(session.id, () => adapter.archiveSession(session.id)), () => navigate('/sessions'));
   }
   const actions: {
     icon: IconName;
@@ -127,13 +128,14 @@ export function SessionInfo({
           run: archive,
           mobile: true,
         }]),
-    {
-      icon: 'trashOutline',
+    // Happy Web keeps a bot's one conversation: it can be archived, not deleted.
+    ...(bot ? [] : [{
+      icon: 'trashOutline' as const,
       label: 'Delete session',
       color: '#fca5a5',
       run: () => setConfirm('delete'),
       mobile: true,
-    },
+    }]),
   ];
   return (
     <section className={styles.info} aria-label="Session details">
@@ -271,16 +273,17 @@ export function SessionInfo({
             {session.archived ? 'Restore' : 'Archive'}
           </Button>
         )}
-        <Button
+        {!bot && <Button
           variant="danger"
           icon="trashOutline"
           disabled={busy}
           onClick={() => setConfirm('delete')}
         >
           Delete
-        </Button>
+        </Button>}
       </footer>
-      {confirm && (
+      {cleanup.dialog}
+      {confirm && !cleanup.prompting && (
         <Dialog
           title={confirm === 'delete' ? 'Delete this session?' : 'Stop this session?'}
           onClose={() => setConfirm(null)}
@@ -310,7 +313,7 @@ export function SessionInfo({
                 void run(
                   () =>
                     confirm === 'delete'
-                      ? adapter.deleteSession(session.id)
+                      ? cleanup.guard(session.id, () => adapter.deleteSession(session.id))
                       : adapter.killSession
                         ? adapter.killSession(session.id)
                         : adapter.stopSession(session.id),

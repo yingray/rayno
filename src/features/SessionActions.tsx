@@ -7,19 +7,21 @@ import type { Session } from '../data/types';
 import styles from './sessions.module.css';
 import { ResumeSession } from './ResumeSession';
 import { needsSessionResume } from '../happy/resume';
+import { useWorktreeCleanup } from './SessionPrompts';
 
 export function SessionActions({ session, onClose }: { session: Session; onClose: () => void }) {
   const { adapter, mode } = useDemo((store) => ({ adapter: store.adapter, mode: store.mode }));
   const needsResume = mode === 'live' && needsSessionResume(session);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  async function run(action: () => void | Promise<void>) {
+  const cleanup = useWorktreeCleanup();
+  // An action that resolves false keeps these actions open.
+  async function run(action: () => void | boolean | Promise<void | boolean>) {
     if (busy) return;
     setBusy(true);
     setError('');
     try {
-      await action();
-      onClose();
+      if (await action() !== false) onClose();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'The action failed.');
     } finally {
@@ -27,6 +29,8 @@ export function SessionActions({ session, onClose }: { session: Session; onClose
     }
   }
   const navigate = useNavigate();
+  // The worktree question replaces this dialog, so only one dialog has the focus.
+  if (cleanup.prompting) return cleanup.dialog;
   return (
     <Dialog title="Session actions" onClose={onClose}>
       <p>{titleOf(session)}</p>
@@ -48,7 +52,8 @@ export function SessionActions({ session, onClose }: { session: Session; onClose
             variant="ghost"
             icon="archiveOutline"
             disabled={busy}
-            onClick={() => void run(() => adapter.archiveSession(session.id))}
+            onClick={() => void run(() => session.archived ? adapter.archiveSession(session.id)
+              : cleanup.guard(session.id, () => adapter.archiveSession(session.id)))}
           >
             {session.archived ? 'Restore session' : 'Archive session'}
           </Button>

@@ -6,6 +6,7 @@ import { useDemo } from '../data/store';
 import type { MessageSettings, Session } from '../data/types';
 import { titleOf } from '../data/reducer';
 import { messageError } from '../happy/errors';
+import { useWorktreeCleanup } from './SessionPrompts';
 import styles from './chatSessionMenu.module.css';
 import chatStyles from './chat.module.css';
 import { needsSessionResume } from '../happy/resume';
@@ -27,6 +28,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [duplicate, setDuplicate] = useState(false);
+  const cleanup = useWorktreeCleanup();
   const [position, setPosition] = useState({ top: 0, right: 12, maxHeight: 320 });
   const trigger = useRef<HTMLButtonElement>(null), panel = useRef<HTMLDivElement>(null);
   const pending = useRef(false);
@@ -123,7 +125,8 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
       {ended ? <button role="menuitem" disabled={busy || disconnected || !!recoveryReason}
         onClick={() => void run(() => live!.resumeSession(session.id))}><Icon name="refreshOutline" />Resume session</button>
         : <button role="menuitem" disabled={busy || disconnected} onClick={() => void run(async () => {
-          await adapter.archiveSession(session.id); if (!session.archived) navigate('/sessions');
+          if (session.archived) await adapter.archiveSession(session.id);
+          else if (await cleanup.guard(session.id, () => adapter.archiveSession(session.id))) navigate('/sessions');
         })}><Icon name="archiveOutline" />{session.archived ? 'Restore session' : 'Archive session'}</button>}
       {recoveryReason && <p className={styles.reason}>{recoveryReason}</p>}
       <button role="menuitem" disabled={busy || !workspaceDraft} onClick={() => {
@@ -139,18 +142,20 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
       <button role="menuitem" disabled={busy || disconnected || !!branchReason || !machine?.online}
         onClick={() => void run(() => branch('fork'))}><Icon name="gitBranchOutline" />{busy ? 'Wait…' : 'Fork'}</button>
       {branchReason && <p className={styles.reason}>{branchReason}</p>}
-      <button role="menuitem" className={styles.danger} disabled={busy || disconnected}
-        onClick={() => { close(); setConfirmDelete(true); }}><Icon name="trashOutline" />Delete session</button>
+      {!metadata?.bot && <button role="menuitem" className={styles.danger} disabled={busy || disconnected}
+        onClick={() => { close(); setConfirmDelete(true); }}><Icon name="trashOutline" />Delete session</button>}
       {error && <p role="alert" className={styles.error}>{error}</p>}
     </div>, document.body)}
-    {confirmDelete && <Dialog title="Delete this session?" onClose={() => { if (!busy) setConfirmDelete(false); }}>
+    {confirmDelete && !cleanup.prompting && <Dialog title="Delete this session?" onClose={() => { if (!busy) setConfirmDelete(false); }}>
       <p>Delete “{titleOf(session)}” and its conversation?</p>
       {error && <p role="alert">{error}</p>}
       <footer><Button disabled={busy} onClick={() => setConfirmDelete(false)}>Cancel</Button>
         <Button variant="danger" disabled={busy} onClick={() => void run(async () => {
-          await adapter.deleteSession(session.id); setConfirmDelete(false); navigate('/sessions');
+          if (!await cleanup.guard(session.id, () => adapter.deleteSession(session.id))) return;
+          setConfirmDelete(false); navigate('/sessions');
         })}>Delete session</Button></footer>
     </Dialog>}
+    {cleanup.dialog}
     {duplicate && <DuplicateDialog session={session} busy={busy} error={error}
       onClose={() => { if (!busy) setDuplicate(false); }} onDuplicate={point => void run(() => branch('duplicate', point))} />}
   </>;
