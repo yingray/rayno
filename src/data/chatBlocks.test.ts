@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupChatActivity } from './chatBlocks';
+import { groupChatActivity, toolCount } from './chatBlocks';
 import type { Message } from './types';
 
 const tool = (id: string, name = 'Read'): Message => ({
@@ -47,5 +47,23 @@ describe('Chat activity groups', () => {
     expect(blocks[0]).toMatchObject({ kind: 'tools', duration: '4s' });
     expect(blocks[1]).toEqual({ kind: 'message', id: 'message:mixed', message: mixed });
     expect(blocks[2]).toMatchObject({ id: before[2].id, tools: ['Read', 'Edit'] });
+  });
+
+  it('should fold thinking into the tool run and keep it out of the tool count', () => {
+    // Arrange
+    const thinking = (id: string, text: string): Message => ({ id, role: 'assistant', content: '', thinking: text });
+    const messages: Message[] = [
+      thinking('plan', 'Plan the change.'), thinking('more', 'Check the tests.'), tool('read'), thinking('between', 'Read the next file.'),
+      tool('edit', 'Edit'), { id: 'answer', role: 'assistant', content: 'Done.', thinking: 'Write the summary.' },
+    ];
+    // Act
+    const blocks = groupChatActivity(messages);
+    // Assert
+    expect(blocks).toEqual([
+      { kind: 'thinking', id: 'thinking:plan', text: 'Plan the change.\n\nCheck the tests.' },
+      { kind: 'tools', id: 'tools:read', tools: ['Read', 'Thinking', 'Edit'], thinking: [undefined, 'Read the next file.', undefined] },
+      { kind: 'message', id: 'message:answer', message: messages[5] },
+    ]);
+    expect(toolCount(blocks[1] as Parameters<typeof toolCount>[0])).toBe(2);
   });
 });

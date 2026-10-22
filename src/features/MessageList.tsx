@@ -3,13 +3,13 @@ import type { ReactNode, RefObject } from 'react';
 import Markdown from 'react-markdown';
 import { Button, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
-import { formatToolValue, groupChatActivity, type ToolActivityBlock } from '../data/chatBlocks';
+import { formatToolValue, groupChatActivity, toolCount, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
 import { unansweredMessageIds } from '../data/replyTurns';
 import { recapView, type MessageRecap } from '../data/recapView';
 import type { RecapSegment } from '../data/messageRecap';
 import { remarkPlugins } from '../data/recapQuote';
-import type { BubbleColor, Message } from '../data/types';
+import type { BubbleColor, Message, ToolCall } from '../data/types';
 import { useEventCallback } from '../components/useEventCallback';
 import styles from './chat.module.css';
 import { RecapButton, RecapCard } from './RecapCard';
@@ -22,11 +22,39 @@ import { MermaidDiagram } from './MermaidDiagram';
 import { AttachmentImage } from './AttachmentImage';
 import { CodeBlock } from './CodeBlock';
 
+// Thinking is secondary. It stays closed until the user opens it.
+function Thinking({ text }: { text: string }) {
+  return <details className={styles.thinking}>
+    <summary><Icon name="chevronForwardOutline" size={13} />Thinking</summary>
+    <p>{text}</p>
+  </details>;
+}
+
+function ToolDetails({ tool, detail }: { tool: string; detail: ToolCall }) {
+  const call = detail.input !== undefined || detail.result !== undefined;
+  return <details className={styles.toolDetails}>
+    <summary>{tool}</summary>
+    {call && <><h4>Arguments</h4><pre>{formatToolValue(detail.input)}</pre><ToolDiff input={detail.input} /></>}
+    {!!detail.children?.length && <>
+      <h4>Subagent</h4>
+      <ol className={styles.subagentWork} aria-label="Subagent work">
+        {detail.children.map((child) => <li key={child.id}>
+          {child.tools?.length ? <span><Icon name="codeSlash" size={13} />{child.tools.join(', ')}</span> : null}
+          {child.content.trim() ? <pre>{child.content}</pre> : null}
+        </li>)}
+      </ol>
+    </>}
+    {call && <><h4>{detail.isError ? 'Error' : 'Result'}</h4>
+      <pre>{detail.result === undefined ? 'No result reported yet.' : formatToolValue(detail.result)}</pre></>}
+  </details>;
+}
+
 const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block: ToolActivityBlock; compactTools: boolean }) {
   const rowsId = useId();
   const [expanded, setExpanded] = useState(
     !compactTools && window.innerWidth >= 768,
   );
+  const count = toolCount(block);
   return (
     <section className={styles.toolGroup} aria-label="Tool activity">
       <button
@@ -38,22 +66,20 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block
         <Icon name={expanded ? 'chevronDown' : 'chevronForwardOutline'} size={13} />
         {block.duration ? `Worked for ${block.duration}` : 'Tool activity'}
         <span>
-          · {block.tools.length} {block.tools.length === 1 ? 'tool' : 'tools'}
+          · {count} {count === 1 ? 'tool' : 'tools'}
         </span>
       </button>
       <ul className={styles.toolRows} id={rowsId} hidden={!expanded}>
-        {block.tools.map((tool, index) => (
-          <li key={index}>
-            <Icon name="codeSlash" size={14} />
-            {block.details?.[index] && (block.details[index]!.input !== undefined || block.details[index]!.result !== undefined) ? <details className={styles.toolDetails}>
-              <summary>{tool}</summary>
-              <h4>Arguments</h4><pre>{formatToolValue(block.details[index]!.input)}</pre>
-              <ToolDiff input={block.details[index]!.input} />
-              <h4>{block.details[index]!.isError ? 'Error' : 'Result'}</h4>
-              <pre>{block.details[index]!.result === undefined ? 'No result reported yet.' : formatToolValue(block.details[index]!.result)}</pre>
-            </details> : <span>{tool}</span>}
-          </li>
-        ))}
+        {block.tools.map((tool, index) => {
+          const thinking = block.thinking?.[index], detail = block.details?.[index];
+          return <li key={index}>
+            <Icon name={thinking !== undefined ? 'sparklesOutline' : detail?.children?.length ? 'gitNetworkOutline' : 'codeSlash'} size={14} />
+            {thinking !== undefined ? <details className={`${styles.toolDetails} ${styles.thinkingRow}`}>
+              <summary>{tool}</summary><p>{thinking}</p>
+            </details> : detail && (detail.input !== undefined || detail.result !== undefined || detail.children?.length)
+              ? <ToolDetails tool={tool} detail={detail} /> : <span>{tool}</span>}
+          </li>;
+        })}
       </ul>
     </section>
   );
@@ -61,7 +87,9 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block
   && previous.block.id === next.block.id && previous.block.duration === next.block.duration
   && previous.block.details === next.block.details
   && previous.block.tools.length === next.block.tools.length
-  && previous.block.tools.every((tool, index) => tool === next.block.tools[index]));
+  && previous.block.tools.every((tool, index) => tool === next.block.tools[index])
+  && previous.block.thinking?.length === next.block.thinking?.length
+  && (previous.block.thinking || []).every((text, index) => text === next.block.thinking![index]));
 
 function ToolDiff({ input }: { input: unknown }) {
   if (!input || typeof input !== 'object') return null;
@@ -146,6 +174,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
         </div>
       ) : (
         <div className={styles.markdown}>
+          {message.thinking && <Thinking text={message.thinking} />}
           {parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
             <div className={styles.replyOptions} role="group" aria-label="Reply options" key={index}>
               {part.items.map((item, optionIndex) => (
@@ -291,7 +320,9 @@ export const MessageList = memo(function MessageList({
   return <>
     {blocks.map((block) => block.kind === 'tools'
       ? <ToolActivity key={block.id} block={block} compactTools={compactTools} />
-      : <Fragment key={block.id}>
+      : block.kind === 'thinking'
+        ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} /></article>
+        : <Fragment key={block.id}>
           <MessageBlock sessionId={sessionId} message={block.message}
             bubble={bubble} notify={notify}
             recap={recaps.get(block.message.id)} recapWriting={writingTarget === block.message.id} onJump={jump}
