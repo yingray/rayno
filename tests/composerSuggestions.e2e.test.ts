@@ -88,30 +88,34 @@ test('file mention suggestions should read the session files once and insert the
   expect(server.mutations).toEqual([]);
 });
 
-test('phone suggestions should fit above the composer, scroll to every row, keep the keyboard open, and allow a one-tap send', async ({ page }, testInfo) => {
-  test.skip(!testInfo.project.name.startsWith('mobile'), 'Touch keyboards use the mobile projects.');
-  // Arrange
-  const { server, workspace } = await open(page);
-  // Act / Assert
-  for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 430], [844, 390]]) {
+for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 430], [844, 390]]) {
+  test(`phone suggestions should fit above the composer at ${width}x${height}, scroll to every row, keep the keyboard open, and allow a one-tap send`, async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.startsWith('mobile'), 'Touch keyboards use the mobile projects.');
+    // Arrange
+    const { server, workspace } = await open(page);
     await page.setViewportSize({ width, height });
     await workspace.input().tap();
+    // Act
     await workspace.input().pressSequentially('/');
+    // Assert
     await workspace.expectListUsable('Command');
     await workspace.capture(`${testInfo.project.name}-command-suggestions-${width}x${height}`);
+    // Act
     await workspace.option('Command', '/design-check').tap();
+    // Assert
     await workspace.expectDraft('/design-check ');
     await expect(workspace.input()).toBeFocused();
+    // Act
     await workspace.input().pressSequentially(`at ${width}x${height}`);
     await workspace.watchSendFocus();
     await workspace.expectSendReachable();
-    const count = server.sends.length;
     await workspace.sendButton().tap();
+    // Assert
     await workspace.expectKeyboardDismissedAfterClick();
-    await expect.poll(() => server.sends.length).toBe(count + 1);
+    await expect.poll(() => server.sends.length).toBe(1);
     await workspace.expectDraft('');
     await workspace.expectNoPageOverflow();
-    const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[count].content, server.dataKey);
+    const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[0].content, server.dataKey);
     expect(message.content.text).toBe(`/design-check at ${width}x${height}`);
-  }
-});
+  });
+}

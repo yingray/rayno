@@ -27,6 +27,7 @@ test('the tab title should count background sessions that need attention and cle
   // Act
   await page.reload();
   // Assert
+  await workspace.expectConnected();
   await expect(page).toHaveTitle('(1) Rayno · Older workspace');
   // Act
   await workspace.showSessions();
