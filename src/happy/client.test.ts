@@ -175,6 +175,18 @@ describe('Happy client protocol', () => {
     expect(await client.encryption.decrypt(payload.params, null)).toEqual(sent);
     expect(client.getAgentState('session').requests).toEqual({});
   });
+  it.each(['Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'ExitPlanMode', 'exit_plan_mode'])(
+    'should not approve %s for the whole session', async (tool) => {
+      // Arrange: Happy Web PermissionFooter.tsx offers no session approval for these tools.
+      session.agentState = await client.encryption.encrypt({ requests: { 'tool-1': { tool, arguments: {}, createdAt: 1 } } }, null);
+      await start();
+      socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt(undefined, null) });
+      // Act
+      await client.respondPermission('session', 'tool-1', true, true);
+      // Assert
+      const [, payload] = socket.emitWithAck.mock.calls.find(([event]) => event === 'rpc-call')!;
+      expect(await client.encryption.decrypt(payload.params, null)).not.toHaveProperty('allowTools');
+    });
   it('should reject a damaged permission reply and keep the request open', async () => {
     // Arrange
     session.agentState = await client.encryption.encrypt({ requests: { 'tool-1': { tool: 'Read', arguments: {}, createdAt: 1 } } }, null);

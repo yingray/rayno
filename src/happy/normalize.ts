@@ -105,6 +105,12 @@ export function pendingPermissions(state: Json): Permission[] {
       arguments: record(request).arguments,
     }));
 }
+// Happy Web PermissionFooter.tsx offers no session-wide approval for edit tools and plan exits.
+const noSessionScope = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit', 'ExitPlanMode', 'exit_plan_mode']);
+export function allowsSessionScope(tool: string): boolean {
+  return !noSessionScope.has(tool);
+}
+export const isExitPlanTool = (tool: string) => tool === 'ExitPlanMode' || tool === 'exit_plan_mode';
 export function normalizeSession(
   source: SessionRecord,
   messages: Message[],

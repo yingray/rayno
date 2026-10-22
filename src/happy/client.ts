@@ -25,6 +25,7 @@ import {
   currentPermission,
   normalizeMessage,
   pendingPermissions,
+  allowsSessionScope,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -1344,7 +1345,7 @@ export class HappyClient implements DemoAdapter {
     await this.rpc(id, 'permission', {
       id: requestId, approved,
       decision: approved ? sessionScope && codex ? 'approved_for_session' : 'approved' : 'denied',
-      ...(approved && sessionScope && !codex ? { allowTools: [tool] } : {}),
+      ...(approved && sessionScope && !codex && allowsSessionScope(request.tool) ? { allowTools: [tool] } : {}),
       ...(updatedInput ? { updatedInput } : {}),
     });
     this.acknowledged.add(key);
