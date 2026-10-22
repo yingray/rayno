@@ -43,7 +43,7 @@ for (const flavor of ['claude', 'codex']) {
     await expect.poll(() => server.permissionPayloads.length).toBe(1);
     expect(server.permissionPayloads[0]).toEqual(flavor === 'codex'
       ? { id: 'permission', approved: true, decision: 'approved_for_session' }
-      : { id: 'permission', approved: true, decision: 'approved', allowedTools: ['Read'] });
+      : { id: 'permission', approved: true, decision: 'approved', allowTools: ['Read'] });
   });
 }
 

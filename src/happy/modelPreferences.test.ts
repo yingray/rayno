@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../data/fixtures';
 import { demoReducer, restoreState } from '../data/reducer';
 import { isConcreteModel, modelOptions } from './modelOptions';
-import { latestSentModes, modelChoiceKey, rankSessionModes, recentModelChoice, resolveModelChoice } from './modelPreferences';
+import { latestAgentMode, latestSentModes, modeBeforePlan, modelChoiceKey, rankSessionModes, recentModelChoice, resolveModelChoice } from './modelPreferences';
+import { visibleMessages, type MessageRecord } from './normalize';
 
 describe('Concrete model preferences', () => {
   it('should replace legacy defaults with a concrete model and supported effort', () => {
@@ -118,5 +119,126 @@ describe('Session composer modes', () => {
     // Act / Assert
     expect(rankSessionModes({ permission: 'default' }, undefined).permission).toBeUndefined();
     expect(rankSessionModes(null, { model: 'one', sentAt: 1 }).permission).toBeUndefined();
+  });
+});
+
+describe('Agent plan mode', () => {
+  const claude = { flavor: 'claude' };
+  // claude/utils/sessionProtocolMapper.ts sends { role: 'session', content: envelope }; toolTitle() gives '<name> call'.
+  const toolCall = (seq: number, createdAt: number, call: string, name: string): MessageRecord => ({
+    id: `m${seq}`, seq, createdAt, raw: { role: 'session', content: {
+      id: `e${seq}`, time: createdAt, role: 'agent', turn: 't1',
+      ev: { t: 'tool-call-start', call, name, title: `${name} call`, description: `${name} call`, args: {} },
+    } },
+  });
+  const userText = (seq: number, createdAt: number, permissionMode: string): MessageRecord => ({
+    id: `m${seq}`, seq, createdAt,
+    raw: { role: 'user', content: { type: 'text', text: 'Go' }, meta: { sentFrom: 'web', permissionMode } },
+  });
+  // claude/utils/permissionHandler.ts moves an answered request to completedRequests[id] with its status and mode.
+  const completed = (id: string, status: string, mode?: string, tool = 'ExitPlanMode') =>
+    ({ completedRequests: { [id]: { tool, arguments: {}, createdAt: 1, completedAt: 2, status, mode } } });
+
+  it('should read EnterPlanMode from the session protocol and from legacy Claude output', () => {
+    // Arrange
+    const legacy: MessageRecord = { id: 'm2', seq: 2, createdAt: 3000, raw: { role: 'agent', content: { type: 'output', data: {
+      type: 'assistant', message: { content: [{ type: 'tool_use', id: 'toolu_2', name: 'EnterPlanMode', input: {} }] } } } } };
+    // Act
+    const session = latestAgentMode(visibleMessages([userText(1, 1000, 'bypassPermissions'), toolCall(2, 3000, 'toolu_1', 'EnterPlanMode')]), {}, claude);
+    const output = latestAgentMode(visibleMessages([legacy]), {}, claude);
+    // Assert
+    expect(session).toEqual({ permission: 'plan', at: 3000, call: 'toolu_1' });
+    expect(output).toEqual({ permission: 'plan', at: 3000, call: 'toolu_2' });
+    expect(latestAgentMode(visibleMessages([userText(1, 1000, 'default')]), {}, claude)).toBeUndefined();
+  });
+
+  it('should let EnterPlanMode replace an older pick and an older sent message', () => {
+    // Arrange
+    const messages = visibleMessages([userText(1, 2000, 'bypassPermissions'), toolCall(2, 3000, 'toolu_1', 'EnterPlanMode')]);
+    const agentMode = latestAgentMode(messages, {}, claude);
+    const picked = { model: 'claude-opus-4-8', effort: 'high', permission: 'bypassPermissions', at: 1000 };
+    // Act
+    const ranked = rankSessionModes(picked, latestSentModes(messages), undefined, agentMode);
+    // Assert
+    expect(ranked.permission).toBe('plan');
+    // The agent changes only the permission mode; the model pick still leads.
+    expect(ranked.modelCandidates[0]).toMatchObject({ model: 'claude-opus-4-8', effort: 'high' });
+  });
+
+  it('should keep a pick or a sent message that is newer than EnterPlanMode', () => {
+    // Arrange
+    const agentMode = { permission: 'plan', at: 3000, call: 'toolu_1' };
+    const sent = { permissionMode: 'acceptEdits', sentAt: 2000 };
+    // Act / Assert
+    expect(rankSessionModes({ permission: 'default', at: 4000 }, sent, undefined, agentMode).permission).toBe('default');
+    expect(rankSessionModes({ permission: 'default', at: 1000 }, { ...sent, sentAt: 4000 }, undefined, agentMode).permission).toBe('acceptEdits');
+  });
+
+  it('should keep plan mode until the user approves ExitPlanMode, then use the approved mode', () => {
+    // Arrange: the user sends feedback in plan mode, and Claude asks to exit plan mode again.
+    const rows = [userText(1, 1000, 'bypassPermissions'), toolCall(2, 2000, 'toolu_1', 'EnterPlanMode'),
+      userText(3, 3000, 'plan'), toolCall(4, 4000, 'toolu_2', 'ExitPlanMode')];
+    const messages = visibleMessages(rows);
+    const sent = latestSentModes(messages);
+    // Act / Assert
+    expect(latestAgentMode(messages, {}, claude)).toEqual({ permission: 'plan', at: 2000, call: 'toolu_1' });
+    expect(rankSessionModes(null, sent, undefined, latestAgentMode(messages, completed('toolu_2', 'denied'), claude)).permission).toBe('plan');
+    const approved = latestAgentMode(messages, completed('toolu_2', 'approved'), claude);
+    expect(approved).toEqual({ permission: 'default', at: 4000, call: 'toolu_2' });
+    expect(rankSessionModes(null, sent, undefined, approved).permission).toBe('default');
+    expect(latestAgentMode(messages, completed('toolu_2', 'approved', 'acceptEdits'), claude)?.permission).toBe('acceptEdits');
+  });
+
+  it.each([
+    ['denied', completed('toolu_1', 'denied', undefined, 'EnterPlanMode')],
+    ['canceled', completed('toolu_1', 'canceled', undefined, 'EnterPlanMode')],
+    ['pending', { requests: { toolu_1: { tool: 'EnterPlanMode', arguments: {}, createdAt: 1 } } }],
+  ])('should not enter plan mode when the user has %s EnterPlanMode', (_status, agentState) => {
+    // Arrange: claude/utils/permissionHandler.ts asks before EnterPlanMode in default and acceptEdits modes.
+    const messages = visibleMessages([userText(1, 1000, 'default'), toolCall(2, 2000, 'toolu_1', 'EnterPlanMode')]);
+    // Act / Assert
+    expect(latestAgentMode(messages, agentState, claude)).toBeUndefined();
+    expect(latestAgentMode(messages, completed('toolu_1', 'approved', undefined, 'EnterPlanMode'), claude)?.permission).toBe('plan');
+  });
+
+  it('should keep a pick that saw the plan call when the browser clock is behind the server', () => {
+    // Arrange: EnterPlanMode has server time 3000; the user picks Default at browser time 2000.
+    const agentMode = { permission: 'plan', at: 3000, call: 'toolu_1' };
+    const sent = { permissionMode: 'bypassPermissions', sentAt: 1000 };
+    // Act / Assert
+    expect(rankSessionModes({ permission: 'default', at: 2000, agentCall: 'toolu_1' }, sent, undefined, agentMode).permission).toBe('default');
+    expect(rankSessionModes({ permission: 'default', at: 2000, agentCall: 'toolu_0' }, sent, undefined, agentMode).permission).toBe('plan');
+    expect(rankSessionModes({ permission: 'default', at: 2000 }, sent, undefined, agentMode).permission).toBe('plan');
+  });
+
+  it('should return to yolo after a plan approval that carries the mode from before plan', () => {
+    // Arrange: Claude enters plan mode in a yolo session, Rayno sends plan feedback, and the user approves the plan.
+    const rows = [userText(1, 1000, 'bypassPermissions'), toolCall(2, 2000, 'toolu_1', 'EnterPlanMode'),
+      userText(3, 3000, 'plan'), toolCall(4, 4000, 'toolu_2', 'ExitPlanMode')];
+    const messages = visibleMessages(rows);
+    const mode = modeBeforePlan(null, messages, undefined, claude);
+    // Act
+    const ranked = rankSessionModes(null, latestSentModes(messages), undefined,
+      latestAgentMode(messages, completed('toolu_2', 'approved', mode), claude));
+    // Assert
+    expect(mode).toBe('bypassPermissions');
+    expect(ranked.permission).toBe('bypassPermissions');
+  });
+
+  it('should find the newest picked or sent mode other than plan', () => {
+    // Arrange
+    const messages = visibleMessages([userText(1, 1000, 'acceptEdits'), userText(2, 2000, 'plan')]);
+    // Act / Assert
+    expect(modeBeforePlan(null, messages, 'default', claude)).toBe('acceptEdits');
+    expect(modeBeforePlan({ permission: 'bypassPermissions', at: 1500 }, messages, 'default', claude)).toBe('bypassPermissions');
+    expect(modeBeforePlan({ permission: 'bypassPermissions', at: 500 }, messages, 'default', claude)).toBe('acceptEdits');
+    expect(modeBeforePlan({ permission: 'plan', at: 3000 }, messages, 'default', claude)).toBe('acceptEdits');
+    expect(modeBeforePlan(null, visibleMessages([userText(1, 1000, 'plan')]), 'default', claude)).toBe('default');
+    expect(modeBeforePlan(null, [], 'plan', claude)).toBeUndefined();
+  });
+
+  it('should ignore plan tool calls for an agent without plan mode', () => {
+    // Act / Assert
+    expect(latestAgentMode(visibleMessages([toolCall(1, 1000, 'call-1', 'enter_plan_mode')]), {}, { flavor: 'codex' })).toBeUndefined();
   });
 });

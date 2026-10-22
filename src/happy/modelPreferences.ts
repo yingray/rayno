@@ -1,7 +1,8 @@
 import type { Agent, Message, MessageSettings, ModelChoice, Session } from '../data/types';
 import { compareSessionActivity } from '../data/sessionList';
 import { canSelectModel, defaultEffort, effortOptions, isConcreteModel, modelOptions } from './modelOptions';
-import { currentEffort, currentModel, type Json } from './normalize';
+import { currentEffort, currentModel, record, type Json } from './normalize';
+import { permissionOptions } from './permissionOptions';
 
 export function modelChoiceKey(agent: Agent, machineId: string): string {
   return agent === 'Happy Agent' ? `${agent}:${machineId}` : agent;
@@ -39,8 +40,11 @@ export function resolveModelChoice(metadata: Json, candidates: (Partial<ModelCho
   return { model, effort: effort || defaultEffort(metadata, model) };
 }
 
-/** Composer modes that the user picked for one session. `at` is absent in values that older builds saved on every render. */
-export type SessionModes = { model?: string; effort?: string | null; permission?: string | null; at?: number };
+/**
+ * Composer modes that the user picked for one session. `at` is absent in values that older builds saved on every render.
+ * `agentCall` is the call of the agent mode change (`latestAgentMode`) that the pick saw.
+ */
+export type SessionModes = { model?: string; effort?: string | null; permission?: string | null; at?: number; agentCall?: string };
 export type SentModes = MessageSettings & { sentAt: number };
 
 export function latestSentModes(messages: Message[]): SentModes | undefined {
@@ -52,15 +56,56 @@ export function latestSentModes(messages: Message[]): SentModes | undefined {
   return undefined;
 }
 
+export type AgentModeChange = { permission: string; at: number; call: string };
+
+/**
+ * The permission mode that the agent took itself, as Happy Web applies it (sync.ts, PermissionFooter.tsx):
+ * EnterPlanMode starts plan mode. An approved ExitPlanMode ends it with the approved mode (see `modeBeforePlan`), else default.
+ */
+export function latestAgentMode(messages: Message[], agentState: Json, metadata: Json): AgentModeChange | undefined {
+  const options = permissionOptions(metadata).filter((option) => !option.disabled).map((option) => option.value);
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const plan = messages[index].planMode;
+    if (!plan) continue;
+    const request = record(record(agentState.completedRequests)[plan.call]);
+    // claude/utils/permissionHandler.ts asks before EnterPlanMode outside bypass and plan modes.
+    if (plan.active ? request.status === 'denied' || request.status === 'canceled'
+      || (!request.status && plan.call in record(agentState.requests)) : request.status !== 'approved') continue;
+    const permission = plan.active ? 'plan' : request.mode !== 'plan' && options.includes(request.mode) ? request.mode : 'default';
+    return options.includes(permission) ? { permission, at: plan.at, call: plan.call } : undefined;
+  }
+  return undefined;
+}
+
+/** The newest picked or sent mode other than plan. An approved ExitPlanMode returns to it. */
+export function modeBeforePlan(
+  saved: SessionModes | null | undefined,
+  messages: Message[],
+  inheritedPermission: string | undefined,
+  metadata: Json,
+): string | undefined {
+  const usable = (mode: unknown): mode is string => typeof mode === 'string' && mode !== 'plan'
+    && permissionOptions(metadata).some((option) => option.value === mode && !option.disabled);
+  const picked = typeof saved?.at === 'number' && usable(saved.permission) ? saved.permission : undefined;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    const mode = message.role === 'user' ? message.settings?.permissionMode : undefined;
+    if (usable(mode)) return picked && saved!.at! >= (message.sentAt ?? 0) ? picked : mode;
+  }
+  return picked ?? (usable(inheritedPermission) ? inheritedPermission : undefined);
+}
+
 /**
  * Rank the sources for the composer modes of an open session:
  * the newer of an explicit pick and the last sent message, then the other one,
  * then the reported session values, then values without a pick time.
+ * A permission mode that the agent took after the pick and the last sent message replaces both.
  */
 export function rankSessionModes(
   saved: SessionModes | null | undefined,
   sent: SentModes | undefined,
   inheritedPermission?: string,
+  agentMode?: AgentModeChange,
 ) {
   const picked = typeof saved?.at === 'number' ? saved : undefined;
   const legacy = saved && !picked ? saved : undefined;
@@ -76,6 +121,9 @@ export function rankSessionModes(
   if (pickedFirst && 'permission' in picked) permission = picked.permission;
   else if (sent?.permissionMode) permission = sent.permissionMode;
   else if (picked && 'permission' in picked) permission = picked.permission;
+  // A pick that saw this agent call is newer, whatever the browser clock says.
+  if (agentMode && (!picked || (picked.agentCall !== agentMode.call && agentMode.at > picked.at!))
+    && (!sent || agentMode.at > sent.sentAt)) permission = agentMode.permission;
   return {
     modelCandidates: ordered as (Partial<ModelChoice> | undefined)[],
     legacy,

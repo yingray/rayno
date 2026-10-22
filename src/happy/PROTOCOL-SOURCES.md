@@ -73,6 +73,18 @@ agent-default aliases and send explicit model IDs and supported effort values. P
 own account store, separate by agent and, for legacy Happy Agent sessions, by computer. Existing chats
 retain their explicit session choices. Happy Agent is hidden from new-session and agent-switch controls.
 
+Plan mode follows `sync/messagePlanMode.ts`, `sync/sync.ts` (`enteredPlanMode`), and
+`components/tools/PermissionFooter.tsx`. The Claude CLI does not report a mode that Claude takes itself.
+`handleModeChange` (`claude/utils/permissionHandler.ts`) pushes a message's `meta.permissionMode` into the SDK
+only when it differs from the handler mode, so a repeated mode does not end plan mode. `latestAgentMode` reads
+the last `EnterPlanMode` tool call as `plan`, unless its request is pending, `denied`, or `canceled`. An
+`ExitPlanMode` call counts only after `completedRequests[call].status` is `approved`; it gives the approved
+`mode`, else `default`. Rayno has no plan approval buttons for other modes, so an `ExitPlanMode` approval sends
+`mode` set to the newest picked or sent mode other than `plan` (`modeBeforePlan`). Without it, the CLI puts a
+yolo session in `default`. The agent mode replaces a sent message when its tool-call message has a newer server
+time. It replaces a pick when it is newer and the pick did not see its call (`agentCall`). As in
+`PermissionFooter.tsx`, edit tools and `ExitPlanMode` have no session approval, so each plan exit asks the user.
+
 New-session permission choices use the same CLI catalogs as chat. Rayno retains the latest explicit choice
 for each agent in its account store and uses Auto when no valid choice exists. The machine's
 `spawn-happy-session` RPC receives `permissionMode`; the first encrypted message receives the same mode.
@@ -87,7 +99,7 @@ Sign-out stops the client, drains pending cache writes, and removes only this ac
 Priority feature contracts were checked against the local Happy snapshot `2dcac1ad0f5ae46f6fd9d8a2880d806424c93d57` on 2026-10-21:
 
 - `attachments.ts` and `crypto.ts`: `encryption/blob.ts`, `sync/encryption/encryption.ts`, `sync/apiAttachments.ts`, and `sync/sync.ts`. Blobs use XSalsa20-Poly1305 with a 24-byte nonce and the derived session/master blob subkey. File events precede the text record in one idempotent v3 message batch.
-- `Requests.tsx` and `client.ts`: `components/tools/views/AskUserQuestionView.tsx`, `components/tools/PermissionFooter.tsx`, and `sync/ops.ts`. Claude receives `updatedInput.answers` keyed by the original question text. Claude session approvals use exact `allowedTools`; Codex uses `approved_for_session`.
+- `Requests.tsx` and `client.ts`: `components/tools/views/AskUserQuestionView.tsx`, `components/tools/PermissionFooter.tsx`, and `sync/ops.ts`. Claude receives `updatedInput.answers` keyed by the original question text. Claude session approvals send exact `allowTools` (`claude/utils/permissionHandler.ts` reads that name; the CLI echoes it as `allowedTools` in `completedRequests`); Codex uses `approved_for_session`.
 - `resume.ts` and `client.ts`: `hooks/useSessionQuickActions.ts` and `sync/ops.ts`. Resume requires advertised daemon support, the owning online machine, and a provider recovery ID. The encrypted machine RPC may carry the session data key as fallback; legacy sessions never send the account master secret.
 - `normalize.ts`: `sync/typesRaw.ts`. Session, Claude output, and Codex/ACP tool calls retain their IDs and join later results by call ID. Raw strings and edit arguments stay readable without HTML execution.
 

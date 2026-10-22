@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import { Button } from '../components/ui';
 import { useDemo } from '../data/store';
 import { messageError } from './errors';
-import { pendingPermissions, record } from './normalize';
+import { allowsSessionScope, pendingPermissions, record } from './normalize';
 import type { Json } from './normalize';
 import styles from './requests.module.css';
 import type { Permission } from './normalize';
@@ -62,10 +62,10 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
               >
                 {busy === request.id ? 'Wait…' : 'Allow once'}
               </Button>
-              <Button disabled={!!busy || unavailable}
+              {allowsSessionScope(request.tool) && <Button disabled={!!busy || unavailable}
                 onClick={() => void run(request.id, () => live.respondPermission(sessionId, request.id, true, true))}>
                 Allow for this session
-              </Button>
+              </Button>}
             </div>
           )}
         </section>

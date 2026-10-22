@@ -25,6 +25,8 @@ import {
   currentPermission,
   normalizeMessage,
   pendingPermissions,
+  allowsSessionScope,
+  isExitPlanTool,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -32,7 +34,7 @@ import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
 import { permissionOptions, canSelectPermission, resolveNewSessionPermission } from './permissionOptions';
-import { latestSentModes, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
+import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
@@ -42,6 +44,8 @@ import { RECAP_REQUEST } from './systemPrompt';
 import type { Message } from '../data/types';
 
 const emptyJson: Json = Object.freeze({});
+// Happy CLI handlers for these methods return void, so a successful reply is an empty plaintext.
+const voidRpcMethods = new Set(['abort', 'switch', 'permission']);
 // An incremental session read starts this far before the newest server update
 // that the client has seen, so a late commit with an older timestamp is not lost.
 const SESSION_CHANGE_OVERLAP = 30000;
@@ -924,7 +928,7 @@ export class HappyClient implements DemoAdapter {
     this.assertAlive();
     if (!result.ok) throw new Error(result.error || 'The agent refused this request.');
     const response = await this.encryption.decrypt<Json | null>(result.result, source.key, {
-      allowEmpty: method === 'abort',
+      allowEmpty: voidRpcMethods.has(method),
     });
     if (typeof response?.error === 'string') throw new Error(response.error);
     return response ?? {};
@@ -1304,8 +1308,10 @@ export class HappyClient implements DemoAdapter {
     if (reason) throw new Error(reason);
     let saved: SessionModes | null = null;
     try { saved = JSON.parse(this.readLocal(`composerModes.${id}`) || 'null'); } catch { /* Ignore an invalid saved choice. */ }
-    const sent = latestSentModes(this.snapshot.sessions.find(session => session.id === id)?.messages || []) || await this.findSentModes(id);
-    const ranked = rankSessionModes(saved, sent, currentPermission(source.metadata));
+    const messages = this.snapshot.sessions.find(session => session.id === id)?.messages || [];
+    const sent = latestSentModes(messages) || await this.findSentModes(id);
+    const ranked = rankSessionModes(saved, sent, currentPermission(source.metadata),
+      latestAgentMode(messages, source.agentState, source.metadata));
     const choice = resolveModelChoice(source.metadata, ranked.modelCandidates);
     if (!choice.model) throw new Error('No model is available for this session.');
     const permission = ranked.permission || currentPermission(source.metadata);
@@ -1337,10 +1343,19 @@ export class HappyClient implements DemoAdapter {
     const codex = sessionSource.metadata.flavor === 'codex';
     const args = record(request.arguments);
     const tool = request.tool === 'Bash' && typeof args.command === 'string' ? `Bash(${args.command})` : request.tool;
+    // A plain plan approval puts Claude in default mode; return to the mode from before plan instead.
+    let mode: string | undefined;
+    if (approved && !codex && isExitPlanTool(request.tool)) {
+      let saved: SessionModes | null = null;
+      try { saved = JSON.parse(this.readLocal(`composerModes.${id}`) || 'null'); } catch { /* Ignore an invalid saved choice. */ }
+      mode = modeBeforePlan(saved, this.snapshot.sessions.find(session => session.id === id)?.messages || [],
+        currentPermission(sessionSource.metadata), sessionSource.metadata);
+    }
     await this.rpc(id, 'permission', {
       id: requestId, approved,
       decision: approved ? sessionScope && codex ? 'approved_for_session' : 'approved' : 'denied',
-      ...(approved && sessionScope && !codex ? { allowedTools: [tool] } : {}),
+      ...(approved && sessionScope && !codex && allowsSessionScope(request.tool) ? { allowTools: [tool] } : {}),
+      ...(mode ? { mode } : {}),
       ...(updatedInput ? { updatedInput } : {}),
     });
     this.acknowledged.add(key);
