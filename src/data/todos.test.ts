@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { markSubagents, visibleMessages, type MessageRecord } from '../happy/normalize';
-import { latestTodos, resultTodos, todoItems, todoProgress, todoRowList, toolTodos } from './todos';
+import { latestTodos, resultTodos, sameTodos, todoItems, todoProgress, todoRowList, toolTodos } from './todos';
 
 const row = (id: string, seq: number, raw: object): MessageRecord => ({ id, seq, raw, createdAt: 1000 + seq });
 const claude = { userType: 'external', cwd: '/Users/steve/Develop/slopus/happy-cli', sessionId: '2c74184e-6979-476d-a52f-0ac183bffe3a',
@@ -168,6 +168,17 @@ describe('todo list', () => {
     expect(toolTodos({ id: 'x', name: 'TodoWrite', input: { todos: invalid } })).toEqual([]);
   });
 
+  it('should keep the previous list when the items are the same', () => {
+    // Arrange
+    const previous = [{ content: 'Main step', status: 'in_progress' as const }];
+    // Act
+    const same = sameTodos(previous, [{ content: 'Main step', status: 'in_progress' }]);
+    const changed = sameTodos(previous, [{ content: 'Main step', status: 'completed' }]);
+    // Assert
+    expect(same).toBe(previous);
+    expect(changed).toEqual([{ content: 'Main step', status: 'completed' }]);
+    expect(sameTodos(undefined, [])).toBe(sameTodos(previous, []));
+  });
   it('should parse the input and the result as TodoView does', () => {
     // Arrange
     const input = { todos: [{ content: 'From the input', status: 'pending' }] };

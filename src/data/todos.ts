@@ -84,3 +84,12 @@ export function latestTodos(messages: readonly Message[], rows: Iterable<Message
   }
   return [];
 }
+
+// One shared empty list. Callers read the list and never change it.
+const noTodos: Todo[] = [];
+const sameTodo = (a: Todo, b: Todo) => a.content === b.content && a.status === b.status && a.priority === b.priority && a.id === b.id;
+// `next`, or `previous` when the two lists have the same items, so a session row that compares by reference does not render again.
+export function sameTodos(previous: Todo[] | undefined, next: Todo[]): Todo[] {
+  if (previous && previous.length === next.length && next.every((todo, index) => sameTodo(previous[index], todo))) return previous;
+  return next.length ? next : noTodos;
+}

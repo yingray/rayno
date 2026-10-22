@@ -58,7 +58,7 @@ import { imageMime, transferUrl, validateImages } from './attachments';
 import { resumeUnavailable } from './resume';
 import { RECAP_REQUEST } from './systemPrompt';
 import type { Message, Todo } from '../data/types';
-import { latestTodos } from '../data/todos';
+import { latestTodos, sameTodos } from '../data/todos';
 
 const emptyJson: Json = Object.freeze({});
 const boundCount = (marks?: SubagentMarks) => [...marks?.values() || []].reduce((total, entry) => total + entry.bounds.size, 0);
@@ -233,11 +233,12 @@ export class HappyClient implements DemoAdapter {
             const list = [...(rows?.values() || [])];
             const messages = visibleMessages(list, hold);
             history = { source: rows, size: rows?.size || 0, hold, messages, context: contextUsage(list),
-              marked, todos: latestTodos(messages, list, bounds, this.boundsFrom(id)) };
+              marked, todos: sameTodos(history?.todos, latestTodos(messages, list, bounds, this.boundsFrom(id))) };
             this.visibleHistory.set(id, history);
           } else if (history.marked !== marked) {
             // A scan of other pages can add bounds or read range without new rows. The todo chip then checks its call again.
-            history = { ...history, marked, todos: latestTodos(history.messages, rows?.values(), bounds, this.boundsFrom(id)) };
+            history = { ...history, marked,
+              todos: sameTodos(history.todos, latestTodos(history.messages, rows?.values(), bounds, this.boundsFrom(id))) };
             this.visibleHistory.set(id, history);
           }
           const attention = this.sessionAttention(source.wire.id);
