@@ -62,6 +62,26 @@ test('Escape should close suggestions for the current word and Tab should pick t
   expect(server.sends).toHaveLength(0);
 });
 
+test('picking a command that is already complete should close the list and keep later typing at the caret', async ({ page }) => {
+  // Arrange
+  const { server, workspace } = await open(page);
+  await workspace.input().click();
+  await workspace.input().pressSequentially('/compact now');
+  for (let index = 0; index < 4; index++) await workspace.input().press('ArrowLeft');
+  await workspace.expectSelected('Command', '/compact');
+  // Act
+  await workspace.input().press('Enter');
+  // Assert
+  await expect(workspace.suggestions('Command')).toHaveCount(0);
+  await workspace.expectDraft('/compact now');
+  // Act
+  for (let index = 0; index < 4; index++) await workspace.input().press('ArrowRight');
+  await workspace.input().pressSequentially('er');
+  // Assert
+  await workspace.expectDraft('/compact nower');
+  expect(server.sends).toHaveLength(0);
+});
+
 test('file mention suggestions should read the session files once and insert the picked path', async ({ page }, testInfo) => {
   // Arrange
   const { server, workspace } = await open(page);

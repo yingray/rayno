@@ -70,9 +70,19 @@ export const DraftComposer = memo(function DraftComposer({
     const item = found.items[index];
     if (!item || !caret) return;
     const result = applySuggestion(value, caret, item.text);
-    nextCaret.current = result.cursorPosition;
-    dispatch({ type: 'draft', id: sessionId, value: result.text });
-    input.current?.focus();
+    const element = input.current;
+    // The reducer drops a same-value draft, so the caret effect would not run and would move the next edit.
+    if (result.text === value) {
+      element?.setSelectionRange(result.cursorPosition, result.cursorPosition);
+      const next = { start: result.cursorPosition, end: result.cursorPosition };
+      const picked = findActiveWord(value, next);
+      setCaret(next);
+      if (picked) setDismissed(`${picked.offset}:${picked.activeWord}`);
+    } else {
+      nextCaret.current = result.cursorPosition;
+      dispatch({ type: 'draft', id: sessionId, value: result.text });
+    }
+    element?.focus();
   }
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     // Safari can clear isComposing before the Enter that confirms an IME choice.
