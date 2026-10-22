@@ -163,6 +163,7 @@ export function normalizeSession(
     lastActivityAt: m.lastMeaningfulMessageAt ?? wire.createdAt,
     machineOffline: machine ? !machine.wire.active : false,
     isSideChat: m.isSideChat === true,
+    sideChatClosed: m.isSideChat === true && m.lifecycleState === 'archived',
     parentSessionId: typeof m.parentSessionId === 'string' && m.parentSessionId ? m.parentSessionId : undefined,
     additions: typeof m.git?.insertions === 'number' ? m.git.insertions : 0,
     deletions: typeof m.git?.deletions === 'number' ? m.git.deletions : 0,

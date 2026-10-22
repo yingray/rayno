@@ -9,6 +9,9 @@ export function sideChatsOf(sessions: Session[], parentId: string): Session[] {
     .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
 }
 
+/** Happy Web closes a side chat only by its lifecycle (storage.ts useSideChatSessions). A lost connection only ends it. */
+export const isSideChatClosed = (session: Session) => !!session.sideChatClosed;
+
 /** Happy Web numbers the open side chats only. Closed ones take their own numbers so that the two lists never share a label. */
 export function sideChatLabel(session: Session, index: number, name = SIDE_CHAT_TITLE) {
   if (session.customTitle) return session.customTitle;
@@ -21,4 +24,18 @@ export function activeSideChat(open: Session[], requested?: string | null) {
 }
 
 export const countOpenSideChats = (sessions: Session[], parentId: string) =>
-  sessions.reduce((count, session) => count + (session.isSideChat && !session.archived && session.parentSessionId === parentId ? 1 : 0), 0);
+  sessions.reduce((count, session) => count + (session.isSideChat && !isSideChatClosed(session) && session.parentSessionId === parentId ? 1 : 0), 0);
+
+/** A closed or deleted side chat returns to its parent's side chat list, when the parent is still known. */
+export const leaveRoute = (session: Session, parentKnown: boolean) =>
+  session.isSideChat && parentKnown ? `/session/${session.parentSessionId}/side` : '/sessions';
+
+/**
+ * The archive action for the session menu and info panel, or none when only a resume helps.
+ * An ended side chat can still close because a lost connection does not close it.
+ */
+export function archiveAction(session: Session, ended: boolean) {
+  if (session.isSideChat && !isSideChatClosed(session)) return 'Close side chat';
+  if (ended) return null;
+  return session.archived ? 'Restore session' : 'Archive session';
+}

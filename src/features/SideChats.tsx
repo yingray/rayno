@@ -4,14 +4,15 @@ import { Button, Empty, Icon } from '../components/ui';
 import { useMinuteNow } from '../components/useMinuteNow';
 import { useDemo } from '../data/store';
 import { formatSessionTimestamp } from '../data/sessionList';
-import { activeSideChat, SIDE_CHAT_TITLE, sideChatLabel, sideChatsOf } from '../data/sideChats';
+import { activeSideChat, isSideChatClosed, SIDE_CHAT_TITLE, sideChatLabel, sideChatsOf } from '../data/sideChats';
 import type { MessageSettings, Session } from '../data/types';
 import { messageError } from '../happy/errors';
 import { Chat } from './Chat';
 import styles from './side-chats.module.css';
 
 const noop = () => {};
-const statusOf = (chat: Session) => chat.archived ? 'Closed' : chat.status === 'running' ? 'Working'
+// An ended side chat (no CLI connection) stays open until the user closes it, like Happy Web.
+const statusOf = (chat: Session) => isSideChatClosed(chat) ? 'Closed' : chat.archived ? 'Ended' : chat.status === 'running' ? 'Working'
   : chat.status === 'blocked' ? 'Needs you' : chat.unread ? 'New reply' : 'Ready';
 
 /**
@@ -34,8 +35,8 @@ export function SideChats({ parent, layout, settings, onClose }: {
   const location = useLocation();
   const now = useMinuteNow();
   const chats = useMemo(() => sideChatsOf(sessions, parent.id), [sessions, parent.id]);
-  const open = useMemo(() => chats.filter((chat) => !chat.archived), [chats]);
-  const closed = useMemo(() => chats.filter((chat) => chat.archived), [chats]);
+  const open = useMemo(() => chats.filter((chat) => !isSideChatClosed(chat)), [chats]);
+  const closed = useMemo(() => chats.filter(isSideChatClosed), [chats]);
   const labels = useMemo(() => new Map([...open.map((chat, index) => [chat.id, sideChatLabel(chat, index)] as const),
     ...closed.map((chat, index) => [chat.id, sideChatLabel(chat, index, 'Closed side chat')] as const)]), [open, closed]);
   const [requested, setRequested] = useState<string | null>(() => (location.state as { sideChat?: string } | null)?.sideChat ?? null);
@@ -70,7 +71,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
       id = crypto.randomUUID();
       const at = Date.now();
       dispatch({ type: 'create', session: { ...parent, id, title: SIDE_CHAT_TITLE, customTitle: undefined, isSideChat: true,
-        parentSessionId: parent.id, status: 'idle', archived: false, unread: false, needsReply: false,
+        parentSessionId: parent.id, sideChatClosed: false, status: 'idle', archived: false, unread: false, needsReply: false,
         createdAt: at, updatedAt: at, lastActivityAt: at, messages: [] } });
     }
     if (live && live.getMetadata(id).isSideChat !== true) {
@@ -102,7 +103,8 @@ export function SideChats({ parent, layout, settings, onClose }: {
   </>;
   const row = (chat: Session) => {
     const label = labels.get(chat.id) || SIDE_CHAT_TITLE;
-    return <li key={chat.id} className={styles.row} data-closed={chat.archived || undefined}>
+    const chatClosed = isSideChatClosed(chat);
+    return <li key={chat.id} className={styles.row} data-closed={chatClosed || undefined}>
       <button className={styles.rowMain} onClick={() => openFull(chat)} aria-label={`Open ${label}`}>
         <Icon name="chatbubblesOutline" size={16} />
         <span>
@@ -111,7 +113,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
         </span>
         <Icon name="chevronForwardOutline" size={13} />
       </button>
-      {!chat.archived && <Button className={styles.iconButton} variant="ghost" icon="close" aria-label={`Close ${label}`}
+      {!chatClosed && <Button className={styles.iconButton} variant="ghost" icon="close" aria-label={`Close ${label}`}
         disabled={!!busy || disconnected} onClick={() => void closeChat(chat)} />}
     </li>;
   };

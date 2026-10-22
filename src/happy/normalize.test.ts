@@ -120,6 +120,19 @@ describe('Happy record normalization', () => {
     expect(titled.title).toBe('Check the parser');
     expect(fork).toMatchObject({ isSideChat: false, parentSessionId: 'parent', title: 'project' });
   });
+  it('should close a side chat only by its archived lifecycle and not by a lost connection', () => {
+    // Arrange: the server sets active=false after missed keepalives (presence/timeout.ts); a close writes lifecycleState.
+    const metadata = { path: '/real/project', flavor: 'claude', parentSessionId: 'parent', isSideChat: true, lifecycleState: 'running' };
+    const ended = { wire: { id: 'side', active: false, createdAt: 100, updatedAt: 200 }, metadata, agentState: {}, key: null };
+    // Act
+    const open = normalizeSession(ended, []);
+    const closed = normalizeSession({ ...ended, metadata: { ...metadata, lifecycleState: 'archived' } }, []);
+    const fork = normalizeSession({ ...ended, metadata: { ...metadata, isSideChat: undefined, lifecycleState: 'archived' } }, []);
+    // Assert
+    expect(open).toMatchObject({ archived: true, sideChatClosed: false });
+    expect(closed).toMatchObject({ archived: true, sideChatClosed: true });
+    expect(fork).toMatchObject({ archived: true, sideChatClosed: false });
+  });
   it('should order and deduplicate messages across legacy, Codex, and session envelopes', () => {
     // Arrange
     const rows = [

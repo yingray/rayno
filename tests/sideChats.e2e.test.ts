@@ -175,6 +175,57 @@ test('saved side chats should stay readable offline and block a new side chat', 
   expect(offlineRecords).not.toContain('side-provider-1');
 });
 
+test('an ended side chat that the user did not close should stay open with a resume path and still close', async ({ page }) => {
+  // Arrange: happy-cli keeps lifecycleState 'running' when the CLI stops without a close; the server sets active=false.
+  const server = new HappyServer();
+  server.machineMetadata.resumeSupport = { rpcAvailable: true };
+  await server.install(page); await prepare(server, 'claude');
+  await server.addSession('side-open', { parentSessionId: 'real-session', isSideChat: true, claudeSessionId: 'side-provider-1' },
+    { createdAt: 1700000005000 });
+  await server.addSession('side-ended', { parentSessionId: 'real-session', isSideChat: true, claudeSessionId: 'side-provider-2',
+    lifecycleState: 'running' }, { active: false, createdAt: 1700000006000 });
+  const workspace = new SideChatsPage(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await workspace.openSession();
+  // Act / Assert: the wide panel keeps the ended side chat as a numbered tab.
+  await expect(workspace.headerButton()).toHaveAccessibleName('Side chats, 2 open');
+  await workspace.headerButton().click();
+  await expect(workspace.tab('Side chat 2')).toHaveAttribute('aria-pressed', 'true');
+  await expect(workspace.panel().getByText('Ended', { exact: true })).toBeVisible();
+  await expect(workspace.sideChat().getByRole('button', { name: 'Resume session', exact: true })).toBeVisible();
+  await expect(workspace.panel().getByText(/Closed side chats/)).toHaveCount(0);
+  // Act / Assert: on a phone, the full view offers Resume and Close, and Close returns to the parent list.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(workspace.row('Side chat 2')).toContainText('Ended');
+  await workspace.row('Side chat 2').click();
+  await expect(page).toHaveURL(/\/session\/side-ended$/);
+  await workspace.openActions();
+  await expect(workspace.menu().getByRole('menuitem', { name: 'Resume session', exact: true })).toBeVisible();
+  await workspace.chooseAction('Close side chat');
+  await expect(page).toHaveURL(/\/session\/real-session\/side$/);
+  await expect(workspace.panel().getByText('Closed side chats (1)', { exact: true })).toBeVisible();
+  await expect(workspace.row('Side chat 1')).toBeVisible();
+  await expect(workspace.row('Side chat 2')).toHaveCount(0);
+  const metadata = await server.encryption.decrypt<Record<string, unknown>>(server.sessions.find((item) => item.id === 'side-ended')!.metadata, server.dataKey);
+  expect(metadata.lifecycleState).toBe('archived');
+});
+
+test('closing a side chat from Session info should return to the parent side chat list', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page); await withSideChats(server);
+  const workspace = new SideChatsPage(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/session/side-1/info');
+  // Act
+  await page.getByRole('button', { name: 'Close side chat', exact: true }).click();
+  // Assert
+  await expect(page).toHaveURL(/\/session\/real-session\/side$/);
+  expect(server.mutations).toContain('side-1:killSession');
+  await expect(workspace.row('Side chat 1')).toHaveCount(0);
+  await expect(workspace.panel().getByText('Closed side chats (2)', { exact: true })).toBeVisible();
+});
+
 test('a side chat without a known parent should return to the session list', async ({ page }) => {
   // Arrange
   const server = new HappyServer();

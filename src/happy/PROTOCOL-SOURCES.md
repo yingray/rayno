@@ -133,6 +133,11 @@ Side chats follow `sync/ops.ts` (`spawnSideChat`, `forkAndSpawn`), `sync/storage
 and `metadata.parentSessionId`. They do not replay the parent history into the side chat UI. `../data/sideChats.ts` selects the side chats of
 a parent by these two fields, oldest first. A regular fork has `parentSessionId` without `isSideChat` and stays in the session list.
 Rayno starts a side chat with the same fork RPC and spawn as Fork (kind `side`) and adds `isSideChat: true` and the parent's concrete
-model/effort/permission. Close uses the normal archive flow (`killSession`, then the server archive). Closed side chats stay readable
-from the parent. Happy Web shows side chats only in the desktop sidebar. Rayno shows them in a panel at 1280px and wider, in a drawer
-on tablets, and on a page from the session menu on phones. A Happy CLI that ignores `isSideChat` starts a regular fork; Rayno opens it and says so.
+model/effort/permission. Like `useSideChatSessions`, only `lifecycleState: 'archived'` closes a side chat (`Session.sideChatClosed`).
+A side chat that lost its CLI connection (`active: false` from `presence/timeout.ts` or a session end) stays open with an "Ended" status
+and the normal resume path. Close uses the normal archive flow (`killSession`, else the server archive) and then writes the archived
+lifecycle marker. Happy Web hides a closed side chat only in memory (`closedSideChatIds`) because the server archive sets only
+`active: false`; the marker keeps it closed after a reload and on other clients. A resume removes the marker. Closed side chats stay
+readable from the parent. The Session info close and the menu close return to the parent's list. Happy Web shows side chats only in the desktop sidebar. Rayno shows them in a panel at 1280px and wider, in a
+drawer on tablets, and on a page from the session menu on phones. A Happy CLI that ignores `isSideChat` starts a regular fork; Rayno
+opens it and says so.

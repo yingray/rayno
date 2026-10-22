@@ -252,7 +252,7 @@ export class HappyServer {
       }
       if (/^\/v1\/sessions\/[^/]+\/archive$/.test(path)) {
         this.mutations.push('archive');
-        this.sessions[0].active = false;
+        this.sessions.find((session) => session.id === path.split('/')[3])!.active = false;
         return json({ success: true });
       }
       if (/^\/v1\/sessions\/[^/]+$/.test(path) && method === 'DELETE') {

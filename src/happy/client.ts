@@ -1021,7 +1021,9 @@ export class HappyClient implements DemoAdapter {
   async archiveSession(id: string) {
     const source = this.getSession(id);
     if (source.metadata.bot) throw new Error('Use the Happy app to manage this bot.');
-    if (isSessionArchived(source)) {
+    // An ended side chat stays open in its parent, so only the lifecycle marker closes it.
+    const sideChat = source.metadata.isSideChat === true;
+    if (sideChat ? source.metadata.lifecycleState === 'archived' : isSessionArchived(source)) {
       if (!isRig(source.metadata) && !source.wire.active)
         throw new Error('This CLI session has ended. Resume this session before you restore it.');
       await this.mutateMetadata(id, (metadata) => {
@@ -1038,8 +1040,9 @@ export class HappyClient implements DemoAdapter {
     const current = this.sessions.get(id);
     if (current) current.wire.active = false;
     this.publish(id);
-    // An inactive Rig session stays in the live list without the marker.
-    if (isRig(source.metadata)) await this.mutateMetadata(id, (metadata) => ({ ...metadata, lifecycleState: 'archived' }));
+    // An inactive Rig session stays in the live list without the marker, and an ended side chat stays open.
+    // Happy Web hides a closed side chat only in memory (SessionView.tsx closedSideChatIds); the marker also keeps it closed after a reload.
+    if (isRig(source.metadata) || sideChat) await this.mutateMetadata(id, (metadata) => ({ ...metadata, lifecycleState: 'archived' }));
   }
   async deleteSession(id: string) {
     const source = this.getSession(id);

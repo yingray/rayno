@@ -952,6 +952,42 @@ describe('Happy client session lifecycle', () => {
     expect(sent).toMatchObject({ lifecycleState: 'archived', unknownExtension: { keep: true } });
     expect(client.getSnapshot().sessions[0].archived).toBe(true);
   });
+  it('should keep an ended side chat open and close it through the server archive and its archive marker', async () => {
+    // Arrange: happy-cli runClaude marks a running side chat; the server ends it after missed keepalives.
+    session.active = false;
+    session.metadata = await client.encryption.encrypt({ ...metadata, isSideChat: true, parentSessionId: 'parent', lifecycleState: 'running' }, null);
+    const machine = { id: 'computer', active: false, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Computer' }, null) };
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start();
+    const ended = client.getSnapshot().sessions[0];
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce({ result: 'success', version: 2 });
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(ended).toMatchObject({ archived: true, sideChatClosed: false });
+    expect(requests()).toEqual(['POST /v1/sessions/session/archive']);
+    expect(socket.emitWithAck.mock.calls.map(([event]) => event)).toEqual(['update-metadata']);
+    const sent = await client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[0][1].metadata, null);
+    expect(sent).toMatchObject({ lifecycleState: 'archived', isSideChat: true, unknownExtension: { keep: true } });
+    expect(client.getSnapshot().sessions[0]).toMatchObject({ archived: true, sideChatClosed: true });
+  });
+  it('should close a connected side chat through killSession and keep it closed with the archive marker', async () => {
+    // Arrange
+    session.metadata = await client.encryption.encrypt({ ...metadata, isSideChat: true, parentSessionId: 'parent', lifecycleState: 'running' }, null);
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce(await rpcReply({ success: true, message: 'Killing happy-cli process' }))
+      .mockResolvedValueOnce({ result: 'success', version: 2 });
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls.map(([event, body]) => body?.method || event)).toEqual(['session:killSession', 'update-metadata']);
+    expect(requests()).toEqual([]);
+    expect(client.getSnapshot().sessions[0]).toMatchObject({ archived: true, sideChatClosed: true });
+  });
   it('should stop a connected session before the delete and continue when the stop fails', async () => {
     // Arrange
     await start();
