@@ -290,6 +290,9 @@ export function Dialog({
       ).filter((element) => element.getClientRects().length > 0);
     (getFocusable()[0] || ref.current)?.focus();
     function trap(event: KeyboardEvent) {
+      // A dialog opened over another dialog owns Escape and Tab. Its portal comes later in the document.
+      const modals = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (modals[modals.length - 1] !== ref.current) return;
       if (
         event.key === 'Escape' &&
         event.target instanceof HTMLElement &&

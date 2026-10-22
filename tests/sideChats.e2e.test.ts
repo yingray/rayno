@@ -259,6 +259,53 @@ test('a side chat without a known parent should return to the session list', asy
   await expect(workspace.parentBack()).toHaveCount(0);
 });
 
+const phoneSizes = [[320, 568], [360, 640], [390, 844], [430, 932], [390, 430], [844, 390]];
+const desktopSizes = [[1440, 900], [1024, 768]];
+
+test('a side chat should ask before it creates a missing folder, copy again after Cancel, and start after Create folder', async ({ page }, testInfo) => {
+  // Arrange: happy-cli daemon/run.ts spawnSession answers requestToApproveDirectoryCreation for a missing folder.
+  const server = new HappyServer();
+  server.missingDirectories = ['/real/project'];
+  await server.install(page); await prepare(server, 'claude');
+  const workspace = new SideChatsPage(page);
+  const touch = !!testInfo.project.use.hasTouch;
+  const sizes = touch ? phoneSizes : desktopSizes;
+  const folder = workspace.folderDialog();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: sizes[0][0], height: sizes[0][1] });
+  await page.goto('/session/real-session/side');
+  test.setTimeout(90000);
+  // Act / Assert
+  for (const [width, height] of sizes) {
+    await page.setViewportSize({ width, height });
+    await workspace.newButton().click();
+    await workspace.expectPromptUsable(folder, '/real/project', ['Close Create this folder?', 'Cancel', 'Create folder']);
+    await expect(workspace.panel().getByRole('alert')).toHaveCount(0);
+    if (width === 320 || width === 844 || width === 1440) await workspace.capture(`${testInfo.project.name}-side-chat-folder-${width}`);
+    if (width >= 768 && width < 1280) {
+      // Escape closes only the folder question, not the side chat drawer under it.
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog', { name: 'Side chats', exact: true })).toBeVisible();
+    } else await workspace.press(folder, 'Cancel', touch);
+    await expect(folder).toBeHidden();
+    await expect(page).toHaveURL(/\/session\/real-session\/side$/);
+  }
+  // Act
+  await page.setViewportSize({ width: sizes[0][0], height: sizes[0][1] });
+  await workspace.newButton().click();
+  await workspace.press(folder, 'Create folder', touch);
+  // Assert
+  if (sizes[0][0] >= 1280) await expect(workspace.tab('Side chat 1')).toHaveAttribute('aria-pressed', 'true');
+  else await expect(page).toHaveURL(/\/session\/created-session$/);
+  await expect(folder).toHaveCount(0);
+  // Cancel drops the copied conversation, so each later side chat copies the current conversation again.
+  expect(server.branchCalls.map((call) => call.method)).toEqual(Array(sizes.length + 1).fill('computer:claude-fork-session'));
+  expect(server.spawns).toHaveLength(sizes.length + 2);
+  expect(server.spawns.slice(0, -1).every((spawn) => !spawn.approvedNewDirectoryCreation)).toBe(true);
+  expect(server.spawns.at(-1)).toMatchObject({ directory: '/real/project', approvedNewDirectoryCreation: true, isSideChat: true,
+    resumeClaudeSessionId: 'copied-claude-id', parentSessionId: 'real-session' });
+});
+
 const worktree = '/real/project/.dev/worktree/feature-check';
 for (const from of ['the session menu', 'Session info', 'the side chat list'] as const) {
   test(`closing a side chat from ${from} should not offer the parent's worktree`, async ({ page }) => {
