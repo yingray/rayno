@@ -107,11 +107,31 @@ Archive and delete follow `hooks/useSessionQuickActions.ts` and `app/(app)/sessi
 `killSession` RPC first. The CLI handler (`happy-cli/src/claude/registerKillSessionHandler.ts`) writes the archived
 lifecycle itself. A failed kill or an offline computer falls back to `POST /v1/sessions/:id/archive`. Rayno writes the
 archive marker only for Rig sessions. Delete sends a best-effort `killSession` to a connected session first.
-Rayno does not prompt for worktree cleanup.
+A bot archives only through `killSession`; a failed kill keeps the bot and shows the error, as in Happy Web.
+A bot is a Rig session, so after the kill it stays in the list as inactive. Rayno writes no bot metadata.
+Like `sync/ops.ts` `sessionDelete`, Rayno refuses to delete a bot and hides its delete actions.
+Happy Web has no bot restore, so Rayno refuses to restore an archived bot.
+
+Before an archive or a delete, `hooks/useWorktreeCleanup.ts` and `utils/worktree.ts` decide on a worktree prompt.
+The session path must contain `/.dev/worktree/`, no other connected session may use it, and the machine `bash` RPC
+`git status --porcelain` must succeed with empty output. A failed check skips the prompt. Delete worktree sends
+`git worktree remove <path> --force` from the main checkout, then the archive or delete continues; Keep files only
+continues. Rayno quotes the path and skips the check for an offline computer. Closing the Rayno prompt cancels the action.
 
 Like `sync/sync.ts`, Rayno skips a session, computer, or message that does not decrypt. The other records still load
 and the cursors still advance. A skipped message keeps its id and seq with empty content. The error still shows when
-no record decrypts on the first workspace read or on the first history page.
+no record decrypts on the first workspace read or on the first history page. It also shows when every session fails
+on the first read, even when a computer decrypts. Records from the offline cache do not count as a server read: until
+one read succeeds, a read that decrypts nothing (or no session) keeps the cached copy, its saved time, and the error.
+Until that read, Rayno also does not write the cache, so a later presence event cannot save the stale copy again.
+
+The session list sorts on `utils/sessionActivity.ts`: `metadata.lastMeaningfulMessageAt`, then this device's last
+send time, then `createdAt`. Like `markSessionMessageSent` in `sync/storage.ts`, Rayno stamps the time after a
+confirmed send, keeps it in its own account-scoped storage, and removes it when the session is deleted.
+
+The `communication` RPC (`sync/ops.ts` `sessionAnswerQuestion`) has no handler in the Happy CLI or `happy-agent`
+sources in this snapshot, so Rayno still requires a JSON reply for it. Add it to the empty-reply methods only
+after a handler that returns void is confirmed.
 
 Model/effort writes also reference `packages/happy-cli/src/api/types.ts`,
 `packages/happy-cli/src/claude/runClaude.ts`, and `packages/happy-cli/src/codex/runCodex.ts`.
@@ -171,6 +191,9 @@ The selected computer's `happyCliVersion` gates the fixed new-session catalog, a
 from `hooks/useStartSessionFromDraft.ts`: a CLI older than `1.2.1-beta.2` does not get Auto. Model and effort catalogs have no version gate there.
 When the daemon answers `requestToApproveDirectoryCreation` (`happy-cli/src/daemon/run.ts`), Rayno asks before it creates
 the folder. The approved retry sends the same draft with `approvedNewDirectoryCreation: true` and keeps the pending request ID.
+Fork and Duplicate use the same question. Happy Web `forkAndSpawn` shows that reply as a generic error instead. The
+approved retry reuses the copied provider conversation and sends only the second `spawn-happy-session` call.
+Cancel drops the copied conversation, so the next Fork or Duplicate copies the current conversation again.
 
 `offlineCache.ts` adds independent, account-scoped IndexedDB persistence for session/machine records and loaded history pages.
 Each cached payload uses the existing account encryption helper. No bearer token or plaintext message body enters the database.

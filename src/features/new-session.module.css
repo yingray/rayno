@@ -470,10 +470,6 @@
 .pickerDialog .customFolder input { margin: 0; min-width: 0; }
 .customFolder button { flex: none; height: 42px; font-size: 12px; }
 .pickerDialog p.dialogHint { font-size: 12px; margin: -7px 0 0; }
-.folderDialog header button, .folderDialog footer button { min-width: 44px; min-height: 44px; }
-.folderDialog footer { flex-wrap: wrap; }
-.folderPath { display: block; padding: 10px 12px; border-radius: 12px; background: var(--well); border: 1px solid var(--border);
-  font: 12px/1.5 'Geist Mono', monospace; color: var(--text); overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
   .content { margin-block: 0; }
   .content, .content > form, .card { flex: none; min-height: auto; }

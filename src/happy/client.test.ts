@@ -884,6 +884,59 @@ describe('Happy client protocol', () => {
     await expect(client.branchSession('session', 'duplicate', undefined, {})).rejects.toThrow('Choose a message');
     expect(socket.emitWithAck).not.toHaveBeenCalled();
   });
+  it('should ask before a fork creates a missing folder and retry the spawn with the same copied conversation', async () => {
+    // Arrange
+    metadata.claudeSessionId = 'provider-session';
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({}, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start(); socket.handlers.get('connect')?.(); await client.refresh();
+    // Wire shapes from happy-cli claude/utils/forkSession.ts and daemon/run.ts spawnSession.
+    socket.emitWithAck
+      .mockResolvedValueOnce(await rpcReply({ type: 'success', newClaudeSessionId: 'copied-session' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'requestToApproveDirectoryCreation', directory: '/real/project' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'success', sessionId: 'session' }));
+    const params = (call: number) => client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[call][1].params, null);
+    // Act
+    const asked = await client.branchSession('session', 'fork', undefined, {}).catch((error) => error);
+    // Assert
+    expect(asked).toBeInstanceOf(DirectoryApprovalError);
+    expect(asked.directory).toBe('/real/project');
+    expect(await params(1)).toMatchObject({ directory: '/real/project', approvedNewDirectoryCreation: false, resumeClaudeSessionId: 'copied-session' });
+    // Act
+    await expect(client.branchSession('session', 'fork', undefined, {}, true)).resolves.toBe('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls.map(([, payload]) => payload.method)).toEqual([
+      'computer:claude-fork-session', 'computer:spawn-happy-session', 'computer:spawn-happy-session']);
+    expect(await params(2)).toMatchObject({ directory: '/real/project', approvedNewDirectoryCreation: true,
+      resumeClaudeSessionId: 'copied-session', parentSessionId: 'session' });
+  });
+  it('should copy the conversation again when a fork follows a cancelled folder question', async () => {
+    // Arrange
+    metadata.claudeSessionId = 'provider-session';
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({}, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start(); socket.handlers.get('connect')?.(); await client.refresh();
+    socket.emitWithAck
+      .mockResolvedValueOnce(await rpcReply({ type: 'success', newClaudeSessionId: 'copied-session' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'requestToApproveDirectoryCreation', directory: '/real/project' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'success', newClaudeSessionId: 'second-copy' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'requestToApproveDirectoryCreation', directory: '/real/project' }));
+    await expect(client.branchSession('session', 'fork', undefined, {})).rejects.toBeInstanceOf(DirectoryApprovalError);
+    // Act
+    client.discardBranch('session', 'fork');
+    await expect(client.branchSession('session', 'fork', undefined, {})).rejects.toBeInstanceOf(DirectoryApprovalError);
+    // Assert
+    expect(socket.emitWithAck.mock.calls.map(([, payload]) => payload.method)).toEqual([
+      'computer:claude-fork-session', 'computer:spawn-happy-session', 'computer:claude-fork-session', 'computer:spawn-happy-session']);
+    expect(await client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[3][1].params, null))
+      .toMatchObject({ resumeClaudeSessionId: 'second-copy' });
+  });
 });
 // A ciphertext that no account or session key opens.
 const damaged = base64(new Uint8Array(48).fill(9));
@@ -964,6 +1017,177 @@ describe('Happy client session lifecycle', () => {
     expect(socket.emitWithAck).not.toHaveBeenCalled();
     expect(requests()).toEqual(['DELETE /v1/sessions/session']);
   });
+  // A bot is a Rig session. Shape from Happy Web sync/__testdata__/rigMetadata.ts and sync/storageTypes.spec.ts.
+  const rigBot = (): Json => ({ ...metadata, rigMetadataVersion: 1, client: { id: 'rig', name: 'Rig', version: '0.0.30' },
+    provider: { id: 'codex', kind: 'codex', name: 'OpenAI Codex' }, flavor: 'codex', startedBy: 'daemon', startedFromDaemon: true,
+    bot: { id: 'bot-1', name: 'Assistant', username: 'assistant', workspaceId: 'bot-workspace', orderKey: '1' } });
+  it('should archive a bot only through killSession and keep it inactive in the list', async () => {
+    // Arrange: Happy Web hooks/useSessionQuickActions.ts archives a bot without the server archive.
+    session.metadata = await client.encryption.encrypt(rigBot(), null);
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce(await rpcReply({ success: true }));
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls).toEqual([['rpc-call', expect.objectContaining({ method: 'session:killSession' })]]);
+    expect(requests()).toEqual([]);
+    expect(client.getSnapshot().sessions[0]).toMatchObject({ status: 'offline', archived: false });
+  });
+  it.each([
+    ['a refused kill', { success: false, message: 'Not now' }, 'Not now'],
+    ['an unavailable agent', { ok: false, error: 'RPC method not available' }, 'RPC method not available'],
+    ['a kill without a message', { success: false }, 'Connect to the bot’s computer to archive it.'],
+  ])('should keep a bot after %s without a server archive', async (_name, reply, message) => {
+    // Arrange
+    session.metadata = await client.encryption.encrypt(rigBot(), null);
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce('ok' in reply ? reply : await rpcReply(reply));
+    // Act / Assert
+    await expect(client.archiveSession('session')).rejects.toThrow(message);
+    expect(requests()).toEqual([]);
+    expect(socket.emitWithAck).toHaveBeenCalledTimes(1);
+    expect(client.getSnapshot().sessions[0]).toMatchObject({ status: 'idle', archived: false });
+  });
+  it('should refuse to restore an archived bot before any request', async () => {
+    // Arrange
+    session.metadata = await client.encryption.encrypt({ ...rigBot(), lifecycleState: 'archived' }, null);
+    await start();
+    fetchMock.mockClear();
+    // Act / Assert
+    await expect(client.archiveSession('session')).rejects.toThrow('Use the Happy app to restore this bot.');
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+    expect(requests()).toEqual([]);
+  });
+  it('should refuse to delete a bot conversation before any request', async () => {
+    // Arrange: Happy Web sync/ops.ts sessionDelete refuses a bot.
+    session.metadata = await client.encryption.encrypt(rigBot(), null);
+    await start();
+    fetchMock.mockClear();
+    // Act / Assert
+    await expect(client.deleteSession('session')).rejects.toThrow('Archive the bot instead');
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+    expect(requests()).toEqual([]);
+  });
+});
+describe('Happy client worktree cleanup', () => {
+  const worktree = '/real/project/.dev/worktree/feature';
+  async function prepare(computerActive = true, extra: Json[] = []) {
+    metadata.path = worktree;
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const machine = { id: 'computer', active: computerActive, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Computer' }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session, ...extra], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([machine]) : response({ messages: [], hasMore: false }));
+    await start();
+  }
+  // Shape from happy-cli modules/common/registerCommonHandlers.ts bash handler.
+  const bashReply = (stdout: string) => rpcReply({ success: true, stdout, stderr: '', exitCode: 0 });
+  it('should offer a clean worktree after a git status check on its computer', async () => {
+    // Arrange
+    await prepare();
+    socket.emitWithAck.mockResolvedValueOnce(await bashReply(''));
+    // Act
+    const path = await client.worktreeCleanup('session');
+    // Assert
+    expect(path).toBe(worktree);
+    const [, payload] = socket.emitWithAck.mock.calls[0];
+    expect(payload.method).toBe('computer:bash');
+    expect(await client.encryption.decrypt(payload.params, null)).toMatchObject({ command: 'git status --porcelain', cwd: worktree });
+  });
+  it.each([
+    ['uncommitted changes', async () => bashReply(' M README.md\n')],
+    ['a failed git status', async () => rpcReply({ success: false, stdout: '', stderr: 'not a git repository', exitCode: 128 })],
+    ['a lost acknowledgement', async () => { throw new Error('Timeout'); }],
+  ])('should skip the offer after %s', async (_name, reply) => {
+    // Arrange
+    await prepare();
+    socket.emitWithAck.mockImplementationOnce(reply);
+    // Act / Assert
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+  });
+  it('should skip the offer without a computer request for a plain folder, a shared worktree, an offline computer, or a bot', async () => {
+    // Arrange
+    await start();
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    const other = { ...session, id: 'other', metadata: await client.encryption.encrypt({ ...metadata, path: worktree }, null) };
+    await prepare(true, [other]);
+    // Act / Assert
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    await prepare(false);
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    metadata.bot = { id: 'bot', username: 'helper' };
+    await prepare();
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+  });
+  it('should remove the worktree from the main checkout with a quoted path', async () => {
+    // Arrange: Happy Web utils/worktree.ts removeWorktree.
+    await prepare();
+    socket.emitWithAck.mockResolvedValueOnce(await bashReply(''));
+    // Act
+    await client.removeWorktree('session', worktree);
+    // Assert
+    const [, payload] = socket.emitWithAck.mock.calls[0];
+    expect(await client.encryption.decrypt(payload.params, null)).toMatchObject({
+      command: `git worktree remove '${worktree}' --force`, cwd: '/real/project' });
+  });
+});
+describe('Happy client session activity', () => {
+  it('should sort an older CLI session by this device last send and keep it per account', async () => {
+    // Arrange: Happy Web utils/sessionActivity.ts uses lastMeaningfulMessageAt, then lastMessageSentAt, then createdAt.
+    const newer = { ...session, id: 'newer', createdAt: 5000 };
+    const tracked = { ...session, id: 'tracked', metadata: await client.encryption.encrypt({ ...metadata, lastMeaningfulMessageAt: 3000 }, null) };
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url.includes('/v2/sessions')
+      ? response({ sessions: [session, newer, tracked], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([])
+        : init?.method === 'POST'
+          ? response({ messages: JSON.parse(String(init.body)).messages.map((packet: Json, index: number) =>
+            ({ id: 'sent-' + index, seq: index + 1, localId: packet.localId, createdAt: 200 })) })
+          : response({ messages: [], hasMore: false }));
+    await start();
+    const order = () => client.getSnapshot().sessions.map((row) => [row.id, row.lastActivityAt]);
+    expect(order()).toEqual([['newer', 5000], ['tracked', 3000], ['session', 100]]);
+    vi.mocked(Date.now).mockReturnValue(9000);
+    // Act
+    await client.sendMessage('session', 'Continue');
+    // Assert
+    expect(order()).toEqual([['session', 9000], ['newer', 5000], ['tracked', 3000]]);
+    expect(JSON.parse(client.readLocal('lastMessageSentAt')!)).toEqual({ session: 9000 });
+    // Act
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    await start();
+    // Assert
+    expect(order()[0]).toEqual(['session', 9000]);
+    // Act
+    client.dispose();
+    client = await HappyClient.create({ ...credentials, server: 'https://other.test' });
+    await start();
+    // Assert
+    expect(order()).toEqual([['newer', 5000], ['tracked', 3000], ['session', 100]]);
+  });
+  it('should forget the local send time when the session is deleted', async () => {
+    // Arrange
+    client.writeLocal('lastMessageSentAt', JSON.stringify({ session: 9000, other: 8000 }));
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    session.active = false;
+    await start();
+    expect(client.getSnapshot().sessions[0].lastActivityAt).toBe(9000);
+    // Act
+    await client.deleteSession('session');
+    // Assert
+    expect(JSON.parse(client.readLocal('lastMessageSentAt')!)).toEqual({ other: 8000 });
+  });
 });
 describe('Happy client damaged records', () => {
   it('should publish the readable sessions and computers around a damaged record', async () => {
@@ -994,6 +1218,68 @@ describe('Happy client damaged records', () => {
     await expect(client.refresh()).rejects.toThrow();
     await vi.waitFor(() => expect(client.getSnapshot().error).not.toBe(''), { interval: 1 });
     expect(client.getSnapshot()).toMatchObject({ loading: false, sessions: [] });
+  });
+  it('should keep the workspace error when no session decrypts on the first read', async () => {
+    // Arrange
+    session.metadata = damaged;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Readable computer' }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([machine]) : response({ messages: [], hasMore: false }));
+    // Act
+    client.start();
+    // Assert
+    await expect(client.refresh()).rejects.toThrow();
+    await vi.waitFor(() => expect(client.getSnapshot().error).not.toBe(''), { interval: 1 });
+    expect(client.getSnapshot()).toMatchObject({ loading: false, sessions: [] });
+  });
+  it.each([['a readable computer', true], ['no readable computer', false]])(
+    'should keep the cached copy, its saved time, and the error after a restore when no session decrypts with %s', async (_name, readableComputer) => {
+      // Arrange
+      client.dispose();
+      vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue({ version: 1, savedAt: 50, machines: [],
+        sessions: [{ wire: { ...session, metadata: undefined }, metadata, agentState: {} }] } as never);
+      const save = vi.spyOn(OfflineCache.prototype, 'save');
+      const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+        metadata: readableComputer ? await client.encryption.encrypt({ host: 'Computer' }, null) : damaged };
+      fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+        ? response({ sessions: [{ ...session, metadataVersion: 2, metadata: damaged }], hasNext: false })
+        : url.endsWith('/v1/machines') ? response([machine]) : response({ messages: [], hasMore: false }));
+      client = await HappyClient.create(credentials);
+      // Act
+      client.start();
+      // Assert
+      await expect(client.refresh()).rejects.toThrow();
+      await vi.waitFor(() => expect(client.getSnapshot().error).not.toBe(''), { interval: 1 });
+      expect(client.getSnapshot()).toMatchObject({ loading: false, cachedAt: 50 });
+      expect(client.getSnapshot().sessions.map((row) => row.title)).toEqual(['Agent title']);
+      socket.handlers.get('ephemeral')!({ type: 'activity', id: 'session', active: true, activeAt: 999 });
+      socket.handlers.get('ephemeral')!({ type: 'machine-activity', id: 'computer', active: false, activeAt: 999 });
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      expect(save).not.toHaveBeenCalled();
+      expect(client.getSnapshot().cachedAt).toBe(50);
+    });
+  it('should save the cache again after a readable read follows a failed read after a restore', async () => {
+    // Arrange
+    client.dispose();
+    vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue({ version: 1, savedAt: 50, machines: [],
+      sessions: [{ wire: { ...session, metadata: undefined }, metadata, agentState: {} }] } as never);
+    const save = vi.spyOn(OfflineCache.prototype, 'save').mockResolvedValue(true);
+    let readable = false;
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [readable ? session : { ...session, metadataVersion: 2, metadata: damaged }], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([]) : response({ messages: [], hasMore: false }));
+    client = await HappyClient.create(credentials);
+    client.start();
+    await expect(client.refresh()).rejects.toThrow();
+    socket.handlers.get('ephemeral')!({ type: 'activity', id: 'session', active: true, activeAt: 999 });
+    readable = true;
+    // Act
+    await client.refresh();
+    // Assert
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(client.getSnapshot()).toMatchObject({ error: '', cachedAt: Date.now() });
   });
   it('should keep the readable session fields when a realtime update does not decrypt', async () => {
     // Arrange

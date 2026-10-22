@@ -1,0 +1,5 @@
+.prompt header button, .prompt footer button { min-width: 44px; min-height: 44px; }
+.prompt footer { flex-wrap: wrap; }
+.path { display: block; padding: 10px 12px; border-radius: 12px; background: var(--well); border: 1px solid var(--border);
+  font: 12px/1.5 'Geist Mono', monospace; color: var(--text); overflow-wrap: anywhere; white-space: pre-wrap; }
+.prompt p[role='alert'] { color: #fca5a5; overflow-wrap: anywhere; }

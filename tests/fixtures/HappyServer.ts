@@ -53,6 +53,8 @@ export class HappyServer {
   rewindPoints = Array.from({ length: 18 }, (_, index) => ({ uuid: `claude-${index}`, itemId: `codex-${index}`, text: `Message ${index}: review the workspace`, timestamp: 1700000000000 + index * 1000 }));
   bashCommands: Json[] = [];
   worktreeListing = '';
+  // `git status --porcelain` output for a worktree check. Other commands keep the dirty default.
+  gitStatus = ' M README.md\n';
   workspaceReady: Promise<void> = Promise.resolve();
   workspaceFailure = false;
   historyFailure = false;
@@ -358,6 +360,8 @@ export class HappyServer {
                   })
                 : params.command === 'git worktree list --porcelain'
                   ? this.worktreeListing
+                : params.command === 'git status --porcelain'
+                  ? this.gitStatus
                 : params.command.includes('power_source=')
                   ? 'os=Darwin\nbattery=77%; charging;\npower_source=AC Power\niface=en0\niface_port=Wi-Fi\nip=192.0.2.1\n'
                   : 'M README.md',
@@ -414,11 +418,14 @@ export class HappyServer {
             if (killed) {
               const killedKey = killed.dataEncryptionKey ? this.dataKey : null;
               const current = await this.encryption.decrypt<Json>(killed.metadata, killedKey);
-              killed.metadata = await this.encryption.encrypt({ ...current, lifecycleState: 'archived',
-                lifecycleStateSince: Date.now(), archivedBy: 'cli', archiveReason: 'User terminated' }, killedKey);
-              killed.metadataVersion++;
-              this.socket?.send('42' + JSON.stringify(['update', { body: { t: 'update-session', id: killed.id,
-                metadata: { version: killed.metadataVersion, value: killed.metadata } } }]));
+              // A bot is a Rig session. Its agent is not in the Happy repo, so the client must not count on an archive marker.
+              if (!current.bot) {
+                killed.metadata = await this.encryption.encrypt({ ...current, lifecycleState: 'archived',
+                  lifecycleStateSince: Date.now(), archivedBy: 'cli', archiveReason: 'User terminated' }, killedKey);
+                killed.metadataVersion++;
+                this.socket?.send('42' + JSON.stringify(['update', { body: { t: 'update-session', id: killed.id,
+                  metadata: { version: killed.metadataVersion, value: killed.metadata } } }]));
+              }
               this.setSessionActive(killed.id, false);
             }
           }

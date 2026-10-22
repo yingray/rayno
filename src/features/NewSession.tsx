@@ -1,7 +1,7 @@
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Avatar, Button, Dialog, Icon, Segment, Spinner } from '../components/ui';
+import { Avatar, Button, Icon, Segment, Spinner } from '../components/ui';
 import { useDemo } from '../data/store';
 import { modelOptions, effortOptions, effortLabel } from '../happy/modelOptions';
 import { validateDraft } from '../data/reducer';
@@ -15,6 +15,7 @@ import { newSessionCatalog, permissionOptions, resolveNewSessionPermission } fro
 import type { ModelChoice } from '../data/types';
 import { selectedImages } from '../happy/attachments';
 import { DirectoryApprovalError } from '../happy/errors';
+import { FolderApprovalDialog } from './SessionPrompts';
 
 const NewModelPicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.NewModelPicker })));
 const WorkspacePicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.WorkspacePicker })));
@@ -372,15 +373,8 @@ export function NewSession() {
       {picker === 'model' && <LazyBoundary><NewModelPicker agent={agent} model={model} models={models}
         effort={effort} efforts={efforts} onAgent={chooseAgent} onModel={chooseModel}
         onEffort={(value) => rememberChoice(resolveModelChoice(metadata, [{ model, effort: value }]))} onClose={() => setPicker(null)} /></LazyBoundary>}
-      {folderApproval && <Dialog title="Create this folder?" className={styles.folderDialog} onClose={() => setFolderApproval(null)}>
-        <p>This folder does not exist on {machine?.name || 'the selected computer'}. Create it and start the session?</p>
-        <code className={styles.folderPath}>{folderApproval.directory}</code>
-        <footer>
-          <Button onClick={() => setFolderApproval(null)}>Cancel</Button>
-          <Button variant="accent" icon="folderOutline"
-            onClick={() => void launch(folderApproval.draft, folderApproval.attachments, true)}>Create folder</Button>
-        </footer>
-      </Dialog>}
+      {folderApproval && <FolderApprovalDialog directory={folderApproval.directory} machineName={machine?.name}
+        onCancel={() => setFolderApproval(null)} onCreate={() => void launch(folderApproval.draft, folderApproval.attachments, true)} />}
       {picker === 'workspace' && <LazyBoundary><WorkspacePicker options={workspaces} path={draft.path}
         machineName={machine?.name || 'Selected computer'} onSelect={chooseWorkspace} onClose={() => setPicker(null)} /></LazyBoundary>}
     </section>

@@ -28,6 +28,7 @@ import {
   allowsSessionScope,
   isExitPlanTool,
   markSubagents,
+  WORKTREE_MARKER,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord, SubagentMarks } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -50,6 +51,13 @@ const voidRpcMethods = new Set(['abort', 'switch', 'permission']);
 // An incremental session read starts this far before the newest server update
 // that the client has seen, so a late commit with an older timestamp is not lost.
 const SESSION_CHANGE_OVERLAP = 30000;
+// Happy Web sync/persistence.ts keeps the last local send time of each session for older CLIs.
+const readSentTimes = (value: string | null) => {
+  try {
+    return new Map(Object.entries(record(JSON.parse(value || '{}')))
+      .filter((entry): entry is [string, number] => Number.isFinite(entry[1])));
+  } catch { return new Map<string, number>(); }
+};
 
 export type Snapshot = {
   sessions: Session[];
@@ -139,6 +147,10 @@ export class HappyClient implements DemoAdapter {
   private cacheDirty = false;
   private dirtyHistories = new Set<string>();
   private restoredHistories = new Set<string>();
+  private sentTimes = new Map<string, number>();
+  // A cache restore is not a server read. This turns true after the first readable server read;
+  // until then the cache keeps its restored copy and saved time.
+  private serverRead = false;
   readonly storageKey: string;
   private constructor(
     readonly credentials: Credentials,
@@ -151,6 +163,7 @@ export class HappyClient implements DemoAdapter {
       this.snapshot = { ...this.snapshot, offline: true, connection: 'disconnected', loading: false };
     this.storage = localStorage.getItem('rayno.credentials') ? localStorage : sessionStorage;
     this.attentionInitialized = this.readLocal('attentionInitialized') === 'true';
+    this.sentTimes = readSentTimes(this.readLocal('lastMessageSentAt'));
   }
   static async create(credentials: Credentials) {
     const bytes = await crypto.subtle.digest(
@@ -201,6 +214,7 @@ export class HappyClient implements DemoAdapter {
             attention.assistantSeq > attention.readSeq,
             this.machines.get(source.metadata.machineId),
             attention.optionsSeq > attention.userSeq,
+            this.sentTimes.get(id),
           );
           return previous && shallowEqual(previous, next) ? previous : next;
         })
@@ -244,13 +258,14 @@ export class HappyClient implements DemoAdapter {
     if (!this.cacheReady || this.cacheDisabled || this.disposed) return;
     this.cacheDirty = true;
     if (id) this.dirtyHistories.add(id);
-    if (this.cacheTimer !== undefined) return;
+    // Until a readable server read, a save would only stamp the restored copy with a new time.
+    if (this.cacheTimer !== undefined || !this.serverRead) return;
     this.cacheTimer = window.setTimeout(() => { void this.flushCache(); }, 500);
   }
   private flushCache() {
     window.clearTimeout(this.cacheTimer);
     this.cacheTimer = undefined;
-    if (!this.cacheDirty || this.cacheDisabled) return this.cacheWrite;
+    if (!this.cacheDirty || this.cacheDisabled || !this.serverRead) return this.cacheWrite;
     this.cacheDirty = false;
     const workspace: CachedWorkspace = {
       version: 1, savedAt: Date.now(),
@@ -314,6 +329,14 @@ export class HappyClient implements DemoAdapter {
     const merged = mergeAttention(state, restoreAttention(this.readLocal('attention.' + id), 0));
     this.attention.set(id, merged);
     try { this.writeLocal('attention.' + id, JSON.stringify(merged)); } catch { /* Keep this visit's state if storage is unavailable. */ }
+  }
+  private saveSentTime(id: string, time?: number) {
+    const times = readSentTimes(this.readLocal('lastMessageSentAt'));
+    for (const [key, value] of this.sentTimes) times.set(key, Math.max(value, times.get(key) || 0));
+    if (time === undefined) times.delete(id);
+    else times.set(id, time);
+    this.sentTimes = times;
+    try { this.writeLocal('lastMessageSentAt', JSON.stringify(Object.fromEntries(times))); } catch { /* Keep the time for this visit. */ }
   }
   setSessionReading(id: string, reading: boolean) {
     if (this.disposed) return;
@@ -442,6 +465,11 @@ export class HappyClient implements DemoAdapter {
       }
     };
     const storageChanged = (event: StorageEvent) => {
+      if (event.key === this.storageKey + 'lastMessageSentAt') {
+        this.sentTimes = readSentTimes(event.newValue);
+        this.publish();
+        return;
+      }
       if (!event.key?.startsWith(this.storageKey + 'attention.')) return;
       const id = event.key.slice((this.storageKey + 'attention.').length);
       if (!this.sessions.has(id) || !event.newValue) return;
@@ -549,13 +577,14 @@ export class HappyClient implements DemoAdapter {
     let changedAt = this.sessionsChangedAt;
     // One damaged record must not hide the others. A known copy stays until a readable version arrives.
     const known = this.sessions.size + this.machines.size;
-    let readable = 0, failure: unknown;
+    let readable = 0, readableSessions = 0, failure: unknown;
     for (const row of sessionRows) {
       seen.add(row.id);
       if (Number.isSafeInteger(row.updatedAt)) changedAt = Math.max(changedAt, row.updatedAt);
       try {
         await this.upsertSession(row, presenceRevision);
         readable++;
+        readableSessions++;
       } catch (error) {
         this.assertAlive();
         failure ??= error;
@@ -599,8 +628,11 @@ export class HappyClient implements DemoAdapter {
       });
     }
     for (const id of this.machines.keys()) if (!machineIds.has(id)) this.machines.delete(id);
-    // A first read where nothing decrypts keeps the workspace error visible.
-    if (failure && !readable && !known) throw failure;
+    // A first read where nothing decrypts, or no session decrypts, keeps the workspace error visible.
+    // Records from the offline cache do not count: the stale cache keeps its saved time.
+    const firstRead = !known || !this.serverRead;
+    if (failure && firstRead && (!readable || (sessionRows.length && !readableSessions))) throw failure;
+    this.serverRead = true;
     this.sessionsChangedAt = changedAt;
     this.publish();
     this.patch({ loading: false, error: '' });
@@ -822,6 +854,7 @@ export class HappyClient implements DemoAdapter {
       this.sessions.delete(body.sid);
       this.messages.delete(body.sid);
       this.subagentBounds.delete(body.sid);
+      if (this.sentTimes.has(body.sid)) this.saveSentTime(body.sid);
       this.publish();
       return;
     }
@@ -1037,14 +1070,25 @@ export class HappyClient implements DemoAdapter {
   }
   async archiveSession(id: string) {
     const source = this.getSession(id);
-    if (source.metadata.bot) throw new Error('Use the Happy app to manage this bot.');
     if (isSessionArchived(source)) {
+      // Happy Web has no bot restore, and the bot's agent owns its metadata.
+      if (source.metadata.bot) throw new Error('Use the Happy app to restore this bot.');
       if (!isRig(source.metadata) && !source.wire.active)
         throw new Error('This CLI session has ended. Resume this session before you restore it.');
       await this.mutateMetadata(id, (metadata) => {
         delete metadata.lifecycleState;
         return metadata;
       });
+      return;
+    }
+    if (source.metadata.bot) {
+      // Happy Web archives a bot only through its agent. A server archive would end its one conversation.
+      const result: Json = await this.rpc(id, 'killSession', {}).catch((error) => ({ success: false, message: messageError(error) }));
+      if (result.success !== true)
+        throw new Error(typeof result.message === 'string' && result.message ? result.message : 'Connect to the bot’s computer to archive it.');
+      const current = this.sessions.get(id);
+      if (current) current.wire.active = false;
+      this.publish(id);
       return;
     }
     // Happy Web stops the agent first. The CLI kill handler writes the archived lifecycle itself.
@@ -1060,7 +1104,7 @@ export class HappyClient implements DemoAdapter {
   }
   async deleteSession(id: string) {
     const source = this.getSession(id);
-    if (source.metadata.bot) throw new Error('Use the Happy app to manage this bot.');
+    if (source.metadata.bot) throw new Error('Archive the bot instead of deleting its conversation.');
     // Happy Web stops a connected agent before the delete. A failed stop does not block the delete.
     if (source.wire.active) await this.rpc(id, 'killSession', {}).catch(() => undefined);
     await this.request(`/v1/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -1068,7 +1112,26 @@ export class HappyClient implements DemoAdapter {
     this.sessions.delete(id);
     this.messages.delete(id);
     this.subagentBounds.delete(id);
+    this.saveSentTime(id);
     this.publish();
+  }
+  /**
+   * Happy Web hooks/useWorktreeCleanup.ts: before an archive or a delete, offer to remove a Happy worktree
+   * that has no uncommitted changes and no other connected session. Returns the path to offer, or ''.
+   */
+  async worktreeCleanup(id: string): Promise<string> {
+    const { metadata } = this.getSession(id);
+    const path = typeof metadata.path === 'string' ? metadata.path : '', machineId = metadata.machineId;
+    if (metadata.bot || !path.includes(WORKTREE_MARKER) || !this.machines.get(machineId)?.wire.active) return '';
+    if ([...this.sessions.values()].some((other) => other.wire.id !== id && other.wire.active && other.metadata.path === path)) return '';
+    // A failed check (not a repository or an offline computer) and uncommitted changes skip the offer.
+    const status = await this.bash(machineId, 'git status --porcelain', path, true).catch(() => undefined);
+    return status && typeof status.stdout === 'string' && !status.stdout.trim() ? path : '';
+  }
+  async removeWorktree(id: string, path: string) {
+    const machineId = this.getSession(id).metadata.machineId, index = path.indexOf(WORKTREE_MARKER);
+    if (index < 1) throw new Error('This folder is not a Happy worktree.');
+    await this.bash(machineId, `git worktree remove ${shellQuote(path)} --force`, path.slice(0, index), true);
   }
   async stopSession(id: string) {
     await this.rpc(
@@ -1194,6 +1257,7 @@ export class HappyClient implements DemoAdapter {
       )
         throw new Error('Happy did not confirm the message. Retry this same draft.');
       sessionStorage.removeItem(key);
+      this.saveSentTime(id, Date.now());
       const rows = result.messages.map((wire: Json) => ({
         ...wire,
         content: { t: 'encrypted', c: packets.find(item => item.localId === wire.localId)!.content },
@@ -1291,15 +1355,26 @@ export class HappyClient implements DemoAdapter {
       return typeof key === 'string' && key ? [{ id: key, text: text.trim() === RECAP_REQUEST ? 'Recap' : text, timestamp: Number(point.timestamp) || 0 }] : [];
     }).reverse();
   }
-  branchSession(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
+  // Rejects with DirectoryApprovalError until the user approves a missing folder. The retry keeps the copied conversation.
+  branchSession(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings,
+    approvedNewDirectoryCreation = false): Promise<string> {
     const key = JSON.stringify([id, kind, point]);
     const existing = this.branching.get(key);
     if (existing) return existing;
-    const pending = this.performBranch(id, kind, point, options).finally(() => this.branching.delete(key));
+    const pending = this.performBranch(id, kind, point, options, approvedNewDirectoryCreation).finally(() => this.branching.delete(key));
     this.branching.set(key, pending);
     return pending;
   }
-  private async performBranch(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
+  // A cancelled folder question drops the copied conversation, so a later branch makes a new copy.
+  discardBranch(id: string, kind: 'fork' | 'duplicate', point?: string) {
+    const key = JSON.stringify([id, kind, point]), storageKey = this.storageKey + 'branch.' + key;
+    let pending: Json = {};
+    try { pending = record(JSON.parse(sessionStorage.getItem(storageKey) || '{}')); } catch { /* Remove a damaged marker. */ }
+    if (this.branching.has(key) || pending.spawnUnknown || pending.sessionId) return;
+    sessionStorage.removeItem(storageKey);
+  }
+  private async performBranch(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings,
+    approvedNewDirectoryCreation: boolean): Promise<string> {
     if (this.snapshot.connection !== 'connected' || this.snapshot.offline) throw new Error('Reconnect before you create a session.');
     const reason = this.branchUnavailable(id);
     if (reason) throw new Error(reason);
@@ -1342,13 +1417,15 @@ export class HappyClient implements DemoAdapter {
       if (this.branchUnavailable(id) || this.getSession(id).metadata.machineId !== machineId) throw new Error('The original computer is no longer available.');
       pending.spawnUnknown = true; save();
       const result = await this.rpc(machineId, 'spawn-happy-session', {
-        type: 'spawn-in-directory', directory, agent: codex ? 'codex' : 'claude', approvedNewDirectoryCreation: false,
+        type: 'spawn-in-directory', directory, agent: codex ? 'codex' : 'claude', approvedNewDirectoryCreation,
         [codex ? 'resumeCodexThreadId' : 'resumeClaudeSessionId']: pending.providerId,
         parentSessionId: id, modelMode: pending.model, permissionMode: pending.permissionMode,
         ...(pending.effort ? { effortLevel: pending.effort } : {}),
       }, true);
       if (result.type !== 'success' || typeof result.sessionId !== 'string') {
         pending.spawnUnknown = false; save();
+        if (result.type === 'requestToApproveDirectoryCreation')
+          throw new DirectoryApprovalError(typeof result.directory === 'string' && result.directory ? result.directory : directory);
         throw new Error(result.errorMessage || 'The new session did not start. Retry to use the same copied conversation.');
       }
       pending.sessionId = result.sessionId; save();
