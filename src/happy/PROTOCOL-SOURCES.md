@@ -51,7 +51,9 @@ Rayno does not prompt for worktree cleanup.
 
 Like `sync/sync.ts`, Rayno skips a session, computer, or message that does not decrypt. The other records still load
 and the cursors still advance. A skipped message keeps its id and seq with empty content. The error still shows when
-no record decrypts on the first workspace read or on the first history page.
+no record decrypts on the first workspace read or on the first history page. It also shows when every session fails
+on the first read, even when a computer decrypts. Records from the offline cache do not count as a server read: until
+one read succeeds, a read that decrypts nothing (or no session) keeps the cached copy, its saved time, and the error.
 
 Model/effort writes also reference `packages/happy-cli/src/api/types.ts`,
 `packages/happy-cli/src/claude/runClaude.ts`, and `packages/happy-cli/src/codex/runCodex.ts`.

@@ -977,6 +977,44 @@ describe('Happy client damaged records', () => {
     await vi.waitFor(() => expect(client.getSnapshot().error).not.toBe(''), { interval: 1 });
     expect(client.getSnapshot()).toMatchObject({ loading: false, sessions: [] });
   });
+  it('should keep the workspace error when no session decrypts on the first read', async () => {
+    // Arrange
+    session.metadata = damaged;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Readable computer' }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([machine]) : response({ messages: [], hasMore: false }));
+    // Act
+    client.start();
+    // Assert
+    await expect(client.refresh()).rejects.toThrow();
+    await vi.waitFor(() => expect(client.getSnapshot().error).not.toBe(''), { interval: 1 });
+    expect(client.getSnapshot()).toMatchObject({ loading: false, sessions: [] });
+  });
+  it.each([['a readable computer', true], ['no readable computer', false]])(
+    'should keep the cached copy, its saved time, and the error after a restore when no session decrypts with %s', async (_name, readableComputer) => {
+      // Arrange
+      client.dispose();
+      vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue({ version: 1, savedAt: 50, machines: [],
+        sessions: [{ wire: { ...session, metadata: undefined }, metadata, agentState: {} }] } as never);
+      const save = vi.spyOn(OfflineCache.prototype, 'save');
+      const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+        metadata: readableComputer ? await client.encryption.encrypt({ host: 'Computer' }, null) : damaged };
+      fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+        ? response({ sessions: [{ ...session, metadataVersion: 2, metadata: damaged }], hasNext: false })
+        : url.endsWith('/v1/machines') ? response([machine]) : response({ messages: [], hasMore: false }));
+      client = await HappyClient.create(credentials);
+      // Act
+      client.start();
+      // Assert
+      await expect(client.refresh()).rejects.toThrow();
+      await vi.waitFor(() => expect(client.getSnapshot().error).not.toBe(''), { interval: 1 });
+      expect(client.getSnapshot()).toMatchObject({ loading: false, cachedAt: 50 });
+      expect(client.getSnapshot().sessions.map((row) => row.title)).toEqual(['Agent title']);
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      expect(save).not.toHaveBeenCalled();
+    });
   it('should keep the readable session fields when a realtime update does not decrypt', async () => {
     // Arrange
     await start();

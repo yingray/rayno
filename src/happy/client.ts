@@ -136,6 +136,8 @@ export class HappyClient implements DemoAdapter {
   private cacheDirty = false;
   private dirtyHistories = new Set<string>();
   private restoredHistories = new Set<string>();
+  // A cache restore is not a server read. This turns true after the first readable server read.
+  private serverRead = false;
   readonly storageKey: string;
   private constructor(
     readonly credentials: Credentials,
@@ -538,13 +540,14 @@ export class HappyClient implements DemoAdapter {
     let changedAt = this.sessionsChangedAt;
     // One damaged record must not hide the others. A known copy stays until a readable version arrives.
     const known = this.sessions.size + this.machines.size;
-    let readable = 0, failure: unknown;
+    let readable = 0, readableSessions = 0, failure: unknown;
     for (const row of sessionRows) {
       seen.add(row.id);
       if (Number.isSafeInteger(row.updatedAt)) changedAt = Math.max(changedAt, row.updatedAt);
       try {
         await this.upsertSession(row, presenceRevision);
         readable++;
+        readableSessions++;
       } catch (error) {
         this.assertAlive();
         failure ??= error;
@@ -587,8 +590,11 @@ export class HappyClient implements DemoAdapter {
       });
     }
     for (const id of this.machines.keys()) if (!machineIds.has(id)) this.machines.delete(id);
-    // A first read where nothing decrypts keeps the workspace error visible.
-    if (failure && !readable && !known) throw failure;
+    // A first read where nothing decrypts, or no session decrypts, keeps the workspace error visible.
+    // Records from the offline cache do not count: the stale cache keeps its saved time.
+    const firstRead = !known || !this.serverRead;
+    if (failure && firstRead && (!readable || (sessionRows.length && !readableSessions))) throw failure;
+    this.serverRead = true;
     this.sessionsChangedAt = changedAt;
     this.publish();
     this.patch({ loading: false, error: '' });
