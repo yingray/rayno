@@ -68,6 +68,8 @@ it does not save into v1's shared usage KV. The connected provider reads once pe
 the tab is visible and focused, across all Rayno routes. Blur or a hidden page stops the polling timer.
 Focus resumes stale reads. Offline computers do not receive reads, and concurrent refreshes share one request.
 Unavailable readings remain unknown or visibly stale.
+Codex effort choices follow `CODEX_EFFORTS_BY_MODEL` in `components/modelModeOptions.ts`. A model outside
+that table gets `low` through `xhigh`. The `thinkingLevels` of a published computer catalog still win.
 The current session's source computer is preferred in the compact summary; expanded details retain
 all computers' readings separately.
 
