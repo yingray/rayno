@@ -207,7 +207,8 @@ test('connected session management should confirm rename, archive, resume guidan
   // Assert
   await expect(page).toHaveURL(/\/sessions$/);
   expect(server.sessions.some((session) => session.id === 'real-session')).toBe(false);
-  expect(server.mutations).toContain('archive');
-  expect(server.mutations).toContain('delete');
+  expect(server.mutations.filter((method) => method.endsWith(':killSession'))).toEqual(['real-session:killSession']);
+  expect(server.mutations).not.toContain('archive');
+  expect(server.mutations.indexOf('real-session:killSession')).toBeLessThan(server.mutations.indexOf('delete'));
   expect(server.mutations.some((method) => method.endsWith(':spawn-happy-session'))).toBe(false);
 });

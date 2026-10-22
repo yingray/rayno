@@ -154,8 +154,10 @@ test('the session menu should confirm deletion and archive through the shared ba
   await page.getByRole('dialog', { name: 'Delete this session?' }).getByRole('button', { name: 'Delete session', exact: true }).click();
   // Assert
   await expect(page).toHaveURL(/\/sessions$/);
-  expect(server.mutations).toContain('archive');
-  expect(server.mutations).toContain('delete');
+  // Archive stops the CLI first. The ended session then deletes without another stop.
+  expect(server.mutations.filter((method) => method.endsWith(':killSession'))).toEqual(['real-session:killSession']);
+  expect(server.mutations).not.toContain('archive');
+  expect(server.mutations.indexOf('real-session:killSession')).toBeLessThan(server.mutations.indexOf('delete'));
 });
 
 test('appearance should omit the fixed Rayno theme and usage should show agent icons', async ({ page }) => {

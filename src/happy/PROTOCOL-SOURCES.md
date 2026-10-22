@@ -35,6 +35,16 @@ Archive classification follows the overlay's `sync/storage.ts`: a lifecycle mark
 non-Rig CLI session belongs in the archive. An inactive Rig session remains live work unless marked.
 The Active/Archived selector in Rayno's list options menu changes list visibility only. CLI resume uses the explicit Resume session action and the original machine RPC.
 
+Archive and delete follow `hooks/useSessionQuickActions.ts` and `app/(app)/session/[id]/info.tsx`. Archive sends the
+`killSession` RPC first. The CLI handler (`happy-cli/src/claude/registerKillSessionHandler.ts`) writes the archived
+lifecycle itself. A failed kill or an offline computer falls back to `POST /v1/sessions/:id/archive`. Rayno writes the
+archive marker only for Rig sessions. Delete sends a best-effort `killSession` to a connected session first.
+Rayno does not prompt for worktree cleanup.
+
+Like `sync/sync.ts`, Rayno skips a session, computer, or message that does not decrypt. The other records still load
+and the cursors still advance. A skipped message keeps its id and seq with empty content. The error still shows when
+no record decrypts on the first workspace read or on the first history page.
+
 Model/effort writes also reference `packages/happy-cli/src/api/types.ts`,
 `packages/happy-cli/src/claude/runClaude.ts`, and `packages/happy-cli/src/codex/runCodex.ts`.
 Rayno keeps composer choices in its own account-scoped storage and sends them with the next message.

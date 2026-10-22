@@ -224,13 +224,13 @@ export class HappyClient implements DemoAdapter {
   private async restoreWorkspace() {
     const cached = await this.cache.workspace();
     if (!cached) return;
+    // One unreadable record does not discard the other cached records.
+    const keyed = async <T extends { wire: Json }>(rows: T[]) => (await Promise.all(rows.map(async (source) => {
+      try { return { ...source, key: await this.encryption.unwrapKey(source.wire.dataEncryptionKey) }; } catch { return undefined; }
+    }))).filter((source) => source !== undefined);
     try {
-      const sessions = await Promise.all(cached.sessions.map(async (source) => ({ ...source,
-        key: await this.encryption.unwrapKey(source.wire.dataEncryptionKey),
-      })));
-      const machines = await Promise.all(cached.machines.map(async (source) => ({ ...source,
-        key: await this.encryption.unwrapKey(source.wire.dataEncryptionKey),
-      })));
+      const sessions = await keyed(cached.sessions);
+      const machines = await keyed(cached.machines);
       sessions.forEach((source) => this.sessions.set(source.wire.id, source));
       machines.forEach((source) => this.machines.set(source.wire.id, source));
       this.patch({ cachedAt: cached.savedAt });
@@ -536,10 +536,19 @@ export class HappyClient implements DemoAdapter {
     ]);
     const seen = new Set<string>();
     let changedAt = this.sessionsChangedAt;
+    // One damaged record must not hide the others. A known copy stays until a readable version arrives.
+    const known = this.sessions.size + this.machines.size;
+    let readable = 0, failure: unknown;
     for (const row of sessionRows) {
       seen.add(row.id);
-      await this.upsertSession(row, presenceRevision);
       if (Number.isSafeInteger(row.updatedAt)) changedAt = Math.max(changedAt, row.updatedAt);
+      try {
+        await this.upsertSession(row, presenceRevision);
+        readable++;
+      } catch (error) {
+        this.assertAlive();
+        failure ??= error;
+      }
     }
     // Only a complete list shows which sessions the server no longer has.
     if (full)
@@ -548,7 +557,6 @@ export class HappyClient implements DemoAdapter {
           this.sessions.delete(id);
           this.messages.delete(id);
         }
-    this.sessionsChangedAt = changedAt;
     const machines = Array.isArray(machineRows) ? machineRows : machineRows.machines;
     if (!Array.isArray(machines))
       throw new Error('The Happy server returned an invalid computer list.');
@@ -556,10 +564,21 @@ export class HappyClient implements DemoAdapter {
     for (const wire of machines) {
       machineIds.add(wire.id);
       const previous = this.machines.get(wire.id);
-      if (previous && previous.wire.metadataVersion > wire.metadataVersion) continue;
-      const key = await this.encryption.unwrapKey(wire.dataEncryptionKey);
-      const metadata = await this.encryption.decrypt<Json>(wire.metadata, key);
+      if (previous && previous.wire.metadataVersion > wire.metadataVersion) {
+        readable++;
+        continue;
+      }
+      let key: Uint8Array | null, metadata: Json;
+      try {
+        key = await this.encryption.unwrapKey(wire.dataEncryptionKey);
+        metadata = await this.encryption.decrypt<Json>(wire.metadata, key);
+      } catch (error) {
+        this.assertAlive();
+        failure ??= error;
+        continue;
+      }
       this.assertAlive();
+      readable++;
       const current = this.machines.get(wire.id);
       const preservePresence = current && (this.machinePresence.get(wire.id) || 0) > presenceRevision;
       this.machines.set(wire.id, {
@@ -568,6 +587,9 @@ export class HappyClient implements DemoAdapter {
       });
     }
     for (const id of this.machines.keys()) if (!machineIds.has(id)) this.machines.delete(id);
+    // A first read where nothing decrypts keeps the workspace error visible.
+    if (failure && !readable && !known) throw failure;
+    this.sessionsChangedAt = changedAt;
     this.publish();
     this.patch({ loading: false, error: '' });
     await this.flushCache();
@@ -616,8 +638,9 @@ export class HappyClient implements DemoAdapter {
         next = Math.min(next, wire.seq);
         head = Math.max(head, wire.seq);
         if (wire.seq <= boundary) { reachedBoundary = true; continue; }
-        const row = await this.decryptMessage(source, wire);
+        const row = await this.decryptMessage(source, wire).catch(() => undefined);
         if (this.disposed || !this.sessions.has(id)) return;
+        if (!row) continue;
         const kind = attentionMessage(row);
         foundUser ||= kind === 'user';
         foundAssistant ||= kind === 'assistant';
@@ -671,14 +694,17 @@ export class HappyClient implements DemoAdapter {
       const result = await this.request(`/v3/sessions/${encodeURIComponent(id)}/messages?before_seq=${cursor}&limit=100`);
       if (!Array.isArray(result.messages)) throw new Error('Could not read the message history.');
       const rows: MessageRecord[] = [];
+      let next = cursor;
       for (const wire of result.messages) {
         if (!Number.isSafeInteger(wire.seq) || wire.seq < 0 || wire.seq >= cursor) continue;
-        rows.push(await this.decryptMessage(source, wire));
+        next = Math.min(next, wire.seq);
+        const row = await this.decryptMessage(source, wire).catch(() => undefined);
         if (this.disposed) return undefined;
+        if (row) rows.push(row);
       }
       found = find(rows);
-      if (!result.hasMore || !rows.length) break;
-      cursor = Math.min(...rows.map((row) => row.seq));
+      if (!result.hasMore || next >= cursor) break;
+      cursor = next;
     }
     if (!found) return saved;
     try { this.writeLocal(key, JSON.stringify(found)); } catch { /* Read the history again next time. */ }
@@ -758,10 +784,11 @@ export class HappyClient implements DemoAdapter {
       for (const field of ['metadata', 'agentState'] as const)
         if (body[field]?.version > current.wire[`${field}Version`]) {
           const version = body[field].version;
+          // A damaged value keeps the last readable one. The next refresh reads the field again.
           const decrypted = body[field].value
-            ? await this.encryption.decrypt<Json>(body[field].value, current.key)
+            ? await this.encryption.decrypt<Json>(body[field].value, current.key).catch(() => undefined)
             : {};
-          if (version > current.wire[`${field}Version`]) {
+          if (decrypted && version > current.wire[`${field}Version`]) {
             current[field] = decrypted;
             current.wire[`${field}Version`] = version;
           }
@@ -806,19 +833,37 @@ export class HappyClient implements DemoAdapter {
       this.publish(undefined, event.id);
     }
   }
-  private async mergeMessages(id: string, rows: Json[]) {
+  /**
+   * A message that does not decrypt keeps its id and seq with empty content, like Happy Web.
+   * A history page throws only when nothing in the session decrypts.
+   */
+  private async mergeMessages(id: string, rows: Json[], history = false) {
     const session = this.getSession(id);
     let messages = this.messages.get(id);
     if (!messages) {
       messages = new Map();
       this.messages.set(id, messages);
     }
+    const decrypted: MessageRecord[] = [];
+    let readable = messages.size > 0, failure: unknown;
     for (const wire of rows) {
       if (messages.has(wire.id)) continue;
-      const row = await this.decryptMessage(session, wire);
+      let row: MessageRecord;
+      try {
+        row = await this.decryptMessage(session, wire);
+        readable = true;
+      } catch (error) {
+        failure ??= error;
+        row = { id: wire.id, seq: wire.seq, localId: wire.localId, createdAt: wire.createdAt, raw: {} };
+      }
       this.assertAlive();
       if (!this.sessions.has(id)) return;
-      messages.set(wire.id, row);
+      decrypted.push(row);
+    }
+    if (history && failure && !readable) throw failure;
+    for (const row of decrypted) {
+      if (messages.has(row.id)) continue;
+      messages.set(row.id, row);
       session.wire.seq = Math.max(session.wire.seq || 0, row.seq);
       this.attention.set(id, receiveAttention(this.sessionAttention(id), row));
     }
@@ -877,7 +922,7 @@ export class HappyClient implements DemoAdapter {
           `/v3/sessions/${encodeURIComponent(id)}/messages?${forward ? 'after_seq' : 'before_seq'}=${cursor}&limit=100`,
         );
         if (!Array.isArray(result.messages)) throw new Error('Could not read the message history.');
-        await this.mergeMessages(id, result.messages);
+        await this.mergeMessages(id, result.messages, true);
         if (direction !== 'older')
           this.historyCursors.set(
             id,
@@ -984,14 +1029,22 @@ export class HappyClient implements DemoAdapter {
       });
       return;
     }
-    await this.request(`/v1/sessions/${encodeURIComponent(id)}/archive`, { method: 'POST' });
-    source.wire.active = false;
+    // Happy Web stops the agent first. The CLI kill handler writes the archived lifecycle itself.
+    // The server archive is the fallback when the agent does not answer; it only ends the connection.
+    const online = source.wire.active || this.machines.get(source.metadata.machineId)?.wire.active;
+    const killed = online && await this.rpc(id, 'killSession', {}).then((result) => result.success === true, () => false);
+    if (!killed) await this.request(`/v1/sessions/${encodeURIComponent(id)}/archive`, { method: 'POST' });
+    const current = this.sessions.get(id);
+    if (current) current.wire.active = false;
     this.publish(id);
-    await this.mutateMetadata(id, (metadata) => ({ ...metadata, lifecycleState: 'archived' }));
+    // An inactive Rig session stays in the live list without the marker.
+    if (isRig(source.metadata)) await this.mutateMetadata(id, (metadata) => ({ ...metadata, lifecycleState: 'archived' }));
   }
   async deleteSession(id: string) {
     const source = this.getSession(id);
     if (source.metadata.bot) throw new Error('Use the Happy app to manage this bot.');
+    // Happy Web stops a connected agent before the delete. A failed stop does not block the delete.
+    if (source.wire.active) await this.rpc(id, 'killSession', {}).catch(() => undefined);
     await this.request(`/v1/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
     this.deletedSessions.add(id);
     this.sessions.delete(id);

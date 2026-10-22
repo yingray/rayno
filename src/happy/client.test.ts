@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { base64 } from './crypto';
 import { HappyClient } from './client';
 import type { Json } from './normalize';
+import { OfflineCache } from './offlineCache';
 import { defaultNewDraft } from '../data/defaults';
 
 const transport = vi.hoisted(() => ({ socket: null as any, options: null as any }));
@@ -792,5 +793,202 @@ describe('Happy client protocol', () => {
     await expect(client.branchSession('session', 'duplicate', undefined, {})).rejects.toThrow('Choose a message');
     expect(socket.emitWithAck).not.toHaveBeenCalled();
   });
-
+});
+// A ciphertext that no account or session key opens.
+const damaged = base64(new Uint8Array(48).fill(9));
+const damagedMessage = (id: string, seq: number) => ({ id, seq, createdAt: 200, content: { t: 'encrypted', c: damaged } });
+const rpcReply = async (value: unknown) => ({ ok: true, result: await client.encryption.encrypt(value, null) });
+const requests = () => fetchMock.mock.calls.map(([url, init]) => `${init?.method || 'GET'} ${String(url).replace(credentials.server, '')}`);
+describe('Happy client session lifecycle', () => {
+  it('should archive a connected CLI session through killSession without a server archive or metadata write', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce(await rpcReply({ success: true, message: 'Killing happy-cli process' }));
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls).toEqual([['rpc-call', expect.objectContaining({ method: 'session:killSession' })]]);
+    expect(requests()).toEqual([]);
+    expect(client.getSnapshot().sessions[0].archived).toBe(true);
+  });
+  it.each([
+    ['an unavailable agent', { ok: false, error: 'RPC method not available' }],
+    ['a refused kill', { success: false, message: 'Not now' }],
+    ['a lost acknowledgement', new Error('Timeout')],
+  ])('should fall back to the server archive after %s', async (_name, reply) => {
+    // Arrange
+    await start();
+    fetchMock.mockClear();
+    if (reply instanceof Error) socket.emitWithAck.mockRejectedValueOnce(reply);
+    else socket.emitWithAck.mockResolvedValueOnce('ok' in reply ? reply : await rpcReply(reply));
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls.map(([event]) => event)).toEqual(['rpc-call']);
+    expect(requests()).toEqual(['POST /v1/sessions/session/archive']);
+    expect(client.getSnapshot().sessions[0].archived).toBe(true);
+  });
+  it('should archive a Rig session on an offline computer through the server and its archive marker', async () => {
+    // Arrange
+    session.active = false;
+    session.metadata = await client.encryption.encrypt({ ...metadata, flavor: 'rig', client: { id: 'rig' } }, null);
+    const machine = { id: 'computer', active: false, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Computer' }, null) };
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce({ result: 'success', version: 2 });
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(requests()).toEqual(['POST /v1/sessions/session/archive']);
+    expect(socket.emitWithAck.mock.calls.map(([event]) => event)).toEqual(['update-metadata']);
+    const sent = await client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[0][1].metadata, null);
+    expect(sent).toMatchObject({ lifecycleState: 'archived', unknownExtension: { keep: true } });
+    expect(client.getSnapshot().sessions[0].archived).toBe(true);
+  });
+  it('should stop a connected session before the delete and continue when the stop fails', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockRejectedValueOnce(new Error('Timeout'));
+    // Act
+    await client.deleteSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls).toEqual([['rpc-call', expect.objectContaining({ method: 'session:killSession' })]]);
+    expect(requests()).toEqual(['DELETE /v1/sessions/session']);
+    expect(socket.emitWithAck.mock.invocationCallOrder[0]).toBeLessThan(fetchMock.mock.invocationCallOrder[0]);
+    expect(client.getSnapshot().sessions).toEqual([]);
+  });
+  it('should delete an ended session without a stop request', async () => {
+    // Arrange
+    session.active = false;
+    await start();
+    fetchMock.mockClear();
+    // Act
+    await client.deleteSession('session');
+    // Assert
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+    expect(requests()).toEqual(['DELETE /v1/sessions/session']);
+  });
+});
+describe('Happy client damaged records', () => {
+  it('should publish the readable sessions and computers around a damaged record', async () => {
+    // Arrange
+    const sessions = [{ ...session, id: 'a', updatedAt: 50000 }, { ...session, id: 'b', metadata: damaged, updatedAt: 100000 }, { ...session, id: 'c', updatedAt: 40000 }];
+    const computer = async (id: string) => ({ id, active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: id }, null) });
+    const machines = [await computer('m1'), { ...(await computer('m2')), metadata: damaged }, await computer('m3')];
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions, hasNext: false })
+      : url.endsWith('/v1/machines') ? response(machines) : response({ messages: [], hasMore: false }));
+    // Act
+    await start();
+    fetchMock.mockClear();
+    await client.refresh();
+    // Assert
+    expect(client.getSnapshot().sessions.map((row) => row.id).sort()).toEqual(['a', 'c']);
+    expect(client.getSnapshot().machines.map((row) => row.id)).toEqual(['m1', 'm3']);
+    expect(client.getSnapshot()).toMatchObject({ loading: false, error: '' });
+    expect(requests().find((url) => url.includes('/v2/sessions'))).toContain('changedSince=70000');
+  });
+  it('should keep the workspace error when no record decrypts on the first read', async () => {
+    // Arrange
+    session.metadata = damaged;
+    // Act
+    client.start();
+    // Assert
+    await expect(client.refresh()).rejects.toThrow();
+    await vi.waitFor(() => expect(client.getSnapshot().error).not.toBe(''), { interval: 1 });
+    expect(client.getSnapshot()).toMatchObject({ loading: false, sessions: [] });
+  });
+  it('should keep the readable session fields when a realtime update does not decrypt', async () => {
+    // Arrange
+    await start();
+    // Act
+    socket.handlers.get('update')!({ body: { t: 'update-session', id: 'session', metadata: { version: 2, value: damaged } } });
+    socket.handlers.get('update')!({ body: { t: 'update-session', id: 'session', updatedAt: 900, metadata: { version: 3,
+      value: await client.encryption.encrypt({ ...metadata, summary: { text: 'Readable title' } }, null) } } });
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].title).toBe('Readable title'), { interval: 1 });
+    expect(client.getSnapshot().error).toBe('');
+  });
+  it('should load the readable messages around a damaged message and advance the cursor', async () => {
+    // Arrange
+    const page = [await wireMessage('a', 1, 'First'), damagedMessage('b', 2), await wireMessage('c', 3, 'Third')];
+    const later = [damagedMessage('d', 4), await wireMessage('e', 5, 'Fifth')];
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([])
+        : response({ messages: url.includes('after_seq=3&') ? later : url.includes('after_seq=') ? [] : page, hasMore: false }));
+    await start();
+    // Act
+    await client.loadHistory('session');
+    expect(client.getSnapshot().sessions[0].messages.map((row) => row.content)).toEqual(['First', 'Third']);
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: later[0] } });
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: later[1] } });
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages.map((row) => row.content))
+      .toEqual(['First', 'Third', 'Fifth']), { interval: 1 });
+    fetchMock.mockClear();
+    await client.loadHistory('session', 'forward');
+    await client.loadHistory('session', 'forward');
+    // Assert
+    expect(requests()).toEqual([
+      'GET /v3/sessions/session/messages?after_seq=3&limit=100',
+      'GET /v3/sessions/session/messages?after_seq=5&limit=100',
+    ]);
+    expect(client.getSnapshot().histories.session).toMatchObject({ loaded: true, error: '' });
+    expect(client.getSnapshot().error).toBe('');
+  });
+  it('should report a history error when no message in the session decrypts', async () => {
+    // Arrange
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([])
+        : response({ messages: [damagedMessage('a', 1), damagedMessage('b', 2)], hasMore: false }));
+    await start();
+    // Act / Assert
+    await expect(client.loadHistory('session')).rejects.toThrow();
+    expect(client.getSnapshot().histories.session.error).not.toBe('');
+    expect(client.getSnapshot().sessions[0].messages).toEqual([]);
+  });
+  it('should find the reply and sent modes behind damaged messages', async () => {
+    // Arrange
+    session.seq = 3;
+    await start();
+    session.seq = 6;
+    const reply = { id: 'reply', seq: 4, createdAt: 200, content: { t: 'encrypted', c: await client.encryption.encrypt({ role: 'agent',
+      content: { type: 'codex', data: { type: 'message', message: 'A reply' } } }, null) } };
+    const sent = { id: 'sent', seq: 1, createdAt: 150, content: { t: 'encrypted', c: await client.encryption.encrypt({ role: 'user',
+      content: { type: 'text', text: 'Plan it' }, meta: { permissionMode: 'plan' } }, null) } };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([])
+        : url.includes('before_seq=2147483647&limit=4') ? response({ messages: [damagedMessage('d6', 6), damagedMessage('d5', 5), reply], hasMore: true })
+          : url.includes('before_seq=2147483647') ? response({ messages: [damagedMessage('d3', 3), damagedMessage('d2', 2)], hasMore: true })
+            : response({ messages: url.includes('before_seq=2&') ? [sent] : [], hasMore: false }));
+    // Act
+    await client.refresh();
+    const modes = await client.findSentModes('session');
+    // Assert
+    expect(client.getSnapshot().sessions[0].unread).toBe(true);
+    expect(modes).toMatchObject({ permissionMode: 'plan', seq: 1 });
+  });
+  it('should restore the readable cached records around a damaged record key', async () => {
+    // Arrange
+    client.dispose();
+    const wire = { ...session, metadata: undefined };
+    vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue({ version: 1, savedAt: 50, machines: [], sessions: [
+      { wire: { ...wire, id: 'a' }, metadata, agentState: {} },
+      { wire: { ...wire, id: 'b', dataEncryptionKey: 'AQ==' }, metadata, agentState: {} },
+      { wire: { ...wire, id: 'c' }, metadata, agentState: {} },
+    ] } as never);
+    // Act
+    client = await HappyClient.create(credentials);
+    // Assert
+    expect(client.getSnapshot().sessions.map((row) => row.id).sort()).toEqual(['a', 'c']);
+    expect(client.getSnapshot().cachedAt).toBe(50);
+  });
 });
