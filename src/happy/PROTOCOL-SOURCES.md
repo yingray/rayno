@@ -36,7 +36,7 @@ Claude meta prompts, compact summaries, and sidechain records do not show in the
 Rayno does not attach them to the parent tool call. Session envelopes with a `subagent` field still show: the CLI mapper
 (`claude/utils/sessionProtocolMapper.ts`) passes the subagent id on through `parentUuid`, so the parent tool result and the
 main reply after a subagent carry it too. Agent `service` text shows as agent text. ACP `file-edit` is a tool call, and ACP
-`terminal-output` is a tool result. A Claude tool result uses the stored
+`terminal-output` is a tool result that shows only when it matches a call. A Claude tool result uses the stored
 `toolUseResult` text only when it is a string.
 
 Archive classification follows the overlay's `sync/storage.ts`: a lifecycle marker or an inactive

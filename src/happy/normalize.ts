@@ -288,7 +288,8 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       if (content.type === 'acp' && data.type === 'file-edit') addCall(data.id, 'file-edit', {
         filePath: data.filePath, description: data.description, diff: data.diff, oldContent: data.oldContent, newContent: data.newContent,
       });
-      if (content.type === 'acp' && data.type === 'terminal-output') addResult(data.callId, data.data, false);
+      // Gemini sends a random call id, so V1 drops terminal output that matches no call.
+      if (content.type === 'acp' && data.type === 'terminal-output') results.push({ id: text(data.callId), result: data.data, isError: false, hideUnmatched: true });
     }
   }
   if (calls.length) { message.toolCalls = calls; message.tools = calls.map(call => call.name); }
@@ -332,7 +333,7 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
       continue;
     }
     if (!message.toolResults?.length) { output.push(message); continue; }
-    const unmatched = message.toolResults.filter(result => !matched.has(result.id));
+    const unmatched = message.toolResults.filter(result => !matched.has(result.id) && !result.hideUnmatched);
     if (!unmatched.length && !message.content && !message.tools?.length) continue;
     output.push({ ...message, ...(unmatched.length ? {
       tools: unmatched.map(() => 'Earlier tool call'),

@@ -431,13 +431,14 @@ describe('CLI record formats', () => {
       { id: 'error', role: 'assistant', content: 'Error: The agent stopped because of an unknown error.' },
     ]);
   });
-  it('should map ACP file edits to tool calls and terminal output to tool results', () => {
+  it('should map ACP file edits to tool calls and drop terminal output that matches no call', () => {
     // Arrange
     const rows = [
       row('edit', 1, acp({ type: 'file-edit', description: 'Update the greeting', diff: '-hi\n+hello', filePath: 'src/app.ts',
         id: '0b6f3c1e-5d1a-4c55-9a3e-2f8f1d1f0b01' })),
       row('call', 2, acp({ type: 'tool-call', callId: 'call-ls', name: 'run_shell_command', input: { command: 'ls' }, id: 'tool-1' })),
-      row('terminal', 3, acp({ type: 'terminal-output', data: 'README.md\nsrc\n', callId: 'call-ls' })),
+      row('result', 3, acp({ type: 'tool-result', callId: 'call-ls', output: 'README.md\nsrc\n', id: 'tool-2' })),
+      row('terminal', 4, acp({ type: 'terminal-output', data: 'Done\n', callId: '6c1d6a2e-8f0b-4f4b-9d55-3c1f0b7e2a90' })),
     ];
     // Act
     const messages = visibleMessages(rows);

@@ -10,7 +10,7 @@ export type Message = {
   content: string;
   tools?: string[];
   toolCalls?: ToolCall[];
-  toolResults?: { id: string; result: unknown; isError?: boolean }[];
+  toolResults?: { id: string; result: unknown; isError?: boolean; hideUnmatched?: boolean }[];
   duration?: string;
   attachments?: Attachment[];
   // Modes that a user message carried in its meta, and the server time of that message.
