@@ -1,12 +1,13 @@
-import type { Message, ToolCall } from './types';
+import type { Message, Todo, ToolCall } from './types';
 
 // Adapted from Happy Web sync/storageTypes.ts (TodoItemSchema), components/tools/views/TodoView.tsx,
 // the TodoWrite entry in components/tools/knownTools.tsx, and latestTodos in sync/reducer/reducer.ts.
-export type Todo = { content: string; status: 'pending' | 'in_progress' | 'completed'; priority?: 'high' | 'medium' | 'low'; id?: string };
+export type { Todo } from './types';
 
 const statuses = new Set(['pending', 'in_progress', 'completed']);
 const priorities = new Set(['high', 'medium', 'low']);
 const field = (value: unknown, key: string) => value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined;
+const object = (value: unknown) => !!value && typeof value === 'object' && !Array.isArray(value);
 
 // The whole list fails, as with a zod array, when one item has the wrong shape.
 export function todoItems(value: unknown): Todo[] | null {
@@ -24,9 +25,20 @@ export function todoItems(value: unknown): Todo[] | null {
 
 export const isTodoWrite = (call: ToolCall) => (call.tool ?? call.name) === 'TodoWrite';
 
-// TodoView: the input list, replaced by the result's newTodos when the result has a valid list.
-const validTodos = (call: ToolCall) => todoItems(field(call.result, 'newTodos')) ?? todoItems(field(call.input, 'todos'));
-export const toolTodos = (call: ToolCall): Todo[] => validTodos(call) ?? [];
+// knownTools TodoWrite `result`: an object whose optional oldTodos and newTodos are valid lists. The list is newTodos.
+export function resultTodos(result: unknown): Todo[] | null {
+  if (!object(result)) return null;
+  const old = field(result, 'oldTodos'), next = field(result, 'newTodos');
+  if (old !== undefined && !todoItems(old)) return null;
+  return next === undefined ? null : todoItems(next);
+}
+// TodoView: the input list, replaced by the result's newTodos when the result parses. Null when neither has a valid list.
+// The tool row, the generic tool view, and the progress chip all use this one parser.
+export function todoList(call: ToolCall): Todo[] | null {
+  const input = object(call.input) && field(call.input, 'todos') !== undefined ? todoItems(field(call.input, 'todos')) : null;
+  return resultTodos(call.result) ?? input;
+}
+export const toolTodos = (call: ToolCall): Todo[] => todoList(call) ?? [];
 // The list that a TodoWrite row shows in place of its raw values. Without a list, or with an error, the raw values show,
 // as Happy Web knownTools falls back to the generic tool view.
 export const todoRowList = (call: ToolCall) => {
@@ -53,7 +65,7 @@ export function latestTodos(messages: readonly Message[]): Todo[] {
     const calls = message.toolCalls || [];
     for (let index = calls.length - 1; index >= 0; index--) {
       const call = calls[index];
-      const todos = isTodoWrite(call) && call.ended && !call.isError ? validTodos(call) : null;
+      const todos = isTodoWrite(call) && call.ended && !call.isError ? todoList(call) : null;
       if (todos) return todos;
     }
   }

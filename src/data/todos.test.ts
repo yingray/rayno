@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { visibleMessages, type MessageRecord } from '../happy/normalize';
-import { latestTodos, todoItems, todoProgress, todoRowList, toolTodos } from './todos';
+import { latestTodos, resultTodos, todoItems, todoProgress, todoRowList, toolTodos } from './todos';
 
 const row = (id: string, seq: number, raw: object): MessageRecord => ({ id, seq, raw, createdAt: 1000 + seq });
 const claude = { userType: 'external', cwd: '/Users/steve/Develop/slopus/happy-cli', sessionId: '2c74184e-6979-476d-a52f-0ac183bffe3a',
@@ -127,6 +127,22 @@ describe('todo list', () => {
     expect(todoItems([{ id: '1', content: 'Fix errors', status: 'completed', priority: 'high' }]))
       .toEqual([{ id: '1', content: 'Fix errors', status: 'completed', priority: 'high' }]);
     expect(toolTodos({ id: 'x', name: 'TodoWrite', input: { todos: invalid } })).toEqual([]);
+  });
+
+  it('should parse the input and the result as TodoView does', () => {
+    // Arrange
+    const input = { todos: [{ content: 'From the input', status: 'pending' }] };
+    const call = { id: 'toolu_todo', name: 'TodoWrite', input, ended: true };
+    const next = [{ content: 'From the result', status: 'completed', activeForm: 'Finishing' }];
+    // Act / Assert
+    expect(toolTodos({ ...call, result: { oldTodos: input.todos, newTodos: next } })).toEqual([{ content: 'From the result', status: 'completed' }]);
+    expect(toolTodos({ ...call, result: { oldTodos: [{ content: 'Old', status: 'done' }], newTodos: next } })).toEqual(input.todos);
+    expect(toolTodos({ ...call, result: { newTodos: [{ content: 'No status' }] } })).toEqual(input.todos);
+    expect(toolTodos({ ...call, result: 'Todos have been modified successfully.' })).toEqual(input.todos);
+    expect(toolTodos({ ...call, result: { oldTodos: input.todos, newTodos: [] } })).toEqual([]);
+    expect(toolTodos({ ...call, input: { todos: null } })).toEqual([]);
+    expect(resultTodos({ oldTodos: [] })).toBeNull();
+    expect(resultTodos([next])).toBeNull();
   });
 
   it('should show the raw values of a TodoWrite row without a valid list or with an error', () => {

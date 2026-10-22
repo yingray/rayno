@@ -12,6 +12,8 @@ export type ToolCall = {
   id: string; name: string; tool?: string; input?: unknown; result?: unknown; resultText?: string; isError?: boolean; ended?: boolean;
   permission?: ToolPermission; children?: Message[];
 };
+// Happy Web sync/storageTypes.ts TodoItemSchema.
+export type Todo = { content: string; status: 'pending' | 'in_progress' | 'completed'; priority?: 'high' | 'medium' | 'low'; id?: string };
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
 export type RecapMode = 'auto' | 'manual';
 export type Message = {

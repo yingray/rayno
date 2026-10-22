@@ -1,14 +1,14 @@
-import type { ToolCall } from './types';
+import { resultTodos, toolTodos } from './todos';
+import type { Todo, ToolCall } from './types';
 
 // Readable views of structured tool results. Shapes follow the Claude Code `toolUseResult` values that
 // Happy Web reads in components/tools/knownTools.tsx and utils/toolResult.ts.
 export type DiffLine = { kind: 'add' | 'remove' | 'context' | 'hunk'; text: string };
-export type TodoItem = { content: string; status: string };
 export type ToolSection =
   | { kind: 'note'; text: string; error?: boolean }
   | { kind: 'text'; label: string; text: string; error?: boolean }
   | { kind: 'diff'; label: string; lines: DiffLine[]; more: number }
-  | { kind: 'todos'; items: TodoItem[] }
+  | { kind: 'todos'; items: Todo[] }
   | { kind: 'answers'; items: { question: string; answer: string }[] };
 
 type Json = Record<string, any>;
@@ -40,10 +40,6 @@ function editLines(edit: Json): DiffLine[] {
   return typeof edit.old_string === 'string' && typeof edit.new_string === 'string'
     ? [...prefixed(edit.old_string, 'remove'), ...prefixed(edit.new_string, 'add')] : [];
 }
-const todoItems = (value: unknown): TodoItem[] | undefined => Array.isArray(value)
-  ? value.map(record).filter((todo) => typeof todo.content === 'string')
-    .map((todo) => ({ content: todo.content, status: str(todo.status) || 'pending' }))
-  : undefined;
 
 // Large or binary fields stay out of the fallback text.
 function fallbackJson(value: unknown) {
@@ -124,7 +120,8 @@ function structured(call: ToolCall, result: Json): ToolSection[] {
       num(result.appliedLimit) !== undefined ? `limit ${result.appliedLimit}` : undefined].filter(Boolean);
     return [{ kind: 'note', text: notes.join(' · ') }, ...(files.length ? [{ kind: 'text' as const, label: 'Files', text: files.join('\n') }] : [])];
   }
-  if (Array.isArray(result.newTodos)) return [{ kind: 'todos', items: todoItems(result.newTodos) || [] }];
+  // A TodoWrite result is the todo list, which toolSections shows with the TodoView parser. An invalid list shows its raw value.
+  if (resultTodos(result)) return [];
   if (Array.isArray(result.questions) && result.answers && typeof result.answers === 'object') {
     const answers = record(result.answers);
     const items = result.questions.map(record).filter((question) => typeof question.question === 'string')
@@ -184,8 +181,9 @@ export function toolSections(call: ToolCall): ToolSection[] {
     const lines = Array.isArray(input.edits) ? input.edits.map(record).flatMap(editLines) : editLines(input);
     if (lines.length) sections.push(diff('Changes', lines));
   }
-  const todos = todoItems(input.todos);
-  if (todos?.length && !result.some((section) => section.kind === 'todos')) sections.push({ kind: 'todos', items: todos });
+  // TodoView: the input list, replaced by a valid newTodos result. An empty list shows nothing.
+  const todos = toolTodos(call);
+  if (todos.length) sections.push({ kind: 'todos', items: todos });
   return [...sections, ...result];
 }
 
