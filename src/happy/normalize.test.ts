@@ -783,3 +783,59 @@ describe('Context usage', () => {
     expect(contextUsage([at(claudeOutput('c', 1, { input_tokens: 9, output_tokens: 1 }, true), 1000)])).toBeUndefined();
   });
 });
+
+describe('Agent event rows', () => {
+  // happy-cli api/apiSession.ts sendSessionEvent: { role: 'agent', content: { id, type: 'event', data } }.
+  const sessionEvent = (id: string, seq: number, data: object) =>
+    row(id, seq, { role: 'agent', content: { id: `event-${id}`, type: 'event', data } });
+  it('should keep the events that Happy Web shows as rows without content', () => {
+    // Arrange
+    const rows = [
+      row('user', 1, { role: 'user', content: { type: 'text', text: 'Start' } }),
+      sessionEvent('local', 2, { type: 'switch', mode: 'local' }),
+      sessionEvent('remote', 3, { type: 'switch', mode: 'remote' }),
+      sessionEvent('abort', 4, { type: 'message', message: 'Aborted by user' }),
+      sessionEvent('reset', 5, { type: 'message', message: 'Context was reset' }),
+      sessionEvent('limit', 6, { type: 'limit-reached', endsAt: 1760000000 }),
+    ];
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages.slice(1)).toEqual([
+      { id: 'local', role: 'assistant', content: '', event: { type: 'switch', mode: 'local' } },
+      { id: 'remote', role: 'assistant', content: '', event: { type: 'switch', mode: 'remote' } },
+      { id: 'abort', role: 'assistant', content: '', event: { type: 'message', message: 'Aborted by user' } },
+      { id: 'reset', role: 'assistant', content: '', contextReset: true, event: { type: 'message', message: 'Context was reset' } },
+      { id: 'limit', role: 'assistant', content: '', event: { type: 'limit-reached', endsAt: 1760000000 } },
+    ]);
+  });
+  it('should show no row for ready, turn start, unknown, or malformed events', () => {
+    // Arrange
+    const rows = [
+      sessionEvent('ready', 1, { type: 'ready' }),
+      sessionEvent('turn', 2, { type: 'message', message: 'Turn started' }),
+      sessionEvent('mode', 3, { type: 'permission-mode-changed', mode: 'plan' }),
+      sessionEvent('bad-switch', 4, { type: 'switch', mode: 'cloud' }),
+      sessionEvent('empty', 5, { type: 'message', message: '  ' }),
+    ];
+    // Act / Assert
+    expect(visibleMessages(rows)).toEqual([]);
+  });
+  it('should turn the Claude usage limit text into a limit event row', () => {
+    // Arrange
+    const limit = row('limit', 1, { role: 'agent', content: { type: 'output', data: {
+      type: 'assistant', uuid: 'u1', parentUuid: null, isSidechain: false,
+      message: { role: 'assistant', model: 'claude-opus-5', content: [{ type: 'text', text: 'Claude AI usage limit reached|1760000000' }] },
+    } } });
+    const quoted = row('quoted', 2, { role: 'agent', content: { type: 'output', data: {
+      type: 'assistant', uuid: 'u2', parentUuid: 'u1', isSidechain: false,
+      message: { role: 'assistant', model: 'claude-opus-5', content: [{ type: 'text', text: 'It said: Claude AI usage limit reached|1760000000' }] },
+    } } });
+    // Act
+    const messages = visibleMessages([limit, quoted]);
+    // Assert
+    expect(messages[0]).toEqual({ id: 'limit', role: 'assistant', content: '', event: { type: 'limit-reached', endsAt: 1760000000 } });
+    expect(messages[1]).toMatchObject({ content: 'It said: Claude AI usage limit reached|1760000000' });
+    expect(messages[1]).not.toHaveProperty('event');
+  });
+});

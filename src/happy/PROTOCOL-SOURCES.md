@@ -74,6 +74,18 @@ Unlike v1 (`sync/reducer/reducer.ts`), a completed request without a loaded tool
 The effect: a denied or aborted Codex command does not show in the transcript. The Codex mapper does not map
 `exec_approval_request` (`codex/utils/sessionProtocolMapper.ts`), so a command has a tool call only after approval.
 
+Agent events follow `components/MessageView.tsx` `AgentEventBlock`, `sync/typesRaw.ts` `agentEventSchema`, and
+`sync/reducer/reducer.ts`. The CLI writes them with `api/apiSession.ts` `sendSessionEvent` as a legacy
+`{ role: 'agent', content: { type: 'event', data } }` record. A `switch` shows `Switched to local mode` or
+`Switched to remote mode`. A `message` shows its text, for example `Aborted by user`, `Context was reset`, or a Codex
+error. A `limit-reached` event shows `Usage limit reached until` and the local time of `endsAt` (Unix seconds).
+Like `sync/reducer/messageToEvent.ts`, a Claude text `Claude AI usage limit reached|<seconds>` becomes that limit row.
+`ready`, `Turn started`, and send receipts show no row. The v1 schema drops other event types, such as
+`permission-mode-changed`, so Rayno shows no row for them. An event row is a centered, secondary line with no content.
+It does not count as a reply for attention, unread state, options, recaps, or the recap button.
+Rayno does not port the two tool conversions of `messageToEvent.ts`. `mcp__happy__change_title` and `EnterPlanMode`
+stay tool rows, because the plan-mode reading uses the `EnterPlanMode` call, and v1 drops the other content of that message.
+
 Like `normalizeSessionEnvelope` in `sync/typesRaw.ts`, Rayno drops an agent session envelope without a `turn`, except a usage-only
 `service` event and a `user-message-accepted` or `user-message-rejected` receipt. None of these three makes a chat row in Rayno.
 

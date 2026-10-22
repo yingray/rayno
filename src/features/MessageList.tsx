@@ -387,6 +387,8 @@ export const MessageList = memo(function MessageList({
       ? <ToolActivity key={block.id} block={block} compactTools={compactTools} outcomes={outcomes.get(block.id)} />
       : block.kind === 'thinking'
         ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} /></article>
+        : block.kind === 'event'
+        ? <p key={block.id} className={styles.agentEvent} data-role="event">{block.text}</p>
         : <Fragment key={block.id}>
           <MessageBlock sessionId={sessionId} message={block.message}
             bubble={bubble} notify={notify}
