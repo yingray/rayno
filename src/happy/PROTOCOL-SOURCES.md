@@ -136,7 +136,8 @@ or `codexThreadId`. Actions follow the reported `capabilities`. Rayno offers edi
 `codexGoalStatus.ts`) reject `stop`, and Happy Web ignores it. The `goal-action` RPC sends `{ action }` or
 `{ action: 'edit', objective }`; an empty or unchanged edit sends nothing. The Claude CLI answers after the new goal
 status arrives, or with an error when Claude is busy; Rayno shows that error. A TodoWrite row shows its list from the
-call input, replaced by a valid `newTodos` in the structured Claude `toolUseResult`. The progress chip uses the newest
+call input, replaced by a valid `newTodos` in the structured Claude `toolUseResult`. A row without a valid list,
+or with an error, shows the raw arguments and result, as `knownTools.tsx` falls back to the generic tool view. The progress chip uses the newest
 TodoWrite call that ended without an error and has a valid list. Unlike Happy Web `latestTodos`, it also reads session-protocol calls, whose
 `tool-call-end` has no result. The CLI `Context was reset` event clears the chip. Archived sessions do not show it.
 Subagent TodoWrite calls do not change the chip, as Happy Web skips sidechain messages. A sidechain call is one that has

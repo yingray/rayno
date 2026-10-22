@@ -27,6 +27,12 @@ export const isTodoWrite = (call: ToolCall) => (call.tool ?? call.name) === 'Tod
 // TodoView: the input list, replaced by the result's newTodos when the result has a valid list.
 const validTodos = (call: ToolCall) => todoItems(field(call.resultData ?? call.result, 'newTodos')) ?? todoItems(field(call.input, 'todos'));
 export const toolTodos = (call: ToolCall): Todo[] => validTodos(call) ?? [];
+// The list that a TodoWrite row shows in place of its raw values. Without a list, or with an error, the raw values show,
+// as Happy Web knownTools falls back to the generic tool view.
+export const todoRowList = (call: ToolCall) => {
+  const todos = isTodoWrite(call) && !call.isError ? toolTodos(call) : [];
+  return todos.length ? todos : null;
+};
 
 export function todoProgress(todos: readonly Todo[]) {
   return {

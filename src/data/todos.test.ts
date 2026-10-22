@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { visibleMessages, type MessageRecord } from '../happy/normalize';
-import { latestTodos, todoItems, todoProgress, toolTodos } from './todos';
+import { latestTodos, todoItems, todoProgress, todoRowList, toolTodos } from './todos';
 
 const row = (id: string, seq: number, raw: object): MessageRecord => ({ id, seq, raw, createdAt: 1000 + seq });
 const claude = { userType: 'external', cwd: '/Users/steve/Develop/slopus/happy-cli', sessionId: '2c74184e-6979-476d-a52f-0ac183bffe3a',
@@ -124,5 +124,17 @@ describe('todo list', () => {
     expect(todoItems([{ id: '1', content: 'Fix errors', status: 'completed', priority: 'high' }]))
       .toEqual([{ id: '1', content: 'Fix errors', status: 'completed', priority: 'high' }]);
     expect(toolTodos({ id: 'x', name: 'TodoWrite', input: { todos: invalid } })).toEqual([]);
+  });
+
+  it('should show the raw values of a TodoWrite row without a valid list or with an error', () => {
+    // Arrange
+    const call = { id: 'toolu_todo', name: 'TodoWrite call', tool: 'TodoWrite', ended: true };
+    // Act / Assert
+    expect(todoRowList({ ...call, input: { todos } })).toHaveLength(3);
+    expect(todoRowList({ ...call, ended: false, input: { todos } })).toHaveLength(3);
+    expect(todoRowList({ ...call, input: { todos: [{ content: 'Wrong', status: 'done' }] } })).toBeNull();
+    expect(todoRowList({ ...call, input: { todos: [] } })).toBeNull();
+    expect(todoRowList({ ...call, input: { todos }, isError: true, result: 'InputValidationError' })).toBeNull();
+    expect(todoRowList({ id: 'x', name: 'Read', input: { todos } })).toBeNull();
   });
 });

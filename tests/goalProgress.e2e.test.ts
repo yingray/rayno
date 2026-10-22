@@ -128,3 +128,25 @@ test('the goal button name should include the goal progress', async ({ page }) =
   await expect(workspace.goal(goalText, 'Step 1 of 2')).toBeVisible();
   await expect(workspace.goal(goalText, 'Step 1 of 2')).toContainText('Current goal · Step 1 of 2');
 });
+
+test('a TodoWrite row without a valid list should show its raw arguments', async ({ page }, testInfo) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  await server.setMessages([
+    { role: 'user', content: { type: 'text', text: 'Port the goal bar' } },
+    envelope({ t: 'tool-call-start', call: 'toolu_bad', name: 'TodoWrite', title: 'TodoWrite call', description: 'TodoWrite call',
+      args: { todos: [{ content: 'Wrong status', status: 'done' }] } }),
+    envelope({ t: 'tool-call-end', call: 'toolu_bad' }),
+    envelope({ t: 'text', text: 'I updated the todo list.' }),
+  ]);
+  const workspace = new GoalProgressPage(page);
+  await workspace.openGoalChat();
+  // Act
+  await workspace.expandToolGroup(0);
+  const row = workspace.toolGroups().first();
+  await workspace.press(row.locator('summary', { hasText: 'TodoWrite call' }), !!testInfo.project.use.hasTouch);
+  // Assert
+  await expect(row.getByText(/"status": "done"/)).toBeVisible();
+  await expect(row.getByRole('list', { name: 'Todo items', exact: true })).toHaveCount(0);
+});
