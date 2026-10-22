@@ -607,6 +607,43 @@ describe('Happy client protocol', () => {
     // Assert
     await vi.waitFor(() => expect(client.getSnapshot().sessions[0].needsReply).toBe(true), { interval: 1 });
   });
+  it.each([['restores', true], ['does not have', false]])(
+    'should place a running subagent option after a reload when the cache %s the subagent bounds', async (_name, cached) => {
+      // Arrange
+      const wire = await Promise.all(agentSubagentWork.map(async (raw, index) => ({ id: raw.content.id, seq: index + 1, createdAt: raw.content.time,
+        content: { t: 'encrypted', c: await client.encryption.encrypt(raw, null) } })));
+      const option = agentSubagentWork.findIndex((raw) => raw.content.ev.text?.startsWith('Subagent found config.json'));
+      const save = vi.spyOn(OfflineCache.prototype, 'save').mockResolvedValue(true);
+      // A v3 page: rows before before_seq, newest first, at most `limit`.
+      fetchMock.mockImplementation(async (url: string) => {
+        if (url.includes('/v2/sessions')) return response({ sessions: [session], hasNext: false });
+        if (url.includes('/v1/machines')) return response([]);
+        const query = new URL(url).searchParams, before = Number(query.get('before_seq')), limit = Number(query.get('limit'));
+        const rows = wire.slice(0, session.seq).filter((row) => row.seq < before).reverse();
+        return response({ messages: rows.slice(0, limit), hasMore: rows.length > limit });
+      });
+      session.seq = option;
+      await start();
+      await (client as any).flushCache();
+      const workspace = save.mock.calls.at(-1)![0];
+      client.dispose();
+      vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue(cached ? workspace : { ...workspace, subagents: undefined });
+      session.seq = option + 1;
+      // Act
+      client = await HappyClient.create(credentials);
+      await start();
+      // Assert
+      expect(workspace.subagents).toEqual({ session: [{ id: 'c744020fe7d250cca47a5ae1', title: 'Find config', bounds: [[5, true]] }] });
+      expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/messages?')).at(-1))
+        .toBe(`https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=2`);
+      // Without a bound, the subagent row counts as a main row, so a main answer is never hidden.
+      expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: !cached, unread: !cached });
+      // Act
+      session.seq = wire.length;
+      await client.refresh(true);
+      // Assert
+      expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: true, unread: true });
+    });
   it('should reuse the encrypted packet and local ID after a lost send acknowledgement', async () => {
     // Arrange
     await start();

@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { HappyServer } from './fixtures/HappyServer';
 import { LiveWorkspacePage } from './pages/LiveWorkspacePage';
+import { agentSubagentWork } from '../src/happy/subagentEnvelopes.fixture';
 
 const agent = (text: string) => ({ role: 'agent', content: { type: 'codex', data: { type: 'message', message: text } } });
 const user = (text: string) => ({ role: 'user', content: { type: 'text', text } });
 const choices = '<options><option>繼續 ✓</option><option>先等等</option></options>';
+const subagentOption = agentSubagentWork.findIndex((raw) => raw.content.ev.text?.startsWith('Subagent found config.json'));
 
 test('returning to a visible chat should recover replies missed while the tab was hidden', async ({ page }) => {
   // Arrange
@@ -186,4 +188,39 @@ test('reading old messages should keep new replies unread until the latest-messa
   await workspace.showSessions();
   // Assert
   await expect(workspace.indicator('Unread')).toHaveCount(0);
+});
+
+test('reload should keep a running subagent option out of needs input until the main answer arrives', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  await server.setWorking(false);
+  const workspace = new LiveWorkspacePage(page);
+  await workspace.openOtherSession();
+  for (const raw of agentSubagentWork.slice(0, subagentOption)) await server.pushEvent(raw, 'real-session', false);
+  await page.reload();
+  await workspace.showSessions();
+  await expect(workspace.indicator('Needs input')).toHaveCount(0);
+  // The scan saves the subagent bounds with the encrypted workspace after the 500 ms cache delay.
+  await page.waitForTimeout(1000);
+  // Act
+  await server.pushEvent(agentSubagentWork[subagentOption], 'real-session', false);
+  await page.reload();
+  await workspace.showSessions();
+  // Assert
+  await expect.poll(() => server.requests.some((request) => request.path.endsWith('/real-session/messages?before_seq=2147483647&limit=2'))).toBe(true);
+  // An absent dot proves nothing until the scan of the new row decrypts and classifies it.
+  await page.waitForTimeout(500);
+  await expect(workspace.indicator('Needs input')).toHaveCount(0);
+  await expect(workspace.indicator('Unread')).toHaveCount(0);
+  const records = await workspace.offlineRecords();
+  expect(records.length).toBeGreaterThan(0);
+  expect(records.map((record) => record.value).join('\n')).not.toContain('Find config');
+  // Act
+  for (const raw of agentSubagentWork.slice(subagentOption + 1)) await server.pushEvent(raw, 'real-session', false);
+  await page.reload();
+  await workspace.showSessions();
+  // Assert
+  await expect(workspace.indicator('Needs input')).toBeVisible();
+  await expect(workspace.indicator('Unread')).toBeVisible();
 });

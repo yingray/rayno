@@ -30,6 +30,8 @@ import {
   allowsSessionScope,
   isExitPlanTool,
   markSubagents,
+  restoreSubagentMarks,
+  saveSubagentMarks,
   WORKTREE_MARKER,
   deliveryMeta,
   messageReceipt,
@@ -267,6 +269,9 @@ export class HappyClient implements DemoAdapter {
       const machines = await keyed(cached.machines);
       sessions.forEach((source) => this.sessions.set(source.wire.id, source));
       machines.forEach((source) => this.machines.set(source.wire.id, source));
+      // Restore the bounds before the first attention scan. A scan of only new rows can then place the rows of a running subagent.
+      for (const [id, saved] of Object.entries(cached.subagents && typeof cached.subagents === 'object' ? cached.subagents : {}))
+        if (this.sessions.has(id)) this.subagentBounds.set(id, restoreSubagentMarks(saved));
       this.patch({ cachedAt: cached.savedAt });
       this.publish();
     } catch { /* An incompatible cache does not block a fresh server read. */ }
@@ -288,6 +293,8 @@ export class HappyClient implements DemoAdapter {
       version: 1, savedAt: Date.now(),
       sessions: [...this.sessions.values()].map(({ wire, metadata, agentState }) => ({ wire, metadata, agentState })),
       machines: [...this.machines.values()].map(({ wire, metadata }) => ({ wire, metadata })),
+      subagents: Object.fromEntries([...this.subagentBounds].filter(([id, marks]) => this.sessions.has(id) && marks.size)
+        .map(([id, marks]) => [id, saveSubagentMarks(marks)])),
     };
     const histories: CachedHistory[] = [...this.dirtyHistories].flatMap((id) => {
       const history = this.snapshot.histories[id];

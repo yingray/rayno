@@ -91,8 +91,10 @@ The Codex mapper (`codex/utils/sessionProtocolMapper.ts`, `collabArgs`) puts the
 latest of those calls before it, or under the first call when it comes before all of them, so every row shows only once.
 A `Task` call has no tool-call event, and the parent can be on an unloaded page; that work shows as its own collapsed tool row,
 named by the `start` title. Subagent rows never change attention or reply options. The client keeps the bounds of every row it
-reads in memory for each session, and a background scan reads the bounds of the full page before it classifies rows.
-A scan after a reload that sees only rows from inside a running subagent cannot place them and counts them as main rows.
+reads for each session, and a background scan reads the bounds of the full page before it classifies rows. The bounds are saved
+with the encrypted, account-scoped offline workspace (`subagents` in `offlineCache.ts`) and restored before the first scan, so a
+scan after a reload that sees only rows from inside a running subagent still places them. A row whose bound is not known
+(no cache, or a damaged entry) stays a main row. The transcript still places rows only from the bounds on the loaded pages.
 
 Thinking follows the `thinking` content of `sync/typesRaw.ts`: Claude `thinking` chunks, session `text` events with
 `thinking: true`, and ACP `thinking` records (stream chunks that join without a break). Rayno also treats Codex and ACP
@@ -223,7 +225,7 @@ Fork and Duplicate use the same question. Happy Web `forkAndSpawn` shows that re
 approved retry reuses the copied provider conversation and sends only the second `spawn-happy-session` call.
 Cancel drops the copied conversation, so the next Fork or Duplicate copies the current conversation again.
 
-`offlineCache.ts` adds independent, account-scoped IndexedDB persistence for session/machine records and loaded history pages.
+`offlineCache.ts` adds independent, account-scoped IndexedDB persistence for session/machine records, subagent bounds, and loaded history pages.
 Each cached payload uses the existing account encryption helper. No bearer token or plaintext message body enters the database.
 The service worker caches the application shell only. Cached pages retain their verified history cursor, so reconnect can fill gaps.
 Known offline state stops network reads and agent actions. Draft editing remains local; it never queues an automatic send.

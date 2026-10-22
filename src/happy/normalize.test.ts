@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   markSubagents,
+  restoreSubagentMarks,
+  saveSubagentMarks,
+  subagentOf,
   contextUsage,
   messageMeta,
   normalizeMachine,
@@ -639,6 +642,21 @@ describe('Subagent work in session envelopes', () => {
     expect(markSubagents(new Map(), rows).get('c744020fe7d250cca47a5ae1')).toEqual({
       title: 'Find config', bounds: new Map([[rows[4].seq, true], [rows[stop].seq, false]]),
     });
+  });
+  it('should restore saved bounds so rows of a running subagent stay out of the main thread on a later page', () => {
+    // Arrange
+    const rows = rowsOf(agentSubagentWork);
+    const stop = rows.findIndex((item) => item.raw.content.ev.t === 'stop');
+    const saved = JSON.parse(JSON.stringify(saveSubagentMarks(markSubagents(new Map(), rows.slice(0, stop - 1)))));
+    // Act
+    const restored = restoreSubagentMarks([...saved, { id: 'damaged', bounds: [[-1, true], ['5', false]] }, { bounds: [[1, true]] }, 'broken']);
+    // Assert
+    expect(saved).toEqual([{ id: 'c744020fe7d250cca47a5ae1', title: 'Find config', bounds: [[rows[4].seq, true]] }]);
+    expect([...restored.keys()]).toEqual(['c744020fe7d250cca47a5ae1']);
+    expect(subagentOf(rows[stop - 1], restored)).toBe('c744020fe7d250cca47a5ae1');
+    expect(subagentOf(rows[stop - 1], new Map())).toBeUndefined();
+    expect(subagentOf(rows[stop + 3], markSubagents(restored, rows.slice(stop + 3)))).toBe('c744020fe7d250cca47a5ae1');
+    expect(subagentOf(rows[stop + 3], markSubagents(restored, rows.slice(stop)))).toBeUndefined();
   });
 });
 describe('Agent envelopes without a turn', () => {
