@@ -9,6 +9,11 @@ export type ToolActivityBlock = {
 };
 export type ChatBlock = ToolActivityBlock | { kind: 'message'; id: string; message: Message };
 
+// The text of a tool argument or result, as the tool row shows it.
+export function formatToolValue(value: unknown) {
+  return typeof value === 'string' ? value : value === undefined ? 'Not reported.' : JSON.stringify(value, null, 2);
+}
+
 export function groupChatActivity(messages: readonly Message[]): ChatBlock[] {
   const blocks: ChatBlock[] = [];
   for (const message of messages) {

@@ -1,7 +1,7 @@
-import type { Agent, Machine, Message, MessageSettings, Session, ToolCall, UsageReading } from '../data/types';
+import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading } from '../data/types';
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
-import { systemPrompt } from './systemPrompt';
+import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
 
 // These records are protocol boundaries. Keep unknown metadata fields for CAS updates.
 export type Json = Record<string, any>;
@@ -54,9 +54,11 @@ export function currentPermission(metadata: Json): string | undefined {
 export function messageMeta(
   metadata: Json,
   options: MessageSettings,
+  recapMode: RecapMode = 'auto',
+  recapStyle?: string,
 ): Json {
   const mode = record(metadata.draft || metadata.lastMode);
-  const meta: Json = { sentFrom: 'web', appendSystemPrompt: systemPrompt };
+  const meta: Json = { sentFrom: 'web', appendSystemPrompt: systemPrompt + '\n\n' + recapPrompt(recapMode, recapStyle) };
   const permission = options.permissionMode || currentPermission(metadata);
   if (!isRig(metadata) && permission === 'dontAsk')
     throw new Error(
@@ -202,6 +204,8 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   };
   if (raw.role === 'user' && content.type === 'text') {
     message.content = text(raw.meta?.displayText || content.text);
+    // Old clients and other apps can send the request text without the Rayno meta.
+    if (raw.meta?.raynoRecap === true || text(content.text).trim() === RECAP_REQUEST) message.recapRequest = true;
     const settings = sentSettings(record(raw.meta));
     if (settings) {
       message.settings = settings;
@@ -220,6 +224,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
     message.role = envelope.role === 'user' ? 'user' : 'assistant';
     const event = record(envelope.ev);
     if (event.t === 'text' && !event.thinking) message.content = text(event.text);
+    if (message.role === 'user' && event.t === 'text' && text(event.text).trim() === RECAP_REQUEST) message.recapRequest = true;
     if (event.t === 'tool-call-start')
       message.tools = [text(event.title || event.name, 'Tool call')];
     if (event.t === 'file')

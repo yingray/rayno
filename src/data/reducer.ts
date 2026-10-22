@@ -2,6 +2,7 @@ import { defaultNewDraft, defaultPreferences } from './defaults';
 import type { Action, DemoState, NewSessionDraft, Session } from './types';
 import { rememberWorkspace } from './workspaces';
 import { shallowEqual } from './subscriptions';
+import { RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 
 export const STORAGE_KEY = 'rayno.demo.v1';
 export const titleOf = (session: Session) => session.customTitle || session.title;
@@ -91,7 +92,8 @@ export function demoReducer(state: DemoState, action: Action): DemoState {
             ? session
             : {
                 ...session,
-                status: 'idle',
+                // Another simulated reply can still be on its way.
+                status: action.keepRunning ? 'running' : 'idle',
                 updatedAt: action.now,
                 messages: [...session.messages, action.message],
               };
@@ -175,11 +177,15 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         )
       )
         preferences.bubble = parsed.preferences.bubble as typeof preferences.bubble;
-      for (const key of ['compactTools', 'enterToSend'] as const)
+      for (const key of ['compactTools', 'enterToSend', 'recapAutoplay'] as const)
         if (typeof parsed.preferences[key] === 'boolean')
           preferences[key] = parsed.preferences[key];
       if (parsed.preferences.avatar === 'provider' || parsed.preferences.avatar === 'initials')
         preferences.avatar = parsed.preferences.avatar;
+      if (parsed.preferences.recap === 'auto' || parsed.preferences.recap === 'manual')
+        preferences.recap = parsed.preferences.recap;
+      if (typeof parsed.preferences.recapStyle === 'string')
+        preferences.recapStyle = parsed.preferences.recapStyle.slice(0, RECAP_STYLE_LIMIT);
       if (['small', 'medium', 'large'].includes(String(parsed.preferences.fontSize)))
         preferences.fontSize = parsed.preferences.fontSize as typeof preferences.fontSize;
       if (['full', 'medium', 'standard'].includes(String(parsed.preferences.chatWidth)))

@@ -27,9 +27,10 @@ export function mergeAttention(a: SessionAttention, b: SessionAttention): Sessio
   };
 }
 
+// A hidden recap request is not a user turn. It must not answer pending options.
 export function attentionMessage(row: MessageRecord): 'user' | 'assistant' | null {
   const message = normalizeMessage(row);
-  if (!message || (!message.content.trim() && !message.attachments?.length)) return null;
+  if (!message || message.recapRequest || (!message.content.trim() && !message.attachments?.length)) return null;
   return message.role;
 }
 

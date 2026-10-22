@@ -50,6 +50,22 @@ describe('Session attention', () => {
     state = receiveAttention(state, row(14, '```xml\n<options><option>Example</option></options>\n```'));
     expect(state.optionsSeq).toBe(11);
   });
+  it('should not count a hidden recap request as a user reply to pending options', () => {
+    // Arrange
+    const question = row(11, '<options><option>Continue</option></options>');
+    const request: MessageRecord = { ...row(12, ''), raw: { role: 'user', content: { type: 'text', text: '[rayno] Recap your previous reply.' },
+      meta: { raynoRecap: true, displayText: 'Recap' } } };
+    const answer = row(13, '<rayno-recap>\nAsk to continue.\n</rayno-recap>');
+    let state = receiveAttention(restoreAttention(null, 10), question);
+    // Act
+    state = receiveAttention(receiveAttention(state, request), answer);
+    // Assert
+    expect(attentionMessage(request)).toBeNull();
+    expect(state.userSeq).toBe(0);
+    expect(state.optionsSeq).toBe(11);
+    expect(state.optionsSeq).toBeGreaterThan(state.userSeq);
+    expect(state.assistantSeq).toBe(13);
+  });
   it('should merge another tab without moving any read or reply cursor backward', () => {
     // Arrange
     const current = { readSeq: 11, assistantSeq: 15, userSeq: 12, optionsSeq: 10, inspectedSeq: 15 };

@@ -429,6 +429,59 @@ describe('Happy client protocol', () => {
     ]);
     expect(JSON.stringify(packets)).not.toContain('Keep this draft');
   });
+  it('should send a hidden recap request with the normal modes and the selected recap mode', async () => {
+    // Arrange
+    await start();
+    const packets: Json[] = [];
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
+      const packet = JSON.parse(String(init?.body)).messages[0];
+      packets.push(packet);
+      return response({ messages: [{ id: `sent-${packets.length}`, seq: packets.length, localId: packet.localId, createdAt: 200 }] });
+    });
+    const decrypt = (packet: Json) => (client as any).encryption.decrypt(packet.content, (client as any).sessions.get('session').key);
+    // Act
+    await client.sendRecapRequest('session', { permissionMode: 'plan', recapMode: 'manual' });
+    await client.sendMessage('session', 'A normal message', [], { permissionMode: 'plan' });
+    // Assert
+    const [request, normal] = await Promise.all(packets.map(decrypt));
+    expect(request.content).toEqual({ type: 'text', text: '[rayno] Recap your previous reply.' });
+    expect(request.meta).toMatchObject({ sentFrom: 'web', permissionMode: 'plan', raynoRecap: true, displayText: 'Recap' });
+    expect(request.meta.appendSystemPrompt).not.toContain('When your reply is long');
+    expect(normal.meta.raynoRecap).toBeUndefined();
+    expect(normal.meta.displayText).toBeUndefined();
+    expect(normal.meta.appendSystemPrompt).toContain('When your reply is long');
+    expect(client.getSnapshot().sessions[0].messages).toMatchObject([
+      { content: 'Recap', recapRequest: true },
+      { content: 'A normal message' },
+    ]);
+    expect(client.getSnapshot().sessions[0].messages[1].recapRequest).toBeUndefined();
+  });
+  it('should drop an unconfirmed recap request when the next send is a normal message', async () => {
+    // Arrange
+    await start();
+    const packets: Json[] = [];
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
+      const packet = JSON.parse(String(init?.body)).messages[0];
+      packets.push(packet);
+      if (packets.length === 1) throw new TypeError('Connection lost');
+      return response({ messages: [{ id: `sent-${packets.length}`, seq: packets.length, localId: packet.localId, createdAt: 200 }] });
+    });
+    // Act
+    await expect(client.sendRecapRequest('session', { permissionMode: 'plan' })).rejects.toThrow('Connection lost');
+    await client.sendMessage('session', 'Now fix it');
+    // Assert
+    expect(packets).toHaveLength(2);
+    expect(packets[1].localId).not.toBe(packets[0].localId);
+    expect(client.getSnapshot().sessions[0].messages).toMatchObject([{ content: 'Now fix it' }]);
+  });
+  it('should keep an unconfirmed normal draft when a recap request comes next', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockImplementation(async () => { throw new TypeError('Connection lost'); });
+    await expect(client.sendMessage('session', 'Keep this draft')).rejects.toThrow('Connection lost');
+    // Act / Assert
+    await expect(client.sendRecapRequest('session')).rejects.toThrow('original draft');
+  });
   it('should require a CLI resume without changing an ended session', async () => {
     // Arrange
     session.active = false;

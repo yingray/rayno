@@ -3,6 +3,7 @@ export type Status = 'idle' | 'running' | 'blocked' | 'offline';
 export type Attachment = { name: string; size: number; type: string; file?: File; ref?: string };
 export type ToolCall = { id: string; name: string; input?: unknown; result?: unknown; isError?: boolean };
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
+export type RecapMode = 'auto' | 'manual';
 export type Message = {
   id: string;
   role: 'user' | 'assistant';
@@ -15,6 +16,8 @@ export type Message = {
   // Modes that a user message carried in its meta, and the server time of that message.
   settings?: MessageSettings;
   sentAt?: number;
+  // A hidden user message that asks the agent to recap its previous reply.
+  recapRequest?: boolean;
 };
 export type Session = {
   id: string;
@@ -78,6 +81,9 @@ export type Preferences = {
   compactTools: boolean;
   enterToSend: boolean;
   avatar: 'provider' | 'initials';
+  recap: RecapMode;
+  recapStyle: string;
+  recapAutoplay: boolean;
 };
 export type NewSessionDraft = {
   machineId: string;
@@ -109,7 +115,7 @@ export type Action =
   | { type: 'rename'; id: string; name: string }
   | { type: 'archive'; id: string }
   | { type: 'delete' | 'stop' | 'read'; id: string }
-  | { type: 'send' | 'reply'; id: string; message: Message; now: number; preserveDraft?: boolean }
+  | { type: 'send' | 'reply'; id: string; message: Message; now: number; preserveDraft?: boolean; keepRunning?: boolean }
   | { type: 'draft'; id: string; value: string }
   | { type: 'newDraft'; value: Partial<NewSessionDraft> }
   | { type: 'rememberWorkspace'; value: RecentWorkspace }
@@ -130,6 +136,8 @@ export interface DemoAdapter {
     attachments?: Attachment[],
     options?: MessageSettings & { preserveDraft?: boolean },
   ): void | Promise<void>;
+  // Send the hidden manual recap request for the last agent reply.
+  sendRecapRequest(id: string, options?: MessageSettings): void | Promise<void>;
   stopSession(id: string): void | Promise<void>;
   refreshMonitor(): Promise<void>;
   killSession?(id: string): Promise<void>;

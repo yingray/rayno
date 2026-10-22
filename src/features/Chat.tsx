@@ -21,6 +21,8 @@ import { ChatSessionMenu } from './ChatSessionMenu';
 import { needsSessionResume } from '../happy/resume';
 import { ChatHistoryStatus } from './ChatHistoryStatus';
 import { questionDemoId } from '../data/questionDemo';
+import { hasAgentReply, hasOpenRecapRequest, unansweredMessageIds } from '../data/replyTurns';
+import { stopRecapSpeech } from './recapSpeech';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
@@ -123,6 +125,9 @@ export const Chat = memo(function Chat({
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(files[0]);
+  const [railHost, setRailHost] = useState<HTMLDivElement | null>(null);
+  // True from a sent recap request until the agent starts on it.
+  const [awaitingRecap, setAwaitingRecap] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
   const scrollContent = useRef<HTMLDivElement>(null);
   const conversationId = useId();
@@ -143,13 +148,11 @@ export const Chat = memo(function Chat({
     !model || session.archived ||
     session.status === 'offline' ||
     (mode === 'live' && connection !== 'connected');
-  const lastUserIndex = useMemo(() => session.messages.reduce(
-    (last, message, index) => (message.role === 'user' ? index : last),
-    -1,
-  ), [session.messages]);
-  const unansweredMessages = useMemo(() => new Set(
-    session.messages.slice(lastUserIndex + 1).map((message) => message.id),
-  ), [session.messages, lastUserIndex]);
+  const unansweredMessages = useMemo(() => unansweredMessageIds(session.messages), [session.messages]);
+  const openRecap = useMemo(() => hasOpenRecapRequest(session.messages), [session.messages]);
+  const canRecap = useMemo(() => hasAgentReply(session.messages), [session.messages]);
+  // An open request without a working agent stays open. The user can then ask again.
+  const recapBusy = openRecap && (running || pending || awaitingRecap);
   const messageSettings = useMemo(() => mode === 'live'
     ? {
         model,
@@ -260,6 +263,14 @@ export const Chat = memo(function Chat({
     };
   }, []);
   useEffect(() => {
+    if (!awaitingRecap) return;
+    if (running || !openRecap) { setAwaitingRecap(false); return; }
+    const timer = window.setTimeout(() => setAwaitingRecap(false), 15000);
+    return () => clearTimeout(timer);
+  }, [awaitingRecap, running, openRecap]);
+  // Leave the session, and the voice stops.
+  useEffect(() => () => stopRecapSpeech(), [session.id]);
+  useEffect(() => {
     if (!preview || !preview.type.startsWith('image/')) {
       setPreviewUrl('');
       return;
@@ -331,6 +342,22 @@ export const Chat = memo(function Chat({
     }
   }, [adapter, disabled, session.id, messageSettings, unansweredMessages]);
   const chooseReply = useEventCallback(sendOption);
+  const requestRecap = useEventCallback(async () => {
+    if (pendingRef.current || disabled || running || !canRecap || recapBusy) return;
+    pendingRef.current = true;
+    setPending(true);
+    setError('');
+    try {
+      await adapter.sendRecapRequest(session.id, messageSettings);
+      setAwaitingRecap(true);
+    } catch (error) {
+      setError(messageError(error));
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+  });
+  const unpin = useCallback(() => { pinned.current = false; }, []);
 
   return (
     <section
@@ -414,7 +441,9 @@ export const Chat = memo(function Chat({
                 retry={() => void live?.loadHistory(session.id, history?.direction).catch(() => {})}
                 loadEarlier={() => void live?.loadHistory(session.id, 'older').catch(() => {})} />
               {session.messages.length ? (
-                <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending} onOption={chooseReply} /></LazyBoundary>
+                <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending}
+                  running={running} recapBusy={recapBusy} scroll={scroll} railHost={railHost}
+                  onOption={chooseReply} onRecap={requestRecap} onUnpin={unpin} /></LazyBoundary>
               ) : !history?.loading && (!history?.error || offline) ? (
                 <Empty title={offline ? 'No saved messages' : 'The start of something good'}>
                   {offline ? 'Open this chat online to save its messages on this device.' : 'Give your agent a task to work on.'}
@@ -445,6 +474,9 @@ export const Chat = memo(function Chat({
               </div>
             </div>
           </div>
+          <div ref={setRailHost} className={styles.recapRail} style={{
+            bottom: `calc(${composerHeight + keyboardInset}px + var(--composer-bottom, 18px) + 22px)`,
+          }} />
           <div ref={composer} className={styles.composerWrap} style={{
             bottom: `calc(${keyboardInset}px + ${keyboardOpen
               ? 'var(--composer-bottom-with-keyboard, 18px)' : 'var(--composer-bottom, 18px)'})`,
@@ -478,6 +510,7 @@ export const Chat = memo(function Chat({
               <ResumeSession session={session} />
             )}
             <div className={styles.composer} data-focus-frame
+              onInput={stopRecapSpeech}
               onPaste={event => {
                 if (mode !== 'live' || disabled || pending) return;
                 const files = Array.from(event.clipboardData.files).filter(file => file.type.startsWith('image/'));
@@ -545,6 +578,18 @@ export const Chat = memo(function Chat({
                 >
                   <span>Mode: {permissionName}</span>
                 </Button>
+                <button
+                  type="button"
+                  className={styles.recapPill}
+                  aria-label="Recap the last reply"
+                  data-testid="recap-pill"
+                  title="Ask the agent to recap its last reply"
+                  disabled={disabled || pending || running || !canRecap || recapBusy}
+                  onClick={() => void requestRecap()}
+                >
+                  <Icon name="sparkles" size={13} />
+                  Recap
+                </button>
                 <button
                   className={styles.model}
                   aria-label="Model and effort"

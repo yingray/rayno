@@ -226,6 +226,31 @@
   padding: 8px 28px 8px 12px;
   cursor: pointer;
 }
+.recapStyleRow {
+  flex-wrap: wrap;
+}
+.recapStyleRow .rowText {
+  flex: 1;
+  min-width: 0;
+}
+.recapStyle {
+  width: calc(100% - 46px);
+  margin-left: 46px;
+  box-sizing: border-box;
+  min-height: 132px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--well);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 21px;
+  padding: 10px 12px;
+}
+.recapStyleReset {
+  margin-left: 46px;
+}
 .note {
   color: var(--muted);
   font-size: 10px;
@@ -387,6 +412,13 @@
   margin-top: 20px;
 }
 @media (min-width: 768px) and (max-width: 1150px) {
+  .recapStyle,
+  .recapStyleReset {
+    margin-left: 42px;
+  }
+  .recapStyle {
+    width: calc(100% - 42px);
+  }
   .settingsNav {
     width: 185px;
   }
@@ -567,6 +599,9 @@
   .fontSize {
     height: 44px;
   }
+  .recapStyleReset {
+    height: 44px;
+  }
   .fontSize button {
     position: relative;
   }
@@ -575,5 +610,17 @@
     content: '';
     position: absolute;
     inset: -4px 0;
+  }
+}
+@media (max-width: 767px) {
+  /* Phones need 16px field text to stop focus zoom, and 44px controls. */
+  .recapStyle {
+    width: calc(100% - 38px);
+    margin-left: 38px;
+    font-size: 16px;
+    line-height: 23px;
+  }
+  .recapStyleReset {
+    margin-left: 38px;
   }
 }

@@ -1,4 +1,5 @@
 import type { NewSessionDraft, Preferences } from './types';
+import { DEFAULT_RECAP_STYLE } from '../happy/systemPrompt';
 
 export const defaultNewDraft: NewSessionDraft = {
   machineId: 'mbp',
@@ -18,4 +19,7 @@ export const defaultPreferences: Preferences = {
   compactTools: false,
   enterToSend: true,
   avatar: 'provider',
+  recap: 'auto',
+  recapStyle: DEFAULT_RECAP_STYLE,
+  recapAutoplay: false,
 };

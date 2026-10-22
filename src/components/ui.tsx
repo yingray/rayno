@@ -58,6 +58,10 @@ import {
   textOutline,
   remove,
   menuOutline,
+  sparkles,
+  play,
+  pause,
+  handLeftOutline,
 } from 'ionicons/icons';
 import { useDemo } from '../data/store';
 import type { Agent } from '../data/types';
@@ -118,6 +122,10 @@ const icons = {
   textOutline,
   remove,
   menuOutline,
+  sparkles,
+  play,
+  pause,
+  handLeftOutline,
 };
 export type IconName = keyof typeof icons;
 export const Icon = memo(function Icon({

@@ -9,6 +9,9 @@ import { useUIState } from './useUIState';
 import { questionDemoId, createQuestionDemo } from './questionDemo';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+// The simulated recap answer comes before a normal reply, so the chat can show the waiting state.
+const RECAP_REPLY_DELAY = 1500;
+const recapTimer = (id: string) => `recap:${id}`;
 
 export function DemoProvider({
   children,
@@ -58,8 +61,10 @@ export function DemoProvider({
 
   const adapter = useMemo<DemoAdapter>(() => {
     function cancel(id: string) {
-      clearTimeout(timers.current.get(id));
-      timers.current.delete(id);
+      for (const key of [id, recapTimer(id)]) {
+        clearTimeout(timers.current.get(key));
+        timers.current.delete(key);
+      }
       replyPrompts.current.delete(id);
     }
     function reply(id: string, prompt: string) {
@@ -73,6 +78,7 @@ export function DemoProvider({
           type: 'reply',
           id,
           now: Date.now(),
+          keepRunning: timers.current.has(recapTimer(id)),
           message: {
             id: crypto.randomUUID(),
             role: 'assistant',
@@ -83,6 +89,26 @@ export function DemoProvider({
         });
       }, 3000);
       timers.current.set(id, timer);
+    }
+    // Answer a manual recap request like an agent: a reply with only a recap block for the previous reply.
+    function replyRecap(id: string) {
+      if (timers.current.has(recapTimer(id))) return;
+      const timer = window.setTimeout(() => {
+        // Load the Markdown parser only for this simulated answer.
+        void import('./recapDemo').then(({ demoRecapReply }) => {
+          if (timers.current.get(recapTimer(id)) !== timer) return;
+          timers.current.delete(recapTimer(id));
+          dispatch({
+            type: 'reply',
+            id,
+            now: Date.now(),
+            keepRunning: timers.current.has(id),
+            message: { id: crypto.randomUUID(), role: 'assistant',
+              content: demoRecapReply(ui.getState().sessions.find((item) => item.id === id)?.messages || []) },
+          });
+        });
+      }, RECAP_REPLY_DELAY);
+      timers.current.set(recapTimer(id), timer);
     }
     return {
       async createSession(draft: NewSessionDraft, attachments: Attachment[] = []) {
@@ -162,6 +188,18 @@ export function DemoProvider({
           preserveDraft: options.preserveDraft,
         });
         reply(id, content.trim() || 'Review the attached files.');
+      },
+      sendRecapRequest(id) {
+        const session = ui.getState().sessions.find((item) => item.id === id);
+        if (!session || session.status === 'offline' || session.archived) return;
+        dispatch({
+          type: 'send',
+          id,
+          now: Date.now(),
+          message: { id: crypto.randomUUID(), role: 'user', content: 'Recap', recapRequest: true },
+          preserveDraft: true,
+        });
+        replyRecap(id);
       },
       stopSession(id) {
         cancel(id);

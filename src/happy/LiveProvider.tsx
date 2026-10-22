@@ -141,7 +141,7 @@ function Connected({
   const adapter = useMemo<DemoAdapter>(
     () => ({
       async createSession(draft, attachments) {
-        const id = await client.createSession(draft, attachments);
+        const id = await client.createSession(draft, attachments, ui.getState().preferences.recap, ui.getState().preferences.recapStyle);
         dispatch({ type: 'rememberModel', key: modelChoiceKey(draft.agent, draft.machineId),
           value: { model: draft.model, effort: draft.effort || null } });
         dispatch({ type: 'rememberPermission', key: modelChoiceKey(draft.agent, draft.machineId), value: draft.permissionMode });
@@ -153,10 +153,12 @@ function Connected({
       },
       async sendMessage(id, content, attachments, options) {
         const { preserveDraft, ...sendOptions } = options || {};
-        await client.sendMessage(id, content, attachments, sendOptions);
+        await client.sendMessage(id, content, attachments, { ...sendOptions, recapMode: ui.getState().preferences.recap, recapStyle: ui.getState().preferences.recapStyle });
         if (!preserveDraft && ui.getDraft(id) === content)
           dispatch({ type: 'draft', id, value: '' });
       },
+      sendRecapRequest: (id, options) =>
+        client.sendRecapRequest(id, { ...options, recapMode: ui.getState().preferences.recap, recapStyle: ui.getState().preferences.recapStyle }),
       renameSession: (id, name) => client.renameSession(id, name),
       archiveSession: (id) => client.archiveSession(id),
       deleteSession: (id) => client.deleteSession(id),

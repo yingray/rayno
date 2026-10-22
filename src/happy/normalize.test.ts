@@ -8,7 +8,7 @@ import {
   weeklyUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
-import { systemPrompt } from './systemPrompt';
+import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
   id,
@@ -185,14 +185,56 @@ describe('Happy record normalization', () => {
       messageMeta({ version: '1.2.1-beta.2', permissionMode: 'auto' }, {}).permissionMode,
     ).toBe('auto');
   });
-  it('should send the option instructions with every message', () => {
+  it('should send the option and recap instructions with every message', () => {
     // Arrange
     const sessions = [{}, { client: { id: 'rig' } }];
+    const combined = systemPrompt + '\n\n' + recapPrompt('auto');
     // Act
     const prompts = sessions.map((metadata) => messageMeta(metadata, {}).appendSystemPrompt);
     // Assert
-    expect(prompts).toEqual([systemPrompt, systemPrompt]);
-    expect(systemPrompt).toContain('<options>');
+    expect(prompts).toEqual([combined, combined]);
+    expect(prompts[0]).toContain('<options>');
+    expect(prompts[0]).toContain('<rayno-recap>');
+    expect(prompts[0].startsWith(systemPrompt)).toBe(true);
+  });
+  it('should put the recap style before the format rules', () => {
+    // Act
+    const preset = messageMeta({}, {}, 'auto').appendSystemPrompt as string;
+    const custom = messageMeta({}, {}, 'manual', '  Speak like a coach.  ').appendSystemPrompt as string;
+    const empty = messageMeta({}, {}, 'auto', ' ').appendSystemPrompt as string;
+    // Assert
+    expect(preset).toContain(`Recap voice:\n${DEFAULT_RECAP_STYLE}\n\nRules:`);
+    expect(custom).toContain('Recap voice:\nSpeak like a coach.\n\nRules:');
+    expect(custom.indexOf('Speak like a coach.')).toBeLessThan(custom.indexOf(`"${RECAP_REQUEST}"`));
+    for (const prompt of [preset, custom])
+      expect(prompt).toContain('If the recap voice above conflicts with these rules, follow these rules.');
+    expect(empty).not.toContain('Recap voice:');
+    expect(empty).not.toContain('If the recap voice above conflicts');
+    expect(empty).toContain('<rayno-recap>');
+  });
+  it('should cut a recap style that is over the limit', () => {
+    // Act
+    const prompt = recapPrompt('auto', 'x'.repeat(RECAP_STYLE_LIMIT + 50));
+    // Assert
+    expect(prompt).toContain('x'.repeat(RECAP_STYLE_LIMIT) + '\n\nRules:');
+    expect(prompt).not.toContain('x'.repeat(RECAP_STYLE_LIMIT + 1));
+  });
+  it('should drop only the automatic recap trigger in manual mode', () => {
+    // Act
+    const auto = messageMeta({}, {}, 'auto');
+    const manual = messageMeta({}, {}, 'manual');
+    // Assert
+    expect(auto.appendSystemPrompt).toContain('When your reply is long');
+    expect(auto.appendSystemPrompt).toContain('Skip the recap for short replies');
+    expect(manual.appendSystemPrompt).not.toContain('When your reply is long');
+    expect(manual.appendSystemPrompt).not.toContain('Skip the recap for short replies');
+    expect(manual.appendSystemPrompt).toContain('<rayno-recap>');
+    expect(manual.appendSystemPrompt).toContain('<options> stays last.');
+    for (const prompt of [auto.appendSystemPrompt, manual.appendSystemPrompt]) {
+      expect(prompt).toContain(`When the user message is exactly "${RECAP_REQUEST}"`);
+      expect(prompt).not.toContain('"/recap"');
+    }
+    expect({ ...manual, appendSystemPrompt: '' }).toEqual({ ...auto, appendSystemPrompt: '' });
   });
   it('should report unknown health without sample battery or latency values', () => {
     // Arrange
@@ -284,5 +326,31 @@ describe('Sent message modes', () => {
     });
     expect(second.settings).toEqual({ model: 'anthropic:claude-opus-5-5', effort: null });
     expect(third.settings).toBeUndefined();
+  });
+});
+
+describe('Hidden recap requests', () => {
+  it('should mark a request from the Rayno meta or the exact request text', () => {
+    // Arrange
+    const rows = [
+      row('m1', 1, {
+        role: 'user',
+        content: { type: 'text', text: RECAP_REQUEST },
+        meta: { sentFrom: 'web', raynoRecap: true, displayText: 'Recap', model: 'claude-opus-5' },
+      }),
+      row('m2', 2, { role: 'user', content: { type: 'text', text: ` ${RECAP_REQUEST}\n` } }),
+      row('m3', 3, { role: 'session', content: { role: 'user', ev: { t: 'text', text: RECAP_REQUEST } } }),
+      row('m4', 4, { role: 'user', content: { type: 'text', text: 'Recap your previous reply.' } }),
+      row('m5', 5, { role: 'agent', content: { type: 'codex', data: { type: 'message', message: RECAP_REQUEST } } }),
+    ];
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages[0]).toMatchObject({ role: 'user', content: 'Recap', recapRequest: true, settings: { model: 'claude-opus-5' } });
+    expect(messages[1]).toMatchObject({ role: 'user', recapRequest: true });
+    expect(messages[2]).toMatchObject({ role: 'user', recapRequest: true });
+    expect(messages[3].recapRequest).toBeUndefined();
+    expect(messages[4]).toMatchObject({ role: 'assistant' });
+    expect(messages[4].recapRequest).toBeUndefined();
   });
 });

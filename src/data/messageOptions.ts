@@ -1,9 +1,11 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import type { Message } from './types';
+import { parseMessageRecap, type Recap } from './messageRecap';
 
 export type MessagePart =
   | { kind: 'markdown'; content: string }
-  | { kind: 'options'; items: string[] };
+  | { kind: 'options'; items: string[] }
+  | { kind: 'recap'; recap: Recap };
 type SyntaxNode = {
   type: string;
   position?: { start: { offset?: number }; end: { offset?: number } };
@@ -11,7 +13,7 @@ type SyntaxNode = {
 };
 
 // Code and quoted examples must stay literal, including inline and indented code.
-export function parseMessageOptions(content: string): MessagePart[] {
+export function parseMessageOptions(content: string): Exclude<MessagePart, { kind: 'recap' }>[] {
   if (!content.includes('<options>')) return [{ kind: 'markdown', content }];
   const protectedRanges: [number, number][] = [];
   function visit(node: SyntaxNode) {
@@ -21,7 +23,7 @@ export function parseMessageOptions(content: string): MessagePart[] {
   }
   visit(fromMarkdown(content));
 
-  const parts: MessagePart[] = [];
+  const parts: Exclude<MessagePart, { kind: 'recap' }>[] = [];
   let cursor = 0;
   for (const opening of content.matchAll(/<options>/g)) {
     const start = opening.index;
@@ -57,7 +59,9 @@ const messageParts = new WeakMap<Message, MessagePart[]>();
 export function partsForMessage(message: Message): MessagePart[] {
   let parts = messageParts.get(message);
   if (!parts) {
-    parts = parseMessageOptions(message.content);
+    // Options keep their own full-content parse. A recap sits in the Markdown before them.
+    parts = parseMessageOptions(message.content).flatMap((part): MessagePart[] =>
+      part.kind === 'markdown' ? parseMessageRecap(part.content) : [part]);
     messageParts.set(message, parts);
   }
   return parts;

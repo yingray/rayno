@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dialog, Empty, Icon, Segment, Toggle } from '../components/ui';
 import { version } from '../../package.json';
 import type { IconName } from '../components/ui';
 import { useDemo } from '../data/store';
-import type { BubbleColor, ChatWidth, FontSize } from '../data/types';
+import type { BubbleColor, ChatWidth, FontSize, RecapMode } from '../data/types';
+import { DEFAULT_RECAP_STYLE, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 import styles from './settings.module.css';
 
 const categories: { key: string; label: string; icon: IconName }[] = [
@@ -81,6 +82,7 @@ export function Settings() {
   }));
   const location = useLocation();
   const navigate = useNavigate();
+  const recapStyleId = useId();
   const category = location.pathname.split('/')[2] || 'appearance';
   const current = categories.find((item) => item.key === category);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -218,6 +220,42 @@ export function Settings() {
                     dispatch({
                       type: 'preferences',
                       value: { enterToSend: !preferences.enterToSend },
+                    })
+                  }
+                />
+              </Row>
+              <Row icon="sparklesOutline" title="Recap" subtitle="When agents end a long reply with a recap" className={styles.chatWidthRow}>
+                <select aria-label="Recap" className={styles.widthSelect} value={preferences.recap}
+                  onChange={event => dispatch({ type: 'preferences', value: { recap: event.target.value as RecapMode } })}>
+                  <option value="auto">Auto</option>
+                  <option value="manual">Manual only</option>
+                </select>
+              </Row>
+              <div className={`${styles.row} ${styles.recapStyleRow}`}>
+                <span className={styles.rowIcon}>
+                  <Icon name="textOutline" size={17} />
+                </span>
+                <label className={styles.rowText} htmlFor={recapStyleId}>
+                  <strong>Recap style</strong>
+                  <small>Voice, length, and order the agent uses for a recap. Leave it empty to use only the format rules.</small>
+                </label>
+                <textarea id={recapStyleId} className={styles.recapStyle} rows={6} maxLength={RECAP_STYLE_LIMIT}
+                  value={preferences.recapStyle}
+                  onChange={event => dispatch({ type: 'preferences', value: { recapStyle: event.target.value } })} />
+                <Button className={styles.recapStyleReset} icon="refreshOutline"
+                  disabled={preferences.recapStyle === DEFAULT_RECAP_STYLE}
+                  onClick={() => dispatch({ type: 'preferences', value: { recapStyle: DEFAULT_RECAP_STYLE } })}>
+                  Reset to default
+                </Button>
+              </div>
+              <Row icon="micOutline" title="Read recaps aloud automatically" subtitle="Starts after you interact with the page">
+                <Toggle
+                  label="Read recaps aloud automatically"
+                  checked={preferences.recapAutoplay}
+                  onChange={() =>
+                    dispatch({
+                      type: 'preferences',
+                      value: { recapAutoplay: !preferences.recapAutoplay },
                     })
                   }
                 />

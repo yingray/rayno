@@ -1126,3 +1126,58 @@
   .mobileOverflow { display: none; }
   .header { gap: 4px; padding-inline: 8px; }
 }
+
+/* Recap: the pin rail host on the right edge and the composer pill. Both are desktop only. */
+.recapRail {
+  position: absolute;
+  right: 14px;
+  top: 96px;
+  width: 20px;
+  z-index: 4;
+  pointer-events: none;
+}
+.recapRail:empty {
+  display: none;
+}
+.chat[data-view='chat']:has(> [aria-label='Conversation availability']) .recapRail {
+  top: 128px;
+}
+.recapPill {
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2a2833, #211f28);
+  border: 1px solid #3a3645;
+  box-shadow: inset 0 1px 0 #ffffff17;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ddd6fe;
+  font-size: 11px;
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+}
+.recapPill:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.recapPill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (min-width: 768px) {
+  /* Reserve space for the pins so that they never cover the content. */
+  .chat:has(.recapRail:not(:empty)) .messageScroll {
+    padding-right: 40px;
+  }
+}
+@media (hover: none) and (pointer: coarse) {
+  .recapPill { min-height: 44px; }
+}
+@media (max-width: 767px) {
+  .recapRail,
+  .recapPill {
+    display: none;
+  }
+}

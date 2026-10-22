@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState, defaultNewDraft } from './fixtures';
 import { demoReducer, restoreState, titleOf, validateDraft } from './reducer';
+import { DEFAULT_RECAP_STYLE, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 
 describe('Session lifecycle', () => {
   it('should preserve a typed draft when a reply option sends its own text', () => {
@@ -164,6 +165,56 @@ describe('Browser state restoration', () => {
     const result = restoreState(JSON.stringify(raw), createInitialState(2000000));
     // Assert
     expect(result.preferences.fontSize).toBe(expected);
+  });
+
+  it.each([
+    [undefined, undefined, 'auto', false],
+    ['manual', true, 'manual', true],
+    ['always', 'yes', 'auto', false],
+  ])('should restore the recap preferences %s and %s as %s and %s', (recap, autoplay, expectedRecap, expectedAutoplay) => {
+    // Arrange
+    const raw = JSON.parse(JSON.stringify(createInitialState(1000000)));
+    delete raw.preferences.recap;
+    delete raw.preferences.recapAutoplay;
+    if (recap !== undefined) raw.preferences.recap = recap;
+    if (autoplay !== undefined) raw.preferences.recapAutoplay = autoplay;
+    // Act
+    const result = restoreState(JSON.stringify(raw), createInitialState(2000000));
+    // Assert
+    expect(result.preferences.recap).toBe(expectedRecap);
+    expect(result.preferences.recapAutoplay).toBe(expectedAutoplay);
+    expect(result.preferences.bubble).toBe(raw.preferences.bubble);
+  });
+
+  it.each([
+    [undefined, DEFAULT_RECAP_STYLE],
+    ['', ''],
+    ['Speak like a coach.', 'Speak like a coach.'],
+    [42, DEFAULT_RECAP_STYLE],
+    ['y'.repeat(RECAP_STYLE_LIMIT + 1), 'y'.repeat(RECAP_STYLE_LIMIT)],
+  ])('should restore the recap style %#', (stored, expected) => {
+    // Arrange
+    const raw = JSON.parse(JSON.stringify(createInitialState(1000000)));
+    delete raw.preferences.recapStyle;
+    if (stored !== undefined) raw.preferences.recapStyle = stored;
+    // Act
+    const result = restoreState(JSON.stringify(raw), createInitialState(2000000));
+    // Assert
+    expect(result.preferences.recapStyle).toBe(expected);
+  });
+
+  it('should keep a simulated session running while another reply is on its way', () => {
+    // Arrange
+    const state = createInitialState(1000000);
+    const id = state.sessions[0].id;
+    const running = demoReducer(state, { type: 'send', id, now: 1, message: { id: 'r1', role: 'user', content: 'Recap', recapRequest: true }, preserveDraft: true });
+    // Act
+    const partial = demoReducer(running, { type: 'reply', id, now: 2, keepRunning: true, message: { id: 'a1', role: 'assistant', content: 'One' } });
+    const done = demoReducer(partial, { type: 'reply', id, now: 3, message: { id: 'a2', role: 'assistant', content: 'Two' } });
+    // Assert
+    expect(partial.sessions[0].status).toBe('running');
+    expect(done.sessions[0].status).toBe('idle');
+    expect(done.sessions[0].messages.slice(-3).map((message) => message.id)).toEqual(['r1', 'a1', 'a2']);
   });
 
   it('should keep an empty session list after the user deletes every session', () => {

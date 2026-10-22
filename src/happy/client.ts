@@ -5,6 +5,7 @@ import type {
   Machine,
   MessageSettings,
   NewSessionDraft,
+  RecapMode,
   Session,
   UsageReading,
 } from '../data/types';
@@ -37,6 +38,7 @@ import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlin
 import { shallowEqual } from '../data/subscriptions';
 import { imageMime, transferUrl, validateImages } from './attachments';
 import { resumeUnavailable } from './resume';
+import { RECAP_REQUEST } from './systemPrompt';
 import type { Message } from '../data/types';
 
 const emptyJson: Json = Object.freeze({});
@@ -85,7 +87,10 @@ export const emptySnapshot: Snapshot = {
 import { messageError } from './errors';
 export { messageError } from './errors';
 export const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
-type Outbox = { fingerprint: string; localId: string; content: string; files?: { localId: string; content: string }[] };
+// The recap mode and style change only the instructions. They are not part of a message fingerprint.
+export type SendSettings = MessageSettings & { recapMode?: RecapMode; recapStyle?: string };
+// recap marks a hidden recap request. The user cannot see or retry its draft.
+type Outbox = { fingerprint: string; localId: string; content: string; files?: { localId: string; content: string }[]; recap?: true };
 
 export class HappyClient implements DemoAdapter {
   private socket: Socket | null = null;
@@ -1006,11 +1011,19 @@ export class HappyClient implements DemoAdapter {
     if (!result.success) throw new Error(result.message || 'The agent did not stop.');
     await this.refresh();
   }
-  async sendMessage(
+  sendMessage(id: string, content: string, attachments: Attachment[] = [], options: SendSettings = {}) {
+    return this.send(id, content, attachments, options);
+  }
+  /** Ask the agent to recap its previous reply. The chat hides this message. */
+  sendRecapRequest(id: string, options: SendSettings = {}) {
+    return this.send(id, RECAP_REQUEST, [], options, { raynoRecap: true, displayText: 'Recap' });
+  }
+  private async send(
     id: string,
     content: string,
-    attachments: Attachment[] = [],
-    options: MessageSettings = {},
+    attachments: Attachment[],
+    { recapMode, recapStyle, ...options }: SendSettings,
+    extraMeta: Json = {},
   ) {
     if (this.snapshot.offline) throw new Error('Reconnect before you send this message. Your draft stays on this device.');
     validateImages(attachments);
@@ -1038,7 +1051,7 @@ export class HappyClient implements DemoAdapter {
       const levels = effortOptions(metadata, model);
       if (options.effort && !levels.includes(options.effort))
         throw new Error('This model does not support the selected effort. Choose another effort before you send.');
-      const meta = messageMeta(metadata, options);
+      const meta = { ...messageMeta(metadata, options, recapMode, recapStyle), ...extraMeta };
       if (options.model && model !== currentModel(metadata) && !levels.length) {
         if (isRig(metadata)) delete meta.effort;
         else meta.effort = null;
@@ -1067,6 +1080,11 @@ export class HappyClient implements DemoAdapter {
       } catch {
         /* A damaged packet must not be replayed. */
       }
+      // Drop an unconfirmed recap request when a different send comes next. A lost recap is safe to ask again.
+      if (packet?.recap && packet.fingerprint !== fingerprint) {
+        sessionStorage.removeItem(key);
+        packet = null;
+      }
       if (packet && packet.fingerprint !== fingerprint)
         throw new Error(
           'A previous send has no confirmation. Retry the original draft and model/effort/permission choices, or check the message in the Happy app.',
@@ -1086,6 +1104,7 @@ export class HappyClient implements DemoAdapter {
           fingerprint,
           localId: crypto.randomUUID(),
           content: await this.encryption.encrypt(raw, source.key), files,
+          ...(extraMeta.raynoRecap === true ? { recap: true as const } : {}),
         };
         sessionStorage.setItem(key, JSON.stringify(packet));
       }
@@ -1191,7 +1210,9 @@ export class HappyClient implements DemoAdapter {
     if (result.type !== 'success' || !Array.isArray(result.points)) throw new Error(result.errorMessage || 'This Happy CLI could not read the conversation history.');
     return result.points.flatMap((point: Json) => {
       const key = codex ? point.itemId : point.uuid;
-      return typeof key === 'string' && key ? [{ id: key, text: typeof point.text === 'string' ? point.text : 'Message', timestamp: Number(point.timestamp) || 0 }] : [];
+      const text = typeof point.text === 'string' ? point.text : 'Message';
+      // Show a hidden recap request with the same label as its chat display text.
+      return typeof key === 'string' && key ? [{ id: key, text: text.trim() === RECAP_REQUEST ? 'Recap' : text, timestamp: Number(point.timestamp) || 0 }] : [];
     }).reverse();
   }
   branchSession(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
@@ -1366,7 +1387,7 @@ export class HappyClient implements DemoAdapter {
       throw new Error(result.error || result.stderr || 'The command failed on the computer.');
     return result;
   }
-  async createSession(draft: NewSessionDraft, attachments: Attachment[] = []) {
+  async createSession(draft: NewSessionDraft, attachments: Attachment[] = [], recapMode?: RecapMode, recapStyle?: string) {
     validateImages(attachments);
     if (!this.socket?.connected) throw new Error('Reconnect before you start a session.');
     const machine = this.machines.get(draft.machineId);
@@ -1488,6 +1509,8 @@ export class HappyClient implements DemoAdapter {
       model: draft.model,
       effort: draft.effort,
       permissionMode: draft.permissionMode,
+      recapMode,
+      recapStyle,
     });
     this.writeLocal(`composerModes.${pending.sessionId}`, JSON.stringify({
       model: draft.model,
