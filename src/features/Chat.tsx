@@ -23,6 +23,8 @@ import { ChatHistoryStatus } from './ChatHistoryStatus';
 import { questionDemoId } from '../data/questionDemo';
 import { hasAgentReply, hasOpenRecapRequest, unansweredMessageIds } from '../data/replyTurns';
 import { stopRecapSpeech } from './recapSpeech';
+import { parseRipgrepFiles, searchCommands, searchFiles, sessionCommands, type FileItem } from '../happy/suggestions';
+import type { Suggestion } from './ComposerSuggestions';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
@@ -40,6 +42,9 @@ const sampleFiles: Record<string, string> = {
     '# Floating Panels\n\nA quiet space for your agents.\n\nThese files are read-only examples in the local demo.',
 };
 const files = Object.keys(sampleFiles);
+const demoFileIndex = parseRipgrepFiles(files.join('\n'));
+const fileSuggestion = (file: FileItem): Suggestion => ({ key: 'file-' + file.fullPath, text: '@' + file.fullPath,
+  kind: file.fileType, label: file.fileName, detail: file.filePath || undefined });
 
 function hasAgentRequests(state: Json = {}) {
   return pendingPermissions(state).length > 0 || Object.keys(record(state.communications))
@@ -65,6 +70,15 @@ export const Chat = memo(function Chat({
     connection: store.snapshot?.connection, offline: store.snapshot?.offline,
   }));
   const hasRequests = useMemo(() => !!live && hasAgentRequests(agentState), [live, agentState]);
+  const commands = useMemo(() => sessionCommands(mode === 'live' ? liveMetadata || {} : {}), [mode, liveMetadata]);
+  // As v1 `components/autocomplete/suggestions.ts`: `/` reads session commands and `@` reads the session file index.
+  const suggest = useCallback(async (word: string): Promise<Suggestion[]> => {
+    if (word.startsWith('/')) return searchCommands(commands, word.slice(1)).map((item) => ({ key: 'cmd-' + item.command,
+      text: '/' + item.command, kind: 'command', label: '/' + item.command, detail: item.description }));
+    if (!word.startsWith('@')) return [];
+    const index = live ? await live.sessionFiles(session.id) : demoFileIndex;
+    return searchFiles(index, word.slice(1)).map(fileSuggestion);
+  }, [commands, live, session.id]);
   // Let input interrupt reconciliation of a large live history.
   const renderedMessages = useDeferredValue(session.messages);
   const [pending, setPending] = useState(false);
@@ -548,7 +562,7 @@ export const Chat = memo(function Chat({
                 sessionId={session.id} input={input} archived={session.archived}
                 needsResume={mode === 'live' && needsSessionResume(session)}
                 disabled={disabled} offline={!!offline} pending={pending}
-                hasAttachments={attachments.length > 0} onSend={send}
+                hasAttachments={attachments.length > 0} onSend={send} suggest={suggest}
               >
                 <input
                   type="file"

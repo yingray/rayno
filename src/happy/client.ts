@@ -35,6 +35,7 @@ import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
 import { permissionOptions, canSelectPermission, resolveNewSessionPermission, newSessionCatalog } from './permissionOptions';
 import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
+import { canSearchFiles, parseRipgrepFiles, type FileItem } from './suggestions';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
@@ -115,6 +116,7 @@ export class HappyClient implements DemoAdapter {
   private acknowledged = new Set<string>();
   private attention = new Map<string, SessionAttention>();
   private attentionRequests = new Map<string, Promise<void>>();
+  private fileIndexes = new Map<string, { at: number; files: Promise<FileItem[]> }>();
   private sentModeRequests = new Map<string, Promise<SentModes | undefined>>();
   private readingSessions = new Set<string>();
   private attentionInitialized = false;
@@ -490,6 +492,7 @@ export class HappyClient implements DemoAdapter {
     this.sessionPresence.clear();
     this.machinePresence.clear();
     this.attention.clear();
+    this.fileIndexes.clear();
     this.readingSessions.clear();
   }
   async refresh(force = false): Promise<void> {
@@ -1454,6 +1457,19 @@ export class HappyClient implements DemoAdapter {
   }
   permissionModes(id: string): string[] {
     return permissionOptions(this.getMetadata(id)).filter((option) => !option.disabled).map((option) => option.value);
+  }
+  /** The session's file index for `@` suggestions, kept for five minutes as in v1 `sync/suggestionFile.ts`. */
+  sessionFiles(id: string): Promise<FileItem[]> {
+    const cached = this.fileIndexes.get(id);
+    if (cached && Date.now() - cached.at <= 300000) return cached.files;
+    if (!canSearchFiles(this.getSession(id).metadata)) return Promise.resolve([]);
+    const files = this.rpc(id, 'ripgrep', { args: ['--files', '--follow'] }).then((result) => {
+      if (!result.success || typeof result.stdout !== 'string' || !result.stdout) throw new Error(result.error || 'Could not list the session files.');
+      return parseRipgrepFiles(result.stdout);
+    });
+    this.fileIndexes.set(id, { at: Date.now(), files });
+    files.catch(() => { if (this.fileIndexes.get(id)?.files === files) this.fileIndexes.delete(id); });
+    return files;
   }
   async bash(id: string, command: string, cwd?: string, machine = false): Promise<Json> {
     const result = await this.rpc(id, 'bash', { command, cwd, timeout: 45000 }, machine);

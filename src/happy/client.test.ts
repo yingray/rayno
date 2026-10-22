@@ -201,6 +201,22 @@ describe('Happy client protocol', () => {
     expect(vi.mocked(crypto.randomUUID).mock.calls.length).toBe(uuids);
     expect(pendingStarts()).toEqual([]);
   });
+  it('should list session files through one ripgrep RPC, reuse it, and retry after a failure', async () => {
+    // Arrange: the CLI handler in modules/common/registerCommonHandlers.ts returns { success, exitCode, stdout, stderr }.
+    await start();
+    socket.emitWithAck.mockResolvedValueOnce({ ok: true, result: await client.encryption.encrypt({ success: false, error: 'rg missing' }, null) });
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt(
+      { success: true, exitCode: 0, stdout: 'src/a.ts\nREADME.md\n', stderr: '' }, null) });
+    // Act / Assert
+    await expect(client.sessionFiles('session')).rejects.toThrow('rg missing');
+    const files = await client.sessionFiles('session');
+    expect(files.map((file) => file.fullPath)).toEqual(['src/a.ts', 'README.md', 'src/']);
+    expect(await client.sessionFiles('session')).toBe(files);
+    const calls = socket.emitWithAck.mock.calls.filter(([event]) => event === 'rpc-call');
+    expect(calls).toHaveLength(2);
+    expect(calls[1][1].method).toBe('session:ripgrep');
+    expect(await client.encryption.decrypt(calls[1][1].params, null)).toEqual({ args: ['--files', '--follow'] });
+  });
   it.each([undefined, null])('should complete Stop for the CLI void reply %j', async (reply) => {
     // Arrange
     await start();

@@ -23,6 +23,7 @@ Paths under `rayno/` and `monitor/` below come from that overlay.
 | `modelOptions.ts` | `components/modelModeOptions.ts`, `sync/rig.ts`, `sync/storageTypes.ts` |
 | `permissionOptions.ts` | `components/modelModeOptions.ts`, `utils/permissionModeLabels.ts`, `sync/agentDefaults.ts`, `sync/storageTypes.ts` |
 | `handoff.ts` | `rayno/handoffPrompt.ts`, `rayno/useHandoffAction.ts`, `utils/worktreePaths.ts` from overlay commit `ab8283b9f73b578d008cab7d4ffe48c4b372af4f` |
+| `suggestions.ts`, `../features/ComposerSuggestions.tsx` | `components/autocomplete/findActiveWord.ts`, `components/autocomplete/applySuggestion.ts`, `components/autocomplete/suggestions.ts`, `components/autocomplete/useActiveSuggestions.ts`, `sync/suggestionCommands.ts`, `sync/suggestionFile.ts`, `sync/rig.ts` |
 
 Server contracts also reference `happy-server/sources/app/api/routes/sessionRoutes.ts` and `v3SessionRoutes.ts`.
 Copies update only through an explicit compatibility review.
@@ -67,6 +68,13 @@ sessions with the unread or needs-input state above, so the `(N)` prefix clears 
 session, also after a reload. The badged favicon shows while a connected session waits for the user.
 The plaintext `session-event` ephemeral (`sync/apiTypes.ts`; sent by `happy-server/sources/app/api/routes/pushRoutes.ts`
 with kind `done`, `permission`, or `question`) starts the same attention read for that session; it does not keep its own counter.
+
+Composer suggestions use the v1 `@` and `/` prefixes. `/` lists the v1 default commands, then the session metadata
+`slashCommands` and `skills` (from the Claude SDK init message in `happy-cli/src/claude/claudeRemote.ts`), without the v1
+ignored names. `@` reads `rg --files --follow` once through the session `ripgrep` RPC
+(`happy-cli/src/modules/common/registerCommonHandlers.ts`), adds the parent folders, and keeps the index for five minutes.
+A failed read is not kept, so the next `@` tries again. Rig v1 sessions must advertise file search and the RPC.
+Rayno ranks matches with its own matcher instead of Fuse.js. The list never takes focus, so the phone keyboard stays open.
 
 The session-list usage capsule uses the same adapted `manualUsage.ts` reader as Monitor, through
 the machine's read-only `bash` RPC. Rayno coalesces requests and keeps its own in-memory readings;

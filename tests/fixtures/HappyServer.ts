@@ -52,6 +52,9 @@ export class HappyServer {
   failBranchSpawn = false;
   rewindPoints = Array.from({ length: 18 }, (_, index) => ({ uuid: `claude-${index}`, itemId: `codex-${index}`, text: `Message ${index}: review the workspace`, timestamp: 1700000000000 + index * 1000 }));
   bashCommands: Json[] = [];
+  // `rg --files --follow` output from the CLI `ripgrep` handler (modules/common/registerCommonHandlers.ts).
+  ripgrepStdout = 'src/app/App.tsx\nsrc/app/app.module.css\nsrc/components/Panel.tsx\nREADME.md\n';
+  ripgrepCalls: Json[] = [];
   worktreeListing = '';
   workspaceReady: Promise<void> = Promise.resolve();
   workspaceFailure = false;
@@ -300,7 +303,8 @@ export class HappyServer {
           const key = machine ? null : this.dataKey;
           const params = await this.encryption.decrypt<Json>(payload.params, key);
           const usageRead = payload.method.endsWith(':bash') && params.command.includes('HAPPY_CLI_DIR=');
-          if (usageRead) {
+          if (payload.method.endsWith(':ripgrep')) this.ripgrepCalls.push(params);
+          else if (usageRead) {
             this.usageReads++;
             await this.usageReady;
           }
@@ -326,6 +330,8 @@ export class HappyServer {
             session.agentState = await this.encryption.encrypt(state, this.dataKey);
             session.agentStateVersion++;
           }
+          if (payload.method.endsWith(':ripgrep'))
+            result = { success: true, exitCode: 0, stdout: this.ripgrepStdout, stderr: '' };
           if (payload.method.endsWith(':listDirectory'))
             result = { success: true, entries: [{ name: 'README.md', type: 'file', size: 17 }] };
           if (payload.method.endsWith(':readFile'))

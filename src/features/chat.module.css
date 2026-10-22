@@ -584,6 +584,7 @@
   pointer-events: auto;
 }
 .composer {
+  position: relative;
   border-radius: 26px;
   background: linear-gradient(#1f1f24, #17171b);
   border: 1px solid var(--border-control);
@@ -594,6 +595,66 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 6;
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border-radius: 18px;
+  background: linear-gradient(#1f1f24, #17171b);
+  border: 1px solid var(--border-control);
+  box-shadow:
+    inset 0 1px #ffffff14,
+    0 16px 40px -12px #000;
+}
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: var(--body);
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.suggestion[aria-selected='true'] {
+  background: #ffffff12;
+  color: var(--text);
+}
+@media (hover: hover) {
+  .suggestion:hover {
+    background: #ffffff0c;
+  }
+}
+.suggestion > :first-child {
+  flex: none;
+  color: var(--secondary);
+}
+.suggestion strong {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.suggestion small {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--secondary);
+  font-size: 13px;
 }
 .composer > textarea {
   field-sizing: content;
