@@ -4,7 +4,7 @@ import { Avatar, Button, copyText, Dialog, Empty, Icon, Spinner } from '../compo
 import { WorkspaceTag } from '../components/WorkspaceTag';
 import { useDemo } from '../data/store';
 import { modelOptions, effortOptions, effortLabel, canSelectModel } from '../happy/modelOptions';
-import { currentPermission, pendingPermissions, record, type Json } from '../happy/normalize';
+import { currentPermission, pendingCommunications, pendingPermissions, type Json } from '../happy/normalize';
 import { permissionOptions, permissionLabel, canSelectPermission } from '../happy/permissionOptions';
 import { messageError } from '../happy/errors';
 import { titleOf } from '../data/reducer';
@@ -42,8 +42,7 @@ const sampleFiles: Record<string, string> = {
 const files = Object.keys(sampleFiles);
 
 function hasAgentRequests(state: Json = {}) {
-  return pendingPermissions(state).length > 0 || Object.keys(record(state.communications))
-    .some((id) => !record(state.completedCommunications)[id]);
+  return pendingPermissions(state).length > 0 || pendingCommunications(state).length > 0;
 }
 
 export const Chat = memo(function Chat({
@@ -420,6 +419,8 @@ export const Chat = memo(function Chat({
             role="region"
             aria-label="Conversation messages"
             className={styles.messageScroll}
+            // Focus and scrollIntoView keep a control above the composer that overlays the bottom of the list.
+            style={{ scrollPaddingBottom: `${composerHeight + keyboardInset}px` }}
             ref={scroll}
             onScroll={(event) => updateScrollPosition(event.currentTarget)}
             onPointerDownCapture={(event) => {

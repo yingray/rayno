@@ -141,3 +141,9 @@
 .card .card { border: 0; padding: 0; background: transparent; }
 
 .actions button { min-height: 44px; min-width: 44px; }
+.hint {
+  display: block;
+  margin: -4px 0 8px;
+  color: #b7adc3;
+  font-size: 12px;
+}

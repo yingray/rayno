@@ -111,6 +111,27 @@ export function allowsSessionScope(tool: string): boolean {
   return !noSessionScope.has(tool);
 }
 export const isExitPlanTool = (tool: string) => tool === 'ExitPlanMode' || tool === 'exit_plan_mode';
+// Happy Web sync/agentCommunications.ts: only `form` is answerable. Other kinds stay visible so the user can dismiss them.
+export type PendingCommunication = { id: string; createdAt: number } & (
+  | { kind: 'form'; questions: Json[] }
+  | { kind: 'unsupported'; rawKind: string; title: string | null });
+export function pendingCommunications(state: Json): PendingCommunication[] {
+  const completed = record(state.completedCommunications);
+  return Object.entries(record(state.communications)).flatMap(([id, value]): PendingCommunication[] => {
+    const communication = record(value);
+    if (completed[id]) return [];
+    const createdAt = typeof communication.createdAt === 'number' ? communication.createdAt : 0;
+    if (communication.kind !== 'form')
+      return [{ id, createdAt, kind: 'unsupported', rawKind: text(communication.kind, 'unknown'), title: text(communication.title) || null }];
+    // A question is answerable when it offers options or accepts written text. A form without one has nothing to show.
+    const questions = (Array.isArray(communication.form?.questions) ? communication.form.questions : [])
+      .map((question: unknown) => record(question))
+      .filter((question: Json) => typeof question.id === 'string')
+      .map((question: Json) => ({ ...question, options: Array.isArray(question.options) ? question.options : [] }))
+      .filter((question: Json) => question.options.length > 0 || question.allowCustom !== false);
+    return questions.length ? [{ id, createdAt, kind: 'form', questions }] : [];
+  }).sort((a, b) => a.createdAt - b.createdAt);
+}
 export function normalizeSession(
   source: SessionRecord,
   messages: Message[],
@@ -128,9 +149,7 @@ export function normalizeSession(
     m.workspace?.name,
     worktreeIndex < 0 ? '' : path.slice(worktreeIndex + worktreeMarker.length),
   );
-  const pending =
-    pendingPermissions(a).length ||
-    Object.keys(record(a.communications)).some((id) => !record(a.completedCommunications)[id]);
+  const pending = pendingPermissions(a).length || pendingCommunications(a).length;
   return {
     id: wire.id,
     title: text(m.summary?.text, path.split('/').filter(Boolean).pop() || 'Untitled session'),

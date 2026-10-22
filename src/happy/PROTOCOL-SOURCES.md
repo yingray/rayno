@@ -126,3 +126,8 @@ Priority feature contracts were checked against the local Happy snapshot `2dcac1
 - `normalize.ts`: `sync/typesRaw.ts`. Session, Claude output, and Codex/ACP tool calls retain their IDs and join later results by call ID. Raw strings and edit arguments stay readable without HTML execution.
 
 Chat-header Fork and Duplicate follow `utils/sessionFork.ts`, `components/DuplicateSheet.tsx`, and `sync/ops.ts` in the same Happy snapshot. Claude uses `claude-fork-session`, `claude-list-rewind-points`, and `claude-duplicate-session`; Codex uses the matching thread RPCs. A second `spawn-happy-session` call attaches to the copied provider ID and carries `parentSessionId`. Rayno supplies concrete model/effort/permission values, retains the copy after an explicit spawn failure, and refuses an automatic second copy when the first result is unknown.
+
+Agent communications and send receipts were checked against the local Happy snapshot `2dcac1ad0f5ae46f6fd9d8a2880d806424c93d57` on 2026-10-22:
+
+- `normalize.ts` `pendingCommunications` and `Requests.tsx`: `sync/agentCommunications.ts`, `sync/storageTypes.ts` (`AgentCommunicationSchema`), `components/AgentQuestionBanner.tsx`, and `components/AgentQuestionModal.tsx`. Only `kind: 'form'` is answerable. A form without an answerable question is dropped. Any other kind shows its `title` and a Dismiss action. Answers follow `buildAnswers`: blank drafts are not sent, and a single choice keeps one option.
+- `client.ts` `answerQuestions`: `sessionAnswerQuestion` and `sessionCancelCommunication` in `sync/ops.ts`. The `communication` session RPC carries `{ id, kind, status }` and `answers` only when the status is `answered`. The reply echoes the raw `kind` of the request.
