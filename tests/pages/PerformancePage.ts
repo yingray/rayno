@@ -3,6 +3,40 @@ import { LiveWorkspacePage } from './LiveWorkspacePage';
 
 export class PerformancePage extends LiveWorkspacePage {
   input() { return this.page.getByRole('textbox', { name: 'Message', exact: true }); }
+  sendButton() { return this.page.getByRole('button', { name: 'Send message', exact: true }); }
+  async watchSendFocus() {
+    await this.input().evaluate((element) => {
+      const events: string[] = [];
+      (window as any).__sendFocus = events;
+      element.addEventListener('blur', () => events.push('blur'), { once: true });
+    });
+    await this.sendButton().evaluate((element) => {
+      element.addEventListener('click', () => {
+        (window as any).__sendFocus.push(document.activeElement?.getAttribute('aria-label') === 'Message'
+          ? 'click-focused' : 'click-blurred');
+      }, { once: true });
+    });
+  }
+  async expectKeyboardDismissedAfterClick() {
+    await expect(this.input()).not.toBeFocused();
+    expect(await this.page.evaluate(() => (window as any).__sendFocus)).toEqual(['click-focused', 'blur']);
+  }
+  async expectSendReachable() {
+    const button = this.sendButton();
+    await expect(button).toBeInViewport();
+    const target = (await button.boundingBox())!;
+    const viewport = this.page.viewportSize()!;
+    expect(target.width).toBeGreaterThanOrEqual(44);
+    expect(target.height).toBeGreaterThanOrEqual(44);
+    expect(target.x).toBeGreaterThanOrEqual(0);
+    expect(target.y).toBeGreaterThanOrEqual(0);
+    expect(target.x + target.width).toBeLessThanOrEqual(viewport.width);
+    expect(target.y + target.height).toBeLessThanOrEqual(viewport.height);
+    expect(await button.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })).toBe(true);
+  }
   async useLegacyTextareaSizing() {
     await this.page.addInitScript(() => {
       const supports = CSS.supports.bind(CSS);

@@ -285,9 +285,10 @@ export const Chat = memo(function Chat({
     try { setAttachments(mode === 'live' ? selectedImages(files, attachments) : [...attachments, ...files].slice(0, 5)); setError(''); }
     catch (error) { setError(messageError(error)); }
   }
-  async function send(value: string) {
+  async function send(value: string, dismissKeyboard = false) {
     if (pendingRef.current || disabled || (!value.trim() && !attachments.length)) return;
     pendingRef.current = true;
+    if (dismissKeyboard) input.current?.blur();
     setPending(true);
     setError('');
     try {
@@ -299,7 +300,7 @@ export const Chat = memo(function Chat({
         messageSettings,
       );
       setAttachments([]);
-      input.current?.focus();
+      if (!dismissKeyboard) input.current?.focus();
     } catch (error) {
       setError(messageError(error));
     } finally {

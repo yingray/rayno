@@ -18,7 +18,7 @@ export const DraftComposer = memo(function DraftComposer({
   offline: boolean;
   pending: boolean;
   hasAttachments: boolean;
-  onSend: (value: string) => Promise<void>;
+  onSend: (value: string, dismissKeyboard?: boolean) => Promise<void>;
   children: ReactNode;
 }) {
   const value = useDraft(sessionId);
@@ -63,10 +63,12 @@ export const DraftComposer = memo(function DraftComposer({
         icon="arrowUp"
         aria-label="Send message"
         disabled={pending || disabled || (!value.trim() && !hasAttachments)}
-        // Keep the focus in the message field. A blur closes the phone keyboard and moves this button
-        // before the click, so the first tap misses.
+        // Keep focus until the click so the phone keyboard cannot move the button before the tap completes.
         onMouseDown={(event) => { if (document.activeElement === input.current) event.preventDefault(); }}
-        onClick={() => { if (!composing.current) void onSend(input.current?.value ?? value); }}
+        onClick={() => {
+          if (!composing.current)
+            void onSend(input.current?.value ?? value, window.matchMedia('(pointer: coarse)').matches);
+        }}
       />
     </div>
   </>;

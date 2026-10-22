@@ -49,6 +49,7 @@ test('Chinese composition should retain text during live updates and send only a
   await workspace.input().press('Enter');
   // Assert
   await workspace.expectDraft('');
+  await expect(workspace.input()).toBeFocused();
   expect(server.sends).toHaveLength(1);
   const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[0].content, server.dataKey);
   expect(message.content.text).toBe('中文輸入不中斷\nnext line');
@@ -79,27 +80,88 @@ test('send confirmation should keep a newer draft typed while the request is pen
   await workspace.expectDraftAfterReload('保留下一則草稿');
 });
 
-test('one tap on send should send the draft and keep the keyboard field focused', async ({ page }, testInfo) => {
+test('one tap on send should dismiss the phone keyboard before confirmation and keep it closed after confirmation at every phone size', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('mobile'), 'Touch keyboards use the mobile projects.');
   // Arrange
   const server = new HappyServer();
   await server.install(page);
   const workspace = new PerformancePage(page);
   await workspace.openSession();
-  await workspace.input().tap();
-  await workspace.input().pressSequentially('Send with one tap');
-  // A blur moves the composer while the phone keyboard closes, so the tap misses the button.
-  await workspace.input().evaluate((element) => {
-    (window as unknown as { blurs: number }).blurs = 0;
-    element.addEventListener('blur', () => { (window as unknown as { blurs: number }).blurs++; });
+  let release!: () => void;
+  let gate = Promise.resolve();
+  await page.route('**/v3/sessions/*/messages', async (route) => {
+    if (route.request().method() === 'POST') await gate;
+    await route.fallback();
   });
+  // Act / Assert
+  for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 430], [844, 390]]) {
+    await page.setViewportSize({ width, height });
+    await workspace.input().tap();
+    const text = `Send with one tap at ${width}x${height}`;
+    await workspace.input().pressSequentially(text);
+    await workspace.watchSendFocus();
+    await workspace.expectSendReachable();
+    const count = server.sends.length;
+    gate = new Promise<void>((resolve) => { release = resolve; });
+    try {
+      await workspace.sendButton().tap();
+      await workspace.expectKeyboardDismissedAfterClick();
+      await expect(page.getByText('Wait for Happy to confirm this message…', { exact: true })).toBeVisible();
+      await expect(workspace.sendButton()).toBeDisabled();
+      expect(server.sends).toHaveLength(count);
+    } finally {
+      release();
+    }
+    await expect.poll(() => server.sends.length).toBe(count + 1);
+    await workspace.expectDraft('');
+    await expect(page.getByText('Wait for Happy to confirm this message…', { exact: true })).toHaveCount(0);
+    await workspace.expectKeyboardDismissedAfterClick();
+    await workspace.expectSendReachable();
+    await workspace.expectNoPageOverflow();
+    const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[count].content, server.dataKey);
+    expect(message.content.text).toBe(text);
+  }
+});
+
+test('a failed phone send should keep the keyboard closed and retain the draft for a one-tap retry', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('mobile'), 'Touch keyboards use the mobile projects.');
+  // Arrange
+  const server = new HappyServer();
+  server.failFirstSend = true;
+  await server.install(page);
+  const workspace = new PerformancePage(page);
+  await workspace.openSession();
+  await workspace.input().tap();
+  await workspace.input().pressSequentially('Keep this draft for retry');
+  await workspace.watchSendFocus();
   // Act
-  await page.getByRole('button', { name: 'Send message', exact: true }).tap();
+  await workspace.sendButton().tap();
   // Assert
-  await expect.poll(() => server.sends.length).toBe(1);
+  await expect(page.getByRole('alert')).toContainText('confirmation lost');
+  await workspace.expectKeyboardDismissedAfterClick();
+  await workspace.expectDraft('Keep this draft for retry');
+  // Act
+  await workspace.sendButton().tap();
+  // Assert
   await workspace.expectDraft('');
-  expect(await page.evaluate(() => (window as unknown as { blurs: number }).blurs)).toBe(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(workspace.input()).not.toBeFocused();
+  expect(server.sends).toHaveLength(2);
+  expect(server.sends[1]).toEqual(server.sends[0]);
+});
+
+test('a desktop send button should restore input focus after confirmation', async ({ page }, testInfo) => {
+  test.skip(!!testInfo.project.use.hasTouch, 'Desktop mouse users keep input focus.');
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  const workspace = new PerformancePage(page);
+  await workspace.openSession();
+  await workspace.input().fill('Keep typing on desktop');
+  // Act
+  await workspace.sendButton().click();
+  // Assert
+  await workspace.expectDraft('');
   await expect(workspace.input()).toBeFocused();
-  const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[0].content, server.dataKey);
-  expect(message.content.text).toBe('Send with one tap');
+  expect(server.sends).toHaveLength(1);
 });
