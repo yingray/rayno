@@ -63,6 +63,11 @@ export function completedForms(state: Json | undefined): Map<string, AnsweredFor
   return map;
 }
 
+// As in the v1 reducer, the tool_result `permissions` field wins, and the agent-state reason and decision stay.
+export function mergedPermission(fromResult: ToolPermission | undefined, fromState: ToolPermission | undefined) {
+  return fromResult && fromState ? { ...fromState, ...fromResult } : fromResult || fromState;
+}
+
 // The PermissionFooter rule: a Claude session approval names the tool, or `Bash(command)` for one command.
 function allowedForSession(call: ToolCall, value: ToolPermission) {
   if (value.decision === 'approved_for_session') return true;

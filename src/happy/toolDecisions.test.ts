@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { visibleMessages, type MessageRecord } from './normalize';
-import { completedForms, completedPermissions, permissionSummary, resultPermission } from './toolDecisions';
+import { completedForms, completedPermissions, mergedPermission, permissionSummary, resultPermission } from './toolDecisions';
 import type { ToolCall } from '../data/types';
 
 const row = (seq: number, raw: object): MessageRecord => ({ id: String(seq), seq, raw, createdAt: seq });
@@ -22,6 +22,19 @@ describe('tool decisions', () => {
     expect(message.toolCalls?.[0]).toMatchObject({ result: { stdout: 'ok' }, resultText: 'ok',
       permission: { status: 'approved', allowedTools: ['Bash(npm test)'] } });
     expect(resultPermission({ date: 1, result: 'later' })).toBeUndefined();
+  });
+
+  it('should keep the agent-state reason when the tool result also has a reply', () => {
+    // Arrange: permissionHandler.ts stores `reason` in completedRequests, and claudeRemoteLauncher.ts does not copy it.
+    const fromResult = resultPermission({ date: 1, result: 'denied' });
+    const fromState = completedPermissions({ completedRequests: {
+      toolu_rm: { tool: 'Bash', arguments: {}, createdAt: 1, completedAt: 2, status: 'denied', reason: 'Not now', decision: 'denied' } } }).get('toolu_rm');
+    // Act
+    const merged = mergedPermission(fromResult, fromState);
+    // Assert
+    expect(merged).toEqual({ status: 'denied', reason: 'Not now', decision: 'denied' });
+    expect(mergedPermission(undefined, fromState)).toBe(fromState);
+    expect(mergedPermission(fromResult, undefined)).toBe(fromResult);
   });
 
   it('should join completed agent-state requests by the raw tool call ID', () => {

@@ -11,7 +11,7 @@ import type { RecapSegment } from '../data/messageRecap';
 import { remarkPlugins } from '../data/recapQuote';
 import type { BubbleColor, Message, ToolCall, ToolPermission } from '../data/types';
 import { toolAnswers, toolSections } from '../data/toolResults';
-import { completedForms, completedPermissions, permissionSummary, type AnsweredForm } from '../happy/toolDecisions';
+import { completedForms, completedPermissions, mergedPermission, permissionSummary, type AnsweredForm } from '../happy/toolDecisions';
 import { permissionLabel } from '../happy/permissionOptions';
 import { ToolAnswers, ToolDecision, ToolSections, type ToolOutcome } from './ToolDetails';
 import { useEventCallback } from '../components/useEventCallback';
@@ -84,8 +84,7 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes 
 function toolOutcome(call: ToolCall | undefined, permissions: Map<string, ToolPermission>, forms: Map<string, AnsweredForm>,
   modeLabel: (mode: string) => string): ToolOutcome | undefined {
   if (!call) return undefined;
-  // As in the v1 reducer, the reply in the tool result wins over the agent state.
-  const permission = call.permission || permissions.get(call.id);
+  const permission = mergedPermission(call.permission, permissions.get(call.id));
   const form = forms.get(call.id);
   const answers = form?.status === 'answered' ? form.items : toolAnswers(call);
   const outcome: ToolOutcome = {
