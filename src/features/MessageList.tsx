@@ -58,13 +58,15 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes 
         {block.tools.map((tool, index) => {
           const call = block.details?.[index];
           const decision = outcomes?.[index]?.permission;
+          // The answered questions group already shows the answers of this call.
+          const sections = !call ? [] : toolSections(call).filter((section) => section.kind !== 'answers' || !outcomes?.[index]?.answers?.length);
           return <li key={index}>
             <Icon name="codeSlash" size={14} />
             {call && (call.input !== undefined || call.result !== undefined) ? <details className={styles.toolDetails}>
               <summary><span>{tool}</span>{decision && <ToolDecision value={decision} />}</summary>
               {decision && <div className={styles.toolNote} data-tone={decision.tone === 'denied' ? 'error' : undefined}>{decision.detail}</div>}
               <h4>Arguments</h4><pre>{formatToolValue(call.input)}</pre>
-              <ToolSections sections={toolSections(call)} />
+              <ToolSections sections={sections} />
             </details> : <span className={styles.toolLabel}><span>{tool}</span>{decision && <ToolDecision value={decision} />}</span>}
           </li>;
         })}

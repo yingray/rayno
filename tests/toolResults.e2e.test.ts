@@ -74,6 +74,10 @@ test('structured tool results and past replies should stay readable in the trans
   await workspace.expectDecision('WebFetch', 'Denied');
   await expect(fetch).toContainText('Denied: Not this site');
   await workspace.expectDecision('AskUserQuestion', 'Answered');
+  // The answered questions group shows the answers, so the open row does not repeat them.
+  const answers = await workspace.openTool('AskUserQuestion');
+  await expect(answers.getByRole('heading', { name: 'Answers', exact: true })).toHaveCount(0);
+  await expect(workspace.answeredQuestions()).toBeVisible();
   await workspace.expectNoPageOverflow();
 });
 
