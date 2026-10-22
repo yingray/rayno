@@ -1344,6 +1344,14 @@ export class HappyClient implements DemoAdapter {
     this.branching.set(key, pending);
     return pending;
   }
+  // A cancelled folder question drops the copied conversation, so a later branch makes a new copy.
+  discardBranch(id: string, kind: 'fork' | 'duplicate', point?: string) {
+    const key = JSON.stringify([id, kind, point]), storageKey = this.storageKey + 'branch.' + key;
+    let pending: Json = {};
+    try { pending = record(JSON.parse(sessionStorage.getItem(storageKey) || '{}')); } catch { /* Remove a damaged marker. */ }
+    if (this.branching.has(key) || pending.spawnUnknown || pending.sessionId) return;
+    sessionStorage.removeItem(storageKey);
+  }
   private async performBranch(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings,
     approvedNewDirectoryCreation: boolean): Promise<string> {
     if (this.snapshot.connection !== 'connected' || this.snapshot.offline) throw new Error('Reconnect before you create a session.');

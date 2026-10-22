@@ -130,6 +130,7 @@ When the daemon answers `requestToApproveDirectoryCreation` (`happy-cli/src/daem
 the folder. The approved retry sends the same draft with `approvedNewDirectoryCreation: true` and keeps the pending request ID.
 Fork and Duplicate use the same question. Happy Web `forkAndSpawn` shows that reply as a generic error instead. The
 approved retry reuses the copied provider conversation and sends only the second `spawn-happy-session` call.
+Cancel drops the copied conversation, so the next Fork or Duplicate copies the current conversation again.
 
 `offlineCache.ts` adds independent, account-scoped IndexedDB persistence for session/machine records and loaded history pages.
 Each cached payload uses the existing account encryption helper. No bearer token or plaintext message body enters the database.

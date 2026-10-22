@@ -165,7 +165,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
     </Dialog>}
     {cleanup.dialog}
     {folder && <FolderApprovalDialog directory={folder.directory} machineName={machine?.name} busy={busy} error={error}
-      onCancel={() => { setFolder(null); setError(''); }} onCreate={() => void run(() => branch(folder.kind, folder.point, true))} />}
+      onCancel={() => { live?.discardBranch(session.id, folder.kind, folder.point); setFolder(null); setError(''); }} onCreate={() => void run(() => branch(folder.kind, folder.point, true))} />}
     {duplicate && <DuplicateDialog session={session} busy={busy} error={error}
       onClose={() => { if (!busy) setDuplicate(false); }} onDuplicate={point => void run(() => branch('duplicate', point))} />}
   </>;

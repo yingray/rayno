@@ -82,7 +82,7 @@ test('a bot should archive through its agent only and offer no delete action', a
   expect(server.bashCommands).toEqual([]);
 });
 
-test('fork should ask before it creates a missing folder and start once after Create folder', async ({ page }, testInfo) => {
+test('fork should ask before it creates a missing folder, copy again after Cancel, and start once after Create folder', async ({ page }, testInfo) => {
   // Arrange
   const server = new HappyServer();
   server.missingDirectories = ['/real/project'];
@@ -109,7 +109,8 @@ test('fork should ask before it creates a missing folder and start once after Cr
   await workspace.press(folder, 'Create folder', touch);
   // Assert
   await expect(page).toHaveURL(/\/session\/created-session$/);
-  expect(server.branchCalls.map((call) => call.method)).toEqual(['computer:claude-fork-session']);
+  // Cancel drops the copied conversation, so each later Fork copies the current conversation again.
+  expect(server.branchCalls.map((call) => call.method)).toEqual(Array(sizes.length + 1).fill('computer:claude-fork-session'));
   expect(server.spawns).toHaveLength(sizes.length + 2);
   expect(server.spawns.slice(0, -1).every((spawn) => !spawn.approvedNewDirectoryCreation)).toBe(true);
   expect(server.spawns.at(-1)).toMatchObject({ directory: '/real/project', approvedNewDirectoryCreation: true,

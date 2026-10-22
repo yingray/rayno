@@ -895,6 +895,30 @@ describe('Happy client protocol', () => {
     expect(await params(2)).toMatchObject({ directory: '/real/project', approvedNewDirectoryCreation: true,
       resumeClaudeSessionId: 'copied-session', parentSessionId: 'session' });
   });
+  it('should copy the conversation again when a fork follows a cancelled folder question', async () => {
+    // Arrange
+    metadata.claudeSessionId = 'provider-session';
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({}, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start(); socket.handlers.get('connect')?.(); await client.refresh();
+    socket.emitWithAck
+      .mockResolvedValueOnce(await rpcReply({ type: 'success', newClaudeSessionId: 'copied-session' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'requestToApproveDirectoryCreation', directory: '/real/project' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'success', newClaudeSessionId: 'second-copy' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'requestToApproveDirectoryCreation', directory: '/real/project' }));
+    await expect(client.branchSession('session', 'fork', undefined, {})).rejects.toBeInstanceOf(DirectoryApprovalError);
+    // Act
+    client.discardBranch('session', 'fork');
+    await expect(client.branchSession('session', 'fork', undefined, {})).rejects.toBeInstanceOf(DirectoryApprovalError);
+    // Assert
+    expect(socket.emitWithAck.mock.calls.map(([, payload]) => payload.method)).toEqual([
+      'computer:claude-fork-session', 'computer:spawn-happy-session', 'computer:claude-fork-session', 'computer:spawn-happy-session']);
+    expect(await client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[3][1].params, null))
+      .toMatchObject({ resumeClaudeSessionId: 'second-copy' });
+  });
 });
 // A ciphertext that no account or session key opens.
 const damaged = base64(new Uint8Array(48).fill(9));
