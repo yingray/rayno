@@ -11,7 +11,7 @@ import { AgentChoices } from './AgentChoices';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { draftInWorkspace, recentWorkspaceOptions } from '../data/workspaces';
 import { modelChoiceKey, recentModelChoice, resolveModelChoice } from '../happy/modelPreferences';
-import { permissionOptions, resolveNewSessionPermission } from '../happy/permissionOptions';
+import { newSessionCatalog, permissionOptions, resolveNewSessionPermission } from '../happy/permissionOptions';
 import type { ModelChoice } from '../data/types';
 import { selectedImages } from '../happy/attachments';
 
@@ -28,7 +28,9 @@ export function NewSession() {
   }));
   const navigate = useNavigate();
   const agent = draft.agent === 'Happy Agent' ? lastAgent || 'Claude' : draft.agent;
-  const metadata = useMemo(() => ({ flavor: agent.toLowerCase() }), [agent]);
+  const machine = machines.find((item) => item.id === draft.machineId);
+  const cliVersion = machine?.cliVersion;
+  const metadata = useMemo(() => newSessionCatalog(agent.toLowerCase(), cliVersion), [agent, cliVersion]);
   const preferenceKey = modelChoiceKey(agent, draft.machineId);
   const selection = resolveModelChoice(metadata, [
     modelChoices?.[preferenceKey], draft,
@@ -40,7 +42,6 @@ export function NewSession() {
     permissionChoices?.[preferenceKey],
   ]);
   const models = modelOptions(metadata);
-  const machine = machines.find((item) => item.id === draft.machineId);
   const workspaces = useMemo(() => recentWorkspaceOptions(sessions, machines, recentWorkspaces || [], draft.machineId), [sessions, machines, recentWorkspaces, draft.machineId]);
   const efforts = effortOptions(metadata, model);
   const [picker, setPicker] = useState<'model' | 'workspace' | null>(null);
@@ -97,12 +98,13 @@ export function NewSession() {
   }
   function chooseAgent(nextAgent: Agent) {
     if (nextAgent === agent || nextAgent === 'Happy Agent') return;
-    rememberChoice(resolveModelChoice({ flavor: nextAgent.toLowerCase() }, [
+    const catalog = newSessionCatalog(nextAgent.toLowerCase(), cliVersion);
+    rememberChoice(resolveModelChoice(catalog, [
       modelChoices?.[modelChoiceKey(nextAgent, draft.machineId)],
       recentModelChoice(sessions, nextAgent, draft.machineId),
     ]), nextAgent);
     dispatch({ type: 'newDraft', value: { permissionMode: resolveNewSessionPermission(
-      { flavor: nextAgent.toLowerCase() }, [permissionChoices?.[modelChoiceKey(nextAgent, draft.machineId)]],
+      catalog, [permissionChoices?.[modelChoiceKey(nextAgent, draft.machineId)]],
     ) } });
   }
   function chooseModel(value: string) {

@@ -167,3 +167,27 @@ test('phone new sessions should fill the screen and keep permissions, Start, and
   expect(server.spawns).toEqual([]);
   expect(server.sends).toEqual([]);
 });
+
+for (const [version, auto] of [['1.2.0', false], ['1.2.1-beta.2', true]] as const) {
+  test(`a computer with happy-cli ${version} should ${auto ? 'offer' : 'hide'} Auto for new sessions`, async ({ page }) => {
+    // Arrange
+    const server = new HappyServer();
+    server.machineMetadata = { ...server.machineMetadata, happyCliVersion: version };
+    await server.install(page);
+    const workspace = new LiveWorkspacePage(page);
+    await page.goto('/new');
+    // Act / Assert
+    await expect(workspace.newPermissionMode()).toHaveValue('bypassPermissions');
+    await expect(workspace.newPermissionMode().locator('option[value="auto"]')).toHaveCount(auto ? 1 : 0);
+    await workspace.chooseNewAgent('Codex');
+    await expect(workspace.newPermissionMode()).toHaveValue('yolo');
+    await expect(workspace.newPermissionMode().locator('option[value="auto"]')).toHaveCount(auto ? 1 : 0);
+    // Act
+    await page.getByLabel('Folder', { exact: true }).fill('/real/project');
+    await workspace.taskDescription().fill('Use the computer catalog');
+    await workspace.startDraft();
+    // Assert
+    await expect(page).toHaveURL(/\/session\/created-session$/);
+    expect(server.spawns[0]).toMatchObject({ agent: 'codex', permissionMode: 'yolo' });
+  });
+}

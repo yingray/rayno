@@ -59,6 +59,7 @@ export type Machine = {
   capturedAt?: number;
   error?: string;
   homeDir?: string;
+  cliVersion?: string;
 };
 export type UsageReading = {
   agent: Agent;

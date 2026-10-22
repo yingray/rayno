@@ -31,7 +31,7 @@ import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
 import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
-import { permissionOptions, canSelectPermission, resolveNewSessionPermission } from './permissionOptions';
+import { permissionOptions, canSelectPermission, resolveNewSessionPermission, newSessionCatalog } from './permissionOptions';
 import { latestSentModes, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
@@ -1393,7 +1393,8 @@ export class HappyClient implements DemoAdapter {
     const machine = this.machines.get(draft.machineId);
     if (!machine?.wire.active) throw new Error('Choose an online computer.');
     const agent = draft.agent === 'Happy Agent' ? 'rig' : draft.agent.toLowerCase();
-    const catalog = agent === 'rig' ? { ...machine.metadata, flavor: 'rig', client: { id: 'rig' } } : { flavor: agent };
+    const catalog = agent === 'rig' ? { ...machine.metadata, flavor: 'rig', client: { id: 'rig' } }
+      : newSessionCatalog(agent, machine.metadata.happyCliVersion);
     if (!permissionOptions(catalog).some((option) => option.value === draft.permissionMode && !option.disabled))
       throw new Error('Choose an available permission mode before you start a session.');
     if (!isConcreteModel(draft.model) || !modelOptions(catalog).some((option) => option.value === draft.model && !option.disabled))

@@ -147,6 +147,24 @@ describe('Happy client protocol', () => {
     expect(socket.emitWithAck).not.toHaveBeenCalled();
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
   });
+  it.each([['1.2.0', false], ['1.2.1-beta.2', true]])('should gate Auto by the computer happyCliVersion %s', async (happyCliVersion, allowed) => {
+    // Arrange
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Test computer', homeDir: '/real', happyCliVersion }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines')
+      ? response([machine]) : originalFetch(url));
+    await start();
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt({ type: 'success', sessionId: 'session' }, null) });
+    const draft = { ...defaultNewDraft, machineId: 'computer', path: '/real/project', permissionMode: 'auto' };
+    // Act
+    const created = client.createSession(draft);
+    // Assert
+    expect(client.getSnapshot().machines[0].cliVersion).toBe(happyCliVersion);
+    if (allowed) await expect(created).resolves.toBe('session');
+    else await expect(created).rejects.toThrow('Choose an available permission mode');
+    expect(socket.emitWithAck).toHaveBeenCalledTimes(allowed ? 1 : 0);
+  });
   it.each([undefined, null])('should complete Stop for the CLI void reply %j', async (reply) => {
     // Arrange
     await start();

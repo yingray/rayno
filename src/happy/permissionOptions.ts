@@ -30,6 +30,10 @@ export function canSelectPermission(metadata: Json): boolean {
   return metadata.capabilities?.permissionModeSelection !== false;
 }
 
+// The machine's CLI parses a new session's modes, so its happyCliVersion gates the fixed catalog.
+export const newSessionCatalog = (flavor: string, cliVersion?: unknown): Json =>
+  typeof cliVersion === 'string' && cliVersion ? { flavor, version: cliVersion } : { flavor };
+
 export function resolveNewSessionPermission(metadata: Json, candidates: (string | null | undefined)[]): string {
   const options = permissionOptions(metadata);
   const fallback = metadata.flavor === 'codex' ? 'yolo' : 'bypassPermissions';
