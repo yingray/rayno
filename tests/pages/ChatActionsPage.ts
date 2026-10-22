@@ -25,15 +25,16 @@ export class ChatActionsPage extends PriorityFeaturesPage {
       const textarea = element.querySelector('textarea')!;
       const composer = textarea.parentElement!.parentElement!.getBoundingClientRect();
       return { maxWidth: getComputedStyle(messages).maxWidth, messageWidth: messages.getBoundingClientRect().width, composerWidth: composer.width,
+        railSpace: parseFloat(getComputedStyle(messages.parentElement!).paddingRight),
         left: composer.left - bounds.left, right: bounds.right - composer.right };
     });
     expect(dimensions.maxWidth).toBe('none');
-    expect(Math.abs(dimensions.messageWidth - dimensions.composerWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(dimensions.messageWidth + dimensions.railSpace - dimensions.composerWidth)).toBeLessThanOrEqual(1);
     expect(dimensions.left).toBeGreaterThanOrEqual(0);
     expect(dimensions.right).toBeGreaterThanOrEqual(0);
     expect(dimensions.left).toBeLessThanOrEqual(12.1);
     expect(dimensions.right).toBeLessThanOrEqual(12.1);
-    const info = this.page.getByRole('button', { name: 'Toggle session info', exact: true });
+    const info = this.page.getByRole('button', { name: 'Open session info', exact: true });
     await this.expectTouchTarget(info);
     const infoBox = (await info.boundingBox())!, trigger = (await this.trigger().boundingBox())!;
     expect(trigger.x).toBeGreaterThan(infoBox.x);

@@ -41,11 +41,11 @@ describe('tool result views', () => {
     // Act
     const [editView, writeView] = [edit, created].map(toolSections);
     // Assert
-    expect(editView).toEqual([{ kind: 'diff', label: 'Changes · /repo/src/styles/global.css', more: 0, lines: [
+    expect(editView.filter(section => section.kind === 'diff')).toEqual([{ kind: 'diff', label: 'Changes · /repo/src/styles/global.css', more: 0, lines: [
       { kind: 'hunk', text: '@@ -88,3 +88,5 @@' }, { kind: 'context', text: '   color: var(--secondary);' },
       { kind: 'context', text: ' }' }, { kind: 'add', text: '+.screenError {' }, { kind: 'add', text: '+}' },
       { kind: 'context', text: ' button,' }] }]);
-    expect(text(editView)).not.toContain('body {');
+    expect(editView).toContainEqual({kind:'source',label:'Original file',text:'body {\n}\n'});
     expect(writeView[0]).toEqual({ kind: 'note', text: 'Created /repo/MEMORY.md' });
     expect(writeView[1]).toMatchObject({ kind: 'diff', lines: [{ kind: 'add', text: '+ - [Diagram](diagram.md)' }] });
   });
@@ -78,7 +78,7 @@ describe('tool result views', () => {
     const views = [read, image, glob, grepFiles, grepContent, grepCount].map((item) => text(toolSections(item)));
     // Assert
     expect(views[0]).toBe("Lines 1–1 of 40\n/repo/src/api/auth.ts\nimport axios from 'axios';");
-    expect(views[1]).toBe('Image (image/png). The image is not shown here.');
+    expect(views[1]).toBe('Tool image');
     expect(views[2]).toBe('2 files · list truncated\nFiles\n/repo/src/ui/qrcode.test.ts\n/repo/src/api/auth.ts');
     expect(views[3]).toBe('2 files · limit 2\nFiles\na.js\nb.js');
     expect(views[4]).toBe('1 line\nMatches\n211:[Omitted long matching line]');
@@ -167,7 +167,7 @@ describe('tool result views', () => {
     const views = [known, unknown, list].map((item) => text(toolSections(item)));
     // Assert
     expect(views[0]).toBe('Result\nTwo rows changed.');
-    expect(views[1]).toBe('Result\n{\n  "rows": 2,\n  "data": "[500 characters of encoded data]"\n}');
+    expect(views[1]).toBe('Original file\nsecret body\nResult\n{\n  "rows": 2,\n  "data": "[500 characters of encoded data]"\n}');
     expect(views[2]).toContain('"text": "Listed"');
   });
 });

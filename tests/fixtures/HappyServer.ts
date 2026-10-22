@@ -31,6 +31,10 @@ export class HappyServer {
   requests: { path: string; method: string }[] = [];
   mutations: string[] = [];
   usageReads = 0;
+  usageQueries: Json[] = [];
+  reportFailure = false;
+  machineRemoved = false;
+  machineVersion = 1;
   usageReady: Promise<void> = Promise.resolve();
   usageFailure = false;
   usagePercent = 25;
@@ -192,6 +196,16 @@ export class HappyServer {
         });
       }
       if (this.denied) return json({ error: 'Expired authorization' }, 401);
+      if (path === '/v1/usage/query' && method === 'POST') {
+        this.usageQueries.push(request.postDataJSON());
+        return this.reportFailure ? json({error:'Usage report unavailable'},503) : json({usage:[
+          {timestamp:Math.floor(Date.now()/1000)-86400,tokens:{'claude-test':1200,'codex-test':300},cost:{'claude-test':0.12,'codex-test':0.03},reportCount:2},
+          {timestamp:Math.floor(Date.now()/1000),tokens:{'claude-test':500},cost:{'claude-test':0.05},reportCount:1},
+        ]});
+      }
+      if (path === '/v1/machines/computer' && method === 'DELETE') {
+        this.machineRemoved=true;this.mutations.push('delete-machine');return json({success:true});
+      }
       if (path === '/v2/sessions') {
         await this.workspaceReady;
         if (this.workspaceFailure) return json({ error: 'Could not read the workspace. Try again.' }, 503);
@@ -205,7 +219,7 @@ export class HappyServer {
             });
       }
       if (path === '/v1/machines')
-        return json([
+        return json(this.machineRemoved ? [] : [
           {
             id: 'computer',
             active: this.machineActive,
@@ -213,7 +227,7 @@ export class HappyServer {
               this.machineMetadata,
               null,
             ),
-            metadataVersion: 1,
+            metadataVersion: this.machineVersion,
             dataEncryptionKey: null,
           },
         ]);
@@ -309,7 +323,11 @@ export class HappyServer {
         const [event, payload] = JSON.parse(match[2]);
         if (!match[1]) return;
         let answer: Json = {};
-        if (event === 'update-metadata') {
+        if (event === 'machine-update-metadata') {
+          this.machineMetadata=await this.encryption.decrypt<Json>(payload.metadata,null);
+          this.machineVersion++;this.mutations.push('rename-machine');
+          answer={result:'success',version:this.machineVersion,metadata:payload.metadata};
+        } else if (event === 'update-metadata') {
           this.mutations.push('metadata');
           const session = this.sessions.find((session) => session.id === payload.sid)!;
           session.metadata = payload.metadata;

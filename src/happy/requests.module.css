@@ -3,6 +3,8 @@
   gap: 12px;
   margin: 20px 0;
 }
+.inline { min-width: 0; padding: 8px 12px 12px; }
+.inline .card { margin: 0; }
 .card {
   min-width: 0;
   overflow-wrap: anywhere;

@@ -9,12 +9,16 @@ export class ChatAppearancePage extends ChatActionsPage {
     await expect(this.chat()).toHaveAttribute('data-chat-width', value);
     await expect.poll(async () => this.chat().evaluate((element, width) => {
       const frame = element.getBoundingClientRect();
-      const messages = element.querySelector<HTMLElement>('[data-font-size]')!.getBoundingClientRect();
+      const list = element.querySelector<HTMLElement>('[data-font-size]')!;
+      const messages = list.getBoundingClientRect();
+      const railSpace = parseFloat(getComputedStyle(list.parentElement!).paddingRight);
       const composer = element.querySelector('textarea')!.parentElement!.parentElement!.getBoundingClientRect();
       const max = width === 'full' ? Infinity : width === 'medium' ? 1120 : 880;
       const expected = Math.min(frame.width - (innerWidth < 768 ? 16 : 24), max);
-      return Math.max(Math.abs(messages.width - expected), Math.abs(composer.width - expected),
-        Math.abs(messages.left - composer.left), Math.abs(composer.left - frame.left - (frame.width - composer.width) / 2));
+      const expectedMessages = Math.min(frame.width - railSpace - (innerWidth < 768 ? 16 : 24), max);
+      return Math.max(Math.abs(messages.width - expectedMessages), Math.abs(composer.width - expected),
+        Math.abs(messages.left - frame.left - (frame.width - railSpace - messages.width) / 2),
+        Math.abs(composer.left - frame.left - (frame.width - composer.width) / 2));
     }, value)).toBeLessThanOrEqual(1);
     await expect(this.chat().getByText(/^Happy ·|^Local demo ·|% week|% context/)).toHaveCount(0);
     await expect(this.chat().getByRole('button', { name: 'Toggle context token count' })).toHaveCount(0);

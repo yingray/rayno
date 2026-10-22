@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -21,18 +22,20 @@ const NewModelPicker = lazy(() => import('./NewSessionPickers').then((module) =>
 const WorkspacePicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.WorkspacePicker })));
 
 export function NewSession() {
-  const { draft, lastAgent, modelChoices, permissionChoices, sessions, recentWorkspaces, enterToSend, dispatch, adapter, machines, mode, live } = useDemo((store) => ({
+  const t = useText();
+  const { draft, lastAgent, modelChoices, permissionChoices, sessions, recentWorkspaces, enterToSend, customCodexModel, dispatch, adapter, machines, mode, live } = useDemo((store) => ({
     draft: store.state.newDraft, lastAgent: store.state.lastAgent, modelChoices: store.state.modelChoices,
     permissionChoices: store.state.permissionChoices,
     sessions: store.state.sessions, recentWorkspaces: store.state.recentWorkspaces,
     enterToSend: store.state.preferences.enterToSend, dispatch: store.dispatch, adapter: store.adapter,
+    customCodexModel: store.state.preferences.customCodexModel,
     machines: store.machines, mode: store.mode, live: store.live,
   }));
   const navigate = useNavigate();
   const agent = draft.agent === 'Happy Agent' ? lastAgent || 'Claude' : draft.agent;
   const machine = machines.find((item) => item.id === draft.machineId);
   const cliVersion = machine?.cliVersion;
-  const metadata = useMemo(() => newSessionCatalog(agent.toLowerCase(), cliVersion), [agent, cliVersion]);
+  const metadata = useMemo(() => ({ ...newSessionCatalog(agent.toLowerCase(), cliVersion), customCodexModel }), [agent, cliVersion, customCodexModel]);
   const preferenceKey = modelChoiceKey(agent, draft.machineId);
   const selection = resolveModelChoice(metadata, [
     modelChoices?.[preferenceKey], draft,
@@ -137,12 +140,12 @@ export function NewSession() {
     }
   }
   return (
-    <section className={styles.screen} aria-label="Create session">
+    <section className={styles.screen} aria-label={t("Create session")}>
       <div className={styles.mobileHeader}>
-        <h1>New session</h1>
+        <h1>{t("New session")}</h1>
         <Button
           icon="close"
-          aria-label="Close new session"
+          aria-label={t("Close new session")}
           disabled={busy}
           onClick={() => navigate('/sessions')}
         />
@@ -150,10 +153,9 @@ export function NewSession() {
       <div className={styles.content}>
         <header className={styles.heading}>
           <span className={styles.eyebrow}>
-            <Icon name="sparklesOutline" size={14} />A LITTLE SPACE TO BUILD
-          </span>
-          <h1>New session</h1>
-          <p>Pick where the agent runs, then describe the task.</p>
+            <Icon name="sparklesOutline" size={14} />{t("A LITTLE SPACE TO BUILD")}</span>
+          <h1>{t("New session")}</h1>
+          <p>{t("Pick where the agent runs, then describe the task.")}</p>
         </header>
         <form
           onSubmit={(event) => {
@@ -168,9 +170,9 @@ export function NewSession() {
                   <Icon name="desktopOutline" size={19} />
                 </span>
                 <span className={styles.pickerText}>
-                  <span>COMPUTER</span>
+                  <span>{t("COMPUTER")}</span>
                   <select
-                    aria-label="Computer"
+                    aria-label={t("Computer")}
                     value={draft.machineId}
                     onChange={(event) =>
                       dispatch({ type: 'newDraft', value: {
@@ -180,7 +182,7 @@ export function NewSession() {
                   >
                     {machines.map((machine) => (
                       <option key={machine.id} value={machine.id} disabled={!machine.online}>
-                        {machine.name} · {machine.online ? 'online' : 'offline'}
+                        {machine.name} · {machine.online ? t("online") : t("offline")}
                       </option>
                     ))}
                   </select>
@@ -189,21 +191,21 @@ export function NewSession() {
               </label>
             </div>
             <div className={styles.agentSection}>
-              <span className={styles.sectionLabel}>CHOOSE AN AGENT</span>
+              <span className={styles.sectionLabel}>{t("CHOOSE AN AGENT")}</span>
               <AgentChoices value={agent} onChange={chooseAgent} />
             </div>
             <div className={styles.pickers}>
               <button type="button" className={`${styles.picker} ${styles.pickerButton}`}
-                aria-label="Choose model" onClick={() => setPicker('model')}>
+                aria-label={t("Choose model")} onClick={() => setPicker('model')}>
                 <Avatar agent={agent} size={34} />
-                <span className={styles.pickerText}><span>MODEL · {agent.toUpperCase()}</span>
+                <span className={styles.pickerText}><span>{t("MODEL ·")}{' '}{agent.toUpperCase()}</span>
                   <strong>{models.find((option) => option.value === model)?.label || 'No model available'}</strong></span>
                 <Icon name="chevronDown" size={14} />
               </button>
               <button type="button" className={`${styles.picker} ${styles.pickerButton}`}
-                aria-label="Choose effort" disabled={!efforts.length} onClick={() => setPicker('model')}>
+                aria-label={t("Choose effort")} disabled={!efforts.length} onClick={() => setPicker('model')}>
                 <span className={styles.pickerIcon} style={{ color: 'var(--accent-soft)' }}><Icon name="sparklesOutline" size={19} /></span>
-                <span className={styles.pickerText}><span>REASONING EFFORT</span><strong>{effortLabel(effort)}</strong></span>
+                <span className={styles.pickerText}><span>{t("REASONING EFFORT")}</span><strong>{t(effortLabel(effort))}</strong></span>
                 <Icon name="chevronDown" size={14} />
               </button>
               <label className={`${styles.picker} ${styles.widePicker} ${styles.permissionPicker}`} data-focus-frame>
@@ -211,8 +213,8 @@ export function NewSession() {
                   <Icon name="shieldCheckmarkOutline" size={19} />
                 </span>
                 <span className={styles.pickerText}>
-                  <span>PERMISSION MODE</span>
-                  <select aria-label="Permission mode" required value={permissionMode}
+                  <span>{t("PERMISSION MODE")}</span>
+                  <select aria-label={t("Permission mode")} required value={permissionMode}
                     onKeyDown={(event) => { if (event.key === 'Escape') event.stopPropagation(); }} onChange={(event) => {
                     const value = event.target.value;
                     dispatch({ type: 'rememberPermission', key: preferenceKey, value });
@@ -228,21 +230,21 @@ export function NewSession() {
                   <Icon name="folderOutline" size={19} />
                 </span>
                 <span className={styles.pickerText}>
-                  <span>WORKSPACE</span>
+                  <span>{t("WORKSPACE")}</span>
                   <input
-                    aria-label="Folder"
+                    aria-label={t("Folder")}
                     value={draft.path}
                     onChange={(event) =>
                       dispatch({ type: 'newDraft', value: { path: event.target.value } })
                     }
-                    placeholder="~/Developer/project"
+                    placeholder={t("~/Developer/project")}
                   />
-                  <button type="button" className={styles.browseWorkspaces} aria-label="Choose workspace" onClick={() => setPicker('workspace')}>
-                    {workspaces.length ? `${workspaces.length} recent workspace${workspaces.length === 1 ? '' : 's'}` : 'Choose a recent workspace'}
+                  <button type="button" className={styles.browseWorkspaces} aria-label={t("Choose workspace")} onClick={() => setPicker('workspace')}>
+                    {workspaces.length ? `${workspaces.length} recent workspace${workspaces.length === 1 ? '' : 's'}` : t("Choose a recent workspace")}
                     <Icon name="chevronDown" size={12} />
                   </button>
                 </span>
-                <button type="button" className={styles.workspaceIconButton} aria-label="Browse recent workspaces" onClick={() => setPicker('workspace')}>
+                <button type="button" className={styles.workspaceIconButton} aria-label={t("Browse recent workspaces")} onClick={() => setPicker('workspace')}>
                   <Icon name="folderOutline" size={17} />
                 </button>
               </div>
@@ -252,15 +254,15 @@ export function NewSession() {
                     <Icon name="gitBranchOutline" size={19} />
                   </span>
                   <span className={styles.pickerText}>
-                    <span>WORKTREE</span>
+                    <span>{t("WORKTREE")}</span>
                     <input
-                      aria-label="Worktree"
+                      aria-label={t("Worktree")}
                       value={draft.worktree}
                       onChange={(event) =>
                         dispatch({ type: 'newDraft', value: { worktree: event.target.value } })
                       }
                       list="worktrees"
-                      placeholder="Branch name or existing worktree path"
+                      placeholder={t("Branch name or existing worktree path")}
                     />
                     <datalist id="worktrees">
                       {mode === 'demo' && (
@@ -277,7 +279,7 @@ export function NewSession() {
             </div>
             <div className={styles.segments}>
               <Segment
-                label="Session type"
+                label={t("Session type")}
                 value={draft.type}
                 options={[
                   { value: 'Simple', label: 'Simple' },
@@ -289,8 +291,8 @@ export function NewSession() {
             <div className={styles.inputWell} data-focus-frame>
               <textarea
                 ref={taskInput}
-                aria-label="Task description"
-                placeholder="What should the agent do?"
+                aria-label={t("Task description")}
+                placeholder={t("What should the agent do?")}
                 value={draft.prompt}
                 onChange={(event) =>
                   dispatch({ type: 'newDraft', value: { prompt: event.target.value } })
@@ -318,8 +320,8 @@ export function NewSession() {
                 <input
                   ref={fileInput}
                   type="file"
-                  accept={mode === 'live' ? 'image/png,image/jpeg,image/gif,image/webp' : undefined}
-                  aria-label="Choose new session images"
+                  accept={mode === 'live' ? "image/png,image/jpeg,image/gif,image/webp" : undefined}
+                  aria-label={t("Choose new session images")}
                   multiple
                   hidden
                   onChange={(event) => {
@@ -335,21 +337,17 @@ export function NewSession() {
                   className={styles.attach}
                   icon="attachOutline"
                   variant="ghost"
-                  aria-label="Attach files to new session"
-                  title={mode === 'live' ? 'Attach images (up to 20, smaller than 10 MB each)' : undefined}
+                  aria-label={t("Attach files to new session")}
+                  title={mode === 'live' ? t("Attach images (up to 20, smaller than 10 MB each)") : undefined}
                   onClick={() => fileInput.current?.click()}
                 />
-                <span>{models.find((option) => option.value === model)?.label || 'No model available'}{effort ? ` · ${effortLabel(effort)}` : ''}</span>
+                <span>{models.find((option) => option.value === model)?.label || t('No model available')}{effort ? ` · ${t(effortLabel(effort))}` : ''}</span>
                 <button className={styles.start} type="submit" disabled={busy || !model}>
                   {busy ? (
                     <>
-                      <Spinner />
-                      Starting…
-                    </>
+                      <Spinner />{t("Starting…")}</>
                   ) : (
-                    <>
-                      Start
-                      <Icon name="arrowForward" size={16} />
+                    <>{t("Start")}<Icon name="arrowForward" size={16} />
                     </>
                   )}
                 </button>
@@ -366,8 +364,8 @@ export function NewSession() {
         <p className={styles.footnote}>
           <Icon name="shieldCheckmarkOutline" size={13} />
           {mode === 'demo'
-            ? 'Local demo. Sessions and messages stay in this browser.'
-            : 'Starts a real agent on the selected computer. Images are encrypted before upload.'}
+            ? t("Local demo. Sessions and messages stay in this browser.")
+            : t("Starts a real agent on the selected computer. Images are encrypted before upload.")}
         </p>
       </div>
       {picker === 'model' && <LazyBoundary><NewModelPicker agent={agent} model={model} models={models}

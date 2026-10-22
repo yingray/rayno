@@ -1,5 +1,5 @@
 import { partsForMessage } from '../data/messageOptions';
-import { messageReceipt, normalizeMessage, subagentOf, type MessageRecord, type SubagentMarks } from './normalize';
+import { messageReceipt, normalizeMessage, subagentOf, unplacedSubagent, type MessageRecord, type SubagentMarks } from './normalize';
 
 export type SessionAttention = {
   readSeq: number;
@@ -19,6 +19,14 @@ export function restoreAttention(value: string | null, baseline: number): Sessio
   } catch { return fallback; }
 }
 
+// Older clients could count unplaced child work as a main reply. Preserve read intent and rebuild derived counters once.
+export function restoreClassifiedAttention(value: string | null, baseline: number): SessionAttention {
+  const state=restoreAttention(value,baseline);
+  if(!value)return state;
+  try { if(JSON.parse(value)?.classificationVersion===2)return state; } catch { return state; }
+  return {...state,assistantSeq:0,userSeq:0,optionsSeq:0,inspectedSeq:-1};
+}
+
 export function mergeAttention(a: SessionAttention, b: SessionAttention): SessionAttention {
   return {
     readSeq: Math.max(a.readSeq, b.readSeq), assistantSeq: Math.max(a.assistantSeq, b.assistantSeq),
@@ -31,6 +39,8 @@ const noMarks: SubagentMarks = new Map();
 // A hidden recap request is not a user turn. It must not answer pending options.
 // Subagent work and thinking are not replies. `marks` holds the subagent bounds that the caller knows.
 export function attentionMessage(row: MessageRecord, marks = noMarks): 'user' | 'assistant' | null {
+  if(unplacedSubagent(row,marks))return null;
+  if(row.raw.role==='agent' && row.raw.content?.type==='output' && row.raw.content.data?.isSidechain) return null;
   const message = normalizeMessage(row);
   if (!message || message.recapRequest) return null;
   // A usage limit stops the agent, so it is news for the user like a reply.

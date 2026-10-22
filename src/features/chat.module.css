@@ -40,8 +40,13 @@
 }
 .header > button {
   pointer-events: auto;
+  background: linear-gradient(#1f1f24, #18181c);
+  border: 1px solid #2a2a30;
+  box-shadow: inset 0 1px #ffffff12, 0 8px 20px -10px #000;
+  transition: filter .12s, transform .12s;
 }
-.chat[data-view='chat'] > [aria-label='Conversation availability'] {
+.header > button:hover:not(:disabled) { filter: brightness(1.1); }
+.chat[data-view='chat'] > [data-offline-status] {
   position: absolute;
   top: 66px;
   left: 0;
@@ -148,10 +153,10 @@
 .messages[data-font-size='large'] {
   --font-scale: 1.15;
 }
-.chat[data-view='chat']:has(> [aria-label='Conversation availability']) .messages {
+.chat[data-view='chat']:has(> [data-offline-status]) .messages {
   padding-top: 126px;
 }
-.chat[data-view='chat']:has(> [aria-label='Conversation availability']) .messageScroll {
+.chat[data-view='chat']:has(> [data-offline-status]) .messageScroll {
   scroll-padding-top: 112px;
 }
 .conversationDate {
@@ -927,7 +932,7 @@
     padding: 4px 10px;
     gap: 8px;
   }
-  .chat[data-view='chat'] > [aria-label='Conversation availability'] {
+  .chat[data-view='chat'] > [data-offline-status] {
     top: 56px;
   }
   .back {
@@ -977,10 +982,10 @@
     padding: 68px 16px 42px;
     gap: 18px;
   }
-  .chat[data-view='chat']:has(> [aria-label='Conversation availability']) .messages {
+  .chat[data-view='chat']:has(> [data-offline-status]) .messages {
     padding-top: 100px;
   }
-  .chat[data-view='chat']:has(> [aria-label='Conversation availability']) .messageScroll {
+  .chat[data-view='chat']:has(> [data-offline-status]) .messageScroll {
     scroll-padding-top: 96px;
   }
   .conversationDate {
@@ -1156,6 +1161,7 @@
 .receivedImage img { display: block; max-width: 100%; max-height: 360px; object-fit: contain; }
 .receivedImage small { display: block; margin-top: 6px; }
 .imageDownload { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent-soft); }
+.resultAction { min-height: 44px; }
 .toolDetails { min-width: 0; width: 100%; overflow-wrap: anywhere; }
 .toolDetails summary {
   cursor: pointer;
@@ -1263,7 +1269,7 @@
 .chat[data-chat-width='standard'] { --chat-max-width: 880px; }
 .messages, .composerWrap { width: calc(100% - 2 * var(--chat-gutter)); max-width: var(--chat-max-width); }
 .messages { margin-inline: auto; padding-inline: 0; }
-.sessionMenuButton { width: 44px; height: 44px; flex: none; }
+.sessionMenuButton { width: 44px; height: 44px; flex: none; margin-left: auto; }
 @media (hover: none) and (pointer: coarse) {
   .send, .attach, .permission, .model { min-height: 44px; }
   .send, .attach { min-width: 44px; }
@@ -1287,7 +1293,7 @@
 .recapRail:empty {
   display: none;
 }
-.chat[data-view='chat']:has(> [aria-label='Conversation availability']) .recapRail {
+.chat[data-view='chat']:has(> [data-offline-status]) .recapRail {
   top: 128px;
 }
 .recapPill {
@@ -1366,7 +1372,7 @@
 .chat[data-embedded]::before { display: none; }
 .chat[data-embedded] .messages { padding-top: 24px; }
 .chat[data-embedded] .messageScroll { scroll-padding-top: 16px; }
-.chat[data-embedded] > [aria-label='Side chat availability'] {
+.chat[data-embedded] > [data-offline-status] {
   position: absolute;
   top: 0;
   left: 0;

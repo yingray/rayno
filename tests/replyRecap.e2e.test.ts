@@ -42,7 +42,7 @@ test('recap card should render collapsed, expand, and keep the open state after 
     await expect(recap.rail()).toHaveCount(0);
     await expect(recap.pill()).toBeHidden();
   } else {
-    await expect(recap.rail().getByRole('button')).toHaveText(['1', '2', '3']);
+    await expect(recap.rail().getByRole('button')).toHaveText(['1']);
     await expect(recap.pill()).toBeEnabled();
   }
   // Act
@@ -55,7 +55,7 @@ test('recap card should render collapsed, expand, and keep the open state after 
   await expect(recap.card().getByRole('button', { name: /^Jump to point \d$/ })).toHaveText(['1', '2', '3']);
   await expect(recap.card()).toContainText(testInfo.project.use.isMobile
     ? 'Tap a phrase to jump to that part of the reply'
-    : 'Tap a phrase or a pin on the right to jump to that part of the reply');
+    : 'Tap a phrase to jump to that part of the reply');
   await page.reload();
   await expect(recap.card()).toHaveAttribute('data-state', 'open');
   await recap.capture(`${testInfo.project.name}-reply-recap`);
@@ -77,8 +77,7 @@ test('recap jump should scroll the message list to the code block and flash it',
   const code = page.locator('figure').filter({ hasText: 'manual.capturedAt > session.capturedAt' });
   const before = (await recap.conversationPosition()).top;
   // Act
-  if (testInfo.project.use.isMobile) await recap.activate(recap.phrase('A newer manual reading now wins'), touch);
-  else await recap.rail().getByRole('button', { name: 'Jump to point 2', exact: true }).click();
+  await recap.activate(recap.phrase('A newer manual reading now wins'), touch);
   // Assert
   await expect(code).toHaveClass(/flash/);
   await recap.expectInView(code);
@@ -86,7 +85,6 @@ test('recap jump should scroll the message list to the code block and flash it',
   expect(await recap.scrollIntoViewCalls()).toBe(0);
   await expect(recap.phrase('A newer manual reading now wins')).toHaveAttribute('data-active', 'true');
   if (!testInfo.project.use.isMobile)
-    await expect(recap.rail().getByRole('button', { name: 'Jump to point 2', exact: true })).toHaveAttribute('data-active', 'true');
   await expect(code).not.toHaveClass(/flash/, { timeout: 3000 });
   // Act
   await recap.scrollToLatest();
@@ -119,7 +117,6 @@ test('recap voice should follow boundary events, pause, resume, and stop when th
   await expect(recap.phrase('The merge kept the older session reading')).toHaveAttribute('data-active', 'false');
   await expect(recap.card().getByRole('button', { name: 'Jump to point 2', exact: true })).toHaveAttribute('data-active', 'true');
   if (desktop) {
-    await expect(recap.rail().getByRole('button', { name: 'Jump to point 2', exact: true })).toHaveAttribute('data-active', 'true');
     await expect(recap.card().getByTestId('recap-time')).toHaveText(/^0:0\d \/ 0:0\d$/);
   } else {
     await expect(recap.card().getByTestId('recap-time')).toBeHidden();
@@ -538,7 +535,7 @@ test('recap clamp should show the full text when keyboard focus reaches a hidden
   const describedBy = await recap.phrase('12 tests pass').getAttribute('aria-describedby');
   await expect(page.locator(`[id="${describedBy}"]`)).toHaveText(testInfo.project.use.isMobile
     ? 'Tap a phrase to jump to that part of the reply'
-    : 'Tap a phrase or a pin on the right to jump to that part of the reply');
+    : 'Tap a phrase to jump to that part of the reply');
 });
 
 test('recap rail pins should stay inside the rail and keep their own hit areas', async ({ page }, testInfo) => {
@@ -559,27 +556,18 @@ test('recap rail pins should stay inside the rail and keep their own hit areas',
   await recap.scrollToLatest();
   // Act
   const pins = recap.rail().getByRole('button');
-  await expect(pins).toHaveText(['1', '2', '3']);
-  const layout = await recap.rail().evaluate((rail) => {
-    const host = rail.getBoundingClientRect();
-    const composer = document.querySelector('[aria-label="Chat session"] [data-focus-frame]')!.getBoundingClientRect();
-    return [...rail.querySelectorAll('button')].map((pin) => {
-      const box = pin.getBoundingClientRect();
-      const x = box.left + box.width / 2;
-      const hits = [box.top + 2, box.top + box.height / 2, box.bottom - 2]
-        .map((y) => document.elementFromPoint(x, y)?.closest('button')?.textContent || null);
-      return { top: box.top, inside: box.top >= host.top - 0.5 && box.bottom <= host.bottom + 0.5 && box.bottom <= composer.top, hits, label: pin.textContent };
-    });
-  });
+  await expect(pins).toHaveText(Array.from({length:9},(_,index)=>String(index+1)));
+  const layout = [];
+  for (const pin of await pins.all()) layout.push(await recap.pinLayout(pin));
   // Assert
-  expect(layout.map((pin) => pin.inside)).toEqual([true, true, true]);
-  expect(layout.map((pin) => pin.hits)).toEqual([['1', '1', '1'], ['2', '2', '2'], ['3', '3', '3']]);
+  expect(layout.every(pin => pin.inside)).toBe(true);
+  expect(layout.map(pin => pin.hits)).toEqual(Array.from({length:9},(_,index)=>Array(3).fill(String(index+1))));
   if (testInfo.project.use.hasTouch) {
     expect(layout[1].top - layout[0].top).toBeGreaterThanOrEqual(46);
     expect(layout[2].top - layout[1].top).toBeGreaterThanOrEqual(46);
   }
   // Act
-  await recap.activate(pins.nth(0), !!testInfo.project.use.hasTouch);
+  await recap.activate(pins.nth(8), !!testInfo.project.use.hasTouch);
   // Assert
-  await expect(page.locator('article p').filter({ hasText: 'Alpha step passed.' })).toHaveClass(/flash/);
+  await expect(page.locator('article[data-message-id]').filter({hasText:'Alpha step passed.'})).toHaveClass(/flash/);
 });

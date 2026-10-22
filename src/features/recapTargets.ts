@@ -2,7 +2,7 @@ import { normalizeQuote, recapNeedles } from '../data/recapQuote';
 import styles from './recap.module.css';
 
 // Paragraphs, list items, headings, code blocks, tables, and tool rows can be targets.
-const BLOCKS = 'p, li, h1, h2, h3, h4, h5, h6, figure, [aria-label="Markdown table"]';
+const BLOCKS = 'p, li, h1, h2, h3, h4, h5, h6, figure, [data-markdown-table]';
 const FLASH_TIME = 1200;
 const flashTimers = new WeakMap<HTMLElement, number>();
 
@@ -16,13 +16,13 @@ export function findRecapTarget(root: ParentNode, messageId: string, quote: stri
   if (!needles.length || !article) return null;
   const scopes: Element[] = [article];
   for (let node = article.previousElementSibling; node && !node.matches('[data-role="user"]'); node = node.previousElementSibling) {
-    if (node.matches('[aria-label="Tool activity"]')) scopes.push(node);
+    if (node.matches('[data-tool-activity]')) scopes.push(node);
   }
   let best: HTMLElement | null = null;
   let length = Infinity;
   for (const scope of scopes) {
     for (const element of scope.querySelectorAll<HTMLElement>(BLOCKS)) {
-      if (element.closest('[data-recap-card], [aria-label="Reply options"]')) continue;
+      if (element.closest('[data-recap-card], [data-reply-options]')) continue;
       const text = normalizeQuote(element.textContent || '');
       if (text.length < length && needles.some((needle) => text.includes(needle))) {
         best = element;
@@ -36,7 +36,7 @@ export function findRecapTarget(root: ParentNode, messageId: string, quote: stri
 // A tool row in a collapsed group has no box. Its group stands in for it.
 export function visibleTarget(element: HTMLElement): HTMLElement {
   return element.getClientRects().length ? element
-    : element.closest<HTMLElement>('[aria-label="Tool activity"]') || element;
+    : element.closest<HTMLElement>('[data-tool-activity]') || element;
 }
 
 // The top of an element in the scroll content, independent of the scroll position.
@@ -50,7 +50,7 @@ function flash(element: HTMLElement) {
   // Restart the animation when the same target gets a second jump.
   void element.offsetWidth;
   element.classList.add(styles.flash);
-  if (element.closest('[aria-label="Tool activity"]')) element.classList.add(styles.flashInset);
+  if (element.closest('[data-tool-activity]')) element.classList.add(styles.flashInset);
   flashTimers.set(element, window.setTimeout(() => {
     element.classList.remove(styles.flash, styles.flashInset);
     flashTimers.delete(element);
@@ -62,7 +62,7 @@ function flash(element: HTMLElement) {
  * A target in a collapsed tool group opens the group first.
  */
 export function jumpToRecapTarget(scroll: HTMLElement, element: HTMLElement) {
-  const group = element.closest('[aria-label="Tool activity"]');
+  const group = element.closest('[data-tool-activity]');
   const toggle = group?.querySelector<HTMLButtonElement>(':scope > button[aria-expanded="false"]');
   if (toggle && !element.getClientRects().length) toggle.click();
   requestAnimationFrame(() => {

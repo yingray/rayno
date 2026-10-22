@@ -179,9 +179,11 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         )
       )
         preferences.bubble = parsed.preferences.bubble as typeof preferences.bubble;
-      for (const key of ['compactTools', 'enterToSend', 'recapAutoplay'] as const)
+      for (const key of ['compactTools', 'enterToSend', 'recapAutoplay', 'alwaysShowContextSize'] as const)
         if (typeof parsed.preferences[key] === 'boolean')
           preferences[key] = parsed.preferences[key];
+      if (parsed.preferences.language === 'en' || parsed.preferences.language === 'zh-TW') preferences.language = parsed.preferences.language;
+      if (typeof parsed.preferences.customCodexModel === 'string') preferences.customCodexModel = parsed.preferences.customCodexModel.trim().slice(0, 200);
       if (parsed.preferences.avatar === 'provider' || parsed.preferences.avatar === 'initials')
         preferences.avatar = parsed.preferences.avatar;
       if (parsed.preferences.recap === 'auto' || parsed.preferences.recap === 'manual')

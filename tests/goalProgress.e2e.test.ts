@@ -188,9 +188,9 @@ test('a running subagent TodoWrite should not replace the todo chip after a relo
   // Act
   await page.reload();
   await workspace.expectConnected();
-  await workspace.openGoalChat();
+  await workspace.openNestedGoalChat();
   // Assert
-  // The newest page does not hold the subagent start, so the transcript shows the call as a main row.
+  // The newest page uses the cached start. The text stays readable inside subagent work.
   await expect(page.getByText('I updated the todo list.', { exact: true })).toBeVisible();
   await expect(workspace.todoChip(0, 1)).toHaveCount(0);
   await expect(workspace.dock()).toHaveCount(0);

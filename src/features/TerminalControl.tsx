@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { useEffect, useRef, useState } from 'react';
 import { Button, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
@@ -7,6 +8,7 @@ import styles from './chat.module.css';
 
 // Happy Web ChatFooter.tsx: a local-mode CLI shows its permission prompts in the terminal only.
 export function TerminalControl({ session, disabled }: { session: Session; disabled: boolean }) {
+  const t = useText();
   const { live } = useDemo((store) => ({ live: store.live }));
   const [state, setState] = useState<'sending' | 'waiting' | null>(null);
   const [error, setError] = useState('');
@@ -32,14 +34,14 @@ export function TerminalControl({ session, disabled }: { session: Session; disab
       setState(null);
     } finally { sending.current = false; }
   }
-  return <div className={styles.terminalControl} role="group" aria-label="Terminal control">
+  return <div className={styles.terminalControl} role="group" aria-label={t("Terminal control")}>
     <Icon name="terminalOutline" size={16} />
     <p role="status">
-      {state === 'waiting' ? 'Waiting for the terminal…' : 'The terminal controls this session'}
-      <small>Permission requests show in the terminal. Send a message or take control to continue here.</small>
+      {state === 'waiting' ? t("Waiting for the terminal…") : t("The terminal controls this session")}
+      <small>{t("Permission requests show in the terminal. Send a message or take control to continue here.")}</small>
     </p>
     <Button className={styles.takeControl} disabled={disabled || !!state} onClick={() => void take()}>
-      {state === 'sending' ? 'Taking control…' : 'Take control'}
+      {state === 'sending' ? t("Taking control…") : t("Take control")}
     </Button>
     {error && <p role="alert">{error}</p>}
   </div>;

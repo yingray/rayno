@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Button, copyText, Dialog, Icon } from '../components/ui';
@@ -21,6 +22,7 @@ export function SessionInfo({
   onClose: () => void;
   embedded?: boolean;
 }) {
+  const t = useText();
   const { adapter, notify, machines, mode, newDraft, metadata, dispatch, live, parentKnown } = useDemo((store) => ({
     parentKnown: !!session.parentSessionId && store.state.sessions.some((item) => item.id === session.parentSessionId),
     adapter: store.adapter, notify: store.notify, machines: store.machines, mode: store.mode,
@@ -148,20 +150,20 @@ export function SessionInfo({
     }]),
   ];
   return (
-    <section className={styles.info} aria-label="Session details">
+    <section className={styles.info} aria-label={t("Session details")}>
       {!embedded && (
         <header className={styles.header}>
           <Button
             className={styles.back}
             icon="arrowBack"
-            aria-label="Back to chat"
+            aria-label={t("Back to chat")}
             onClick={onClose}
           />
-          <h1>Session info</h1>
+          <h1>{t("Session info")}</h1>
           <Button
             className={styles.close}
             icon="close"
-            aria-label="Close session info"
+            aria-label={t("Close session info")}
             onClick={onClose}
           />
         </header>
@@ -179,7 +181,7 @@ export function SessionInfo({
               <strong>{titleOf(session)}</strong>
               <span style={{ color: machine?.online ? 'var(--green)' : 'var(--muted)' }}>
                 <i />
-                {machine?.online ? 'Online' : 'Offline'} · {session.agent}
+                {machine?.online ? t("Online") : t("Offline")} · {session.agent}
                 {session.terminalControl && ' · Terminal control'}
               </span>
             </div>
@@ -195,14 +197,14 @@ export function SessionInfo({
                 );
               }}
             >
-              <label htmlFor="session-name">Custom title</label>
+              <label htmlFor="session-name">{t("Custom title")}</label>
               <input
                 id="session-name"
                 data-escape-local
-                aria-label="Session name"
+                aria-label={t("Session name")}
                 value={name}
                 autoFocus
-                placeholder="Use the agent title"
+                placeholder={t("Use the agent title")}
                 onChange={(event) => setName(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
@@ -211,12 +213,10 @@ export function SessionInfo({
                   }
                 }}
               />
-              <p>Leave empty to use the agent title.</p>
+              <p>{t("Leave empty to use the agent title.")}</p>
               <div>
-                <Button onClick={() => setRenaming(false)}>Cancel</Button>
-                <Button type="submit" variant="accent" disabled={busy}>
-                  Save name
-                </Button>
+                <Button onClick={() => setRenaming(false)}>{t("Cancel")}</Button>
+                <Button type="submit" variant="accent" disabled={busy}>{t("Save name")}</Button>
               </div>
             </form>
           ) : (
@@ -228,12 +228,10 @@ export function SessionInfo({
               }}
             >
               <Icon name="pencilOutline" size={16} />
-              <span>
-                Rename
-                <small>
+              <span>{t("Rename")}<small>
                   {session.customTitle
-                    ? 'Clear the name to use the agent title'
-                    : 'Set a custom title'}
+                    ? t("Clear the name to use the agent title")
+                    : t("Set a custom title")}
                 </small>
               </span>
               <Icon name="chevronForwardOutline" size={13} />
@@ -253,7 +251,7 @@ export function SessionInfo({
             </button>
           ))}
         </div>
-        <span className={styles.sectionLabel}>SESSION ACTIONS</span>
+        <span className={styles.sectionLabel}>{t("SESSION ACTIONS")}</span>
         {needsResume && <ResumeSession session={session} />}
         <div className={styles.actions}>
           {actions.filter((action) => action.label !== 'Hand Off' || handoff).map((action) => (
@@ -274,14 +272,14 @@ export function SessionInfo({
         <p className={styles.localNote}>
           <Icon name="shieldCheckmarkOutline" size={12} />
           {mode === 'demo'
-            ? 'Demo session · stored on this device'
-            : 'Happy session · changes sync across clients'}
+            ? t("Demo session · stored on this device")
+            : t("Happy session · changes sync across clients")}
         </p>
       </div>
       <footer className={styles.bottom}>
         {archiveLabel && (
           <Button icon="archiveOutline" disabled={busy} onClick={archive}>
-            {archiveLabel === 'Close side chat' ? 'Close' : session.archived ? 'Restore' : 'Archive'}
+            {archiveLabel === 'Close side chat' ? t("Close") : session.archived ? t("Restore") : t("Archive")}
           </Button>
         )}
         {!bot && <Button
@@ -289,24 +287,22 @@ export function SessionInfo({
           icon="trashOutline"
           disabled={busy}
           onClick={() => setConfirm('delete')}
-        >
-          Delete
-        </Button>}
+        >{t("Delete")}</Button>}
       </footer>
       {cleanup.dialog}
       {confirm && !cleanup.prompting && (
         <Dialog
-          title={confirm === 'delete' ? 'Delete this session?' : 'Stop this session?'}
+          title={confirm === 'delete' ? t("Delete this session?") : t("Stop this session?")}
           onClose={() => setConfirm(null)}
         >
           <p>
             {confirm === 'delete'
               ? mode === 'demo'
-                ? 'This removes the session and its messages from this browser. This action cannot be undone.'
-                : 'This permanently deletes the session and messages from Happy on every client. This action cannot be undone.'
+                ? t("This removes the session and its messages from this browser. This action cannot be undone.")
+                : t("This permanently deletes the session and messages from Happy on every client. This action cannot be undone.")
               : mode === 'demo'
-                ? 'This stops the simulated agent response. Your conversation stays available.'
-                : 'This terminates the real agent session. Your conversation stays available.'}
+                ? t("This stops the simulated agent response. Your conversation stays available.")
+                : t("This terminates the real agent session. Your conversation stays available.")}
           </p>
           {error && (
             <p role="alert" style={{ color: '#fca5a5' }}>
@@ -314,11 +310,9 @@ export function SessionInfo({
             </p>
           )}
           <footer>
-            <Button disabled={busy} onClick={() => setConfirm(null)}>
-              Cancel
-            </Button>
+            <Button disabled={busy} onClick={() => setConfirm(null)}>{t("Cancel")}</Button>
             <Button
-              variant={confirm === 'delete' ? 'danger' : 'accent'}
+              variant={confirm === 'delete' ? "danger" : "accent"}
               disabled={busy}
               onClick={() =>
                 void run(
@@ -335,7 +329,7 @@ export function SessionInfo({
                 )
               }
             >
-              {confirm === 'delete' ? 'Delete session' : 'Stop session'}
+              {confirm === 'delete' ? t("Delete session") : t("Stop session")}
             </Button>
           </footer>
         </Dialog>

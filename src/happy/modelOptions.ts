@@ -62,6 +62,9 @@ export function modelOptions(metadata: Json, configured = currentModel(metadata)
       : !metadata.flavor || metadata.flavor === 'claude' ? CLAUDE_MODELS : [];
     options = catalog.map(([value, label]) => ({ value, label }));
   }
+  const custom = metadata.customCodexModel;
+  if (metadata.flavor === 'codex' && isConcreteModel(custom) && !options.some(option => option.value === custom))
+    options.push({ value: custom, label: custom });
   if (isConcreteModel(configured) && !options.some((option) => option.value === configured))
     options.push({ value: configured, label: configured, disabled: rig });
   return options.filter((option, index) => options.findIndex((other) => other.value === option.value) === index);

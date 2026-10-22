@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { useCallback, useRef, useState } from 'react';
 import { Button, Dialog } from '../components/ui';
 import { useDemo } from '../data/store';
@@ -8,13 +9,14 @@ import styles from './sessionPrompts.module.css';
 export function FolderApprovalDialog({ directory, machineName, busy = false, error = '', onCancel, onCreate }: {
   directory: string; machineName?: string; busy?: boolean; error?: string; onCancel: () => void; onCreate: () => void;
 }) {
-  return <Dialog title="Create this folder?" className={styles.prompt} onClose={() => { if (!busy) onCancel(); }}>
-    <p>This folder does not exist on {machineName || 'the selected computer'}. Create it and start the session?</p>
+  const t = useText();
+  return <Dialog title={t("Create this folder?")} className={styles.prompt} onClose={() => { if (!busy) onCancel(); }}>
+    <p>{t("This folder does not exist on")}{' '}{machineName || 'the selected computer'}{t(". Create it and start the session?")}</p>
     <code className={styles.path}>{directory}</code>
     {error && <p role="alert">{error}</p>}
     <footer>
-      <Button disabled={busy} onClick={onCancel}>Cancel</Button>
-      <Button variant="accent" icon="folderOutline" disabled={busy} onClick={onCreate}>{busy ? 'Starting…' : 'Create folder'}</Button>
+      <Button disabled={busy} onClick={onCancel}>{t("Cancel")}</Button>
+      <Button variant="accent" icon="folderOutline" disabled={busy} onClick={onCreate}>{busy ? t("Starting…") : t("Create folder")}</Button>
     </footer>
   </Dialog>;
 }

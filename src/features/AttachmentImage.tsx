@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { useEffect, useRef, useState } from 'react';
 import { Button, Dialog } from '../components/ui';
 import { useDemo } from '../data/store';
@@ -6,6 +7,7 @@ import { messageError } from '../happy/errors';
 import styles from './chat.module.css';
 
 export function AttachmentImage({ sessionId, file }: { sessionId: string; file: Attachment }) {
+  const t = useText();
   const live = useDemo(store => store.live);
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
@@ -33,11 +35,11 @@ export function AttachmentImage({ sessionId, file }: { sessionId: string; file: 
   return <div ref={frame} className={styles.receivedImage}>
     {url ? <button aria-label={`Open image ${file.name}`} onClick={() => setOpen(true)}>
       <img src={url} alt={file.name} loading="lazy" />
-    </button> : error ? <><p role="alert">{error}</p><Button onClick={() => setAttempt(value => value + 1)}>Retry image</Button></> : <span>Load image…</span>}
+    </button> : error ? <><p role="alert">{error}</p><Button onClick={() => setAttempt(value => value + 1)}>{t("Retry image")}</Button></> : <span>{t("Load image…")}</span>}
     <small>{file.name}</small>
     {open && url && <Dialog className={styles.imageDialog} title={file.name} onClose={() => setOpen(false)}>
       <img className={styles.attachmentPreview} src={url} alt={file.name} />
-      <a className={styles.imageDownload} href={url} download={file.name}>Download image</a>
+      <a className={styles.imageDownload} href={url} download={file.name}>{t("Download image")}</a>
     </Dialog>}
   </div>;
 }

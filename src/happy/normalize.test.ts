@@ -487,6 +487,7 @@ describe('CLI record formats', () => {
     // Assert
     expect(messages.map((message) => message.id)).toEqual(['task']);
     expect(messages[0]!.tools).toEqual(['Task']);
+    expect(messages[0]!.toolCalls![0].children!.map(child=>child.content)).toEqual(['<options><option>Search more</option></options>']);
   });
   it('should keep main replies that the CLI tags with the id of a finished subagent', () => {
     // Arrange

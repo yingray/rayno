@@ -6,6 +6,15 @@ export class GoalProgressPage extends LiveWorkspacePage {
     await this.page.goto('/session/real-session');
     await expect(this.page.getByText('I updated the todo list.', { exact: true })).toBeVisible();
   }
+  async openNestedGoalChat() {
+    await this.page.goto('/session/real-session');
+    const group=this.page.getByRole('region',{name:'Tool activity',exact:true});
+    await expect(this.page.locator('article[data-message-id]').filter({hasText:'I updated the todo list.'})).toHaveCount(0);
+    const toggle=group.getByRole('button',{name:/Tool activity/});
+    if(await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
+    await group.locator('summary').filter({hasText:'Find config'}).click();
+    await expect(group.getByRole('list',{name:'Subagent work',exact:true})).toContainText('I updated the todo list.');
+  }
   dock() { return this.page.getByRole('group', { name: 'Session progress', exact: true }); }
   goal(text: string, progress = '') {
     return this.dock().getByRole('button', { name: `Current goal${progress ? `, ${progress}` : ''}: ${text}`, exact: true });

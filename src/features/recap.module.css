@@ -274,6 +274,7 @@
 }
 .railPin {
   position: absolute;
+  left: calc(50% - 10px);
   top: 0;
   width: 20px;
   height: 20px;
@@ -292,6 +293,9 @@
   cursor: pointer;
   pointer-events: auto;
 }
+.railScroller { position: absolute; inset: 0 -13px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; pointer-events: auto; touch-action: pan-y; }
+.railScroller::-webkit-scrollbar { display: none; }
+.railContent { position: relative; width: 100%; }
 .railPin:hover {
   filter: brightness(1.15);
 }

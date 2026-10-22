@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { highlightCode } from './syntaxHighlight';
@@ -18,6 +19,7 @@ function renderToken(token: Tokens[number], index: number): ReactNode {
 export const CodeBlock = memo(function CodeBlock({ source, language, filename, notify }: {
   source: string; language: string; filename: string; notify: (message: string) => void;
 }) {
+  const t = useText();
   const frame = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
   const [highlight, setHighlight] = useState<{ source: string; language: string; tokens?: Tokens }>();
@@ -55,9 +57,8 @@ export const CodeBlock = memo(function CodeBlock({ source, language, filename, n
         <span>{filename === 'Code' ? label : filename}</span>
         {filename !== 'Code' && language && <small>{language}</small>}
       </span>
-      <button type="button" aria-label="Copy code" onClick={() => void copyText(source, notify)}>
-        <Icon name="copyOutline" size={15} />Copy
-      </button>
+      <button type="button" aria-label={t("Copy code")} onClick={() => void copyText(source, notify)}>
+        <Icon name="copyOutline" size={15} />{t("Copy")}</button>
     </figcaption>
     <pre role="region" aria-label={`${label} code`} tabIndex={0} onKeyDown={event => {
       if (event.target !== event.currentTarget || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;

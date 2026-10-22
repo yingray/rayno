@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button, copyText, Dialog, Icon } from '../components/ui';
 import { renderDiagram } from './mermaidClient';
@@ -11,6 +12,7 @@ const zoomStep = 1.5;
 const DiagramViewer = memo(function DiagramViewer({ url, naturalWidth, onClose }: {
   url: string; naturalWidth: number; onClose: () => void;
 }) {
+  const t = useText();
   const view = useRef<HTMLDivElement>(null);
   const [fitScale, setFitScale] = useState(1);
   // Scale is relative to the diagram's own size, so 100% shows labels at their real size.
@@ -34,18 +36,16 @@ const DiagramViewer = memo(function DiagramViewer({ url, naturalWidth, onClose }
     return () => observer.disconnect();
   }, [naturalWidth]);
   const zoom = (next: number) => setScale(Math.min(maximumZoom, Math.max(fitScale, next)));
-  return <Dialog title="Mermaid diagram" className={styles.fullscreen} onClose={onClose}>
-    <div ref={view} className={styles.fullscreenView} role="region" aria-label="Full screen diagram" tabIndex={0}>
+  return <Dialog title={t("Mermaid diagram")} className={styles.fullscreen} onClose={onClose}>
+    <div ref={view} className={styles.fullscreenView} role="region" aria-label={t("Full screen diagram")} tabIndex={0}>
       <img src={url} alt="Mermaid diagram" style={{ width: `${Math.round(naturalWidth * scale)}px` }} />
     </div>
     <footer className={styles.zoomBar}>
-      <Button icon="remove" aria-label="Zoom out" disabled={scale <= fitScale}
+      <Button icon="remove" aria-label={t("Zoom out")} disabled={scale <= fitScale}
         onClick={() => zoom(scale / zoomStep)} />
-      <Button aria-label="Fit diagram to screen" disabled={scale === fitScale} onClick={() => zoom(fitScale)}>
-        Fit
-      </Button>
+      <Button aria-label={t("Fit diagram to screen")} disabled={scale === fitScale} onClick={() => zoom(fitScale)}>{t("Fit")}</Button>
       <span aria-live="polite">{Math.round(scale * 100)}%</span>
-      <Button icon="add" aria-label="Zoom in" disabled={scale >= maximumZoom}
+      <Button icon="add" aria-label={t("Zoom in")} disabled={scale >= maximumZoom}
         onClick={() => zoom(scale * zoomStep)} />
     </footer>
   </Dialog>;
@@ -54,6 +54,7 @@ const DiagramViewer = memo(function DiagramViewer({ url, naturalWidth, onClose }
 export const MermaidDiagram = memo(function MermaidDiagram({ source, notify }: {
   source: string; notify: (message: string) => void;
 }) {
+  const t = useText();
   const viewport = useRef<HTMLDivElement>(null);
   const expand = useRef<HTMLButtonElement>(null);
   const [visible, setVisible] = useState(false);
@@ -110,22 +111,20 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source, notify }: {
   }, [naturalWidth]);
 
   const scrolls = !!current?.url && !fit;
-  return <figure className={styles.diagram} aria-label="Mermaid preview" aria-busy={!current}
-    data-fit={fit ? 'fit' : 'scroll'}>
+  return <figure className={styles.diagram} aria-label={t("Mermaid preview")} aria-busy={!current}
+    data-fit={fit ? "fit" : "scroll"}>
     <div className={styles.header}>
-      <span>Mermaid</span>
+      <span>{t("Mermaid")}</span>
       <span className={styles.actions}>
         {scrolls && (
-          <button ref={expand} aria-label="Open diagram full screen" onClick={() => setExpanded(true)}>
-            <Icon name="expandOutline" size={13} />Expand
-          </button>
+          <button ref={expand} aria-label={t("Open diagram full screen")} onClick={() => setExpanded(true)}>
+            <Icon name="expandOutline" size={13} />{t("Expand")}</button>
         )}
-        <button aria-label="Copy diagram source" onClick={() => void copyText(source, notify)}>
-          <Icon name="copyOutline" size={13} />Copy
-        </button>
+        <button aria-label={t("Copy diagram source")} onClick={() => void copyText(source, notify)}>
+          <Icon name="copyOutline" size={13} />{t("Copy")}</button>
       </span>
     </div>
-    <div ref={viewport} className={styles.viewport} role="region" aria-label="Mermaid diagram" tabIndex={0}
+    <div ref={viewport} className={styles.viewport} role="region" aria-label={t("Mermaid diagram")} tabIndex={0}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
         const offset = { ArrowLeft: [-64, 0], ArrowRight: [64, 0], ArrowUp: [0, -64], ArrowDown: [0, 64] }[event.key];
@@ -136,9 +135,9 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source, notify }: {
       {current?.url ? <img src={current.url} alt="Mermaid diagram" decoding="async"
         onLoad={(event) => setNaturalWidth(event.currentTarget.naturalWidth)}
         onError={() => setResult({ source, error: true })} />
-        : <p role="status">{current?.error ? 'Diagram preview unavailable. Read the source below.' : 'Render diagram…'}</p>}
+        : <p role="status">{current?.error ? t("Diagram preview unavailable. Read the source below.") : t("Render diagram…")}</p>}
     </div>
-    {scrolls && <p className={styles.swipeHint}>Swipe for more <Icon name="arrowForward" size={12} /></p>}
+    {scrolls && <p className={styles.swipeHint}>{t("Swipe for more")}{' '}<Icon name="arrowForward" size={12} /></p>}
     {expanded && current?.url && (
       <DiagramViewer url={current.url} naturalWidth={naturalWidth} onClose={() => {
         setExpanded(false);
@@ -150,7 +149,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source, notify }: {
       }} />
     )}
     <details className={styles.source} open={!!current?.error}>
-      <summary>Mermaid source</summary>
+      <summary>{t("Mermaid source")}</summary>
       <pre><code>{source}</code></pre>
     </details>
   </figure>;

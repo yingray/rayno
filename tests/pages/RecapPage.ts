@@ -5,7 +5,17 @@ type SpeechLog = { spoken: { text: string; lang: string; rate: number }[]; calls
 
 export class RecapPage extends LiveWorkspacePage {
   card() { return this.page.getByTestId('recap-card'); }
-  rail() { return this.page.getByTestId('recap-rail'); }
+  rail() { return this.page.getByTestId('response-rail'); }
+  async pinLayout(pin:Locator) {
+    await pin.scrollIntoViewIfNeeded();
+    return pin.evaluate(element=>{
+      const box=element.getBoundingClientRect(),host=element.closest('nav')!.getBoundingClientRect();
+      const composer=document.querySelector('[data-chat-session] [data-focus-frame]')!.getBoundingClientRect();
+      const x=box.left+box.width/2;
+      return {top:(element as HTMLElement).offsetTop,inside:box.top>=host.top-.5&&box.bottom<=host.bottom+.5&&box.bottom<=composer.top,
+        hits:[box.top+2,box.top+box.height/2,box.bottom-2].map(y=>document.elementFromPoint(x,y)?.closest('button')?.textContent||null)};
+    });
+  }
   ghost() { return this.page.getByTestId('recap-ghost'); }
   pill() { return this.page.getByTestId('recap-pill'); }
   chevron(card = this.card()) { return card.getByRole('button', { name: /^(Show|Hide) recap details$/ }); }

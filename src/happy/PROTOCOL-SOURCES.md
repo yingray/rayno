@@ -36,8 +36,10 @@ Trailing user text and inline or incomplete examples remain visible. Stop accept
 RPC replies from older CLIs; other reads still require JSON. Encrypted RPC errors reach the caller.
 
 Message records follow `sync/typesRaw.ts` for these CLI shapes. A Claude prompt typed in the terminal shows as a user message.
-Claude meta prompts, compact summaries, and legacy sidechain output records do not show in the main thread and do not change attention.
-Rayno does not attach those legacy records to the parent tool call. Session envelopes with a `subagent` field go under their
+Claude meta prompts and compact summaries do not show in the main thread or change attention.
+Legacy sidechain records nest through `parent_tool_use_id`, a matching Task/Agent prompt, or their UUID chain.
+Records without a known parent retain a separate child-work row.
+They do not change main-thread attention. Session envelopes with a `subagent` field go under their
 parent tool call (see the subagent paragraph below). Agent `service` text shows as agent text. ACP `file-edit` is a tool call, and ACP
 `terminal-output` is a tool result that shows only when it matches a call. As in `sync/typesRaw.ts`, a Claude tool result
 uses the stored `toolUseResult` when it is set, as text or a structured value. The tool_result text stays as `resultText`.
@@ -59,7 +61,8 @@ no answers for a completed AskUserQuestion (`components/tools/views/AskUserQuest
 `components/tools/views/*`, and `utils/toolResult.ts`: Bash stdout/stderr and exit status, Edit/MultiEdit/Write
 `structuredPatch` diffs (or the edit arguments before a result), Read file ranges, Grep/Glob files and matches,
 Task/Agent reports, TodoWrite `newTodos`, AskUserQuestion `answers`, WebFetch, and WebSearch. Images and
-`originalFile` do not render. Unknown values show the tool_result text, else JSON. Diffs show at most 400 lines.
+`originalFile` render as verified raster previews and collapsed source disclosures. Unknown values show the tool_result text, else JSON.
+Diffs show 400 lines initially. Incremental expansion gives access to every reported line.
 
 `toolDecisions.ts` follows `sync/reducer/reducer.ts` and `components/tools/PermissionFooter.tsx`. A tool call shows the
 past permission reply from `agentState.completedRequests`, joined by `toolUseId` or the request ID. A legacy tool_result
@@ -70,9 +73,9 @@ AskUserQuestion answers come from the legacy result `answers` map, keyed by ques
 `completedCommunications` forms join by `toolUseId` (`sync/agentCommunications.ts`). Answers show in a group above the
 tool rows, so the row does not repeat them.
 
-Unlike v1 (`sync/reducer/reducer.ts`), a completed request without a loaded tool call does not add a placeholder row.
-The effect: a denied or aborted Codex command does not show in the transcript. The Codex mapper does not map
-`exec_approval_request` (`codex/utils/sessionProtocolMapper.ts`), so a command has a tool call only after approval.
+Like v1 (`sync/reducer/reducer.ts`), denied or canceled requests without a loaded call add a decision row.
+`toolHistory.ts` labels them as requests that did not execute. It searches nested calls to prevent duplicate rows.
+The Codex mapper does not map `exec_approval_request` (`codex/utils/sessionProtocolMapper.ts`), so a command has a tool call only after approval.
 
 Agent events follow `components/MessageView.tsx` `AgentEventBlock`, `sync/typesRaw.ts` `agentEventSchema`, and
 `sync/reducer/reducer.ts`. The CLI writes them with `api/apiSession.ts` `sendSessionEvent` as a legacy
@@ -97,7 +100,7 @@ passes the subagent id on through `parentUuid` (`claude/utils/sdkToLogConverter.
 and all later main rows of the turn carry it too. v1 nests those main rows as well and hides the main answer. Rayno uses the
 `start` and `stop` events instead (`markSubagents`, `subagentOf` in `normalize.ts`): a tagged row belongs to the subagent only
 between its start and its stop. After the stop it is a main row. A subagent `service` event (Codex collab state) always belongs
-to the subagent. When no bound is on the loaded rows, the row stays in the main thread, so a main answer never disappears.
+to the subagent. A completed Claude Task/Agent call can supply a missing stop when its start is known.
 The Codex mapper (`codex/utils/sessionProtocolMapper.ts`, `collabArgs`) puts the same `sessionSubagent` in every collab call
 (`spawnAgent`, `sendInput`, `wait`, `closeAgent`). Like `toolCallToMessageId` in the tracer, each subagent row goes under the
 latest of those calls before it, or under the first call when it comes before all of them, so every row shows only once.
@@ -111,8 +114,24 @@ subagent still places them. With the bounds, the client saves `read`: the seq ra
 `start` without a known `stop` counts only for rows that the client can connect to it without a gap (the read range and the
 loaded pages). Otherwise its stop can be in rows that the client did not read, so the tagged rows stay main rows: a scan that
 stops above the start, or a cache whose range ends before the saved attention boundary, never hides a main answer. A row
-whose bound is not known (no cache, or a damaged entry) also stays a main row. The transcript still places rows only from
-the bounds on the loaded pages.
+whose bound is not known stays readable with an explanation and no reply options or recap actions.
+The transcript, context reading, and todo chip share trusted bounds from loaded pages, background scans, and the encrypted cache.
+Attention scans read older pages when tagged rows lack bounds, even beyond a previously inspected boundary.
+
+Pending forms and Claude AskUserQuestion use the existing communication and permission contracts.
+`Requests.tsx` matches a visible tool call by request ID or `toolUseId` and renders the form inside its activity group.
+Unmatched or nested unloaded calls retain the fallback request panel. No answer is invented for completed Claude state that omits answers.
+
+Historical usage follows `sync/apiUsage.ts` and `happy-server/sources/app/api/routes/usageRoutes.ts`:
+`POST /v1/usage/query` accepts Unix-second `startTime`/`endTime`, optional `sessionId`, and `hour`/`day` grouping.
+The response contains independent token and cost maps by model. Rayno uses reported cost in USD and keeps reports in component memory.
+Computer management follows `sync/ops.ts`, `sync/sync.ts`, and `machineRoutes.ts`: encrypted `machine-update-metadata`
+uses `expectedVersion`; `stop-daemon` uses machine RPC; `DELETE /v1/machines/:id` removes registration and preserves session history.
+Rename retries version conflicts without dropping unknown metadata fields.
+
+Language, always-visible context, and the custom Codex model ID remain in Rayno preferences.
+The custom ID is an explicit model choice; account/provider availability can still reject it.
+`responseAnchors.ts` and `RecapRail.tsx` are Rayno UI behavior: one rail anchor per formal response start, independent of recap points.
 
 Thinking follows the `thinking` content of `sync/typesRaw.ts`: Claude `thinking` chunks, session `text` events with
 `thinking: true`, and ACP `thinking` records (stream chunks that join without a break). Rayno also treats Codex and ACP
@@ -171,6 +190,8 @@ Session attention is an independent Rayno implementation over session `seq`, enc
 formal agent-state requests/communications, and parsed reply options. Background scans use the existing
 v3 paginated message-read contract. Read cursors live only in Rayno account-scoped browser storage and
 merge monotonically across tabs. They do not read or write v1's frontend store or cloud read receipts.
+Attention records use `classificationVersion: 2`. Older records retain the user's read cursor and rebuild derived
+user/reply/options counters from history, so an old false child-option badge does not survive the parser fix.
 
 The browser tab follows `sync/webTabTitle.ts` and `components/web/FaviconPermissionIndicator.tsx`. Rayno counts listed
 sessions with the unread or needs-input state above, so the `(N)` prefix clears when the user reads or answers the

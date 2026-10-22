@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo } from 'react';
 import type { ContextUsage } from '../data/types';
 import styles from './chat.module.css';
@@ -35,14 +36,15 @@ function Ring({ percent }: { percent: number }) {
 
 // Happy shows context under the input only near the limit unless alwaysShowContextSize is on.
 // Rayno has no usage footer, so the composer gets only that warning.
-export const ContextWarning = memo(function ContextWarning({ context }: { context?: ContextUsage }) {
+export const ContextWarning = memo(function ContextWarning({ context, always = false }: { context?: ContextUsage; always?: boolean }) {
+  const t = useText();
   const status = contextStatus(context);
-  if (!status?.tone) return null;
+  if (!status || (!always && !status.tone)) return null;
   return (
-    <div className={styles.contextWarning} role="meter" aria-label="Context window" data-tone={status.tone}
+    <div className={styles.contextWarning} role="meter" aria-label={t("Context window")} data-tone={status.tone}
       aria-valuenow={status.percent} aria-valuemin={0} aria-valuemax={100}
       aria-valuetext={`${status.percent}% used, ${status.used} of ${status.total} tokens`}>
-      <span>{status.percent}% context</span>
+      <span>{status.percent}{t("% context")}</span>
       <span className={styles.contextTokens}>{status.used} / {status.total}</span>
       <Ring percent={status.percent} />
     </div>
@@ -51,16 +53,17 @@ export const ContextWarning = memo(function ContextWarning({ context }: { contex
 
 // The full reading, in the Model & effort sheet.
 export const ContextMeter = memo(function ContextMeter({ context }: { context?: ContextUsage }) {
+  const t = useText();
   const status = contextStatus(context);
   if (!status) return null;
   return (<>
-    <h3>Context</h3>
-    <div className={styles.context} role="meter" aria-label="Context window" data-tone={status.tone}
+    <h3>{t("Context")}</h3>
+    <div className={styles.context} role="meter" aria-label={t("Context window")} data-tone={status.tone}
       aria-valuenow={status.percent} aria-valuemin={0} aria-valuemax={100}
       aria-valuetext={`${status.percent}% used, ${status.used} of ${status.total} tokens`}>
       <Ring percent={status.percent} />
-      <span>{status.percent}% used</span>
-      <span className={styles.contextTokens}>{status.used} / {status.total} tokens</span>
+      <span>{status.percent}{t("% used")}</span>
+      <span className={styles.contextTokens}>{status.used} / {status.total}{' '}{t("tokens")}</span>
     </div>
   </>);
 });

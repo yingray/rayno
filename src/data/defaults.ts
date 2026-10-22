@@ -13,6 +13,9 @@ export const defaultNewDraft: NewSessionDraft = {
   prompt: '',
 };
 export const defaultPreferences: Preferences = {
+  language: 'en',
+  alwaysShowContextSize: false,
+  customCodexModel: '',
   bubble: 'rayno',
   fontSize: 'medium',
   chatWidth: 'medium',

@@ -9,10 +9,10 @@ export const isRejected = (message: Message) => message.delivery?.status === 're
 // A held or rejected message never started a turn, as in Happy Web utils/agentTurns.ts.
 export function unansweredMessageIds(messages: readonly Message[]): Set<string> {
   const lastUser = messages.findLastIndex((message) => message.role === 'user' && !message.recapRequest && !message.delivery);
-  return new Set(messages.slice(lastUser + 1).map((message) => message.id));
+  return new Set(messages.slice(lastUser + 1).filter(message => !message.unplaced).map((message) => message.id));
 }
 
-const hasContent = (message: Message) => !!message.content.trim() || !!message.attachments?.length;
+const hasContent = (message: Message) => !message.unplaced && (!!message.content.trim() || !!message.attachments?.length);
 
 // True when a manual recap request has no agent answer yet. Any agent reply with content answers the oldest request.
 // A real user turn closes older requests that got no answer.

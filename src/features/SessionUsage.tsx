@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useEffect, useId, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Icon, Spinner } from '../components/ui';
@@ -12,6 +13,7 @@ const mainWindow = (reading: UsageReading) => reading.week ?? reading.fiveHour;
 const mainLabel = (reading: UsageReading) => (reading.week ? 'weekly' : '5-hour');
 
 export const SessionUsage = memo(function SessionUsage() {
+  const t = useText();
   const location = useLocation();
   const sessionId = location.pathname.split('/')[2];
   const { mode, usage, live, usageLoading, usageErrors, connection, machines, agent, machineId, adapter } = useDemo((store) => {
@@ -79,9 +81,9 @@ export const SessionUsage = memo(function SessionUsage() {
   function windowRow(reading: UsageReading, window: UsageWindow, name: string, label: string) {
     return (
       <div className={styles.window}>
-        <div><span>{name}</span><b style={{ color: tone(reading, window) || undefined }}>{window.usedPercent}% used</b></div>
+        <div><span>{name}</span><b style={{ color: tone(reading, window) || undefined }}>{window.usedPercent}{t("% used")}</b></div>
         {bar(reading, window, label)}
-        <p>Resets {window.reset}</p>
+        <p>{t("Resets")}{' '}{window.reset}</p>
       </div>
     );
   }
@@ -96,12 +98,12 @@ export const SessionUsage = memo(function SessionUsage() {
   }
 
   return (
-    <footer ref={root} className={styles.usage} aria-label="Agent usage">
+    <footer ref={root} className={styles.usage} aria-label={t("Agent usage")}>
       {open && (
-        <section id={id} className={styles.details} aria-label="Usage details">
+        <section id={id} className={styles.details} aria-label={t("Usage details")}>
           <header>
-            <div><h2>Agent usage</h2><p>{mode === 'demo' ? 'Sample plan readings' : '5-hour and weekly plan limits'}</p></div>
-            <Button icon={loading ? undefined : 'refreshOutline'} aria-label="Refresh usage"
+            <div><h2>{t("Agent usage")}</h2><p>{mode === 'demo' ? t("Sample plan readings") : t("5-hour and weekly plan limits")}</p></div>
+            <Button icon={loading ? undefined : "refreshOutline"} aria-label={t("Refresh usage")}
               disabled={loading || !canRead} onClick={() => void refresh()}>
               {loading && <Spinner />}
             </Button>
@@ -113,17 +115,17 @@ export const SessionUsage = memo(function SessionUsage() {
                 <div><strong>{agent}</strong><span>{reading.machineName || (mode === 'demo' ? 'Demo' : 'Computer not reported')}</span></div>
                 {reading.fiveHour && windowRow(reading, reading.fiveHour, '5-hour limit', '5-hour')}
                 {reading.week && windowRow(reading, reading.week, 'Weekly limit', 'weekly')}
-                <p>{stale(reading) ? 'Stale reading · ' : ''}{mode === 'demo' ? 'Simulated data' : reading.capturedAt ? `Read ${new Date(reading.capturedAt).toLocaleString()}` : 'Not read yet'}</p>
+                <p>{stale(reading) ? t("Stale reading · ") : ''}{mode === 'demo' ? t("Simulated data") : reading.capturedAt ? `Read ${new Date(reading.capturedAt).toLocaleString()}` : t("Not read yet")}</p>
               </div>
-            )) : <p className={styles.empty} key={agent}>{agent} · {loading ? 'Reading…' : 'No usage reported'}</p>;
+            )) : <p className={styles.empty} key={agent}>{agent} · {loading ? t("Reading…") : t("No usage reported")}</p>;
           })}
           {usageErrors?.map((error, index) => <p className={styles.error} role="alert" key={index}>{error}</p>)}
-          {!canRead && <p className={styles.empty}>Connect a computer to refresh usage.</p>}
-          <p className={styles.note}>The white line marks an even pace over each window.</p>
-          <Button variant="ghost" icon="pulseOutline" onClick={() => { setOpen(false); navigate('/monitor'); }}>Open Monitor</Button>
+          {!canRead && <p className={styles.empty}>{t("Connect a computer to refresh usage.")}</p>}
+          <p className={styles.note}>{t("The white line marks an even pace over each window.")}</p>
+          <Button variant="ghost" icon="pulseOutline" onClick={() => { setOpen(false); navigate('/monitor'); }}>{t("Open Monitor")}</Button>
         </section>
       )}
-      <button ref={trigger} className={styles.capsule} aria-label="Agent usage summary"
+      <button ref={trigger} className={styles.capsule} aria-label={t("Agent usage summary")}
         aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen((value) => !value)}>
         {agents.map((currentAgent) => {
           const reading = latest(currentAgent);
@@ -137,11 +139,11 @@ export const SessionUsage = memo(function SessionUsage() {
               <img className={styles.agentIcon} src={`/icons/${currentAgent === 'Claude' ? 'claude' : 'codex'}.png`} alt={currentAgent} />
               {reading ? bar(reading) : <span className={styles.bar}><span className={styles.track} /></span>}
               <b style={{ color: reading ? tone(reading) || undefined : undefined }}>{main ? `${main.usedPercent}%` : '—'}</b>
-              {reading && !reading.week && <small className={styles.window5h} aria-hidden="true">5h</small>}
+              {reading && !reading.week && <small className={styles.window5h} aria-hidden="true">{t("5h")}</small>}
             </span>
           );
         })}
-        {loading ? <Spinner /> : <Icon name={open ? 'chevronUp' : 'chevronDown'} size={13} />}
+        {loading ? <Spinner /> : <Icon name={open ? "chevronUp" : "chevronDown"} size={13} />}
       </button>
     </footer>
   );

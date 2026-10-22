@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { FocusEvent } from 'react';
 import { copyText, Icon } from '../components/ui';
@@ -39,6 +40,7 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
   onJump: (messageId: string, index: number) => void;
   notify: (message: string) => void;
 }) {
+  const t = useText();
   const bodyId = useId();
   const hintId = useId();
   const [open, setOpen] = useState(() => openSet().has(messageId));
@@ -77,11 +79,11 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
   return (
     <section
       className={styles.card}
-      aria-label="Recap"
+      aria-label={t("Recap")}
       data-recap-card
       data-testid="recap-card"
       data-message-id={messageId}
-      data-state={expanded ? 'open' : 'closed'}
+      data-state={expanded ? "open" : "closed"}
       data-manual={value?.manual || undefined}
       aria-busy={writing || undefined}
     >
@@ -90,22 +92,19 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
           <button
             type="button"
             className={styles.play}
-            aria-label={status === 'playing' ? 'Pause recap' : 'Play recap'}
+            aria-label={status === 'playing' ? t("Pause recap") : t("Play recap")}
             onClick={() => toggleRecapSpeech(messageId, recap)}
           >
-            <Icon name={status === 'playing' ? 'pause' : 'play'} size={15} />
+            <Icon name={status === 'playing' ? "pause" : "play"} size={15} />
           </button>
         )}
         <span className={styles.label}>
-          <Icon name="sparkles" size={13} />
-          Recap
-        </span>
+          <Icon name="sparkles" size={13} />{t("Recap")}</span>
         {writing ? (
-          <span className={`${styles.summary} ${styles.writing}`} role="status">Writing recap…</span>
+          <span className={`${styles.summary} ${styles.writing}`} role="status">{t("Writing recap…")}</span>
         ) : expanded ? (
           <span className={styles.meta}>
-            {value!.manual ? 'Manual recap' : 'Auto after long replies'} · {recap!.text.length} chars
-          </span>
+            {value!.manual ? t("Manual recap") : t("Auto after long replies")} · {recap!.text.length}{' '}{t("chars")}</span>
         ) : (
           <span className={styles.summary}>{recap?.text}</span>
         )}
@@ -118,13 +117,13 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
           <button
             type="button"
             className={styles.chevron}
-            aria-label={expanded ? 'Hide recap details' : 'Show recap details'}
+            aria-label={expanded ? t("Hide recap details") : t("Show recap details")}
             aria-expanded={expanded}
             aria-controls={bodyId}
             onClick={toggleOpen}
           >
             {/* The design points the chevron up on a closed card and down on an open card. */}
-            <Icon name={expanded ? 'chevronDown' : 'chevronUp'} size={15} />
+            <Icon name={expanded ? "chevronDown" : "chevronUp"} size={15} />
           </button>
         )}
       </div>
@@ -165,21 +164,21 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
           </div>
           {long && (
             <button type="button" className={styles.more} aria-expanded={more} onClick={() => setMore(!more)}>
-              {more ? 'Show less' : 'Show more'}
+              {more ? t("Show less") : t("Show more")}
             </button>
           )}
           <div className={styles.hint}>
             <Icon name="handLeftOutline" size={12} />
             {/* One hint element, so the phrase description matches the layout. Phones have no pin rail. */}
             <span className={styles.hintText} id={hintId}>
-              {desktop ? 'Tap a phrase or a pin on the right to jump to that part of the reply' : 'Tap a phrase to jump to that part of the reply'}
+              {desktop ? t("Tap a phrase to jump to that part of the reply") : t("Tap a phrase to jump to that part of the reply")}
             </span>
             {supported && (
               <button
                 type="button"
                 className={`${styles.tool} ${styles.rate}`}
                 aria-label={`Reading speed ${rateLabel(speech.rate)}`}
-                title="Change the reading speed"
+                title={t("Change the reading speed")}
                 onClick={cycleRecapRate}
               >
                 {rateLabel(speech.rate)}
@@ -188,7 +187,7 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
             <button
               type="button"
               className={styles.tool}
-              aria-label="Copy recap"
+              aria-label={t("Copy recap")}
               onClick={() => void copyText(recap.text, notify)}
             >
               <Icon name="copyOutline" size={14} />
@@ -201,17 +200,16 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
 });
 
 export function RecapButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  const t = useText();
   return (
     <button
       type="button"
       className={styles.ghost}
-      aria-label="Recap this reply"
+      aria-label={t("Recap this reply")}
       data-testid="recap-ghost"
       disabled={disabled}
       onClick={onClick}
     >
-      <Icon name="sparkles" size={13} />
-      Recap
-    </button>
+      <Icon name="sparkles" size={13} />{t("Recap")}</button>
   );
 }

@@ -321,3 +321,34 @@ Voice, general file uploads, bot management, social features, and a browser term
 - Width choices survive reloads in both live and demo modes, and drafts remain intact. Responsive interactions cover 320/360/390/430px phones, 360x350 short height, and 844x390 landscape. The new selector uses 16px text and a single 1px focus indicator. Touch composer controls remain at least 44px in landscape.
 - Connection checks now observe the chat's connection state without requiring a visible footer. WebKit touch measurements round to a hundredth of a CSS pixel to avoid a false failure at 43.999992px.
 - Session mutations use the isolated backend fixture. This follow-up did not resume or start a real agent.
+
+## Happy Web parity and gap tracking (2026-10-23)
+
+The [gap tracker](docs/happy-web-gap-tracker.md) preserves all 54 items from the original audit, later findings, and selected requests.
+Each row records a stable ID, status, reason, and source or test evidence. It also distinguishes deliberate product choices from missing features.
+
+This change adds historical usage reports, computer management, advanced preferences, inline tool questions, more result views, and subagent recovery.
+The header uses its title capsule for info and gives the menu the same surface. The rail anchors formal response starts without a recap.
+Dense rails scroll internally so that touch targets do not overlap. Recap phrase links retain their existing behavior.
+
+Protocol checks cover encrypted rename conflicts, 204 removal responses, authenticated usage queries, and exact model IDs in spawn and send payloads.
+Subagent checks cover older pages, encrypted caches, missing stops, legacy parent IDs, unresolved work, and old false attention counters.
+The attention migration preserves the user's read cursor and rebuilds derived counters. It does not change Happy app state.
+
+Responsive interactions cover 320, 360, 390, and 430px phones, a 390x360 keyboard viewport, and 844x390 landscape.
+Checks include 44px targets, 16px fields, reachable dialog actions, form scrolling, inline answers, and unchanged safe-area behavior.
+Chromium and WebKit cover desktop and touch contexts. Screenshots include the 320px report, 390px question, and short Chinese conversation.
+
+The complete browser run and a final run of affected paths form the delivery evidence.
+The first run found old width assertions that did not reserve rail space, and a test that expected child text in the main thread.
+The revised assertions check the reserved space, nested child content, and real action reachability. They do not relax the viewport or touch requirements.
+Type checking, the production build, and 459 unit tests passed. The final affected-path run passed 231 cases, with 5 conditional skips.
+Across the complete and final runs, 1,010 unique cases passed and 54 have project-specific skips. No failure remains.
+See the gap tracker for the per-run counts and delivery evidence.
+
+The fixtures perform no writes to a real computer or session. No live daemon stop, machine removal, or real model turn ran during verification.
+A physical iOS keyboard, installed iOS PWA, and Cloudflare production deployment remain outside these checks.
+Seven known findings and five deferred features remain open in the tracker. Passing these checks does not close those items.
+
+The existing previews on Tailscale ports 5178 and 5179 serve the tested build. The gap tracker links both URLs.
+The preview check used a working-tree build before this commit, so that build displays the base commit ID.

@@ -308,7 +308,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   const turnless = envelope?.role === 'agent' && !envelope.turn
     && !(event.t === 'service' && !text(event.text).trim() && envelope.usage)
     && event.t !== 'user-message-accepted' && event.t !== 'user-message-rejected';
-  if (output?.isMeta || output?.isCompactSummary || output?.isSidechain || turnless) {
+  if (output?.isMeta || output?.isCompactSummary || turnless) {
     normalizedMessages.set(row, null);
     return null;
   }
@@ -440,13 +440,27 @@ export function normalizeMessage(row: MessageRecord): Message | null {
 // Subagent start and stop markers by session `seq` (true marks a start), and the title from the start.
 export type SubagentMarks = Map<string, { title?: string; bounds: Map<number, boolean> }>;
 export function markSubagents(marks: SubagentMarks, rows: Iterable<MessageRecord>): SubagentMarks {
-  for (const row of rows) {
+  const list = [...rows];
+  for (const row of list) {
     const envelope = sessionEnvelope(record(row.raw)), event = record(envelope?.ev), id = envelope?.subagent;
     if (typeof id !== 'string' || !id || (event.t !== 'start' && event.t !== 'stop') || !Number.isSafeInteger(row.seq)) continue;
     let entry = marks.get(id);
     if (!entry) marks.set(id, entry = { bounds: new Map() });
     entry.bounds.set(row.seq, event.t === 'start');
     if (event.t === 'start' && text(event.title).trim()) entry.title = text(event.title).trim();
+  }
+  // A completed Claude Agent call also ends its child work. This preserves the main answer when the stop record is lost.
+  const parents = new Map<string, string>();
+  for (const row of list) {
+    const event = record(sessionEnvelope(record(row.raw))?.ev), id = record(event.args).sessionSubagent;
+    if (event.t === 'tool-call-start' && ['Agent', 'Task'].includes(event.name) && typeof id === 'string') parents.set(event.call, id);
+  }
+  for (const row of [...list].sort((a,b) => a.seq - b.seq)) {
+    const event = record(sessionEnvelope(record(row.raw))?.ev), id = parents.get(event.call);
+    const entry = id ? marks.get(id) : undefined;
+    if (event.t !== 'tool-call-end' || !entry) continue;
+    const prior = [...entry.bounds].filter(([seq]) => seq < row.seq).sort((a,b) => b[0]-a[0])[0];
+    if (prior?.[1]) entry.bounds.set(row.seq, false);
   }
   return marks;
 }
@@ -507,12 +521,16 @@ export function subagentOf(row: MessageRecord, marks: SubagentMarks): string | u
   }
   return (before !== undefined ? bounds!.get(before) : after !== undefined && !bounds!.get(after)) ? id : undefined;
 }
+export function unplacedSubagent(row: MessageRecord, marks: SubagentMarks): boolean {
+  const id=sessionEnvelope(record(row.raw))?.subagent;
+  return typeof id==='string' && !!id && !marks.has(id);
+}
 const shows = (message: Message) => !!(message.content.trim() || message.tools?.length || message.attachments?.length);
 const onlyThinking = (message: Message) => message.role === 'assistant' && !!message.thinking && !shows(message)
   && !message.toolResults?.length && !message.settings;
 // Happy Web sync/reducer/reducer.ts: a receipt puts its user message at the place where the agent took it.
 // With `holdUntilAccepted`, a message that expects a receipt stays pending at the end until the receipt comes.
-export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false): Message[] {
+export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false, known?: SubagentMarks, from?: number): Message[] {
   const seen = new Set<string>();
   const sorted = [...rows]
     .sort((a, b) => a.seq - b.seq)
@@ -522,7 +540,8 @@ export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false
       seen.add(key);
       return true;
     });
-  const marks = markSubagents(new Map(), sorted);
+  const saved: SubagentMarks = new Map([...known || []].map(([id, entry]) => [id, { ...entry, bounds: new Map(entry.bounds) }]));
+  const marks = trustedSubagentMarks(markSubagents(saved, sorted), from ?? sorted[0]?.seq ?? 0);
   const reasoning = new Set(sorted.map(row => reasoningCall(record(row.raw))).filter((id): id is string => id !== undefined));
   // Like the v1 reducer, subagent rows go under the tool call that names them in `sessionSubagent`.
   const receipts = new Map<string, { seq: number; reason?: string }>();
@@ -545,11 +564,28 @@ export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false
   const work = new Map<string, { seq: number; message: Message }[]>();
   const seqs = new WeakMap<Message, number>();
   const standalone = new WeakSet<Message>();
+  const legacyOwners = new Map<string,string>();
+  const legacyParents: {id:string;prompt:string;title:string}[] = [];
   for (const row of sorted) {
     const normalized = normalizeMessage(row);
     if (!normalized) continue;
-    const subagent = subagentOf(row, marks);
-    if (!subagent) { const item = settle(row, normalized); placed.push(item); seqs.set(item.message, row.seq); continue; }
+    const raw=record(row.raw), data=raw.role==='agent'&&raw.content?.type==='output'?record(raw.content.data):{};
+    for(const call of normalized.toolCalls||[]) if(['Task','Agent'].includes(call.tool||call.name))
+      legacyParents.push({id:call.id,prompt:text(record(call.input).prompt).trim(),title:text(record(call.input).description,call.name)});
+    let legacy: string|undefined;
+    if(data.isSidechain){
+      const prompt=data.type==='user'&&typeof data.message?.content==='string'?data.message.content.trim():'';
+      const direct=text(data.parent_tool_use_id);
+      const parent=legacyParents.findLast(call=>(!!direct&&call.id===direct)||(!!prompt&&call.prompt===prompt));
+      legacy=direct||legacyOwners.get(text(data.parentUuid))||parent?.id||`legacy:${text(data.agentId||data.sessionId||data.uuid,row.id)}`;
+      if(typeof data.uuid==='string')legacyOwners.set(data.uuid,legacy);
+      if(!marks.has(legacy))marks.set(legacy,{title:parent?.title||'Subagent',bounds:new Map()});
+    }
+    const subagent = legacy || subagentOf(row, marks);
+    if (!subagent) {
+      const item = settle(row, unplacedSubagent(row, marks) ? { ...normalized, unplaced: true } : normalized);
+      placed.push(item); seqs.set(item.message, row.seq); continue;
+    }
     let list = work.get(subagent);
     if (!list) {
       work.set(subagent, list = []);
@@ -646,18 +682,18 @@ const contextResets = new Set(['Context was reset', 'Compaction completed']);
  * The context use of the main thread, as in Happy sync/reducer/reducer.ts processUsageData.
  * The newest usage wins, and a later record wins a tie. A reset or compaction clears it. Subagent usage does not count.
  */
-export function contextUsage(rows: Iterable<MessageRecord>): ContextUsage | undefined {
+export function contextUsage(rows: Iterable<MessageRecord>, known?: SubagentMarks, from?: number): ContextUsage | undefined {
   let latest: (ContextUsage & { at: number }) | undefined;
   const sorted = [...rows].sort((a, b) => a.seq - b.seq);
   // The Claude mapper also tags main rows after a subagent with its id, so only rows inside the subagent bounds are skipped.
-  const marks = markSubagents(new Map(), sorted);
+  const marks = trustedSubagentMarks(markSubagents(restoreSubagentMarks(saveSubagentMarks(known ?? new Map())), sorted), from ?? sorted[0]?.seq ?? Infinity);
   for (const row of sorted) {
     const raw = record(row.raw), content = record(raw.content);
     const envelope = raw.role === 'session' ? record(content.type === 'session' ? content.data : content)
       : content.type === 'session' ? record(content.data) : null;
     let usage: Json | null = null, at = row.createdAt;
     if (envelope) {
-      if (envelope.role !== 'agent' || subagentOf(row, marks)) continue;
+      if (envelope.role !== 'agent' || subagentOf(row, marks) || unplacedSubagent(row, marks)) continue;
       usage = record(envelope.usage);
       if (typeof envelope.time === 'number') at = envelope.time;
     } else if (raw.role === 'agent' && content.type === 'output') {

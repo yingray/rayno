@@ -81,7 +81,7 @@ export function recapView(messages: readonly Message[]): RecapView {
   let turnTools: string[] = [];
   for (const message of messages) {
     // A rejected message never reached the agent. A rejected recap request stays visible with its reason.
-    if (isRejected(message)) continue;
+    if (isRejected(message) || message.unplaced) continue;
     if (message.role === 'user') {
       if (message.recapRequest) {
         hidden.add(message.id);

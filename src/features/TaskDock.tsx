@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useEffect, useId, useState } from 'react';
 import { Button, Dialog, Icon } from '../components/ui';
 import { messageError } from '../happy/errors';
@@ -17,6 +18,7 @@ export const TaskDock = memo(function TaskDock({ goal, todos, disabled, onGoalAc
   disabled: boolean;
   onGoalAction: (params: { action: GoalAction; objective?: string }) => Promise<void>;
 }) {
+  const t = useText();
   const [dialog, setDialog] = useState<'goal' | 'edit' | 'todos' | null>(null);
   const [busy, setBusy] = useState<GoalAction | null>(null);
   const [error, setError] = useState('');
@@ -59,18 +61,18 @@ export const TaskDock = memo(function TaskDock({ goal, todos, disabled, onGoalAc
     </Button>
   ));
   const todoLabel = `${progress.done} of ${progress.total} tasks done`;
-  const status = busy && <p className={styles.status} role="status">Wait for the agent to confirm the goal change…</p>;
+  const status = busy && <p className={styles.status} role="status">{t("Wait for the agent to confirm the goal change…")}</p>;
   const alert = error && <p className={styles.error} role="alert">{error}</p>;
 
   return (
     <>
-      <div className={styles.dock} role="group" aria-label="Session progress">
+      <div className={styles.dock} role="group" aria-label={t("Session progress")}>
         {goal && (
           <button type="button" className={styles.goal} aria-label={`Current goal${goalProgress ? `, ${goalProgress}` : ''}: ${goal.text}`} title={goal.text}
             onClick={() => setDialog('goal')}>
             <Icon name="locateOutline" size={16} />
             <span className={styles.goalText}>
-              <small>Current goal{goalProgress ? ` · ${goalProgress}` : ''}</small>
+              <small>{t("Current goal")}{goalProgress ? ` · ${goalProgress}` : ''}</small>
               <strong>{goal.text}</strong>
             </span>
           </button>
@@ -80,7 +82,7 @@ export const TaskDock = memo(function TaskDock({ goal, todos, disabled, onGoalAc
             onClick={() => setDialog('todos')}>
             <Icon name="listOutline" size={15} />
             <b>{progress.done}/{progress.total}</b>
-            {!goal && <span>{progress.current ? progress.current.content : 'Tasks'}</span>}
+            {!goal && <span>{progress.current ? progress.current.content : t("Tasks")}</span>}
           </button>
         )}
         {actionButtons(true)}
@@ -88,43 +90,43 @@ export const TaskDock = memo(function TaskDock({ goal, todos, disabled, onGoalAc
       {!dialog && status}
       {!dialog && alert}
       {dialog === 'goal' && goal && (
-        <Dialog className={styles.dialog} title="Current goal" onClose={() => setDialog(null)}>
+        <Dialog className={styles.dialog} title={t("Current goal")} onClose={() => setDialog(null)}>
           <p className={styles.fullGoal}>{goal.text}</p>
           {goalProgress && <p className={styles.meta}>{goalProgress}</p>}
           {goal.progress?.steps && (
-            <TodoList label="Goal steps" todos={goal.progress.steps.map(step => ({ content: step.text, status: step.status }))} />
+            <TodoList label={t("Goal steps")} todos={goal.progress.steps.map(step => ({ content: step.text, status: step.status }))} />
           )}
-          {disabled && goal.actions.length > 0 && <p className={styles.meta}>Connect to the agent to change this goal.</p>}
+          {disabled && goal.actions.length > 0 && <p className={styles.meta}>{t("Connect to the agent to change this goal.")}</p>}
           {status}
           {alert}
           {goal.actions.length > 0 && <footer>{actionButtons(false)}</footer>}
         </Dialog>
       )}
       {dialog === 'edit' && goal && (
-        <Dialog className={styles.dialog} title="Edit goal" onClose={() => { if (!busy) setDialog(null); }}>
+        <Dialog className={styles.dialog} title={t("Edit goal")} onClose={() => { if (!busy) setDialog(null); }}>
           <form className={styles.editForm} onSubmit={(event) => { event.preventDefault(); void run('edit', draft); }}>
-            <label htmlFor={fieldId}>Goal</label>
+            <label htmlFor={fieldId}>{t("Goal")}</label>
             <textarea id={fieldId} data-escape-local rows={4} value={draft} disabled={!!busy}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Escape' && !busy) { event.stopPropagation(); setDialog(null); }
               }} />
-            <p className={styles.meta}>The agent receives the new goal. It replaces the current goal.</p>
+            <p className={styles.meta}>{t("The agent receives the new goal. It replaces the current goal.")}</p>
             {status}
             {alert}
             <footer>
-              <Button disabled={!!busy} onClick={() => setDialog(null)}>Cancel</Button>
+              <Button disabled={!!busy} onClick={() => setDialog(null)}>{t("Cancel")}</Button>
               <Button type="submit" variant="accent" disabled={!!busy || disabled || !draft.trim()}>
-                {busy === 'edit' ? 'Saving…' : 'Save'}
+                {busy === 'edit' ? t("Saving…") : t("Save")}
               </Button>
             </footer>
           </form>
         </Dialog>
       )}
       {dialog === 'todos' && (
-        <Dialog className={styles.dialog} title="Todo list" onClose={() => setDialog(null)}>
+        <Dialog className={styles.dialog} title={t("Todo list")} onClose={() => setDialog(null)}>
           <p className={styles.meta}>{todoLabel}</p>
-          <TodoList label="Todo items" todos={todos} />
+          <TodoList label={t("Todo items")} todos={todos} />
         </Dialog>
       )}
     </>

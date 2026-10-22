@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Empty, Icon } from '../components/ui';
@@ -27,6 +28,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
   settings: () => MessageSettings;
   onClose: () => void;
 }) {
+  const t = useText();
   const { sessions, live, adapter, mode, dispatch, notify, connection, offline, machineOnline, machineName } = useDemo((store) => ({
     sessions: store.state.sessions, live: store.live, adapter: store.adapter, mode: store.mode, dispatch: store.dispatch,
     notify: store.notify, connection: store.snapshot?.connection, offline: store.snapshot?.offline,
@@ -99,13 +101,13 @@ export function SideChats({ parent, layout, settings, onClose }: {
   const openFull = (chat: Session) => navigate(`/session/${chat.id}`);
 
   const newButton = layout === 'panel'
-    ? <Button className={styles.iconButton} icon="add" aria-label="New side chat" title={unavailable || 'New side chat'}
+    ? <Button className={styles.iconButton} icon="add" aria-label={t("New side chat")} title={unavailable || 'New side chat'}
       disabled={!!busy || !!unavailable} onClick={() => void create()} />
     : <Button className={styles.newButton} variant="accent" icon="add" disabled={!!busy || !!unavailable} onClick={() => void create()}>
-      {busy === 'create' ? 'Starting…' : 'New side chat'}
+      {busy === 'create' ? t("Starting…") : t("New side chat")}
     </Button>;
   const notice = <>
-    {busy === 'create' && <p className={styles.status} role="status">Start a side chat on the original computer…</p>}
+    {busy === 'create' && <p className={styles.status} role="status">{t("Start a side chat on the original computer…")}</p>}
     {error && !folder && <p className={styles.error} role="alert">{error}</p>}
     {unavailable && <p className={styles.reason}>{unavailable}</p>}
   </>;
@@ -126,7 +128,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
     </li>;
   };
   const closedList = closed.length > 0 && <details className={styles.closed}>
-    <summary>Closed side chats ({closed.length})</summary>
+    <summary>{t("Closed side chats (")}{closed.length})</summary>
     <ul className={styles.rows}>{closed.map(row)}</ul>
   </details>;
   // Cancel drops the copied conversation, so a later side chat copies the current conversation again.
@@ -135,36 +137,36 @@ export function SideChats({ parent, layout, settings, onClose }: {
   const intro = 'Ask a side question with this conversation as context. Side chats stay out of the session list, and the parent chat does not change.';
 
   if (layout !== 'panel') return (
-    <section className={styles.list} data-layout={layout} aria-label="Side chats">
+    <section className={styles.list} data-layout={layout} aria-label={t("Side chats")}>
       {layout === 'page' && <header className={styles.pageHeader}>
-        <Button className={styles.iconButton} icon="arrowBack" aria-label="Back to chat" onClick={onClose} />
-        <h1>Side chats</h1>
+        <Button className={styles.iconButton} icon="arrowBack" aria-label={t("Back to chat")} onClick={onClose} />
+        <h1>{t("Side chats")}</h1>
       </header>}
       <div className={styles.listBody}>
         <p className={styles.intro}>{intro}</p>
         {newButton}
         {notice}
-        {open.length ? <ul className={styles.rows} aria-label="Open side chats">{open.map(row)}</ul>
-          : <p className={styles.none}>No open side chats.</p>}
+        {open.length ? <ul className={styles.rows} aria-label={t("Open side chats")}>{open.map(row)}</ul>
+          : <p className={styles.none}>{t("No open side chats.")}</p>}
         {closedList}
       </div>
       {folderDialog}
     </section>
   );
   return (
-    <section className={styles.panel} aria-label="Side chats">
+    <section className={styles.panel} aria-label={t("Side chats")}>
       <header className={styles.panelHeader}>
         <Icon name="chatbubblesOutline" size={17} />
-        <h2>Side chats</h2>
+        <h2>{t("Side chats")}</h2>
         {newButton}
-        <Button className={styles.iconButton} icon="close" aria-label="Close side chats" onClick={onClose} />
+        <Button className={styles.iconButton} icon="close" aria-label={t("Close side chats")} onClick={onClose} />
       </header>
-      {open.length > 0 && <div className={styles.tabs} role="group" aria-label="Open side chats">
+      {open.length > 0 && <div className={styles.tabs} role="group" aria-label={t("Open side chats")}>
         {open.map((chat) => {
           const label = labels.get(chat.id) || SIDE_CHAT_TITLE;
           return <span key={chat.id} className={styles.tab} data-active={chat.id === active?.id || undefined}>
             <button aria-pressed={chat.id === active?.id} onClick={() => setRequested(chat.id)}>
-              {chat.unread && <i className={styles.unread} aria-label="New reply" role="img" />}{label}
+              {chat.unread && <i className={styles.unread} aria-label={t("New reply")} role="img" />}{label}
             </button>
             <button className={styles.tabClose} aria-label={`Close ${label}`} disabled={!!busy || disconnected}
               onClick={() => void closeChat(chat)}><Icon name="close" size={13} /></button>
@@ -175,14 +177,14 @@ export function SideChats({ parent, layout, settings, onClose }: {
       {active ? <div className={styles.conversation}>
         <div className={styles.toolbar}>
           <span>{statusOf(active)}</span>
-          <Button className={styles.iconButton} variant="ghost" icon="expandOutline" aria-label="Open side chat in full view"
-            title="Open in full view" onClick={() => openFull(active)} />
+          <Button className={styles.iconButton} variant="ghost" icon="expandOutline" aria-label={t("Open side chat in full view")}
+            title={t("Open in full view")} onClick={() => openFull(active)} />
         </div>
         <div className={styles.chat}><Chat key={active.id} session={active} embedded onInfo={noop} onList={noop} /></div>
       </div> : <div className={styles.empty}>
-        <Empty icon="chatbubblesOutline" title="Ask on the side"
+        <Empty icon="chatbubblesOutline" title={t("Ask on the side")}
           action={<Button variant="accent" icon="add" disabled={!!busy || !!unavailable} onClick={() => void create()}>
-            {busy === 'create' ? 'Starting…' : 'Start a side chat'}</Button>}>{intro}</Empty>
+            {busy === 'create' ? "Starting…" : "Start a side chat"}</Button>}>{intro}</Empty>
         {closedList}
       </div>}
       {active && closedList && <div className={styles.panelClosed}>{closedList}</div>}

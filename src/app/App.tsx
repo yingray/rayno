@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dialog, Empty, Icon, Mark } from '../components/ui';
@@ -32,6 +33,7 @@ const viewportBreakpoint = () => window.innerWidth < 768 ? 0 : window.innerWidth
 const useViewport = () => useSyncExternalStore(subscribeViewport, viewportBreakpoint);
 
 export function App() {
+  const t = useText();
   const location = useLocation();
   const navigate = useNavigate();
   const width = useViewport();
@@ -146,21 +148,19 @@ export function App() {
   return (
     <>
       {offline ? (
-        <div className={`${styles.networkBar} ${styles.offline}`} title="Network offline" />
+        <div className={`${styles.networkBar} ${styles.offline}`} title={t("Network offline")} />
       ) : loading ? (
         <div
           className={`${styles.networkBar} ${styles.loading}`}
           role="progressbar"
-          aria-label="Load workspace"
+          aria-label={t("Load workspace")}
         />
       ) : null}
       {showConnectionError && (
-        <div className={styles.connection} role="alert" aria-label="Connection error">
+        <div className={styles.connection} role="alert" aria-label={t("Connection error")}>
           <span>{connectionError}</span>
-          <button onClick={() => void live?.retry()}>
-            Retry
-          </button>
-          {unauthorized && <button onClick={logout}>Sign in again</button>}
+          <button onClick={() => void live?.retry()}>{t("Retry")}</button>
+          {unauthorized && <button onClick={logout}>{t("Sign in again")}</button>}
         </div>
       )}
       <div
@@ -169,7 +169,7 @@ export function App() {
         {!mobile && (
           <nav
             className={`${styles.rail} ${expanded ? styles.expanded : ''}`}
-            aria-label="Main navigation"
+            aria-label={t("Main navigation")}
           >
             <a
               className={styles.brand}
@@ -178,11 +178,10 @@ export function App() {
                 event.preventDefault();
                 goNav(navigation[0]);
               }}
-              aria-label="Rayno home"
+              aria-label={t("Rayno home")}
             >
               <Mark />
-              <span>
-                Rayno<span className={styles.brandCaption}>A space for your agents</span>
+              <span>{t("Rayno")}<span className={styles.brandCaption}>{t("A space for your agents")}</span>
               </span>
             </a>
             <div className={styles.railDivider} />
@@ -191,20 +190,20 @@ export function App() {
                 key={item.key}
                 type="button"
                 className={`${styles.navItem} ${active === item.key ? styles.navActive : ''}`}
-                aria-label={item.name}
-                aria-current={active === item.key ? 'page' : undefined}
-                title={item.name}
+                aria-label={t(item.name)}
+                aria-current={active === item.key ? "page" : undefined}
+                title={t(item.name)}
                 onClick={() => goNav(item)}
               >
                 <Icon name={item.icon} size={21} />
-                <span>{item.name}</span>
+                <span>{t(item.name)}</span>
               </button>
             ))}
             <div className={styles.railBottom}>
               <Button
                 variant="ghost"
-                icon={expanded ? 'chevronBackOutline' : 'chevronForwardOutline'}
-                aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'}
+                icon={expanded ? "chevronBackOutline" : "chevronForwardOutline"}
+                aria-label={expanded ? t("Collapse navigation") : t("Expand navigation")}
                 aria-expanded={expanded}
                 onClick={() =>
                   setExpanded((value) => {
@@ -220,14 +219,14 @@ export function App() {
               <button
                 className={styles.account}
                 onClick={() => navigate('/settings/account')}
-                aria-label="Account settings"
+                aria-label={t("Account settings")}
               >
-                {mode === 'demo' ? 'R' : 'H'}
+                {mode === 'demo' ? t("R") : t("H")}
               </button>
               {expanded && (
                 <span className={styles.accountName}>
-                  {mode === 'demo' ? 'Ray' : 'Happy'}
-                  <span>{mode === 'demo' ? 'Personal workspace' : 'Connected workspace'}</span>
+                  {mode === 'demo' ? t("Ray") : t("Happy")}
+                  <span>{mode === 'demo' ? t("Personal workspace") : t("Connected workspace")}</span>
                 </span>
               )}
             </div>
@@ -244,11 +243,9 @@ export function App() {
           >
             <LazyBoundary>{!knownRoute ? (
               <Empty
-                title="This page is taking a break"
-                action={<Button onClick={() => navigate('/sessions')}>Back to sessions</Button>}
-              >
-                The address does not match a Rayno screen.
-              </Empty>
+                title={t("This page is taking a break")}
+                action={<Button onClick={() => navigate('/sessions')}>{"Back to sessions"}</Button>}
+              >{t("The address does not match a Rayno screen.")}</Empty>
             ) : path === '/new' ? (
               <NewSession />
             ) : path === '/monitor' ? (
@@ -274,20 +271,18 @@ export function App() {
             ) : (
               <Empty
                 title={sessionRoute
-                  ? loading ? 'Load conversation…' : offlineWorkspace ? 'Not available offline' : 'Session not found'
-                  : 'Make room for your next idea'}
+                  ? loading ? t("Load conversation…") : offlineWorkspace ? t("Not available offline") : t("Session not found")
+                  : t("Make room for your next idea")}
                 action={
-                  <Button variant="accent" icon="add" onClick={() => navigate('/new')}>
-                    New session
-                  </Button>
+                  <Button variant="accent" icon="add" onClick={() => navigate('/new')}>{"New session"}</Button>
                 }
               >
                 {sessionRoute
-                  ? loading ? 'Your saved conversations stay available while the workspace updates.'
-                    : offlineWorkspace ? 'Open this conversation online once to save it on this device.'
-                      : 'This session may have been deleted.'
-                  : 'Pick a computer and start a conversation.'}
-                {offlineWorkspace && <OfflineStatus label="Conversation availability" />}
+                  ? loading ? t("Your saved conversations stay available while the workspace updates.")
+                    : offlineWorkspace ? t("Open this conversation online once to save it on this device.")
+                      : t("This session may have been deleted.")
+                  : t("Pick a computer and start a conversation.")}
+                {offlineWorkspace && <OfflineStatus label={t("Conversation availability")} />}
               </Empty>
             )}</LazyBoundary>
           </main>
@@ -303,33 +298,33 @@ export function App() {
           </aside>
         )}
         {!mobile && sideOpen && width < 1280 && (
-          <Dialog title="Side chats" onClose={closeSide} className={`${styles.infoDrawer} ${styles.sideDrawer}`}>
+          <Dialog title={t("Side chats")} onClose={closeSide} className={`${styles.infoDrawer} ${styles.sideDrawer}`}>
             <LazyBoundary><SideChats parent={session!} layout="drawer" settings={readSettings} onClose={closeSide} /></LazyBoundary>
           </Dialog>
         )}
         {!mobile && infoOpen && width < 1280 && (
-          <Dialog title="Session info" onClose={closeInfo} className={styles.infoDrawer}>
+          <Dialog title={t("Session info")} onClose={closeInfo} className={styles.infoDrawer}>
             <LazyBoundary><SessionInfo session={session!} onClose={closeInfo} embedded /></LazyBoundary>
           </Dialog>
         )}
         {!mobile && listOpen && (
-          <Dialog title="Sessions" onClose={closeList} className={styles.listDrawer}>
+          <Dialog title={t("Sessions")} onClose={closeList} className={styles.listDrawer}>
             <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled}
               onSelect={closeList} onNew={closeList} /></LazyBoundary>
           </Dialog>
         )}
         {showTabs && (
-          <nav className={styles.tabBar} aria-label="Main navigation">
+          <nav className={styles.tabBar} aria-label={t("Main navigation")}>
             {navigation.map((item) => (
               <button
                 key={item.key}
-                aria-label={item.name}
-                aria-current={active === item.key ? 'page' : undefined}
+                aria-label={t(item.name)}
+                aria-current={active === item.key ? "page" : undefined}
                 className={active === item.key ? styles.tabActive : ''}
                 onClick={() => navigate(item.route)}
               >
                 <Icon name={item.icon} size={20} />
-                <span>{item.name}</span>
+                <span>{t(item.name)}</span>
               </button>
             ))}
           </nav>
@@ -338,7 +333,7 @@ export function App() {
       {toast && (
         <div className={styles.toast} role="status">
           <Icon name="checkmarkCircleOutline" size={17} />
-          {toast}
+          {t(toast)}
         </div>
       )}
     </>

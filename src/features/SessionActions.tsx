@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Dialog } from '../components/ui';
@@ -10,6 +11,7 @@ import { needsSessionResume } from '../happy/resume';
 import { useWorktreeCleanup } from './SessionPrompts';
 
 export function SessionActions({ session, onClose }: { session: Session; onClose: () => void }) {
+  const t = useText();
   const { adapter, mode } = useDemo((store) => ({ adapter: store.adapter, mode: store.mode }));
   const needsResume = mode === 'live' && needsSessionResume(session);
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,7 @@ export function SessionActions({ session, onClose }: { session: Session; onClose
   // The worktree question replaces this dialog, so only one dialog has the focus.
   if (cleanup.prompting) return cleanup.dialog;
   return (
-    <Dialog title="Session actions" onClose={onClose}>
+    <Dialog title={t("Session actions")} onClose={onClose}>
       <p>{titleOf(session)}</p>
       {error && <p role="alert">{error}</p>}
       {needsResume && <ResumeSession session={session} />}
@@ -44,9 +46,7 @@ export function SessionActions({ session, onClose }: { session: Session; onClose
             navigate(`/session/${session.id}/info`);
             onClose();
           }}
-        >
-          Session info & rename
-        </Button>
+        >{t("Session info & rename")}</Button>
         {!needsResume && (
           <Button
             variant="ghost"
@@ -55,7 +55,7 @@ export function SessionActions({ session, onClose }: { session: Session; onClose
             onClick={() => void run(() => session.archived ? adapter.archiveSession(session.id)
               : cleanup.guard(session.id, () => adapter.archiveSession(session.id)))}
           >
-            {session.archived ? 'Restore session' : 'Archive session'}
+            {session.archived ? t("Restore session") : t("Archive session")}
           </Button>
         )}
         {session.status === 'running' && (
@@ -64,9 +64,7 @@ export function SessionActions({ session, onClose }: { session: Session; onClose
             icon="stopCircleOutline"
             disabled={busy}
             onClick={() => void run(() => adapter.stopSession(session.id))}
-          >
-            Stop response
-          </Button>
+          >{t("Stop response")}</Button>
         )}
       </div>
     </Dialog>

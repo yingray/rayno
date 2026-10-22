@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { Children, Fragment, isValidElement, memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import Markdown from 'react-markdown';
@@ -17,7 +18,8 @@ import { ToolAnswers, ToolDecision, ToolSections, type ToolOutcome } from './Too
 import { useEventCallback } from '../components/useEventCallback';
 import styles from './chat.module.css';
 import { RecapButton, RecapCard } from './RecapCard';
-import { RecapRail } from './RecapRail';
+import { ResponseRail } from './RecapRail';
+import { responseAnchors } from '../data/responseAnchors';
 import { findRecapTarget, jumpToRecapTarget } from './recapTargets';
 import {
   hasUserGesture, playRecapSpeech, recapSpeechState, selectRecapPoint, speechSupported, toggleRecapSpeech,
@@ -26,19 +28,22 @@ import { MermaidDiagram } from './MermaidDiagram';
 import { AttachmentImage } from './AttachmentImage';
 import { CodeBlock } from './CodeBlock';
 import { TodoList } from './TodoList';
+import { InlineToolQuestion } from '../happy/Requests';
 import { isTodoWrite, todoProgress, todoRowList, type Todo } from '../data/todos';
 
 // Thinking is secondary. It stays closed until the user opens it.
 function Thinking({ text }: { text: string }) {
+  const t = useText();
   return <details className={styles.thinking}>
-    <summary><Icon name="chevronForwardOutline" size={13} />Thinking</summary>
+    <summary><Icon name="chevronForwardOutline" size={13} />{t("Thinking")}</summary>
     <p>{text}</p>
   </details>;
 }
 
 function SubagentWork({ items }: { items: Message[] }) {
-  return <><h4>Subagent</h4>
-    <ol className={styles.subagentWork} aria-label="Subagent work">
+  const t = useText();
+  return <><h4>{t("Subagent")}</h4>
+    <ol className={styles.subagentWork} aria-label={t("Subagent work")}>
       {items.map((child) => <li key={child.id}>
         {child.thinking ? <p className={styles.subagentThinking}>{child.thinking}</p> : null}
         {child.tools?.length ? <span><Icon name="codeSlash" size={13} />{child.tools.join(', ')}</span> : null}
@@ -49,9 +54,10 @@ function SubagentWork({ items }: { items: Message[] }) {
   </>;
 }
 
-const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes }: {
-  block: ToolActivityBlock; compactTools: boolean; outcomes?: (ToolOutcome | undefined)[];
+const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes, sessionId }: {
+  block: ToolActivityBlock; compactTools: boolean; outcomes?: (ToolOutcome | undefined)[]; sessionId: string;
 }) {
+  const t = useText();
   const rowsId = useId();
   const [expanded, setExpanded] = useState(
     !compactTools && window.innerWidth >= 768,
@@ -60,24 +66,25 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes 
   // Answered questions stay visible in a collapsed group.
   const answered = outcomes?.flatMap((outcome, index) => outcome?.answers?.length || outcome?.dismissed ? [{ index, outcome }] : []) || [];
   return (
-    <section className={styles.toolGroup} aria-label="Tool activity">
+    <section className={styles.toolGroup} aria-label={t("Tool activity")} data-tool-activity>
       <button
         type="button"
         aria-expanded={expanded}
         aria-controls={rowsId}
         onClick={() => setExpanded((value) => !value)}
       >
-        <Icon name={expanded ? 'chevronDown' : 'chevronForwardOutline'} size={13} />
-        {block.duration ? `Worked for ${block.duration}` : 'Tool activity'}
+        <Icon name={expanded ? "chevronDown" : "chevronForwardOutline"} size={13} />
+        {block.duration ? `Worked for ${block.duration}` : t("Tool activity")}
         <span>
-          · {count} {count === 1 ? 'tool' : 'tools'}
+          · {count} {count === 1 ? t("tool") : t("tools")}
         </span>
       </button>
-      {answered.length > 0 && <div className={styles.toolAnswered} role="group" aria-label="Answered questions">
+      {answered.length > 0 && <div className={styles.toolAnswered} role="group" aria-label={t("Answered questions")}>
         {answered.map(({ index, outcome }) => outcome.answers?.length
           ? <ToolAnswers key={index} items={outcome.answers} />
-          : <div key={index} className={styles.toolNote}>The question was dismissed.</div>)}
+          : <div key={index} className={styles.toolNote}>{t("The question was dismissed.")}</div>)}
       </div>}
+      {block.details?.map(call => call && <InlineToolQuestion key={call.id} sessionId={sessionId} call={call} />)}
       <ul className={styles.toolRows} id={rowsId} hidden={!expanded}>
         {block.tools.map((tool, index) => {
           const thinking = block.thinking?.[index], call = block.details?.[index];
@@ -85,13 +92,13 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes 
           // The answered questions group already shows the answers of this call.
           const sections = !call ? [] : toolSections(call).filter((section) => section.kind !== 'answers' || !outcomes?.[index]?.answers?.length);
           return <li key={index}>
-            <Icon name={thinking !== undefined ? 'sparklesOutline' : call?.children?.length ? 'gitNetworkOutline' : call && isTodoWrite(call) ? 'listOutline' : 'codeSlash'} size={14} />
+            <Icon name={thinking !== undefined ? "sparklesOutline" : call?.children?.length ? "gitNetworkOutline" : call && isTodoWrite(call) ? "listOutline" : "codeSlash"} size={14} />
             {thinking !== undefined ? <details className={`${styles.toolDetails} ${styles.thinkingRow}`}>
               <summary>{tool}</summary><p>{thinking}</p>
             </details> : todos ? <TodoTool todos={todos} decision={decision} /> : call && (call.input !== undefined || call.result !== undefined || call.children?.length) ? <details className={styles.toolDetails}>
               <summary><span>{tool}</span>{decision && <ToolDecision value={decision} />}</summary>
-              {decision && <div className={styles.toolNote} data-tone={decision.tone === 'denied' ? 'error' : undefined}>{decision.detail}</div>}
-              {(call.input !== undefined || call.result !== undefined) && <><h4>Arguments</h4><pre>{formatToolValue(call.input)}</pre></>}
+              {decision && <div className={styles.toolNote} data-tone={decision.tone === 'denied' ? "error" : undefined}>{decision.detail}</div>}
+              {(call.input !== undefined || call.result !== undefined) && <><h4>{t("Arguments")}</h4><pre>{formatToolValue(call.input)}</pre></>}
               {!!call.children?.length && <SubagentWork items={call.children} />}
               <ToolSections sections={sections} />
             </details> : <span className={styles.toolLabel}><span>{tool}</span>{decision && <ToolDecision value={decision} />}</span>}
@@ -100,7 +107,7 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes 
       </ul>
     </section>
   );
-}, (previous, next) => previous.compactTools === next.compactTools
+}, (previous, next) => previous.sessionId === next.sessionId && previous.compactTools === next.compactTools
   && previous.block.id === next.block.id && previous.block.duration === next.block.duration
   && previous.block.details === next.block.details
   && previous.block.tools.length === next.block.tools.length
@@ -127,16 +134,18 @@ function toolOutcome(call: ToolCall | undefined, permissions: Map<string, ToolPe
 
 // Happy Web TodoView: a TodoWrite call with a list shows it in place of the raw arguments.
 function TodoTool({ todos, decision }: { todos: Todo[]; decision?: PermissionSummary }) {
+  const t = useText();
   const progress = todoProgress(todos);
   return <div className={styles.todoTool}>
-    <span className={styles.toolLabel}><span>Todo list · {progress.done} of {progress.total} done</span>{decision && <ToolDecision value={decision} />}</span>
-    <TodoList label="Todo items" todos={todos} />
+    <span className={styles.toolLabel}><span>{t("Todo list ·")}{' '}{progress.done}{' '}{t("of")}{' '}{progress.total}{' '}{t("done")}</span>{decision && <ToolDecision value={decision} />}</span>
+    <TodoList label={t("Todo items")} todos={todos} />
   </div>;
 }
 
 const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify }: {
   content: string; codeFilename: string; notify: (message: string) => void;
 }) {
+  const t = useText();
   return (
     <Markdown
       remarkPlugins={remarkPlugins}
@@ -145,8 +154,9 @@ const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename,
         table: ({ children }) => (
           <div
             className={styles.tableScroll}
+            data-markdown-table
             role="region"
-            aria-label="Markdown table"
+            aria-label={t("Markdown table")}
             tabIndex={0}
           >
             <table>{children}</table>
@@ -197,6 +207,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
   recapWriting: boolean;
   onJump: (messageId: string, index: number) => void;
 }) {
+  const t = useText();
   const pendingShown = usePendingShown(message.delivery);
   const parts = partsForMessage(message);
   const codeFilename = message.content.match(/\/\* ([\w./-]+) \*\//)?.[1] || 'Code';
@@ -223,16 +234,16 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
           ))}
         </div>
         {pendingShown && message.delivery?.status === 'pending' && <p className={styles.sendState}>
-          {message.delivery.queued ? 'Sends after this turn' : 'Sending…'}
+          {message.delivery.queued ? t("Sends after this turn") : t("Sending…")}
         </p>}
-        {message.delivery?.status === 'rejected' && <p className={styles.sendState} data-rejected>
-          Not sent: {message.delivery.reason}
+        {message.delivery?.status === 'rejected' && <p className={styles.sendState} data-rejected>{t("Not sent:")}{' '}{message.delivery.reason}
         </p>}
       </>) : (
         <div className={styles.markdown}>
           {message.thinking && <Thinking text={message.thinking} />}
-          {parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
-            <div className={styles.replyOptions} role="group" aria-label="Reply options" key={index}>
+          {message.unplaced ? <><p className={styles.toolNote}>{t("Earlier context is unavailable. Load earlier messages to place this work.")}</p>
+            <RenderedMarkdown content={message.content} codeFilename={codeFilename} notify={notify} /></> : parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
+            <div className={styles.replyOptions} role="group" aria-label={t("Reply options")} data-reply-options key={index}>
               {part.items.map((item, optionIndex) => (
                 <Button
                   key={optionIndex}
@@ -314,22 +325,22 @@ export const MessageList = memo(function MessageList({
     return new Map(blocks.flatMap((block) => block.kind === 'tools' && block.details
       ? [[block.id, block.details.map((call) => toolOutcome(call, permissions, forms, modeLabel))] as const] : []));
   }, [blocks, agentState, metadata]);
+  const anchors = useMemo(() => responseAnchors(visible), [visible]);
   const unanswered = useMemo(() => unansweredMessageIds(messages), [messages]);
   const writing = !!view.pending && recapBusy;
   const writingTarget = writing ? view.pending!.targetId : undefined;
-  const { lastReply, latest, railTarget } = useMemo(() => {
-    let lastReply: string | null = null, latest: string | null = null, railTarget: string | null = null;
+  const { lastReply, latest } = useMemo(() => {
+    let lastReply: string | null = null, latest: string | null = null;
     let afterUser = true;
     for (let index = visible.length - 1; index >= 0; index--) {
       const message = visible[index];
       if (message.role === 'user') { afterUser &&= isRejected(message); continue; }
-      if (afterUser && !lastReply && (message.content.trim() || message.attachments?.length)) lastReply = message.id;
+      if (afterUser && !lastReply && !message.unplaced && (message.content.trim() || message.attachments?.length)) lastReply = message.id;
       const value = recaps.get(message.id);
       if (value && !latest) latest = message.id;
-      if (value?.targets.some(Boolean) && !railTarget) railTarget = message.id;
-      if (latest && railTarget && (lastReply || !afterUser)) break;
+      if (latest && (lastReply || !afterUser)) break;
     }
-    return { lastReply, latest, railTarget };
+    return { lastReply, latest };
   }, [visible, recaps]);
 
   const jump = useEventCallback((messageId: string, index: number) => {
@@ -384,7 +395,7 @@ export const MessageList = memo(function MessageList({
   const showButton = !!onRecap && !!lastReply && !recaps.has(lastReply) && !writing && !running;
   return <>
     {blocks.map((block) => block.kind === 'tools'
-      ? <ToolActivity key={block.id} block={block} compactTools={compactTools} outcomes={outcomes.get(block.id)} />
+      ? <ToolActivity key={block.id} block={block} sessionId={sessionId} compactTools={compactTools} outcomes={outcomes.get(block.id)} />
       : block.kind === 'thinking'
         ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} /></article>
         : block.kind === 'event'
@@ -404,8 +415,6 @@ export const MessageList = memo(function MessageList({
         </div>
       </article>
     )}
-    {railTarget && scroll && railHost && (
-      <RecapRail host={railHost} scroll={scroll} messageId={railTarget} value={recaps.get(railTarget)!} onJump={jump} />
-    )}
+    {scroll && railHost && <ResponseRail host={railHost} scroll={scroll} replies={anchors} onJump={() => onUnpin?.()} />}
   </>;
 });

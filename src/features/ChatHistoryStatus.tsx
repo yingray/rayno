@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { Button, Icon, Spinner } from '../components/ui';
 import type { History } from '../happy/normalize';
 import styles from './chat.module.css';
@@ -5,33 +6,34 @@ import styles from './chat.module.css';
 export function ChatHistoryStatus({ history, offline, retry, loadEarlier }: {
   history?: History; offline?: boolean; retry: () => void; loadEarlier: () => void;
 }) {
+  const t = useText();
   if (!history) return null;
   const failed = !!history.error && !offline && !history.loading;
   const older = history.direction === 'older';
   return <>
     {history.hasMore && <Button className={styles.historyEarlier} variant="ghost" icon="chevronUp"
-      disabled={history.loading || offline} onClick={loadEarlier}>Load earlier messages</Button>}
+      disabled={history.loading || offline} onClick={loadEarlier}>{t("Load earlier messages")}</Button>}
     {history.loading && !offline && (
-      <div className={styles.historyLoading} role="status" aria-label="Load messages">
+      <div className={styles.historyLoading} role="status" aria-label={t("Load messages")}>
         <span aria-hidden="true"><Spinner /></span>
-        <span>{older ? 'Loading earlier messages…' : history.loaded ? 'Updating messages…' : 'Loading messages…'}</span>
+        <span>{older ? t("Loading earlier messages…") : history.loaded ? t("Updating messages…") : t("Loading messages…")}</span>
       </div>
     )}
     {failed && (
-      <section className={styles.historyNotice} role="alert" aria-label="Message history unavailable">
+      <section className={styles.historyNotice} role="alert" aria-label={t("Message history unavailable")}>
         <Icon name="cloudOfflineOutline" size={18} />
         <div className={styles.historyText}>
-          <strong>{older ? 'Could not load earlier messages' : history.loaded ? 'Could not update messages' : 'Could not load messages'}</strong>
+          <strong>{older ? t("Could not load earlier messages") : history.loaded ? t("Could not update messages") : t("Could not load messages")}</strong>
           <p>{history.loaded
-            ? older ? 'Your loaded messages are still here. Try again to load the earlier messages.'
-              : 'Your loaded messages are still here. Try again to get the latest replies.'
-            : 'Try again to load this conversation. Your draft stays on this device.'}</p>
+            ? older ? t("Your loaded messages are still here. Try again to load the earlier messages.")
+              : t("Your loaded messages are still here. Try again to get the latest replies.")
+            : t("Try again to load this conversation. Your draft stays on this device.")}</p>
           <details>
-            <summary>Technical details</summary>
+            <summary>{t("Technical details")}</summary>
             <pre>{history.error}</pre>
           </details>
         </div>
-        <Button variant="ghost" icon="refreshOutline" aria-label="Retry messages" onClick={retry}>Try again</Button>
+        <Button variant="ghost" icon="refreshOutline" aria-label={t("Retry messages")} onClick={retry}>{t("Try again")}</Button>
       </section>
     )}
   </>;

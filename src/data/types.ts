@@ -17,6 +17,7 @@ export type Todo = { content: string; status: 'pending' | 'in_progress' | 'compl
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
 export type RecapMode = 'auto' | 'manual';
 export type Message = {
+  unplaced?: boolean;
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -120,6 +121,9 @@ export type BubbleColor = 'rayno' | 'gray' | 'blue' | 'green' | 'purple' | 'rose
 export type FontSize = 'small' | 'medium' | 'large';
 export type ChatWidth = 'full' | 'medium' | 'standard';
 export type Preferences = {
+  language: 'en' | 'zh-TW';
+  alwaysShowContextSize: boolean;
+  customCodexModel: string;
   bubble: BubbleColor;
   fontSize: FontSize;
   chatWidth: ChatWidth;

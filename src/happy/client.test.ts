@@ -135,6 +135,38 @@ async function wireMessage(id: string, seq: number, text: string, localId?: stri
   };
 }
 describe('Happy client protocol', () => {
+  it('should read historical usage with account headers and an explicit session filter',async()=>{
+    fetchMock.mockResolvedValue(response({usage:[{timestamp:100,tokens:{model:9},cost:{model:0.01},reportCount:1}]}));
+    const points=await client.queryUsage('7days','session');
+    const [url,init]=fetchMock.mock.calls.at(-1)!;
+    expect(url).toBe('https://happy.test/v1/usage/query');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toMatchObject({sessionId:'session',groupBy:'day'});
+    expect(init.headers.Authorization).toBe('Bearer test-token');
+    expect(points[0].tokens).toEqual({model:9});
+  });
+  it('should retry a computer rename on a metadata conflict and retain unknown fields',async()=>{
+    const machine={id:'computer',active:true,metadataVersion:1,dataEncryptionKey:null,
+      metadata:await client.encryption.encrypt({host:'Mac',extension:'keep'},null)};
+    fetchMock.mockImplementation(async(url:string)=>url.includes('/v2/sessions')?response({sessions:[session],hasNext:false}):url.endsWith('/v1/machines')?response([machine]):response({messages:[],hasMore:false}));
+    await start();socket.connected=true;
+    socket.emitWithAck.mockResolvedValueOnce({result:'version-mismatch',version:2,metadata:await client.encryption.encrypt({host:'Mac',extension:'new'},null)})
+      .mockResolvedValueOnce({result:'success',version:3});
+    await client.renameMachine('computer','New Mac');
+    const [event,payload]=socket.emitWithAck.mock.calls.at(-1)!;
+    expect(event).toBe('machine-update-metadata');expect(payload.expectedVersion).toBe(2);
+    expect(await client.encryption.decrypt(payload.metadata,null)).toEqual({host:'Mac',extension:'new',displayName:'New Mac'});
+    expect(client.getSnapshot().machines[0].name).toBe('New Mac');
+  });
+  it('should remove only the computer and retain session history after a delete succeeds',async()=>{
+    await start();
+    fetchMock.mockResolvedValueOnce(new Response(null,{status:204}));
+    await client.deleteMachine('computer');
+    expect(client.getSnapshot().sessions.map(item=>item.id)).toContain('session');
+    expect(fetchMock.mock.calls.at(-1)![0]).toBe('https://happy.test/v1/machines/computer');
+    expect(fetchMock.mock.calls.at(-1)![1].method).toBe('DELETE');
+  });
+
   it.each(['', 'removed-mode'])('should reject permission mode %j before a worktree or session starts', async (permissionMode) => {
     // Arrange
     const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
@@ -637,6 +669,21 @@ describe('Happy client protocol', () => {
     // Assert
     await vi.waitFor(() => expect(client.getSnapshot().sessions[0].needsReply).toBe(true), { interval: 1 });
   });
+  it('should clear an old false child attention state while preserving the read cursor',async()=>{
+    // Arrange
+    const option=agentSubagentWork.findIndex(raw=>raw.content.ev.text?.startsWith('Subagent found config.json'));
+    const wire=await Promise.all(agentSubagentWork.slice(0,option+1).map(async(raw,index)=>({id:raw.content.id,seq:index+1,
+      createdAt:raw.content.time,content:{t:'encrypted',c:await client.encryption.encrypt(raw,null)}})));
+    session.seq=option+1;
+    client.writeLocal('attention.session',JSON.stringify({readSeq:2,userSeq:1,assistantSeq:session.seq,optionsSeq:session.seq,inspectedSeq:session.seq}));
+    fetchMock.mockImplementation(async(url:string)=>url.includes('/v2/sessions')?response({sessions:[session],hasNext:false})
+      :url.endsWith('/v1/machines')?response([]):response({messages:[...wire].reverse(),hasMore:false}));
+    // Act
+    await start();
+    // Assert
+    expect(client.getSnapshot().sessions[0]).toMatchObject({needsReply:false,unread:false});
+    expect(JSON.parse(client.readLocal('attention.session')!)).toMatchObject({readSeq:2,optionsSeq:0,classificationVersion:2});
+  });
   it.each([['restores', true], ['does not have', false]])(
     'should place a running subagent option after a reload when the cache %s the subagent bounds', async (_name, cached) => {
       // Arrange
@@ -665,10 +712,9 @@ describe('Happy client protocol', () => {
       // Assert
       expect(workspace.subagents).toEqual({ session: {
         marks: [{ id: 'c744020fe7d250cca47a5ae1', title: 'Find config', bounds: [[5, true]] }], read: [0, option] } });
-      expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/messages?')).at(-1))
-        .toBe(`https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=2`);
-      // Without a bound, the subagent row counts as a main row, so a main answer is never hidden.
-      expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: !cached, unread: !cached });
+      expect(fetchMock.mock.calls.map(([url]) => url)).toContain(`https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=2`);
+      // An absent cache triggers an older-page read, so child options never become a main reply.
+      expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: false, unread: false });
       // Act
       session.seq = wire.length;
       await client.refresh(true);
@@ -745,8 +791,7 @@ describe('Happy client protocol', () => {
     // Assert
     expect(workspace.subagents?.session).toEqual({
       marks: [{ id: 'c744020fe7d250cca47a5ae1', title: 'Find config', bounds: [[5, true]] }], read: [0, stop - 1] });
-    expect(fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/messages?')).at(-1))
-      .toBe(`https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=2`);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toContain(`https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=2`);
     // The stop can be in the rows between the read range and the boundary, so the tagged answer stays a main answer.
     expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: true, unread: true });
   });
@@ -776,7 +821,7 @@ describe('Happy client protocol', () => {
     await client.loadHistory('session');
     // Assert
     const current = client.getSnapshot().sessions[0];
-    expect(current.messages.flatMap((message) => message.toolCalls || [])).toMatchObject([{ id: 'toolu_child_todo', ended: true }]);
+    expect(current.messages.flatMap(message => message.toolCalls || []).flatMap(call => call.children || []).flatMap(message => message.toolCalls || [])).toMatchObject([{ id: 'toolu_child_todo', ended: true }]);
     expect(current.todos).toEqual([]);
     expect(current.needsReply).toBe(false);
   });

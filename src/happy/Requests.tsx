@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useState } from 'react';
 import { Button } from '../components/ui';
 import { useDemo } from '../data/store';
@@ -6,17 +7,54 @@ import { allowsSessionScope, pendingCommunications, pendingPermissions, record }
 import type { Json } from './normalize';
 import styles from './requests.module.css';
 import type { Permission } from './normalize';
+import type { Message, ToolCall } from '../data/types';
+
+export function questionForTool(state: Json, callId: string) {
+  const permission = pendingPermissions(state).find(request => request.tool === 'AskUserQuestion'
+    && (request.id === callId || record(state.requests?.[request.id]).toolUseId === callId));
+  const form = pendingCommunications(state).find(form => form.kind === 'form'
+    && (form.id === callId || record(state.communications?.[form.id]).toolUseId === callId));
+  return { permission, form };
+}
+const loadedCalls = (messages: Message[]): ToolCall[] => messages.flatMap(message => message.toolCalls || []);
+
+export function InlineToolQuestion({ sessionId, call }: { sessionId: string; call: ToolCall }) {
+  const t = useText();
+  const { live, state, unavailable } = useDemo(store => ({ live: store.live,
+    state: store.snapshot?.sessionData[sessionId]?.agentState,
+    unavailable: store.snapshot?.connection !== 'connected' || !!store.snapshot?.offline }));
+  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const request = questionForTool(state || {}, call.id);
+  if (!live || (!request.permission && request.form?.kind !== 'form')) return null;
+  async function run(action: () => Promise<void>) {
+    if (busy) return;
+    setBusy(true); setError('');
+    try { await action(); } catch (error) { setError(messageError(error)); } finally { setBusy(false); }
+  }
+  return <section role="group" aria-label={t("Tool question")} className={styles.inline}>
+    {request.permission ? <ClaudeQuestion key={request.permission.id} request={request.permission} busy={busy || unavailable}
+      onSubmit={answers => void run(() => live!.respondPermission(sessionId, request.permission!.id, true, false, { answers }))}
+      onDismiss={() => void run(() => live!.respondPermission(sessionId, request.permission!.id, false))} />
+      : request.form?.kind === 'form' && <QuestionForm key={request.form.id} form={{form:{questions:request.form.questions}}} busy={busy || unavailable}
+        onSubmit={answers => void run(() => live!.answerQuestions(sessionId, request.form!.id, answers, 'form'))} />}
+    {error && <p role="alert">{error}</p>}
+  </section>;
+}
 
 export const Requests = memo(function Requests({ sessionId }: { sessionId: string }) {
-  const { live, state, unavailable } = useDemo((store) => ({
+  const t = useText();
+  const { live, state, unavailable, messages } = useDemo((store) => ({
     live: store.live, state: store.snapshot?.sessionData[sessionId]?.agentState,
     unavailable: store.snapshot?.connection !== 'connected' || store.snapshot?.offline,
+    messages: store.state.sessions.find(session => session.id === sessionId)?.messages || [],
   }));
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   if (!live || !state) return null;
-  const permissions = pendingPermissions(state);
-  const forms = pendingCommunications(state);
+  const calls = loadedCalls(messages);
+  const inline = calls.map(call => questionForTool(state, call.id));
+  const permissions = pendingPermissions(state).filter(request => !inline.some(item => item.permission?.id === request.id));
+  const forms = pendingCommunications(state).filter(form => !inline.some(item => item.form?.id === form.id));
   async function run(id: string, action: () => Promise<void>) {
     if (busy) return;
     setBusy(id);
@@ -31,11 +69,11 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
   }
   if (!permissions.length && !forms.length) return null;
   return (
-    <div className={styles.requests} aria-label="Agent requests">
+    <div className={styles.requests} aria-label={t("Agent requests")}>
       {permissions.map((request) => (
         <section key={request.id} className={styles.card}>
           <strong>{request.tool}</strong>
-          <p>The agent needs your permission.</p>
+          <p>{t("The agent needs your permission.")}</p>
           {request.tool !== 'AskUserQuestion' && <pre>{JSON.stringify(request.arguments, null, 2)}</pre>}
           {request.tool === 'AskUserQuestion' ? (
             <ClaudeQuestion key={request.id} request={request} busy={!!busy || unavailable}
@@ -48,9 +86,7 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
                 onClick={() =>
                   void run(request.id, () => live.respondPermission(sessionId, request.id, false))
                 }
-              >
-                Deny
-              </Button>
+              >{t("Deny")}</Button>
               <Button
                 variant="accent"
                 disabled={!!busy || unavailable}
@@ -58,12 +94,10 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
                   void run(request.id, () => live.respondPermission(sessionId, request.id, true))
                 }
               >
-                {busy === request.id ? 'Wait…' : 'Allow once'}
+                {busy === request.id ? t("Wait…") : t("Allow once")}
               </Button>
               {allowsSessionScope(request.tool) && <Button disabled={!!busy || unavailable}
-                onClick={() => void run(request.id, () => live.respondPermission(sessionId, request.id, true, true))}>
-                Allow for this session
-              </Button>}
+                onClick={() => void run(request.id, () => live.respondPermission(sessionId, request.id, true, true))}>{t("Allow for this session")}</Button>}
             </div>
           )}
         </section>
@@ -79,11 +113,11 @@ export const Requests = memo(function Requests({ sessionId }: { sessionId: strin
         ) : (
           <section className={styles.card} key={form.id}>
             <strong>{form.title || 'Unsupported request'}</strong>
-            <p>Rayno cannot show a “{form.rawKind}” request. Dismiss it so that the agent does not wait for an answer.</p>
+            <p>{t("Rayno cannot show a “")}{form.rawKind}{t("” request. Dismiss it so that the agent does not wait for an answer.")}</p>
             <div className={styles.actions}>
               <Button disabled={!!busy || unavailable}
                 onClick={() => void run(form.id, () => live.answerQuestions(sessionId, form.id, null, form.rawKind))}>
-                {busy === form.id ? 'Wait…' : 'Dismiss'}
+                {busy === form.id ? t("Wait…") : t("Dismiss")}
               </Button>
             </div>
           </section>
@@ -106,6 +140,7 @@ export function QuestionForm({
   busy: boolean;
   onSubmit: (answers: Json | null) => void;
 }) {
+  const t = useText();
   const [answers, setAnswers] = useState<Record<string, { options: string[]; custom: string }>>({});
   const questions: Json[] = form.form.questions;
   const missing = questions.some(
@@ -136,11 +171,11 @@ export function QuestionForm({
           <section key={question.id}>
             <strong>{question.header}</strong>
             <p>{question.question}</p>
-            {question.multiSelect && (question.options || []).length > 1 && <small className={styles.hint}>Choose as many as apply</small>}
+            {question.multiSelect && (question.options || []).length > 1 && <small className={styles.hint}>{t("Choose as many as apply")}</small>}
             {(question.options || []).map((option: Json) => (
               <label key={option.label} className={styles.option} data-focus-frame>
                 <input
-                  type={question.multiSelect ? 'checkbox' : 'radio'}
+                  type={question.multiSelect ? "checkbox" : "radio"}
                   name={question.id}
                   aria-label={option.label}
                   checked={answers[question.id]?.options.includes(option.label) || false}
@@ -169,7 +204,7 @@ export function QuestionForm({
             {question.allowCustom !== false && (
               <input
                 aria-label={`Answer: ${question.header}`}
-                placeholder="Write an answer"
+                placeholder={t("Write an answer")}
                 value={answers[question.id]?.custom || ''}
                 onChange={(event) =>
                   setAnswers((previous) => ({
@@ -185,10 +220,8 @@ export function QuestionForm({
           </section>
         ))}
         <div className={styles.actions}>
-          <Button onClick={() => onSubmit(null)}>Dismiss</Button>
-          <Button type="submit" variant="accent" disabled={missing || busy}>
-            Send answers
-          </Button>
+          <Button onClick={() => onSubmit(null)}>{t("Dismiss")}</Button>
+          <Button type="submit" variant="accent" disabled={missing || busy}>{t("Send answers")}</Button>
         </div>
       </fieldset>
     </form>
@@ -196,8 +229,9 @@ export function QuestionForm({
 }
 
 function ClaudeQuestion({ request, busy, onSubmit, onDismiss }: { request: Permission; busy: boolean; onSubmit: (answers: Json) => void; onDismiss: () => void }) {
+  const t = useText();
   const questions = record(request.arguments).questions;
-  if (!Array.isArray(questions) || !questions.length) return <p>This question has no supported form.</p>;
+  if (!Array.isArray(questions) || !questions.length) return <p>{t("This question has no supported form.")}</p>;
   return <QuestionForm form={{ form: { questions: questions.map((question: Json, index: number) => ({
     ...question, id: `question-${index}`, required: true,
   })) } }} busy={busy} onSubmit={answers => {

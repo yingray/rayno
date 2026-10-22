@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,7 @@ import { archiveAction, countOpenSideChats, leaveRoute, showSideChatEntry } from
 type Point = { id: string; text: string; timestamp: number };
 
 export function ChatSessionMenu({ session, settings }: { session: Session; settings: MessageSettings }) {
+  const t = useText();
   const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, parentKnown, sideEntry } = useDemo(store => ({
     parentKnown: !!session.parentSessionId && store.state.sessions.some(item => item.id === session.parentSessionId),
     sideChats: session.isSideChat ? 0 : countOpenSideChats(store.state.sessions, session.id),
@@ -130,14 +132,14 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
   }
   return <>
     <button ref={trigger} type="button" className={`${chatStyles.sessionMenuButton} ${styles.trigger}`}
-      aria-label="Session actions" aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined}
+      aria-label={t("Session actions")} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined}
       onClick={() => { setError(''); setOpen(value => !value); }}>
       <Icon name="menuOutline" />
     </button>
-    {open && createPortal(<div ref={panel} id={id} role="menu" aria-label="Session actions" className={styles.menu} style={position}>
+    {open && createPortal(<div ref={panel} id={id} role="menu" aria-label={t("Session actions")} className={styles.menu} style={position}>
       <p className={styles.title}>{titleOf(session)}</p>
       {ended && <button role="menuitem" disabled={busy || disconnected || !!recoveryReason}
-        onClick={() => void run(() => live!.resumeSession(session.id))}><Icon name="refreshOutline" />Resume session</button>}
+        onClick={() => void run(() => live!.resumeSession(session.id))}><Icon name="refreshOutline" />{t("Resume session")}</button>}
       {archiveLabel && <button role="menuitem" disabled={busy || disconnected} onClick={() => void run(async () => {
         if (archiveLabel === 'Restore session') await adapter.archiveSession(session.id);
         else if (await cleanup.guard(session.id, () => adapter.archiveSession(session.id))) navigate(leave);
@@ -146,30 +148,30 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
       <button role="menuitem" disabled={busy || !workspaceDraft} onClick={() => {
         if (!workspaceDraft) return;
         dispatch({ type: 'newDraft', value: workspaceDraft }); close(false); navigate('/new');
-      }}><Icon name="add" />New session in same workspace</button>
+      }}><Icon name="add" />{t("New session in same workspace")}</button>
       {sideEntry && <button role="menuitem" disabled={busy} onClick={() => { close(false); navigate(`/session/${session.id}/side`); }}>
-        <Icon name="chatbubblesOutline" />Side chats{sideChats ? <small className={styles.count}>{sideChats} open</small> : null}</button>}
+        <Icon name="chatbubblesOutline" />{t("Side chats")}{sideChats ? <small className={styles.count}>{sideChats}{' '}{t("open")}</small> : null}</button>}
       <button role="menuitem" disabled={busy || !handoff} onClick={() => {
         if (!handoff) return;
         dispatch({ type: 'newDraft', value: handoff }); close(false); navigate('/new');
-      }}><Icon name="swapHorizontalOutline" />Hand Off</button>
+      }}><Icon name="swapHorizontalOutline" />{t("Hand Off")}</button>
       <button role="menuitem" disabled={busy || disconnected || !!branchReason || !machine?.online}
-        onClick={() => { close(); setDuplicate(true); }}><Icon name="copyOutline" />Duplicate</button>
+        onClick={() => { close(); setDuplicate(true); }}><Icon name="copyOutline" />{t("Duplicate")}</button>
       <button role="menuitem" disabled={busy || disconnected || !!branchReason || !machine?.online}
-        onClick={() => void run(() => branch('fork'))}><Icon name="gitBranchOutline" />{busy ? 'Wait…' : 'Fork'}</button>
+        onClick={() => void run(() => branch('fork'))}><Icon name="gitBranchOutline" />{busy ? t("Wait…") : t("Fork")}</button>
       {branchReason && <p className={styles.reason}>{branchReason}</p>}
       {!metadata?.bot && <button role="menuitem" className={styles.danger} disabled={busy || disconnected}
-        onClick={() => { close(); setConfirmDelete(true); }}><Icon name="trashOutline" />Delete session</button>}
+        onClick={() => { close(); setConfirmDelete(true); }}><Icon name="trashOutline" />{t("Delete session")}</button>}
       {error && <p role="alert" className={styles.error}>{error}</p>}
     </div>, document.body)}
-    {confirmDelete && !cleanup.prompting && <Dialog title="Delete this session?" onClose={() => { if (!busy) setConfirmDelete(false); }}>
-      <p>Delete “{titleOf(session)}” and its conversation?</p>
+    {confirmDelete && !cleanup.prompting && <Dialog title={t("Delete this session?")} onClose={() => { if (!busy) setConfirmDelete(false); }}>
+      <p>{t("Delete “")}{titleOf(session)}{t("” and its conversation?")}</p>
       {error && <p role="alert">{error}</p>}
-      <footer><Button disabled={busy} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+      <footer><Button disabled={busy} onClick={() => setConfirmDelete(false)}>{t("Cancel")}</Button>
         <Button variant="danger" disabled={busy} onClick={() => void run(async () => {
           if (!await cleanup.guard(session.id, () => adapter.deleteSession(session.id))) return;
           setConfirmDelete(false); navigate(leave);
-        })}>Delete session</Button></footer>
+        })}>{t("Delete session")}</Button></footer>
     </Dialog>}
     {cleanup.dialog}
     {folder && <FolderApprovalDialog directory={folder.directory} machineName={machine?.name} busy={busy} error={error}
@@ -182,6 +184,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
 function DuplicateDialog({ session, busy, error, onClose, onDuplicate }: {
   session: Session; busy: boolean; error: string; onClose: () => void; onDuplicate: (point: string) => void;
 }) {
+  const t = useText();
   const live = useDemo(store => store.live);
   const [points, setPoints] = useState<Point[]>([]), [selected, setSelected] = useState('');
   const [loading, setLoading] = useState(true), [readError, setReadError] = useState('');
@@ -195,18 +198,18 @@ function DuplicateDialog({ session, busy, error, onClose, onDuplicate }: {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [live, session.id, attempt]);
-  return <Dialog title="Duplicate session" onClose={onClose} className={styles.duplicate}>
-    <p>Choose a message. The new session keeps the conversation through that message.</p>
-    {loading ? <p role="status">Read conversation history…</p> : readError ? <><p role="alert">{readError}</p>
-      <Button onClick={() => setAttempt(value => value + 1)}>Retry history</Button></> : points.length ?
-      <div role="radiogroup" aria-label="Duplicate through message" className={styles.points}>
+  return <Dialog title={t("Duplicate session")} onClose={onClose} className={styles.duplicate}>
+    <p>{t("Choose a message. The new session keeps the conversation through that message.")}</p>
+    {loading ? <p role="status">{t("Read conversation history…")}</p> : readError ? <><p role="alert">{readError}</p>
+      <Button onClick={() => setAttempt(value => value + 1)}>{t("Retry history")}</Button></> : points.length ?
+      <div role="radiogroup" aria-label={t("Duplicate through message")} className={styles.points}>
         {points.map(point => <button key={point.id} role="radio" aria-checked={point.id === selected} disabled={busy}
           onClick={() => setSelected(point.id)}><span>{point.text}</span><small>{new Date(point.timestamp).toLocaleString()}</small></button>)}
-      </div> : <p>No messages are available to duplicate.</p>}
+      </div> : <p>{t("No messages are available to duplicate.")}</p>}
     {error && <p role="alert">{error}</p>}
-    <footer><Button disabled={busy} onClick={onClose}>Cancel</Button>
+    <footer><Button disabled={busy} onClick={onClose}>{t("Cancel")}</Button>
       <Button variant="accent" disabled={busy || loading || !selected} onClick={() => onDuplicate(selected)}>
-        {busy ? 'Starting…' : 'Duplicate session'}
+        {busy ? t("Starting…") : t("Duplicate session")}
       </Button></footer>
   </Dialog>;
 }

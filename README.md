@@ -109,6 +109,8 @@ Archived Claude and Codex sessions show Resume even when the server still report
 
 ## Connected features
 
+The [Happy Web gap tracker](docs/happy-web-gap-tracker.md) lists every audited item, its status, evidence, and remaining limits.
+
 - Paginated session lists and encrypted message history, with earlier-message loading.
   After the first complete read, a refresh reads only the sessions that changed. A reconnect or a manual retry reads the complete list again.
 - An encrypted local session list and previously loaded chat pages that remain readable after an offline reload.
@@ -116,9 +118,11 @@ Archived Claude and Codex sessions show Resume even when the server still report
 - Socket.IO updates and history catch-up after reconnect. Background tabs announce background state.
 - Legacy NaCl records and per-record AES-GCM keys, with account key derivation and key unwrap.
 - Stop the current response, terminate an agent, and allow a tool once or for the session.
-- Answer agent question forms and Claude AskUserQuestion with selected options and custom text.
+- Answer agent question forms and Claude AskUserQuestion inside the matching tool activity, with a fallback for unloaded calls.
 - Upload encrypted PNG, JPEG, GIF, and WebP images in chat or a new session; open received images and download a decrypted copy. Each message accepts up to 20 images, smaller than 10 MB each.
-- Expand tool calls to read arguments and results, including reported edits and diffs.
+- Expand tool calls to read arguments and results, including original file source, verified raster images, and complete reported diffs.
+- Read denied or canceled command decisions even when the agent never emitted a tool call.
+- Keep subagent work under its parent across message pages and offline reloads. Unplaced work stays readable without main reply actions.
 - Spawn a real agent on an online machine, including optional Git worktree creation.
 - Hand Off from Session info or the chat menu to an editable new-session draft on the same computer and checkout.
 - A conversation and composer with full, moderate, and standard width choices in Settings > Appearance. Moderate width is the default.
@@ -132,8 +136,12 @@ Archived Claude and Codex sessions show Resume even when the server still report
 - Rename with optimistic concurrency, archive, restore, and delete with server error handling.
 - Read-only directory and file previews, Git status, and staged/unstaged diffs through the session RPC.
 - Computer health and Claude/Codex quota reads on explicit Monitor refresh.
+- Rename a computer, stop its daemon, or remove it from the account with confirmation. Removal preserves conversations.
+- Read historical tokens and reported USD cost by period, session, model, and date in Settings > Usage.
+- Select English or Traditional Chinese, keep reported context visible, and save an exact custom Codex model ID in Settings > Advanced.
+- Use the desktop rail to jump to the start of each formal agent response, including responses without a recap.
 - Agent icons identify the compact weekly-usage bars and retain accessible names.
-- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. The composer has no connection or usage footer. It warns only when 10% or less of the context window remains; Model & effort shows the full context reading.
+- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. The composer warns when 10% or less of the context window remains. Advanced settings can keep the reading visible; Model & effort also shows it.
 
 Existing sessions prefer the daemon's model catalog. New sessions offer agent, model, effort, and permission mode selection before Start.
 Permission mode always has a selected value. It restores the last explicit choice for that agent from a new session or chat, or selects Yolo without a valid choice.

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { HappyServer } from './fixtures/HappyServer';
 import { ToolResultsPage } from './pages/ToolResultsPage';
+import { readFileSync } from 'node:fs';
 
 type Json = Record<string, any>;
 // Legacy Claude output records. Older CLIs sent these before the session protocol. A session can switch modes:
@@ -75,7 +76,9 @@ test('structured tool results and past replies should stay readable in the trans
   const edit = await workspace.openTool('Edit');
   await expect(edit.getByLabel('Tool diff')).toContainText('+new line');
   await expect(edit).toContainText('Changes · /real/project/README.md');
-  await expect(edit).not.toContainText('ORIGINAL FILE BODY');
+  await expect(edit.getByText('ORIGINAL FILE BODY', { exact: false })).toBeHidden();
+  await edit.locator('summary').filter({hasText:'Original file'}).click();
+  await expect(edit.getByText('ORIGINAL FILE BODY', { exact: false })).toBeVisible();
   const write = await workspace.openTool('Write');
   await workspace.expectDecision('Write', 'Allowed · Edits');
   await expect(write).toContainText('File created successfully at: /real/project/NOTES.md');
@@ -143,9 +146,50 @@ test('tool details and answered questions should stay usable on phone viewports'
     await expect(edit.getByLabel('Tool diff')).toBeVisible();
     const diff = (await edit.getByLabel('Tool diff').boundingBox())!;
     expect(diff.x + diff.width).toBeLessThanOrEqual(width);
-    const summary = edit.locator('summary');
+    const summary = edit.locator(':scope > summary');
     if (width < 768) await workspace.expectTouchTarget(summary);
     await workspace.expectNoPageOverflow();
     if (width === 320) await workspace.capture('tool-results-320');
+  }
+});
+
+test('tool images, long diffs, and denied commands should remain accessible', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  const image=readFileSync(new URL('./fixtures/pixel.png',import.meta.url)).toString('base64');
+  await server.setMessages([
+    {role:'user',content:{type:'text',text:'Inspect the tools'}},
+    assistant('image-call',[{type:'tool_use',id:'read-image',name:'Read',input:{file_path:'/real/pixel.png'}}]),
+    local('image-result',{tool_use_id:'read-image',content:'Image read.'},{type:'image',file:{filePath:'/real/pixel.png',base64:image}}),
+    assistant('edit-call',[{type:'tool_use',id:'long-edit',name:'Edit',input:{file_path:'/real/long.txt'}}]),
+    local('edit-result',{tool_use_id:'long-edit',content:'Edited.'},{filePath:'/real/long.txt',structuredPatch:[
+      {oldStart:1,oldLines:0,newStart:1,newLines:600,lines:Array.from({length:600},(_,i)=>'+line '+(i+1))}]}),
+    {role:'agent',content:{type:'codex',data:{type:'message',message:'From the real protocol'}}},
+  ]);
+  await setAgentState(server,{completedRequests:{'not-run':{tool:'Bash',arguments:{command:'blocked-command'},status:'denied',reason:'Keep files',createdAt:1}}});
+  const view=new ToolResultsPage(page);
+  await view.openSession();
+  for(const [width,height] of [[320,640],[360,740],[390,844],[430,900],[390,360],[844,390]]) {
+    // Act
+    await page.setViewportSize({width,height});
+    const read=await view.openTool('Read');
+    const open=read.getByRole('button',{name:'Open tool image',exact:true});
+    await open.click();
+    const dialog=page.getByRole('dialog',{name:'/real/pixel.png',exact:true});
+    // Assert
+    await expect(dialog.getByRole('img')).toBeVisible();
+    await expect(dialog.getByRole('link',{name:'Download image',exact:true})).toHaveAttribute('href',/^blob:/);
+    await dialog.getByRole('button',{name:'Close /real/pixel.png',exact:true}).click();
+    const edit=await view.openTool('Edit');
+    const more=edit.getByRole('button',{name:/^Show more lines/});
+    await expect(edit.getByLabel('Tool diff')).not.toContainText('+line 600');
+    await more.scrollIntoViewIfNeeded();if(width<768)await view.expectTouchTarget(more);
+    await more.click();await expect(edit.getByLabel('Tool diff')).toContainText('+line 600');
+    await edit.getByRole('button',{name:'Show fewer lines',exact:true}).click();
+    const denied=await view.openTool('Bash');
+    await expect(denied).toContainText('The request was denied before execution.');
+    await expect(denied).toContainText('Keep files');
+    await view.expectNoPageOverflow();
   }
 });

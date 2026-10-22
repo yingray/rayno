@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { Button } from '../components/ui';
@@ -29,6 +30,7 @@ export const DraftComposer = memo(function DraftComposer({
   suggest?: (word: string) => Promise<Suggestion[]>;
   children: ReactNode;
 }) {
+  const t = useText();
   const value = useDraft(sessionId);
   const { enterToSend, dispatch } = useDemo((store) => ({
     enterToSend: store.state.preferences.enterToSend,
@@ -120,14 +122,14 @@ export const DraftComposer = memo(function DraftComposer({
     {open && <ComposerSuggestions id={listId} input={input} items={found.items} selected={found.selected} onPick={pick} />}
     <textarea
       ref={input}
-      aria-label="Message"
-      aria-autocomplete={suggest ? 'list' : undefined}
+      aria-label={t("Message")}
+      aria-autocomplete={suggest ? "list" : undefined}
       aria-controls={open ? listId : undefined}
       aria-activedescendant={open && found.selected >= 0 ? `${listId}-${found.selected}` : undefined}
-      placeholder={offline && !archived ? 'Draft a message while offline…'
-        : disabled ? needsResume ? 'Resume this session to send a message'
-          : archived ? 'Restore this session to send a message' : 'This agent is offline'
-          : terminal ? 'Send a message to take control…' : 'Type a message…'}
+      placeholder={offline && !archived ? t("Draft a message while offline…")
+        : disabled ? needsResume ? t("Resume this session to send a message")
+          : archived ? t("Restore this session to send a message") : t("This agent is offline")
+          : terminal ? t("Send a message to take control…") : t("Type a message…")}
       value={value}
       onChange={(event) => {
         dispatch({ type: 'draft', id: sessionId, value: event.target.value });
@@ -148,7 +150,7 @@ export const DraftComposer = memo(function DraftComposer({
         variant="accent"
         className={styles.send}
         icon="arrowUp"
-        aria-label="Send message"
+        aria-label={t("Send message")}
         disabled={pending || disabled || (!value.trim() && !hasAttachments)}
         // Keep focus until the click so the phone keyboard cannot move the button before the tap completes.
         onMouseDown={(event) => { if (document.activeElement === input.current) event.preventDefault(); }}

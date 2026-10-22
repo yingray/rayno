@@ -4,6 +4,7 @@ import type { Action, DemoAdapter, DemoState, Machine, UsageReading } from './ty
 import type { HappyClient, Snapshot } from '../happy/client';
 import { createExternalStore, createSelection, shallowEqual } from './subscriptions';
 import type { UIState } from './uiState';
+import { LanguageContext } from '../i18n';
 
 export type Store = {
   mode: 'demo' | 'live';
@@ -29,7 +30,8 @@ export function StoreProvider({ value, children }: PropsWithChildren<{ value: St
   const [store] = useState(() => createExternalStore(value));
   // Publish after commit. An abandoned render must not change the shared snapshot.
   useLayoutEffect(() => store.set(value), [store, value]);
-  return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
+  useLayoutEffect(() => { document.documentElement.lang = value.state.preferences.language || 'en'; }, [value.state.preferences.language]);
+  return <LanguageContext.Provider value={value.state.preferences.language || 'en'}><StoreContext.Provider value={store}>{children}</StoreContext.Provider></LanguageContext.Provider>;
 }
 
 export function useDemo<T>(selector: (store: Store) => T, equal: (a: T, b: T) => boolean = shallowEqual): T {

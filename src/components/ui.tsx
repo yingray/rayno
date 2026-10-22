@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useEffect, useId, useRef } from 'react';
 import type { ButtonHTMLAttributes, CSSProperties, PropsWithChildren, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -181,11 +182,12 @@ export function Button({
   );
 }
 export const Avatar = memo(function Avatar({ agent, size = 38 }: { agent: Agent; size?: number }) {
+  const t = useText();
   const avatar = useDemo((store) => store.state.preferences.avatar);
   return (
     <span className={styles.avatar} style={{ width: size, height: size }} aria-label={agent}>
       {avatar === 'initials' ? (
-        <span>{agent === 'Happy Agent' ? 'H' : agent[0]}</span>
+        <span>{agent === 'Happy Agent' ? t("H") : agent[0]}</span>
       ) : (
         <img
           className={agent !== 'Claude' ? styles.whiteIcon : ''}
@@ -204,7 +206,8 @@ export function Mark({ size = 44 }: { size?: number }) {
   );
 }
 export function Spinner() {
-  return <span className={styles.spinner} role="status" aria-label="Working" />;
+  const t = useText();
+  return <span className={styles.spinner} role="status" aria-label={t("Working")} />;
 }
 export function Segment<T extends string>({
   options,

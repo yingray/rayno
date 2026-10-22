@@ -9,7 +9,7 @@ export class ToolResultsPage extends PriorityFeaturesPage {
   // The first summary span is the tool name. The decision badge follows it.
   private summaryOf(name: string) { return this.page.locator('summary').filter({ has: this.page.locator('span:first-child', { hasText: exact(name) }) }); }
   toolRow(name: string) { return this.toolGroup().locator('details').filter({ has: this.summaryOf(name) }); }
-  toolSummary(name: string) { return this.toolRow(name).locator('summary'); }
+  toolSummary(name: string) { return this.toolRow(name).locator(':scope > summary'); }
   toolToggle() { return this.toolGroup().getByRole('button', { name: /Tool activity|Worked for/ }); }
   async collapseTools() {
     if (await this.toolToggle().getAttribute('aria-expanded') === 'true') await this.toolToggle().click();

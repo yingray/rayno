@@ -7,7 +7,9 @@ export type DiffLine = { kind: 'add' | 'remove' | 'context' | 'hunk'; text: stri
 export type ToolSection =
   | { kind: 'note'; text: string; error?: boolean }
   | { kind: 'text'; label: string; text: string; error?: boolean }
-  | { kind: 'diff'; label: string; lines: DiffLine[]; more: number }
+  | { kind: 'diff'; label: string; lines: DiffLine[]; more: number; remaining?: DiffLine[] }
+  | { kind: 'source'; label: string; text: string }
+  | { kind: 'image'; label: string; data: string }
   | { kind: 'todos'; items: Todo[] }
   | { kind: 'answers'; items: { question: string; answer: string }[] };
 
@@ -21,7 +23,8 @@ const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(va
 const DIFF_LIMIT = 400;
 
 function diff(label: string, lines: DiffLine[]): ToolSection {
-  return { kind: 'diff', label, lines: lines.slice(0, DIFF_LIMIT), more: Math.max(0, lines.length - DIFF_LIMIT) };
+  return { kind: 'diff', label, lines: lines.slice(0, DIFF_LIMIT), more: Math.max(0, lines.length - DIFF_LIMIT),
+    ...(lines.length > DIFF_LIMIT ? {remaining:lines.slice(DIFF_LIMIT)} : {}) };
 }
 function hunkLines(hunks: unknown): DiffLine[] {
   if (!Array.isArray(hunks)) return [];
@@ -91,8 +94,8 @@ function structured(call: ToolCall, result: Json): ToolSection[] {
   }
   const file = record(result.file);
   if (result.file && (typeof file.filePath === 'string' || typeof file.content === 'string' || typeof file.base64 === 'string')) {
-    if (result.type === 'image')
-      return [{ kind: 'note', text: `Image${str(file.type) ? ` (${file.type})` : ''}. The image is not shown here.` }];
+    if (result.type === 'image' && typeof file.base64 === 'string')
+      return [{ kind: 'image', label: str(file.filePath) || 'Tool image', data: file.base64 }];
     const start = num(file.startLine), lines = num(file.numLines), total = num(file.totalLines);
     const range = start !== undefined && lines !== undefined
       ? lines ? `Lines ${start}–${start + lines - 1}${total !== undefined ? ` of ${total}` : ''}` : `No lines${total !== undefined ? ` of ${total}` : ''}`
@@ -184,6 +187,16 @@ export function toolSections(call: ToolCall): ToolSection[] {
   // TodoView: the input list, replaced by a valid newTodos result. An empty list shows nothing.
   const todos = toolTodos(call);
   if (todos.length) sections.push({ kind: 'todos', items: todos });
+  const raw = record(call.result);
+  const original = typeof raw.originalFile === 'string' ? raw.originalFile : str(record(raw.originalFile).content);
+  if (original !== undefined) sections.push({kind:'source',label:'Original file',text:original});
+  // Claude tool results can carry image blocks beside text blocks.
+  const blocks = Array.isArray(call.result) ? call.result : Array.isArray(raw.content) ? raw.content : [];
+  for (const value of blocks) {
+    const block=record(value), source=record(block.source);
+    if (block.type==='image' && source.type==='base64' && typeof source.data==='string')
+      sections.push({kind:'image',label:'Tool image',data:source.data});
+  }
   return [...sections, ...result];
 }
 
@@ -199,6 +212,8 @@ export function toolSectionsText(sections: ToolSection[]): string[] {
   return sections.flatMap((section) => {
     if (section.kind === 'note') return [section.text];
     if (section.kind === 'text') return [section.label, section.text];
+    if (section.kind === 'source') return [section.label, section.text];
+    if (section.kind === 'image') return [section.label];
     if (section.kind === 'diff') return [section.label, section.lines.map((line) => line.text).join('\n')];
     if (section.kind === 'todos') return [section.items.map((todo) => `${TODO_MARK[todo.status] || '☐'}${todo.content}`).join('\n')];
     return [section.items.map((item) => `${item.question}\n${item.answer}`).join('\n')];

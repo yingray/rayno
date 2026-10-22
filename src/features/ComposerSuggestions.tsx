@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { memo, useLayoutEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { Icon } from '../components/ui';
@@ -9,6 +10,7 @@ export type Suggestion = { key: string; text: string; kind: 'command' | 'file' |
 export const ComposerSuggestions = memo(function ComposerSuggestions({ id, input, items, selected, onPick }: {
   id: string; input: RefObject<HTMLTextAreaElement | null>; items: Suggestion[]; selected: number; onPick: (index: number) => void;
 }) {
+  const t = useText();
   const list = useRef<HTMLDivElement>(null);
   const [maxHeight, setMaxHeight] = useState(320);
   useLayoutEffect(() => {
@@ -16,7 +18,7 @@ export const ComposerSuggestions = memo(function ComposerSuggestions({ id, input
     const measure = () => {
       const frame = input.current?.closest('[data-focus-frame]');
       if (!frame) return;
-      const header = frame.closest('[aria-label="Chat session"]')?.querySelector('header');
+      const header = frame.closest('[data-chat-session]')?.querySelector('header');
       const top = Math.max(viewport?.offsetTop ?? 0, header?.getBoundingClientRect().bottom ?? 0);
       setMaxHeight(Math.max(96, Math.min(320, frame.getBoundingClientRect().top - top - 16)));
     };
@@ -40,12 +42,12 @@ export const ComposerSuggestions = memo(function ComposerSuggestions({ id, input
   }, [selected, items]);
   return (
     <div ref={list} id={id} role="listbox" className={styles.suggestions} style={{ maxHeight }}
-      aria-label={items[0]?.kind === 'command' ? 'Command suggestions' : 'File suggestions'}
+      aria-label={items[0]?.kind === 'command' ? t("Command suggestions") : t("File suggestions")}
       onMouseDown={(event) => event.preventDefault()}>
       {items.map((item, index) => (
         <div key={item.key} id={`${id}-${index}`} role="option" aria-selected={index === selected}
           className={styles.suggestion} onClick={() => onPick(index)}>
-          <Icon name={item.kind === 'command' ? 'terminalOutline' : item.kind === 'folder' ? 'folderOutline' : 'documentTextOutline'} size={16} />
+          <Icon name={item.kind === 'command' ? "terminalOutline" : item.kind === 'folder' ? "folderOutline" : "documentTextOutline"} size={16} />
           <strong>{item.label}</strong>
           {item.detail && <small>{item.detail}</small>}
         </div>

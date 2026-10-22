@@ -49,7 +49,7 @@ import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteM
 import { permissionOptions, canSelectPermission, resolveNewSessionPermission, newSessionCatalog } from './permissionOptions';
 import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
 import { canSearchFiles, parseRipgrepFiles, type FileItem } from './suggestions';
-import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, userTurn, type SessionAttention } from './sessionAttention';
+import { attentionMessage, receiveAttention, restoreClassifiedAttention, mergeAttention, userTurn, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
 import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
@@ -57,6 +57,8 @@ import type { GoalAction } from './agentGoal';
 import { imageMime, transferUrl, validateImages } from './attachments';
 import { resumeUnavailable } from './resume';
 import { RECAP_REQUEST } from './systemPrompt';
+import { parseUsageReport, usageQuery, type UsagePeriod } from './usageReport';
+import { withRequestHistory } from './toolHistory';
 import type { Message, Todo } from '../data/types';
 import { latestTodos, sameTodos } from '../data/todos';
 
@@ -230,22 +232,17 @@ export class HappyClient implements DemoAdapter {
           const hold = sendsMessageReceipts(source.metadata);
           const bounds = this.subagentBounds.get(id), read = this.subagentReads.get(id);
           const marked = `${boundCount(bounds)}:${read?.from}:${read?.to}`;
-          if (!history || history.source !== rows || history.size !== (rows?.size || 0) || history.hold !== hold) {
+          if (!history || history.source !== rows || history.size !== (rows?.size || 0) || history.hold !== hold || history.marked !== marked) {
             const list = [...(rows?.values() || [])];
-            const messages = visibleMessages(list, hold);
-            history = { source: rows, size: rows?.size || 0, hold, messages, context: contextUsage(list),
+            const messages = visibleMessages(list, hold, bounds, this.boundsFrom(id));
+            history = { source: rows, size: rows?.size || 0, hold, messages, context: contextUsage(list, bounds, this.boundsFrom(id)),
               marked, todos: sameTodos(history?.todos, latestTodos(messages, list, bounds, this.boundsFrom(id))) };
-            this.visibleHistory.set(id, history);
-          } else if (history.marked !== marked) {
-            // A scan of other pages can add bounds or read range without new rows. The todo chip then checks its call again.
-            history = { ...history, marked,
-              todos: sameTodos(history.todos, latestTodos(history.messages, rows?.values(), bounds, this.boundsFrom(id))) };
             this.visibleHistory.set(id, history);
           }
           const attention = this.sessionAttention(source.wire.id);
           const next = normalizeSession(
             source,
-            history.messages,
+            withRequestHistory(history.messages, source.agentState, rows?.values() || []),
             attention.assistantSeq > attention.readSeq,
             this.machines.get(source.metadata.machineId),
             attention.optionsSeq > attention.userSeq,
@@ -377,7 +374,7 @@ export class HappyClient implements DemoAdapter {
     let state = this.attention.get(id);
     if (!state) {
       const head = this.sessions.get(id)?.wire.seq;
-      state = restoreAttention(this.readLocal('attention.' + id),
+      state = restoreClassifiedAttention(this.readLocal('attention.' + id),
         !this.attentionInitialized && Number.isSafeInteger(head) && head >= 0 ? head : 0);
       this.attention.set(id, state);
       this.saveAttention(id);
@@ -387,9 +384,9 @@ export class HappyClient implements DemoAdapter {
   private saveAttention(id: string) {
     const state = this.attention.get(id);
     if (!state) return;
-    const merged = mergeAttention(state, restoreAttention(this.readLocal('attention.' + id), 0));
+    const merged = mergeAttention(state, restoreClassifiedAttention(this.readLocal('attention.' + id), 0));
     this.attention.set(id, merged);
-    try { this.writeLocal('attention.' + id, JSON.stringify(merged)); } catch { /* Keep this visit's state if storage is unavailable. */ }
+    try { this.writeLocal('attention.' + id, JSON.stringify({...merged,classificationVersion:2})); } catch { /* Keep this visit's state if storage is unavailable. */ }
   }
   private saveSentTime(id: string, time?: number) {
     const times = readSentTimes(this.readLocal('lastMessageSentAt'));
@@ -535,7 +532,7 @@ export class HappyClient implements DemoAdapter {
       if (!event.key?.startsWith(this.storageKey + 'attention.')) return;
       const id = event.key.slice((this.storageKey + 'attention.').length);
       if (!this.sessions.has(id) || !event.newValue) return;
-      this.attention.set(id, mergeAttention(this.sessionAttention(id), restoreAttention(event.newValue, 0)));
+      this.attention.set(id, mergeAttention(this.sessionAttention(id), restoreClassifiedAttention(event.newValue, 0)));
       this.publish(id);
     };
     window.addEventListener('focus', visibility);
@@ -747,7 +744,7 @@ export class HappyClient implements DemoAdapter {
     const read = (): BoundsRange => {
       const last = this.subagentReads.get(id);
       const from = !hasMore ? 0 : !reachedBoundary ? oldest
-        : last && last.to >= boundary && last.from <= boundary + 1 ? last.from : boundary + 1;
+        : Math.min(oldest, last && last.to >= boundary && last.from <= boundary + 1 ? last.from : boundary + 1);
       return { from: Math.max(from, lost + 1), to: head };
     };
     while (!this.disposed && this.sessions.has(id)) {
@@ -760,14 +757,14 @@ export class HappyClient implements DemoAdapter {
         if (!Number.isSafeInteger(wire.seq) || wire.seq < 0) continue;
         next = Math.min(next, wire.seq);
         head = Math.max(head, wire.seq);
-        if (wire.seq <= boundary) { reachedBoundary = true; continue; }
+        if (wire.seq <= boundary) reachedBoundary = true;
         oldest = Math.min(oldest, wire.seq);
         const row = await this.decryptMessage(source, wire).catch(() => undefined);
         if (this.disposed || !this.sessions.has(id)) return;
         if (row) { page.push(row); rows.set(row.id, row); } else lost = Math.max(lost, wire.seq);
       }
       hasMore = !!result.hasMore;
-      const marks = trustedSubagentMarks(this.boundsFor(id, page), this.boundsFrom(id, read()));
+      const marks = trustedSubagentMarks(this.boundsFor(id, rows.values()), this.boundsFrom(id, read()));
       // A new bound or a lower read range can move rows between the threads. Then check every row again.
       const key = `${boundCount(marks)}:${marks.size}`, changed = key !== checked;
       if (changed) { foundUser = foundAssistant = false; checked = key; }
@@ -775,14 +772,18 @@ export class HappyClient implements DemoAdapter {
         foundUser ||= userTurn(row, receipts, sent, marks);
         foundAssistant ||= attentionMessage(row, marks) === 'assistant';
       }
-      if (!hasMore || reachedBoundary || (foundUser && (foundAssistant || !needAssistant))) break;
+      const unresolved = [...rows.values()].some(row => {
+        const raw=record(row.raw), content=record(raw.content), envelope=raw.role==='session'?(content.type==='session'?record(content.data):content):content.type==='session'?record(content.data):{};
+        return typeof envelope.subagent==='string' && !marks.has(envelope.subagent);
+      });
+      if (!hasMore || (!unresolved && (reachedBoundary || (foundUser && (foundAssistant || !needAssistant))))) break;
       if (next >= cursor) throw new Error('The session activity cursor did not advance.');
       cursor = next;
     }
     if (this.disposed || !this.sessions.has(id)) return;
     const range = read();
     this.subagentReads.set(id, range);
-    const marks = trustedSubagentMarks(this.boundsFor(id), this.boundsFrom(id, range));
+    const marks = trustedSubagentMarks(this.boundsFor(id, rows.values()), this.boundsFrom(id, range));
     let state = this.sessionAttention(id);
     for (const row of rows.values()) state = receiveAttention(state, row, marks, receipts, sent);
     this.attention.set(id, { ...state, inspectedSeq: Math.max(state.inspectedSeq, head) });
@@ -1162,6 +1163,46 @@ export class HappyClient implements DemoAdapter {
       version = result.version;
     }
     throw new Error('The session changed at the same time. Try this action again.');
+  }
+  async queryUsage(period: UsagePeriod, sessionId?: string) {
+    if (this.snapshot.offline) throw new Error('Reconnect to read the usage report.');
+    const response = await this.request('/v1/usage/query', { method: 'POST', body: JSON.stringify(usageQuery(period, sessionId)) });
+    return parseUsageReport(response.usage);
+  }
+  async renameMachine(id: string, name: string) {
+    if (!name.trim()) throw new Error('Enter a computer name.');
+    const source = this.machines.get(id);
+    if (!source) throw new Error('The computer is not available.');
+    let metadata = source.metadata, version = source.wire.metadataVersion;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const next = { ...metadata, displayName: name.trim() };
+      const result = await this.ack('machine-update-metadata', { machineId: id,
+        metadata: await this.encryption.encrypt(next, source.key), expectedVersion: version });
+      if (result.result === 'success') {
+        const current = this.machines.get(id);
+        if (current && (result.version ?? version + 1) >= current.wire.metadataVersion) {
+          current.metadata = next; current.wire.metadataVersion = result.version ?? version + 1;
+          current.wire.metadata = await this.encryption.encrypt(next, current.key);
+        }
+        this.publish(undefined, id); return;
+      }
+      if (result.result !== 'version-mismatch' || typeof result.metadata !== 'string' || typeof result.version !== 'number')
+        throw new Error(result.message || 'Happy refused the computer name.');
+      metadata = await this.encryption.decrypt<Json>(result.metadata, source.key); version = result.version;
+    }
+    throw new Error('The computer changed at the same time. Try again.');
+  }
+  async deleteMachine(id: string) {
+    await this.request(`/v1/machines/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    this.machines.delete(id); this.patch({ usage: this.snapshot.usage.filter(reading => reading.machineId !== id) });
+    this.publish();
+  }
+  async stopDaemon(id: string) {
+    if (!this.machines.get(id)?.wire.active) throw new Error('This computer is offline.');
+    const result = await this.rpc(id, 'stop-daemon', {}, true);
+    if (result.success === false) throw new Error(result.message || 'The daemon did not stop.');
+    const source = this.machines.get(id);
+    if (source) { source.wire.active = false; this.publish(undefined, id); }
   }
   async renameSession(id: string, name: string) {
     await this.mutateMetadata(id, (metadata) => {
@@ -1713,7 +1754,7 @@ export class HappyClient implements DemoAdapter {
     if (!machine?.wire.active) throw new Error('Choose an online computer.');
     const agent = draft.agent === 'Happy Agent' ? 'rig' : draft.agent.toLowerCase();
     const catalog = agent === 'rig' ? { ...machine.metadata, flavor: 'rig', client: { id: 'rig' } }
-      : newSessionCatalog(agent, machine.metadata.happyCliVersion);
+      : { ...newSessionCatalog(agent, machine.metadata.happyCliVersion), ...(agent === 'codex' ? { customCodexModel: draft.model } : {}) };
     if (!permissionOptions(catalog).some((option) => option.value === draft.permissionMode && !option.disabled))
       throw new Error('Choose an available permission mode before you start a session.');
     if (!isConcreteModel(draft.model) || !modelOptions(catalog).some((option) => option.value === draft.model && !option.disabled))

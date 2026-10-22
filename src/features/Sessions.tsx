@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { lazy, memo, useCallback, useDeferredValue, useEffect, useMemo, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -25,6 +26,7 @@ const SessionActions = lazy(() => import('./SessionActions').then((module) => ({
 const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAction }: {
   session: Session; selected: boolean; onSelect: (id: string) => void; onAction: (session: Session) => void;
 }) {
+  const t = useText();
   const longPress = useRef<number | undefined>(undefined);
   const didLongPress = useRef(false);
   useEffect(() => () => clearTimeout(longPress.current), []);
@@ -33,7 +35,7 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
       <button
         type="button"
         className={`${styles.row} ${selected ? styles.selected : ''} ${isSessionFaded(session) ? styles.faded : ''}`}
-        aria-current={selected ? 'page' : undefined}
+        aria-current={selected ? "page" : undefined}
         onContextMenu={(event) => {
           event.preventDefault();
           onAction(session);
@@ -75,13 +77,13 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
               className={styles.dot}
               style={{ background: 'var(--orange)' }}
               role="img"
-              aria-label="Needs input"
-              title="Needs your reply"
+              aria-label={t("Needs input")}
+              title={t("Needs your reply")}
             />
           )}
           {session.unread && (
             <span className={styles.dot} style={{ background: 'var(--accent-soft)' }}
-              role="img" aria-label="Unread" title="Unread messages" />
+              role="img" aria-label={t("Unread")} title={t("Unread messages")} />
           )}
         </span>
       </button>
@@ -104,6 +106,7 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
 export const SessionList = memo(function SessionList({ onSelect, onNew, searchRequested, onSearchHandled }: {
   onSelect?: () => void; onNew?: () => void; searchRequested?: boolean; onSearchHandled?: () => void;
 }) {
+  const t = useText();
   const { allSessions, loading, offline } = useDemo((store) => ({
     allSessions: store.state.sessions, loading: store.snapshot?.loading, offline: store.snapshot?.offline,
   }));
@@ -200,26 +203,26 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
   }, [navigate, onSelect]);
   const filtered = !!query.trim() || mode !== 'flat' || archived;
   return (
-    <section className={styles.list} aria-label="Session list" ref={list}>
+    <section className={styles.list} aria-label={t("Session list")} ref={list}>
       <div className={styles.surface}>
       <header className={styles.header}>
         <div className={styles.heading}>
           <span className={styles.mobileLogo}>
             <Mark size={36} />
           </span>
-          <h1>{archived ? 'Archived' : 'Sessions'}</h1>
+          <h1>{archived ? t("Archived") : t("Sessions")}</h1>
           <button
             ref={optionsButton}
             className={`${styles.optionsButton} ${filtered ? styles.filtered : ''}`}
-            aria-label="Session list options"
+            aria-label={t("Session list options")}
             aria-haspopup="dialog"
             aria-expanded={optionsOpen}
             aria-controls={optionsId}
-            title="Search, grouping, and archived sessions"
+            title={t("Search, grouping, and archived sessions")}
             onClick={() => setOptionsOpen((open) => !open)}
           >
             <Icon name="optionsOutline" size={19} />
-            {filtered && <span className={styles.filterDot} role="img" aria-label="Active list filters" />}
+            {filtered && <span className={styles.filterDot} role="img" aria-label={t("Active list filters")} />}
           </button>
           <Button
             className={styles.newDesktop}
@@ -229,32 +232,30 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
               navigate('/new');
               onNew?.();
             }}
-          >
-            New
-          </Button>
+          >{t("New")}</Button>
         </div>
-        <OfflineStatus label="Session list availability" />
+        <OfflineStatus label={t("Session list availability")} />
       </header>
       <div className={styles.rows}>
         {!sessions.length ? (
           <Empty
             title={
               offline && !allSessions.length
-                ? 'No saved sessions'
+                ? t("No saved sessions")
                 : loading
-                ? 'Read your sessions…'
+                ? t("Read your sessions…")
                 : query
-                  ? 'No matching sessions'
+                  ? t("No matching sessions")
                   : archived
-                    ? 'Nothing archived yet'
-                    : 'A fresh start'
+                    ? t("Nothing archived yet")
+                    : t("A fresh start")
             }
           >
             {offline && !allSessions.length
-              ? 'Connect once to save your session list on this device.'
+              ? t("Connect once to save your session list on this device.")
               : query
-              ? 'Try another workspace or session name.'
-              : 'Start a session to give your next idea a place.'}
+              ? t("Try another workspace or session name.")
+              : t("Start a session to give your next idea a place.")}
           </Empty>
         ) : (
           groups.map((group) => (
@@ -284,37 +285,37 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
           ref={optionsPanel}
           id={optionsId}
           role="dialog"
-          aria-label="Session list options"
+          aria-label={t("Session list options")}
           tabIndex={-1}
           className={styles.optionsPanel}
           style={{ top: optionsPosition.top, maxHeight: optionsPosition.maxHeight }}
         >
           <header className={styles.optionsHeading}>
-            <div><h2>List options</h2><span>{sessions.length} {sessions.length === 1 ? 'session' : 'sessions'}</span></div>
-            <Button icon="close" variant="ghost" aria-label="Close list options" onClick={() => closeOptions()} />
+            <div><h2>{t("List options")}</h2><span>{sessions.length} {sessions.length === 1 ? t("session") : t("sessions")}</span></div>
+            <Button icon="close" variant="ghost" aria-label={t("Close list options")} onClick={() => closeOptions()} />
           </header>
           <label className={styles.search} data-focus-frame>
             <Icon name="searchOutline" size={17} />
             <input
               ref={search}
-              aria-label="Search sessions"
-              placeholder="Search sessions"
+              aria-label={t("Search sessions")}
+              placeholder={t("Search sessions")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); closeOptions(); } }}
             />
-            {query && <Button icon="close" variant="ghost" aria-label="Clear session search" onClick={() => { setQuery(''); search.current?.focus(); }} />}
+            {query && <Button icon="close" variant="ghost" aria-label={t("Clear session search")} onClick={() => { setQuery(''); search.current?.focus(); }} />}
           </label>
-          <p className={styles.optionLabel}>Group by</p>
-          <Segment label="Session list mode" value={mode} onChange={setMode}
+          <p className={styles.optionLabel}>{t("Group by")}</p>
+          <Segment label={t("Session list mode")} value={mode} onChange={setMode}
             options={[{ value: 'flat', label: 'Flat' }, { value: 'projects', label: 'Projects' }]} />
-          <p className={styles.optionLabel}>Show</p>
-          <Segment label="Session visibility" value={archived ? 'archived' : 'active'}
+          <p className={styles.optionLabel}>{t("Show")}</p>
+          <Segment label={t("Session visibility")} value={archived ? "archived" : "active"}
             onChange={(value) => setArchived(value === 'archived')}
             options={[{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }]} />
           <footer className={styles.optionsFooter}>
-            <Button variant="ghost" disabled={!filtered} onClick={() => { setQuery(''); setMode('flat'); setArchived(false); }}>Reset</Button>
-            <Button variant="accent" onClick={() => closeOptions()}>Done</Button>
+            <Button variant="ghost" disabled={!filtered} onClick={() => { setQuery(''); setMode('flat'); setArchived(false); }}>{t("Reset")}</Button>
+            <Button variant="accent" onClick={() => closeOptions()}>{t("Done")}</Button>
           </footer>
         </div>
       )}
@@ -323,7 +324,7 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
         className={styles.fab}
         variant="accent"
         icon="add"
-        aria-label="New session"
+        aria-label={t("New session")}
         onClick={() => {
           navigate('/new');
           onNew?.();

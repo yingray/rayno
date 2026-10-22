@@ -1,3 +1,4 @@
+import { useText } from "../i18n";
 import { lazy, memo, useCallback, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Button, copyText, Dialog, Empty, Icon, Spinner } from '../components/ui';
@@ -70,6 +71,7 @@ export const Chat = memo(function Chat({
   embedded?: boolean;
   onSettings?: (sessionId: string, settings: MessageSettings) => void;
 }) {
+  const t = useText();
   const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline, sideChats, parentKnown, sideEntry, sideTitle } = useDemo((store) => ({
     // A side chat whose parent is gone returns to the session list.
     parentKnown: !!session.parentSessionId && store.state.sessions.some((item) => item.id === session.parentSessionId),
@@ -104,8 +106,8 @@ export const Chat = memo(function Chat({
   const answeredOptions = useRef(new Set<string>());
   // A held Happy Agent answer does not answer its options yet. Keep the chosen options disabled until a rejection.
   const [answeredIds, setAnsweredIds] = useState<ReadonlySet<string>>(() => new Set());
-  const metadata: Json = useMemo(() => mode === 'live' ? liveMetadata || {}
-    : { flavor: session.agent === 'Happy Agent' ? 'rig' : session.agent.toLowerCase() }, [mode, liveMetadata, session.agent]);
+  const metadata: Json = useMemo(() => ({ ...(mode === 'live' ? liveMetadata || {}
+    : { flavor: session.agent === 'Happy Agent' ? 'rig' : session.agent.toLowerCase() }), customCodexModel: preferences.customCodexModel }), [mode, liveMetadata, session.agent, preferences.customCodexModel]);
   const location = useLocation();
   const navigate = useNavigate();
   const modesKey = `composerModes.${session.id}`;
@@ -147,7 +149,7 @@ export const Chat = memo(function Chat({
   const permissionSelectable = canSelectPermission(metadata);
   const selectedPermission = permissionSelectable ? permission : null;
   const effectivePermission = selectedPermission || inheritedPermission;
-  const permissionName = permissionLabel(metadata, effectivePermission);
+  const permissionName = t(permissionLabel(metadata, effectivePermission));
   const permissions = useMemo(() => permissionOptions(metadata, effectivePermission), [metadata, effectivePermission]);
   const [picker, setPicker] = useState<'model' | 'permission' | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -416,32 +418,33 @@ export const Chat = memo(function Chat({
       className={styles.chat}
       data-view={view}
       data-chat-width={preferences.chatWidth}
+      data-chat-session
       data-connection={mode === 'live' ? connection : undefined}
       data-keyboard-open={keyboardOpen}
       data-embedded={embedded || undefined}
-      aria-label={embedded ? 'Side chat conversation' : 'Chat session'}
+      aria-label={embedded ? t("Side chat conversation") : t("Chat session")}
     >
       {!embedded && <header className={styles.header}>
         <Button
           className={`${styles.back} ${parentId ? styles.parentBack : ''}`}
           icon="arrowBack"
-          aria-label={parentId ? 'Back to parent chat' : 'Back to sessions'}
-          title={parentId ? 'Back to parent chat' : undefined}
+          aria-label={parentId ? t("Back to parent chat") : t("Back to sessions")}
+          title={parentId ? t("Back to parent chat") : undefined}
           onClick={() => parentId ? navigate(`/session/${parentId}/side`, { state: { sideChat: session.id } }) : navigate('/sessions')}
         />
         <Button
           className={styles.listButton}
           variant="ghost"
           icon="codeSlash"
-          aria-label="Open session list"
+          aria-label={t("Open session list")}
           onClick={onList}
         />
-        <button className={styles.titleCapsule} onClick={onInfo} aria-label="Open session info">
+        <button className={styles.titleCapsule} onClick={onInfo} aria-label={t("Open session info")}>
           <Avatar agent={session.agent} size={36} />
           <span className={styles.titleText}>
             <strong>{sideTitle || titleOf(session)}</strong>
             <span className={styles.subtitle}>
-              {session.isSideChat && titleOf(session) !== SIDE_CHAT_TITLE && <span className={styles.sideTag}>Side chat</span>}
+              {session.isSideChat && titleOf(session) !== SIDE_CHAT_TITLE && <span className={styles.sideTag}>{t("Side chat")}</span>}
               <WorkspaceTag name={session.workspace} small />
               <span className={styles.branch}>
                 <Icon name="gitBranchOutline" size={12} />
@@ -456,43 +459,37 @@ export const Chat = memo(function Chat({
             </span>
           </span>
         </button>
-        <Button
-          className={styles.infoButton}
-          icon="informationCircleOutline"
-          aria-label="Toggle session info"
-          onClick={onInfo}
-        />
         {sideEntry && (
           <Button
             className={styles.sideChatsButton}
             icon="chatbubblesOutline"
-            aria-label={sideChats ? `Side chats, ${sideChats} open` : 'Side chats'}
+            aria-label={sideChats ? `Side chats, ${sideChats} open` : t("Side chats")}
             aria-expanded={sideOpen}
-            title="Side chats"
+            title={t("Side chats")}
             onClick={() => navigate(sideOpen ? `/session/${session.id}` : `/session/${session.id}/side`)}
           >{sideChats ? <span className={styles.sideChatsCount}>{sideChats}</span> : null}</Button>
         )}
         <ChatSessionMenu session={session} settings={messageSettings} />
       </header>}
-      <OfflineStatus label={embedded ? 'Side chat availability' : 'Conversation availability'} />
+      <OfflineStatus label={embedded ? t("Side chat availability") : t("Conversation availability")} />
       {view === 'chat' ? (
         <>
           <div
             id={conversationId}
             role="region"
-            aria-label="Conversation messages"
+            aria-label={t("Conversation messages")}
             className={styles.messageScroll}
             // Focus and scrollIntoView keep a control above the composer that overlays the bottom of the list.
             style={{ scrollPaddingBottom: `${composerHeight + keyboardInset}px` }}
             ref={scroll}
             onScroll={(event) => updateScrollPosition(event.currentTarget)}
             onPointerDownCapture={(event) => {
-              if (event.target instanceof Element && event.target.closest('[aria-label="Tool activity"]'))
+              if (event.target instanceof Element && event.target.closest('[data-tool-activity]'))
                 pinned.current = false;
             }}
             onKeyDownCapture={(event) => {
               if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof Element
-                && event.target.closest('[aria-label="Tool activity"]')) pinned.current = false;
+                && event.target.closest('[data-tool-activity]')) pinned.current = false;
             }}
           >
             <div className={styles.messages} ref={scrollContent} data-font-size={preferences.fontSize} style={{
@@ -501,7 +498,7 @@ export const Chat = memo(function Chat({
             }}>
               <div className={styles.conversationDate}>
                 <span />
-                {mode === 'demo' ? 'Today' : new Date(session.createdAt).toLocaleDateString()}
+                {mode === 'demo' ? t("Today") : new Date(session.createdAt).toLocaleDateString()}
                 <span />
               </div>
               <ChatHistoryStatus history={history} offline={offline}
@@ -512,15 +509,14 @@ export const Chat = memo(function Chat({
                   running={running} recapBusy={recapBusy} scroll={scroll} railHost={railHost}
                   onOption={chooseReply} onRecap={requestRecap} onUnpin={unpin} /></LazyBoundary>
               ) : !history?.loading && (!history?.error || offline) ? (
-                <Empty title={offline ? 'No saved messages' : 'The start of something good'}>
-                  {offline ? 'Open this chat online to save its messages on this device.' : 'Give your agent a task to work on.'}
+                <Empty title={offline ? t("No saved messages") : t("The start of something good")}>
+                  {offline ? t("Open this chat online to save its messages on this device.") : t("Give your agent a task to work on.")}
                 </Empty>
               ) : null}
               {running && (
                 <div className={styles.thinking} role="status">
                   <Spinner />
-                  {session.agent} is working
-                  {mode === 'demo' && <span className={styles.simulated}>Simulated</span>}
+                  {session.agent}{' '}{t("is working")}{mode === 'demo' && <span className={styles.simulated}>{t("Simulated")}</span>}
                 </div>
               )}
               {hasRequests && <LazyBoundary><Requests sessionId={session.id} /></LazyBoundary>}
@@ -529,17 +525,17 @@ export const Chat = memo(function Chat({
                 <span className={styles.liveDot} />
                 {disabled
                   ? session.archived
-                    ? 'Session ended'
+                    ? t("Session ended")
                     : mode === 'live'
-                      ? offline ? 'Offline · your draft stays on this device'
-                        : connection !== 'connected' ? 'Connect to Happy…'
-                          : 'Agent offline · resume this session'
-                      : 'Computer offline'
+                      ? offline ? t("Offline · your draft stays on this device")
+                        : connection !== 'connected' ? t("Connect to Happy…")
+                          : t("Agent offline · resume this session")
+                      : t("Computer offline")
                   : session.terminalControl
-                    ? 'The terminal controls this session'
+                    ? t("The terminal controls this session")
                   : running
-                    ? 'Working in your workspace'
-                    : 'Ready when you are'}
+                    ? t("Working in your workspace")
+                    : t("Ready when you are")}
               </div>
             </div>
           </div>
@@ -555,12 +551,10 @@ export const Chat = memo(function Chat({
                 <Button
                   className={styles.latestButton}
                   icon="arrowDown"
-                  aria-label="Scroll to latest messages"
+                  aria-label={t("Scroll to latest messages")}
                   aria-controls={conversationId}
                   onClick={scrollToLatest}
-                >
-                  Latest messages
-                </Button>
+                >{t("Latest messages")}</Button>
               </div>
             )}
             {error && (
@@ -571,8 +565,8 @@ export const Chat = memo(function Chat({
             {(pending || stopping) && (
               <p className={styles.sendStatus} role="status">
                 {stopping
-                  ? 'Wait for the agent to stop…'
-                  : 'Wait for Happy to confirm this message…'}
+                  ? t("Wait for the agent to stop…")
+                  : t("Wait for Happy to confirm this message…")}
               </p>
             )}
             {mode === 'live' && disabled && connection === 'connected' && (
@@ -625,8 +619,8 @@ export const Chat = memo(function Chat({
               >
                 <input
                   type="file"
-                  accept={mode === 'live' ? 'image/png,image/jpeg,image/gif,image/webp' : undefined}
-                  aria-label="Choose chat images"
+                  accept={mode === 'live' ? "image/png,image/jpeg,image/gif,image/webp" : undefined}
+                  aria-label={t("Choose chat images")}
                   multiple
                   hidden
                   ref={fileInput}
@@ -639,9 +633,9 @@ export const Chat = memo(function Chat({
                   className={styles.attach}
                   variant="ghost"
                   icon="add"
-                  aria-label="Attach files"
+                  aria-label={t("Attach files")}
                   disabled={disabled || pending || session.agent === 'Happy Agent'}
-                  title={mode === 'live' ? 'Attach images (up to 20, smaller than 10 MB each)' : undefined}
+                  title={mode === 'live' ? t("Attach images (up to 20, smaller than 10 MB each)") : undefined}
                   onClick={() => fileInput.current?.click()}
                 />
                 <Button
@@ -652,42 +646,40 @@ export const Chat = memo(function Chat({
                   disabled={pending}
                   onClick={() => setPicker('permission')}
                 >
-                  <span>Mode: {permissionName}</span>
+                  <span>{t("Mode:")}{' '}{permissionName}</span>
                 </Button>
                 <button
                   type="button"
                   className={styles.recapPill}
-                  aria-label="Recap the last reply"
+                  aria-label={t("Recap the last reply")}
                   data-testid="recap-pill"
-                  title="Ask the agent to recap its last reply"
+                  title={t("Ask the agent to recap its last reply")}
                   disabled={disabled || pending || running || !canRecap || recapBusy}
                   onClick={() => void requestRecap()}
                 >
-                  <Icon name="sparkles" size={13} />
-                  Recap
-                </button>
+                  <Icon name="sparkles" size={13} />{t("Recap")}</button>
                 <button
                   className={styles.model}
-                  aria-label="Model and effort"
+                  aria-label={t("Model and effort")}
                   disabled={pending}
                   onClick={() => setPicker('model')}
                 >
-                  <span>{modelLabel}{selectedEffort ? ` · ${effortLabel(selectedEffort)}` : ''}</span>
+                  <span>{modelLabel}{selectedEffort ? ` · ${t(effortLabel(selectedEffort))}` : ''}</span>
                   <Icon name="chevronDown" size={12} />
                 </button>
                 {running && (
                   <Button
                     className={styles.stop}
                     icon="stop"
-                    aria-label="Stop response"
-                    title="Stop response"
+                    aria-label={t("Stop response")}
+                    title={t("Stop response")}
                     disabled={disabled || stopping}
                     onClick={() => void stop()}
                   />
                 )}
               </DraftComposer>
             </div>
-            <ContextWarning context={session.context} />
+            <ContextWarning context={session.context} always={preferences.alwaysShowContextSize} />
           </div>
         </>
       ) : mode === 'live' ? (
@@ -695,11 +687,11 @@ export const Chat = memo(function Chat({
       ) : (
         <div className={styles.fileView}>
           <div className={styles.fileTitle}>
-            <span>{view === 'changes' ? 'Changes in this workspace' : 'Workspace files'}</span>
-            <span className={styles.simulated}>Sample files · read only</span>
+            <span>{view === 'changes' ? t("Changes in this workspace") : t("Workspace files")}</span>
+            <span className={styles.simulated}>{t("Sample files · read only")}</span>
           </div>
           <div className={styles.fileLayout}>
-            <nav aria-label="Workspace files">
+            <nav aria-label={t("Workspace files")}>
               {files.map((file) => (
                 <button
                   key={file}
@@ -715,7 +707,7 @@ export const Chat = memo(function Chat({
               <div className={styles.codeHeader}>
                 <span>{selectedFile}</span>
                 <button
-                  aria-label="Copy file contents"
+                  aria-label={t("Copy file contents")}
                   onClick={() => copyText(sampleFiles[selectedFile], notify)}
                 >
                   <Icon name="copyOutline" size={14} />
@@ -732,22 +724,20 @@ export const Chat = memo(function Chat({
             className={styles.chatReturn}
             icon="arrowBack"
             onClick={() => navigate(`/session/${session.id}`)}
-          >
-            Back to chat
-          </Button>
+          >{t("Back to chat")}</Button>
         </div>
       )}
       {picker && (
         <Dialog
-          title={picker === 'model' ? 'Model & effort' : 'Permission mode'}
+          title={picker === 'model' ? t("Model & effort") : t("Permission mode")}
           onClose={() => setPicker(null)}
         >
           {picker === 'model' ? (
             <div className={styles.modelSettings}>
-              <p>{mode === 'demo' ? 'Local demo. Applies to your next simulated reply.' : settingTiming}</p>
-              {!canSelectModel(metadata) && <p>This session locks model selection.</p>}
-              <h3>Model</h3>
-              <div className={styles.pickerOptions} role="radiogroup" aria-label="Model">
+              <p>{mode === 'demo' ? t("Local demo. Applies to your next simulated reply.") : settingTiming}</p>
+              {!canSelectModel(metadata) && <p>{t("This session locks model selection.")}</p>}
+              <h3>{t("Model")}</h3>
+              <div className={styles.pickerOptions} role="radiogroup" aria-label={t("Model")}>
                 {models.map((option) => (
                   <button
                     key={option.value}
@@ -756,14 +746,14 @@ export const Chat = memo(function Chat({
                     disabled={option.disabled || !canSelectModel(metadata) || pending}
                     onClick={() => chooseModel(option.value)}
                   >
-                    <span>{option.provider ? `${option.provider} · ` : ''}{option.label}{option.disabled ? ' (unavailable)' : ''}</span>
+                    <span>{option.provider ? `${option.provider} · ` : ''}{option.label}{option.disabled ? t(" (unavailable)") : ''}</span>
                     {option.value === model && <Icon name="checkmark" size={16} />}
                   </button>
                 ))}
               </div>
-              <h3>Effort</h3>
+              <h3>{t("Effort")}</h3>
               {efforts.length ? (
-                <div className={styles.pickerOptions} role="radiogroup" aria-label="Effort">
+                <div className={styles.pickerOptions} role="radiogroup" aria-label={t("Effort")}>
                   {efforts.map((value) => (
                     <button
                       key={value}
@@ -772,24 +762,24 @@ export const Chat = memo(function Chat({
                       disabled={pending}
                       onClick={() => chooseEffort(value)}
                     >
-                      <span>{effortLabel(value)}</span>
+                      <span>{t(effortLabel(value))}</span>
                       {selectedEffort === value && <Icon name="checkmark" size={16} />}
                     </button>
                   ))}
                 </div>
-              ) : <p>This model does not offer effort selection.</p>}
+              ) : <p>{t("This model does not offer effort selection.")}</p>}
               <ContextMeter context={session.context} />
-              <Button onClick={() => setPicker(null)}>Done</Button>
+              <Button onClick={() => setPicker(null)}>{t("Done")}</Button>
             </div>
           ) : (
             <>
               <p>
                 {mode === 'live'
                   ? `${settingTiming} Agent mode: ${permissionLabel(metadata, inheritedPermission)}${inheritedPermission ? ` (${inheritedPermission})` : ''}.`
-                  : 'This preference applies to the demo session. No tools run on your computer.'}
+                  : t("This preference applies to the demo session. No tools run on your computer.")}
               </p>
-              {!permissionSelectable && <p>This session locks permission mode selection.</p>}
-              <div className={styles.pickerOptions} role="radiogroup" aria-label="Permission mode">
+              {!permissionSelectable && <p>{t("This session locks permission mode selection.")}</p>}
+              <div className={styles.pickerOptions} role="radiogroup" aria-label={t("Permission mode")}>
                 {mode === 'live' && (
                   <button
                     role="radio"
@@ -797,7 +787,7 @@ export const Chat = memo(function Chat({
                     disabled={pending}
                     onClick={() => { pickModes({ permission: null }); setPicker(null); }}
                   >
-                    <span>Use agent mode · {permissionLabel(metadata, inheritedPermission)}</span>
+                    <span>{t("Use agent mode ·")}{' '}{permissionLabel(metadata, inheritedPermission)}</span>
                     {selectedPermission === null && <Icon name="checkmark" size={16} />}
                   </button>
                 )}
@@ -834,10 +824,9 @@ export const Chat = memo(function Chat({
             <img className={styles.attachmentPreview} src={previewUrl} alt={preview.name} />
           ) : (
             <p>
-              {preview.type || 'File'} · {(preview.size / 1024).toFixed(1)} KB
-            </p>
+              {preview.type || 'File'} · {(preview.size / 1024).toFixed(1)}{' '}{t("KB")}</p>
           )}
-          <p>{mode === 'live' ? 'This image is encrypted before upload when you send.' : 'This file stays local. Only its name appears in the saved conversation.'}</p>
+          <p>{mode === 'live' ? t("This image is encrypted before upload when you send.") : t("This file stays local. Only its name appears in the saved conversation.")}</p>
         </Dialog>
       )}
     </section>
