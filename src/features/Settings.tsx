@@ -1,8 +1,10 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dialog, Empty, Icon, Segment, Toggle } from '../components/ui';
 import { version } from '../../package.json';
+import { checkForUpdate, currentBuild, forceUpdate, formatBuildTime } from '../app/appUpdate';
+import type { UpdateCheck } from '../app/appUpdate';
 import type { IconName } from '../components/ui';
 import { useDemo } from '../data/store';
 import type { BubbleColor, ChatWidth, FontSize, RecapMode } from '../data/types';
@@ -72,6 +74,62 @@ function Group({
       <div className={styles.groupCard}>{children}</div>
       {footer && <p>{footer}</p>}
     </div>
+  );
+}
+
+function updateSubtitle(check: UpdateCheck | null, updating: boolean): string {
+  if (updating) return 'Installing the latest version…';
+  if (!check) return 'Checking for a new version…';
+  if (check.status === 'offline') return 'Cannot check for updates. Check your connection.';
+  if (check.status === 'current') return 'This is the latest version';
+  return `Version ${check.latest.commit} is ready`;
+}
+
+function AboutGroup() {
+  const [check, setCheck] = useState<UpdateCheck | null>(null);
+  const [updating, setUpdating] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void checkForUpdate().then((result) => active && setCheck(result));
+    return () => { active = false; };
+  }, []);
+  const offline = check?.status === 'offline';
+  const update = async () => {
+    if (offline) {
+      setCheck(null);
+      setCheck(await checkForUpdate());
+      return;
+    }
+    setUpdating(true);
+    const result = await forceUpdate();
+    // The page reloads after a successful update. It stays here only when the connection failed.
+    if (result.status === 'offline') {
+      setCheck(result);
+      setUpdating(false);
+    }
+  };
+  return (
+    <Group label="About" footer="Update now reloads Rayno. Drafts, sessions, and preferences stay on this device.">
+      <Row
+        icon="informationCircleOutline"
+        title="Rayno"
+        subtitle={`Built ${formatBuildTime(currentBuild.builtAt)}`}
+      >
+        <span className={styles.value} aria-label="Current version">
+          {version} · {currentBuild.commit}
+        </span>
+      </Row>
+      <Row icon="refreshOutline" title="Updates" subtitle={updateSubtitle(check, updating)}>
+        <Button
+          className={styles.updateButton}
+          variant={check?.status === 'available' ? 'accent' : 'default'}
+          disabled={!check || updating}
+          onClick={() => void update()}
+        >
+          {offline ? 'Check again' : 'Update now'}
+        </Button>
+      </Row>
+    </Group>
   );
 }
 
@@ -380,15 +438,7 @@ export function Settings() {
                 </Row>
               </Group>
             )}
-            <Group label="About">
-              <Row
-                icon="informationCircleOutline"
-                title="Rayno"
-                subtitle="React · TypeScript · local PWA"
-              >
-                <span className={styles.value}>{version}</span>
-              </Row>
-            </Group>
+            <AboutGroup />
           </>
         ) : (
           <Empty title="Settings page not found">

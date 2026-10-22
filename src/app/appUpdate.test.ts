@@ -1,0 +1,74 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { checkForUpdate, compareBuild, currentBuild, forceUpdate, formatBuildTime, parseBuild } from './appUpdate';
+
+const latest = { commit: 'abc1234', builtAt: '2026-10-22T09:17:22.000Z' };
+const serve = (body: unknown, ok = true) =>
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok, json: async () => body })));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('App update', () => {
+  it('should accept only a version file with a commit and a build time', () => {
+    // Arrange
+    const values = [latest, { commit: 'abc1234' }, { commit: '', builtAt: 'x' }, null, 'abc1234'];
+    // Act
+    const builds = values.map(parseBuild);
+    // Assert
+    expect(builds).toEqual([latest, null, null, null, null]);
+  });
+
+  it('should report a new release only when the commit differs', () => {
+    // Arrange
+    const running = { commit: 'abc1234', builtAt: '2026-10-21T00:00:00.000Z' };
+    // Act
+    const same = compareBuild(running, latest).status;
+    const changed = compareBuild(running, { ...latest, commit: 'def5678' }).status;
+    // Assert
+    expect([same, changed]).toEqual(['current', 'available']);
+  });
+
+  it('should show a build time in the given locale and keep an invalid time as given', () => {
+    // Arrange
+    const times = [latest.builtAt, 'not a date'];
+    // Act
+    const shown = times.map((time) => formatBuildTime(time, 'en-US'));
+    // Assert
+    expect(shown[0]).toMatch(/Oct 22, 2026/);
+    expect(shown[1]).toBe('not a date');
+  });
+
+  it('should treat a missing or unreadable version file as offline', async () => {
+    // Arrange
+    serve(latest, false);
+    const failed = await checkForUpdate();
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    // Act
+    const unreachable = await checkForUpdate();
+    // Assert
+    expect([failed.status, unreachable.status]).toEqual(['offline', 'offline']);
+  });
+
+  it('should keep the page and its cached shell when the server cannot be reached', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    const reload = vi.fn();
+    // Act
+    const result = await forceUpdate(reload);
+    // Assert
+    expect(result.status).toBe('offline');
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('should reload when the server answers and no service worker controls the page', async () => {
+    // Arrange
+    serve({ ...latest, commit: currentBuild.commit === 'abc1234' ? 'def5678' : 'abc1234' });
+    const reload = vi.fn();
+    // Act
+    const result = await forceUpdate(reload);
+    // Assert
+    expect(result.status).toBe('available');
+    expect(reload).toHaveBeenCalledOnce();
+  });
+});

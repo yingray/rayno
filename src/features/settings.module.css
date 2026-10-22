@@ -251,6 +251,9 @@
 .recapStyleReset {
   margin-left: 46px;
 }
+.updateButton {
+  flex: none;
+}
 .note {
   color: var(--muted);
   font-size: 10px;
@@ -599,7 +602,8 @@
   .fontSize {
     height: 44px;
   }
-  .recapStyleReset {
+  .recapStyleReset,
+  .updateButton {
     height: 44px;
   }
   .fontSize button {

@@ -10,3 +10,7 @@
 # Vite adds a content hash to every file name in /assets.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The page reads this file to find a new release, so it must not be cached.
+/version.json
+  Cache-Control: no-store

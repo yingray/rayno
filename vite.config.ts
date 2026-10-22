@@ -1,9 +1,34 @@
+import { execSync } from 'node:child_process';
 import { loadEnv } from 'vite';
+import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Cloudflare Pages sets CF_PAGES_COMMIT_SHA. A local build reads the commit from git.
+function buildCommit(): string {
+  const commit = process.env.CF_PAGES_COMMIT_SHA;
+  if (commit) return commit.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return 'dev';
+  }
+}
+
+// The page compares its own build with /version.json to find a new release.
+function versionFile(build: { commit: string; builtAt: string }): Plugin {
+  return {
+    name: 'rayno-version',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: `${JSON.stringify(build)}\n` });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
+  const build = { commit: buildCommit(), builtAt: new Date().toISOString() };
   // Extra host names for `pnpm dev` and `pnpm preview`, such as a Tailscale name.
   // Set RAYNO_ALLOWED_HOSTS in `.env.local` as a comma-separated list.
   const allowedHosts = (loadEnv(mode, '.', 'RAYNO_').RAYNO_ALLOWED_HOSTS || '')
@@ -11,10 +36,12 @@ export default defineConfig(({ mode }) => {
     .map((host) => host.trim())
     .filter(Boolean);
   return {
+    define: { __RAYNO_BUILD__: JSON.stringify(build) },
     server: { allowedHosts },
     preview: { allowedHosts },
     plugins: [
       react(),
+      versionFile(build),
       VitePWA({
         registerType: 'prompt',
         includeAssets: ['fonts/*', 'icons/*'],
