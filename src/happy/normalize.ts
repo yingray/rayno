@@ -3,6 +3,7 @@ import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUti
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
 import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
 import { resultPermission } from './toolDecisions';
+import { SIDE_CHAT_TITLE } from '../data/sideChats';
 
 // These records are protocol boundaries. Keep unknown metadata fields for CAS updates.
 export type Json = Record<string, any>;
@@ -174,7 +175,7 @@ export function normalizeSession(
   const pending = pendingPermissions(a).length || pendingCommunications(a).length;
   return {
     id: wire.id,
-    title: text(m.summary?.text, path.split('/').filter(Boolean).pop() || 'Untitled session'),
+    title: text(m.summary?.text, m.isSideChat === true ? SIDE_CHAT_TITLE : path.split('/').filter(Boolean).pop() || 'Untitled session'),
     customTitle: m.name || undefined,
     workspace: m.bot?.id
       ? `@${text(m.bot.username)}`
@@ -204,6 +205,8 @@ export function normalizeSession(
     lastActivityAt: m.lastMeaningfulMessageAt ?? lastSentAt ?? wire.createdAt,
     machineOffline: machine ? !machine.wire.active : false,
     isSideChat: m.isSideChat === true,
+    sideChatClosed: m.isSideChat === true && m.lifecycleState === 'archived',
+    parentSessionId: typeof m.parentSessionId === 'string' && m.parentSessionId ? m.parentSessionId : undefined,
     additions: typeof m.git?.insertions === 'number' ? m.git.insertions : 0,
     deletions: typeof m.git?.deletions === 'number' ? m.git.deletions : 0,
     gitReported: !!m.git,

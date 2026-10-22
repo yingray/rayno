@@ -1272,3 +1272,39 @@
 .sendState[data-rejected] {
   color: var(--red);
 }
+
+/* Side chats: the parent entry, the side chat marker, and a side chat inside the parent's panel. */
+.sideChatsButton { min-width: 44px; height: 44px; padding: 0 12px; flex: none; gap: 6px; }
+.sideChatsCount { font-size: 11px; font-weight: 600; color: #ddd6fe; }
+.sideTag {
+  flex: none;
+  font-size: 10px;
+  line-height: 14px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid #3a3645;
+  background: #211f28;
+  color: #ddd6fe;
+}
+.back.parentBack { display: flex; width: 44px; height: 44px; flex: none; }
+@media (max-width: 767px) {
+  .sideChatsButton { display: none; }
+}
+.chat[data-embedded]::before { display: none; }
+.chat[data-embedded] .messages { padding-top: 24px; }
+.chat[data-embedded] .messageScroll { scroll-padding-top: 16px; }
+.chat[data-embedded] > [aria-label='Side chat availability'] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.chat[data-embedded] .composerWrap { width: calc(100% - 24px); }
+.chat[data-embedded] .permission { flex: 0 1 auto; max-width: 150px; overflow: hidden; }
+.chat[data-embedded] .model { flex: 0 1 auto; overflow: hidden; }
+.chat[data-embedded] .model > span { overflow: hidden; text-overflow: ellipsis; }
+.chat[data-embedded] .recapRail,
+.chat[data-embedded] .recapPill { display: none; }
+.chat[data-embedded]:has(.recapRail:not(:empty)) .messageScroll { padding-right: 0; }

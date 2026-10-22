@@ -75,6 +75,7 @@ export function demoReducer(state: DemoState, action: Action): DemoState {
           return {
             ...session,
             archived: !session.archived,
+            ...(session.isSideChat ? { sideChatClosed: !session.archived } : {}),
             status: session.status === 'running' ? 'idle' : session.status,
           };
         case 'stop':

@@ -218,3 +218,21 @@ Agent communications and send receipts were checked against the local Happy snap
 - `sessionAttention.ts` `userTurn` and `../data/replyTurns.ts` `unansweredMessageIds`: the same receipt rules, so the "Needs your reply" dot and the chat reply options agree. In a session with receipts, a held or rejected message does not answer options. Its accepted receipt answers them at the receipt's seq. As in `utils/agentTurns.ts`, a held message does not start a turn, so its options stay open. Rayno adds one guard: the options that the user chose stay disabled in that chat until a rejection.
 - `../data/recapView.ts`, `../data/replyTurns.ts` `hasOpenRecapRequest`, `../features/MessageList.tsx`, `modelPreferences.ts`, and `client.ts` `findSentModes`: a rejected message is not a user turn, as with `sendError` in `utils/agentTurns.ts`. It does not close a recap request, it does not hide the Recap action of the reply before it, and its settings are not the last sent modes. A rejected recap request stays visible with its reason. Tool rows still group around the rejected bubble, because the bubble shows at the receipt's place.
 - `../features/MessageList.tsx`: `UserMessageFrame` in `components/MessageView.tsx`. A `queuedWhileBusy` send shows "Sends after this turn" at once. Other held sends show "Sending…" after a 1-second grace period. A refusal shows "Not sent: <reason>". Happy Web has no retry action for a refused message.
+
+Side chats follow `sync/ops.ts` (`spawnSideChat`, `forkAndSpawn`), `sync/storage.ts` (`useSideChatSessions` and the list filters),
+`components/SideChatPanel.tsx`, and `-session/SessionView.tsx` in the same Happy snapshot. On the CLI side, `daemon/run.ts` turns the
+`spawn-happy-session` field `isSideChat` into `HAPPY_SIDE_CHAT`, and `claude/runClaude.ts` and `codex/runCodex.ts` write `metadata.isSideChat`
+and `metadata.parentSessionId`. They do not replay the parent history into the side chat UI. `../data/sideChats.ts` selects the side chats of
+a parent by these two fields, oldest first. A regular fork has `parentSessionId` without `isSideChat` and stays in the session list.
+Rayno starts a side chat with the same fork RPC and spawn as Fork (kind `side`) and adds `isSideChat: true` and the parent's concrete
+model/effort/permission. Like `useSideChatSessions`, only `lifecycleState: 'archived'` closes a side chat (`Session.sideChatClosed`).
+A side chat that lost its CLI connection (`active: false` from `presence/timeout.ts` or a session end) stays open with an "Ended" status
+and the normal resume path. Close uses the normal archive flow (`killSession`, else the server archive) and then writes the archived
+lifecycle marker. Happy Web hides a closed side chat only in memory (`closedSideChatIds`) because the server archive sets only
+`active: false`; the marker keeps it closed after a reload and on other clients. A resume removes the marker. Closed side chats stay
+readable from the parent. The full view, the Session info close, and the menu close return to the parent's list, and the full-view title
+uses the same "Side chat N" number as the list (`SideChatModal`). The side chat entry is hidden for an agent that cannot fork when the
+parent has no side chats. Happy Web shows side chats only in the desktop sidebar. Rayno shows them in a panel at 1280px and wider, in a
+drawer on tablets, and on a page from the session menu on phones. A Happy CLI that ignores `isSideChat` starts a regular fork; Rayno
+opens it and says so. Scope choice: Rayno does not port the `newSideChat` chord (`keyboard/shortcuts.ts`, ⌥⌘S or Ctrl+Alt+S). Happy Web
+listens for it only while the empty sidebar picker or its add menu is open (`FilesSidebar.tsx`), and Rayno has no such picker.

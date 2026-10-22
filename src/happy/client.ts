@@ -43,6 +43,7 @@ import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, res
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, userTurn, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
+import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
 import { imageMime, transferUrl, validateImages } from './attachments';
 import { resumeUnavailable } from './resume';
 import { RECAP_REQUEST } from './systemPrompt';
@@ -105,6 +106,7 @@ export { messageError } from './errors';
 export const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
 // The recap mode and style change only the instructions. They are not part of a message fingerprint.
 export type SendSettings = MessageSettings & { recapMode?: RecapMode; recapStyle?: string };
+export type BranchKind = 'fork' | 'duplicate' | 'side';
 // recap marks a hidden recap request. The user cannot see or retry its draft.
 type Outbox = { fingerprint: string; localId: string; content: string; files?: { localId: string; content: string }[]; recap?: true };
 
@@ -1082,7 +1084,9 @@ export class HappyClient implements DemoAdapter {
   }
   async archiveSession(id: string) {
     const source = this.getSession(id);
-    if (isSessionArchived(source)) {
+    // An ended side chat stays open in its parent, so only the lifecycle marker closes it.
+    const sideChat = source.metadata.isSideChat === true;
+    if (sideChat ? source.metadata.lifecycleState === 'archived' : isSessionArchived(source)) {
       // Happy Web has no bot restore, and the bot's agent owns its metadata.
       if (source.metadata.bot) throw new Error('Use the Happy app to restore this bot.');
       if (!isRig(source.metadata) && !source.wire.active)
@@ -1111,8 +1115,9 @@ export class HappyClient implements DemoAdapter {
     const current = this.sessions.get(id);
     if (current) current.wire.active = false;
     this.publish(id);
-    // An inactive Rig session stays in the live list without the marker.
-    if (isRig(source.metadata)) await this.mutateMetadata(id, (metadata) => ({ ...metadata, lifecycleState: 'archived' }));
+    // An inactive Rig session stays in the live list without the marker, and an ended side chat stays open.
+    // Happy Web hides a closed side chat only in memory (SessionView.tsx closedSideChatIds); the marker also keeps it closed after a reload.
+    if (isRig(source.metadata) || sideChat) await this.mutateMetadata(id, (metadata) => ({ ...metadata, lifecycleState: 'archived' }));
   }
   async deleteSession(id: string) {
     const source = this.getSession(id);
@@ -1347,10 +1352,11 @@ export class HappyClient implements DemoAdapter {
     this.assertAlive();
     return new Blob([bytes as BlobPart], { type });
   }
-  branchUnavailable(id: string) {
+  branchUnavailable(id: string, kind: BranchKind = 'fork') {
     const metadata = this.getSession(id).metadata;
+    if (kind === 'side' && metadata.isSideChat === true) return 'A side chat cannot start another side chat.';
     if (isRig(metadata) || metadata.bot || metadata.capabilities?.fork === false || !['claude', 'codex'].includes(metadata.flavor || 'claude'))
-      return 'This agent cannot fork or duplicate conversations.';
+      return kind === 'side' ? SIDE_CHAT_AGENT_LIMIT : 'This agent cannot fork or duplicate conversations.';
     if (!metadata.machineId || !metadata.path) return 'The original computer and workspace are required.';
     if (!(metadata.flavor === 'codex' ? metadata.codexThreadId : metadata.claudeSessionId))
       return 'The original provider conversation ID is unavailable.';
@@ -1373,8 +1379,9 @@ export class HappyClient implements DemoAdapter {
       return typeof key === 'string' && key ? [{ id: key, text: text.trim() === RECAP_REQUEST ? 'Recap' : text, timestamp: Number(point.timestamp) || 0 }] : [];
     }).reverse();
   }
+  // A side chat is a fork that happy-cli marks with isSideChat (ops.ts spawnSideChat).
   // Rejects with DirectoryApprovalError until the user approves a missing folder. The retry keeps the copied conversation.
-  branchSession(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings,
+  branchSession(id: string, kind: BranchKind, point: string | undefined, options: MessageSettings,
     approvedNewDirectoryCreation = false): Promise<string> {
     const key = JSON.stringify([id, kind, point]);
     const existing = this.branching.get(key);
@@ -1384,17 +1391,17 @@ export class HappyClient implements DemoAdapter {
     return pending;
   }
   // A cancelled folder question drops the copied conversation, so a later branch makes a new copy.
-  discardBranch(id: string, kind: 'fork' | 'duplicate', point?: string) {
+  discardBranch(id: string, kind: BranchKind, point?: string) {
     const key = JSON.stringify([id, kind, point]), storageKey = this.storageKey + 'branch.' + key;
     let pending: Json = {};
     try { pending = record(JSON.parse(sessionStorage.getItem(storageKey) || '{}')); } catch { /* Remove a damaged marker. */ }
     if (this.branching.has(key) || pending.spawnUnknown || pending.sessionId) return;
     sessionStorage.removeItem(storageKey);
   }
-  private async performBranch(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings,
+  private async performBranch(id: string, kind: BranchKind, point: string | undefined, options: MessageSettings,
     approvedNewDirectoryCreation: boolean): Promise<string> {
     if (this.snapshot.connection !== 'connected' || this.snapshot.offline) throw new Error('Reconnect before you create a session.');
-    const reason = this.branchUnavailable(id);
+    const reason = this.branchUnavailable(id, kind);
     if (reason) throw new Error(reason);
     if (kind === 'duplicate' && !point) throw new Error('Choose a message to duplicate from.');
     const metadata = this.getSession(id).metadata;
@@ -1412,7 +1419,8 @@ export class HappyClient implements DemoAdapter {
       save();
       const params: Json = { directory, [codex ? 'codexThreadId' : 'claudeSessionId']: codex ? metadata.codexThreadId : metadata.claudeSessionId };
       if (kind === 'duplicate') params[codex ? 'cutAfterItemId' : 'cutAfterUuid'] = point;
-      const result = await this.rpc(machineId, codex ? kind === 'fork' ? 'codex-fork-thread' : 'codex-duplicate-thread' : kind === 'fork' ? 'claude-fork-session' : 'claude-duplicate-session', params, true);
+      const copy = kind === 'duplicate' ? 'duplicate' : 'fork';
+      const result = await this.rpc(machineId, codex ? `codex-${copy}-thread` : `claude-${copy}-session`, params, true);
       if (result.type !== 'success') {
         sessionStorage.removeItem(storageKey);
         throw new Error(result.errorMessage || 'This Happy CLI could not copy the conversation.');
@@ -1432,13 +1440,13 @@ export class HappyClient implements DemoAdapter {
       if (!isConcreteModel(pending.model) || !modelOptions(metadata).some(option => !option.disabled && option.value === pending.model)
         || (levels.length && !levels.includes(pending.effort)) || !permissionOptions(metadata).some(option => !option.disabled && option.value === pending.permissionMode))
         throw new Error('The saved model or permission choice is no longer available. Check the copied conversation before you retry.');
-      if (this.branchUnavailable(id) || this.getSession(id).metadata.machineId !== machineId) throw new Error('The original computer is no longer available.');
+      if (this.branchUnavailable(id, kind) || this.getSession(id).metadata.machineId !== machineId) throw new Error('The original computer is no longer available.');
       pending.spawnUnknown = true; save();
       const result = await this.rpc(machineId, 'spawn-happy-session', {
         type: 'spawn-in-directory', directory, agent: codex ? 'codex' : 'claude', approvedNewDirectoryCreation,
         [codex ? 'resumeCodexThreadId' : 'resumeClaudeSessionId']: pending.providerId,
         parentSessionId: id, modelMode: pending.model, permissionMode: pending.permissionMode,
-        ...(pending.effort ? { effortLevel: pending.effort } : {}),
+        ...(pending.effort ? { effortLevel: pending.effort } : {}), ...(kind === 'side' ? { isSideChat: true } : {}),
       }, true);
       if (result.type !== 'success' || typeof result.sessionId !== 'string') {
         pending.spawnUnknown = false; save();

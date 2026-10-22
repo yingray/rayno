@@ -8,7 +8,8 @@
   position: relative;
 }
 .rail,
-.infoPanel {
+.infoPanel,
+.sidePanel {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 24px;
@@ -172,6 +173,13 @@
   min-height: 0;
   overflow: hidden;
 }
+.sidePanel {
+  width: clamp(400px, 34vw, 520px);
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
 .networkBar {
   height: 2px;
   position: fixed;
@@ -246,6 +254,10 @@
 }
 .infoDrawer > section {
   padding: 14px 0 0;
+}
+.sideDrawer > section {
+  flex: 1;
+  min-height: 0;
 }
 .infoDrawer > header h2 {
   font-size: 18px;

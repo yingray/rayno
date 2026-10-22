@@ -57,7 +57,11 @@ export type Session = {
   updatedAt: number;
   lastActivityAt?: number;
   machineOffline?: boolean;
+  // A side chat is a hidden fork that the parent chat shows. Normal forks also carry a parent.
   isSideChat?: boolean;
+  parentSessionId?: string;
+  // Only a user close (lifecycleState 'archived') closes a side chat. An ended side chat stays open in its parent.
+  sideChatClosed?: boolean;
   additions: number;
   deletions: number;
   gitReported?: boolean;

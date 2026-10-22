@@ -12,11 +12,15 @@ import chatStyles from './chat.module.css';
 import { needsSessionResume } from '../happy/resume';
 import { buildHandoffDraft } from '../happy/handoff';
 import { draftInWorkspace } from '../data/workspaces';
+import { archiveAction, countOpenSideChats, leaveRoute, showSideChatEntry } from '../data/sideChats';
 
 type Point = { id: string; text: string; timestamp: number };
 
 export function ChatSessionMenu({ session, settings }: { session: Session; settings: MessageSettings }) {
-  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft } = useDemo(store => ({
+  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, parentKnown, sideEntry } = useDemo(store => ({
+    parentKnown: !!session.parentSessionId && store.state.sessions.some(item => item.id === session.parentSessionId),
+    sideChats: session.isSideChat ? 0 : countOpenSideChats(store.state.sessions, session.id),
+    sideEntry: showSideChatEntry(store.state.sessions, session, store.live),
     live: store.live, adapter: store.adapter, mode: store.mode, dispatch: store.dispatch,
     connection: store.snapshot?.connection, offline: store.snapshot?.offline,
     machine: store.machines.find(machine => machine.id === session.machineId),
@@ -36,9 +40,11 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
   const pending = useRef(false);
   const id = useId();
   const disconnected = mode === 'live' && (connection !== 'connected' || !!offline);
+  const leave = leaveRoute(session, parentKnown);
   const branchReason = live ? live.branchUnavailable(session.id) : '';
   const ended = mode === 'live' && needsSessionResume(session);
   const recoveryReason = ended ? live?.resumeUnavailable(session.id) : '';
+  const archiveLabel = archiveAction(session, ended);
   const source = { sessionId: session.id, machineId: session.machineId, path: session.path,
     homeDir: metadata?.homeDir || machine?.homeDir,
     flavor: metadata?.flavor || (session.agent === 'Happy Agent' ? 'rig' : session.agent.toLowerCase()),
@@ -130,17 +136,19 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
     </button>
     {open && createPortal(<div ref={panel} id={id} role="menu" aria-label="Session actions" className={styles.menu} style={position}>
       <p className={styles.title}>{titleOf(session)}</p>
-      {ended ? <button role="menuitem" disabled={busy || disconnected || !!recoveryReason}
-        onClick={() => void run(() => live!.resumeSession(session.id))}><Icon name="refreshOutline" />Resume session</button>
-        : <button role="menuitem" disabled={busy || disconnected} onClick={() => void run(async () => {
-          if (session.archived) await adapter.archiveSession(session.id);
-          else if (await cleanup.guard(session.id, () => adapter.archiveSession(session.id))) navigate('/sessions');
-        })}><Icon name="archiveOutline" />{session.archived ? 'Restore session' : 'Archive session'}</button>}
+      {ended && <button role="menuitem" disabled={busy || disconnected || !!recoveryReason}
+        onClick={() => void run(() => live!.resumeSession(session.id))}><Icon name="refreshOutline" />Resume session</button>}
+      {archiveLabel && <button role="menuitem" disabled={busy || disconnected} onClick={() => void run(async () => {
+        if (archiveLabel === 'Restore session') await adapter.archiveSession(session.id);
+        else if (await cleanup.guard(session.id, () => adapter.archiveSession(session.id))) navigate(leave);
+      })}><Icon name="archiveOutline" />{archiveLabel}</button>}
       {recoveryReason && <p className={styles.reason}>{recoveryReason}</p>}
       <button role="menuitem" disabled={busy || !workspaceDraft} onClick={() => {
         if (!workspaceDraft) return;
         dispatch({ type: 'newDraft', value: workspaceDraft }); close(false); navigate('/new');
       }}><Icon name="add" />New session in same workspace</button>
+      {sideEntry && <button role="menuitem" disabled={busy} onClick={() => { close(false); navigate(`/session/${session.id}/side`); }}>
+        <Icon name="chatbubblesOutline" />Side chats{sideChats ? <small className={styles.count}>{sideChats} open</small> : null}</button>}
       <button role="menuitem" disabled={busy || !handoff} onClick={() => {
         if (!handoff) return;
         dispatch({ type: 'newDraft', value: handoff }); close(false); navigate('/new');
@@ -160,7 +168,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
       <footer><Button disabled={busy} onClick={() => setConfirmDelete(false)}>Cancel</Button>
         <Button variant="danger" disabled={busy} onClick={() => void run(async () => {
           if (!await cleanup.guard(session.id, () => adapter.deleteSession(session.id))) return;
-          setConfirmDelete(false); navigate('/sessions');
+          setConfirmDelete(false); navigate(leave);
         })}>Delete session</Button></footer>
     </Dialog>}
     {cleanup.dialog}

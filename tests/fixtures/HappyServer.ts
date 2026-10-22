@@ -260,7 +260,7 @@ export class HappyServer {
       }
       if (/^\/v1\/sessions\/[^/]+\/archive$/.test(path)) {
         this.mutations.push('archive');
-        this.sessions[0].active = false;
+        this.sessions.find((session) => session.id === path.split('/')[3])!.active = false;
         return json({ success: true });
       }
       if (/^\/v1\/sessions\/[^/]+$/.test(path) && method === 'DELETE') {
@@ -395,7 +395,9 @@ export class HappyServer {
               agentState: null,
               agentStateVersion: 0,
               metadata: await this.encryption.encrypt(
-                { ...metadata, flavor: params.agent, path: params.directory, summary: { text: 'Created workspace' },
+                // happy-cli runClaude/runCodex: HAPPY_SIDE_CHAT adds isSideChat, and a side chat starts without a summary.
+                { ...metadata, flavor: params.agent, path: params.directory, summary: params.isSideChat ? undefined : { text: 'Created workspace' },
+                  ...(params.isSideChat ? { isSideChat: true } : {}),
                   modelMode: params.modelMode, effortLevel: params.effortLevel,
                   parentSessionId: params.parentSessionId, claudeSessionId: params.resumeClaudeSessionId, codexThreadId: params.resumeCodexThreadId,
                   ...(params.agent === 'rig' ? {
@@ -485,6 +487,13 @@ export class HappyServer {
       createdAt,
       content: { t: 'encrypted', c: await this.encryption.encrypt(raw, key) },
     };
+  }
+  /** A child session like one that spawn-happy-session starts from real-session (happy-cli createSessionMetadata). */
+  async addSession(id: string, patch: Json, { active = true, createdAt = 1700000005000 } = {}) {
+    const base = this.sessions.find((session) => session.id === 'real-session')!;
+    const { summary: _summary, ...metadata } = await this.encryption.decrypt<Json>(base.metadata, this.dataKey);
+    this.sessions.push({ ...base, id, seq: 0, active, createdAt, updatedAt: createdAt, agentState: null, agentStateVersion: 0,
+      metadata: await this.encryption.encrypt({ ...metadata, ...patch }, this.dataKey), metadataVersion: 1 });
   }
   async setMessages(raw: Json[], sessionId = 'real-session') {
     this.sessions.find((session) => session.id === sessionId)!.seq = raw.length;

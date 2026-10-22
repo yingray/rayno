@@ -10,6 +10,7 @@ import styles from './session-info.module.css';
 import { ResumeSession } from './ResumeSession';
 import { needsSessionResume } from '../happy/resume';
 import { useWorktreeCleanup } from './SessionPrompts';
+import { archiveAction, leaveRoute } from '../data/sideChats';
 
 export function SessionInfo({
   session,
@@ -20,7 +21,8 @@ export function SessionInfo({
   onClose: () => void;
   embedded?: boolean;
 }) {
-  const { adapter, notify, machines, mode, newDraft, metadata, dispatch, live } = useDemo((store) => ({
+  const { adapter, notify, machines, mode, newDraft, metadata, dispatch, live, parentKnown } = useDemo((store) => ({
+    parentKnown: !!session.parentSessionId && store.state.sessions.some((item) => item.id === session.parentSessionId),
     adapter: store.adapter, notify: store.notify, machines: store.machines, mode: store.mode,
     metadata: store.snapshot?.sessionData[session.id]?.metadata,
     newDraft: store.state.newDraft, dispatch: store.dispatch, live: store.live,
@@ -47,6 +49,8 @@ export function SessionInfo({
   const [confirm, setConfirm] = useState<'delete' | 'stop' | null>(null);
   const machine = machines.find((item) => item.id === session.machineId);
   const needsResume = mode === 'live' && needsSessionResume(session);
+  const archiveLabel = archiveAction(session, needsResume);
+  const leave = leaveRoute(session, parentKnown);
   const handoff = buildHandoffDraft({
     sessionId: session.id,
     machineId: session.machineId,
@@ -71,8 +75,8 @@ export function SessionInfo({
   ];
   const bot = !!metadata?.bot;
   function archive() {
-    if (session.archived) void run(() => adapter.archiveSession(session.id));
-    else void run(() => cleanup.guard(session.id, () => adapter.archiveSession(session.id)), () => navigate('/sessions'));
+    if (archiveLabel === 'Restore session') void run(() => adapter.archiveSession(session.id));
+    else void run(() => cleanup.guard(session.id, () => adapter.archiveSession(session.id)), () => navigate(leave));
   }
   const actions: {
     icon: IconName;
@@ -120,11 +124,11 @@ export function SessionInfo({
       run: () => setConfirm('stop'),
     },
     // An ended CLI session must resume before it can leave the archive.
-    ...(needsResume
+    ...(!archiveLabel
       ? []
       : [{
           icon: 'archiveOutline' as const,
-          label: session.archived ? 'Restore session' : 'Archive session',
+          label: archiveLabel,
           run: archive,
           mobile: true,
         }]),
@@ -268,9 +272,9 @@ export function SessionInfo({
         </p>
       </div>
       <footer className={styles.bottom}>
-        {!needsResume && (
+        {archiveLabel && (
           <Button icon="archiveOutline" disabled={busy} onClick={archive}>
-            {session.archived ? 'Restore' : 'Archive'}
+            {archiveLabel === 'Close side chat' ? 'Close' : session.archived ? 'Restore' : 'Archive'}
           </Button>
         )}
         {!bot && <Button
@@ -318,7 +322,7 @@ export function SessionInfo({
                         ? adapter.killSession(session.id)
                         : adapter.stopSession(session.id),
                   () => {
-                    if (confirm === 'delete') navigate('/sessions');
+                    if (confirm === 'delete') navigate(leave);
                     setConfirm(null);
                   },
                 )
