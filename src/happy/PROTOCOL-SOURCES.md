@@ -22,6 +22,8 @@ Paths under `rayno/` and `monitor/` below come from that overlay.
 | `../components/useMinuteNow.ts` | `hooks/useMinuteNow.ts` |
 | `modelOptions.ts` | `components/modelModeOptions.ts`, `sync/rig.ts`, `sync/storageTypes.ts` |
 | `permissionOptions.ts` | `components/modelModeOptions.ts`, `utils/permissionModeLabels.ts`, `sync/agentDefaults.ts`, `sync/storageTypes.ts` |
+| `agentGoal.ts`, `../features/TaskDock.tsx` | `components/agentGoalStatus.ts`, `components/AgentGoalBar.tsx`, `-session/agentGoalActionHandler.ts`, `sync/ops.ts` (`sessionGoalAction`), `sync/storageTypes.ts` (`AgentGoalStatusSchema`) |
+| `../data/todos.ts`, `../features/TodoList.tsx` | `components/tools/views/TodoView.tsx`, `components/tools/knownTools.tsx` (`TodoWrite`), `sync/storageTypes.ts` (`TodoItemSchema`), `sync/reducer/reducer.ts` (`latestTodos`) |
 | `handoff.ts` | `rayno/handoffPrompt.ts`, `rayno/useHandoffAction.ts`, `utils/worktreePaths.ts` from overlay commit `ab8283b9f73b578d008cab7d4ffe48c4b372af4f` |
 
 Server contracts also reference `happy-server/sources/app/api/routes/sessionRoutes.ts` and `v3SessionRoutes.ts`.
@@ -126,3 +128,14 @@ Priority feature contracts were checked against the local Happy snapshot `2dcac1
 - `normalize.ts`: `sync/typesRaw.ts`. Session, Claude output, and Codex/ACP tool calls retain their IDs and join later results by call ID. Raw strings and edit arguments stay readable without HTML execution.
 
 Chat-header Fork and Duplicate follow `utils/sessionFork.ts`, `components/DuplicateSheet.tsx`, and `sync/ops.ts` in the same Happy snapshot. Claude uses `claude-fork-session`, `claude-list-rewind-points`, and `claude-duplicate-session`; Codex uses the matching thread RPCs. A second `spawn-happy-session` call attaches to the copied provider ID and carries `parentSessionId`. Rayno supplies concrete model/effort/permission values, retains the copy after an explicit spawn failure, and refuses an automatic second copy when the first result is unknown.
+
+Goal and todo progress were checked against the same local Happy snapshot on 2026-10-22. The goal shows above the
+composer only while the session is online and `agentGoalStatus.sourceSessionId` matches the metadata `claudeSessionId`
+or `codexThreadId`. Actions follow the reported `capabilities`. Rayno offers edit and clear only: the CLI handlers
+(`happy-cli/src/claude/runClaude.ts`, `happy-cli/src/codex/runCodex.ts`, parsed by `claudeGoalStatus.ts` and
+`codexGoalStatus.ts`) reject `stop`, and Happy Web ignores it. The `goal-action` RPC sends `{ action }` or
+`{ action: 'edit', objective }`; an empty or unchanged edit sends nothing. The Claude CLI answers after the new goal
+status arrives, or with an error when Claude is busy; Rayno shows that error. A TodoWrite row shows its list from the
+call input, replaced by a valid `newTodos` in the structured Claude `toolUseResult`. The progress chip uses the newest
+TodoWrite call that ended without an error. Unlike Happy Web `latestTodos`, it also reads session-protocol calls, whose
+`tool-call-end` has no result. The CLI `Context was reset` event clears the chip. Archived sessions do not show it.

@@ -21,6 +21,9 @@ import {
 import { MermaidDiagram } from './MermaidDiagram';
 import { AttachmentImage } from './AttachmentImage';
 import { CodeBlock } from './CodeBlock';
+import { TodoList } from './TodoList';
+import { isTodoWrite, todoProgress, toolTodos } from '../data/todos';
+import type { ToolCall } from '../data/types';
 
 const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block: ToolActivityBlock; compactTools: boolean }) {
   const rowsId = useId();
@@ -44,8 +47,8 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block
       <ul className={styles.toolRows} id={rowsId} hidden={!expanded}>
         {block.tools.map((tool, index) => (
           <li key={index}>
-            <Icon name="codeSlash" size={14} />
-            {block.details?.[index] && (block.details[index]!.input !== undefined || block.details[index]!.result !== undefined) ? <details className={styles.toolDetails}>
+            <Icon name={block.details?.[index] && isTodoWrite(block.details[index]!) ? 'listOutline' : 'codeSlash'} size={14} />
+            {block.details?.[index] && isTodoWrite(block.details[index]!) ? <TodoTool call={block.details[index]!} /> : block.details?.[index] && (block.details[index]!.input !== undefined || block.details[index]!.result !== undefined) ? <details className={styles.toolDetails}>
               <summary>{tool}</summary>
               <h4>Arguments</h4><pre>{formatToolValue(block.details[index]!.input)}</pre>
               <ToolDiff input={block.details[index]!.input} />
@@ -62,6 +65,16 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block
   && previous.block.details === next.block.details
   && previous.block.tools.length === next.block.tools.length
   && previous.block.tools.every((tool, index) => tool === next.block.tools[index]));
+
+// Happy Web TodoView: the TodoWrite call shows its list in place of the raw arguments.
+function TodoTool({ call }: { call: ToolCall }) {
+  const todos = toolTodos(call);
+  const progress = todoProgress(todos);
+  return <div className={styles.todoTool}>
+    <span>Todo list{todos.length ? ` · ${progress.done} of ${progress.total} done` : ''}{call.isError ? ' · Error' : ''}</span>
+    {todos.length > 0 && <TodoList label="Todo items" todos={todos} />}
+  </div>;
+}
 
 function ToolDiff({ input }: { input: unknown }) {
   if (!input || typeof input !== 'object') return null;

@@ -268,6 +268,9 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       }
       if (data.type === 'result' && data.is_error)
         message.content = text(data.result, 'The agent reported an error.');
+    } else if (content.type === 'event') {
+      // ApiSession.sendSessionEvent in happy-cli. Happy Web sync/reducer/reducer.ts clears the todos on this event.
+      if (data.type === 'message' && data.message === 'Context was reset') message.contextReset = true;
     } else if (content.type === 'codex' || content.type === 'acp') {
       if (data.type === 'message') message.content = text(data.message);
       if (data.type === 'tool-call') message.tools = [text(data.name, 'Tool call')];
@@ -276,11 +279,13 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   const calls: ToolCall[] = [];
   const results: NonNullable<Message['toolResults']> = [];
   const addCall = (id: unknown, name: unknown, input: unknown, tool = name) => {
-    calls.push({ id: text(id, row.id), name: text(name, 'Tool call'), input });
+    const label = text(name, 'Tool call');
+    calls.push({ id: text(id, row.id), name: label, ...(typeof tool === 'string' && tool && tool !== label ? { tool } : {}), input });
     const active = typeof tool === 'string' ? planTools.get(tool) : undefined;
     if (active !== undefined) message.planMode = { active, call: text(id, row.id), at: row.createdAt };
   };
-  const addResult = (id: unknown, result: unknown, isError: unknown) => results.push({ id: text(id), result, isError: isError === true });
+  const addResult = (id: unknown, result: unknown, isError: unknown, data?: unknown) =>
+    results.push({ id: text(id), result, ...(data !== undefined ? { data } : {}), isError: isError === true });
   if (envelope) {
     const event = record(envelope.ev);
     if (event.t === 'tool-call-start') addCall(event.call, event.title || event.name, event.args, event.name);
@@ -291,9 +296,11 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       const chunks = data.message?.content;
       // Claude also stores the result without the text that it adds for the model. Structured values stay in the text form.
       const stored = typeof data.toolUseResult === 'string' && data.toolUseResult ? data.toolUseResult : undefined;
+      // Tool views such as the todo list read the structured value (Happy Web sync/typesRaw.ts uses it as the result).
+      const structured = data.toolUseResult && typeof data.toolUseResult === 'object' ? data.toolUseResult : undefined;
       if (Array.isArray(chunks)) for (const chunk of chunks) {
         if (chunk.type === 'tool_use' || chunk.type === 'tool-call') addCall(chunk.callId || chunk.id, chunk.name, chunk.input);
-        if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result') addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, stored ?? chunk.content ?? chunk.output, chunk.is_error);
+        if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result') addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, stored ?? chunk.content ?? chunk.output, chunk.is_error, structured);
       }
     } else if (content.type === 'codex' || content.type === 'acp') {
       if (data.type === 'tool-call') addCall(data.callId, data.name, data.input);
@@ -308,7 +315,8 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   if (calls.length) { message.toolCalls = calls; message.tools = calls.map(call => call.name); }
   if (results.length) message.toolResults = results;
   message.content = stripLeadingTaskNotificationWrappers(message.content);
-  const result = message.content || message.tools?.length || message.toolResults?.length || message.attachments?.length || message.settings ? message : null;
+  const result = message.content || message.tools?.length || message.toolResults?.length || message.attachments?.length
+    || message.settings || message.contextReset ? message : null;
   normalizedMessages.set(row, result);
   return result;
 }
@@ -332,7 +340,7 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
       const result = results.get(call.id);
       if (!result) return call;
       matched.add(call.id);
-      return { ...call, result: result.result, isError: result.isError };
+      return { ...call, result: result.result, ...(result.data !== undefined ? { resultData: result.data } : {}), isError: result.isError, ended: true };
     }) };
   });
   const output: Message[] = [];

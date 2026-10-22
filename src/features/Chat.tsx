@@ -23,6 +23,9 @@ import { ChatHistoryStatus } from './ChatHistoryStatus';
 import { questionDemoId } from '../data/questionDemo';
 import { hasAgentReply, hasOpenRecapRequest, unansweredMessageIds } from '../data/replyTurns';
 import { stopRecapSpeech } from './recapSpeech';
+import { TaskDock } from './TaskDock';
+import { visibleGoal, type GoalAction } from '../happy/agentGoal';
+import { latestTodos } from '../data/todos';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
@@ -361,6 +364,13 @@ export const Chat = memo(function Chat({
     }
   });
   const unpin = useCallback(() => { pinned.current = false; }, []);
+  const goal = useMemo(() => mode === 'live' ? visibleGoal(agentState, liveMetadata, session.status !== 'offline') : null,
+    [mode, agentState, liveMetadata, session.status]);
+  const todos = useMemo(() => session.archived ? [] : latestTodos(session.messages), [session.archived, session.messages]);
+  const goalAction = useCallback(async (params: { action: GoalAction; objective?: string }) => {
+    if (!live) throw new Error('Connect to Happy before you change the goal.');
+    await live.goalAction(session.id, params);
+  }, [live, session.id]);
 
   return (
     <section
@@ -512,6 +522,10 @@ export const Chat = memo(function Chat({
             {mode === 'live' && disabled && connection === 'connected' && (
               <ResumeSession session={session} />
             )}
+            <div className={styles.taskDock}>
+              <TaskDock goal={goal} todos={todos} disabled={mode !== 'live' || connection !== 'connected' || !!offline}
+                onGoalAction={goalAction} />
+            </div>
             <div className={styles.composer} data-focus-frame
               onInput={stopRecapSpeech}
               onPaste={event => {

@@ -1,7 +1,11 @@
 export type Agent = 'Claude' | 'Codex' | 'Happy Agent';
 export type Status = 'idle' | 'running' | 'blocked' | 'offline';
 export type Attachment = { name: string; size: number; type: string; file?: File; ref?: string };
-export type ToolCall = { id: string; name: string; input?: unknown; result?: unknown; isError?: boolean };
+// `tool` is the raw tool name when the label differs. `resultData` is a structured Claude toolUseResult.
+// `ended` marks a call that has its result record.
+export type ToolCall = {
+  id: string; name: string; tool?: string; input?: unknown; result?: unknown; resultData?: unknown; isError?: boolean; ended?: boolean;
+};
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
 export type RecapMode = 'auto' | 'manual';
 export type Message = {
@@ -10,7 +14,7 @@ export type Message = {
   content: string;
   tools?: string[];
   toolCalls?: ToolCall[];
-  toolResults?: { id: string; result: unknown; isError?: boolean; hideUnmatched?: boolean }[];
+  toolResults?: { id: string; result: unknown; data?: unknown; isError?: boolean; hideUnmatched?: boolean }[];
   duration?: string;
   attachments?: Attachment[];
   // Modes that a user message carried in its meta, and the server time of that message.
@@ -20,6 +24,8 @@ export type Message = {
   recapRequest?: boolean;
   // The agent's own plan-mode tool call, its call id, and the server time of its message.
   planMode?: { active: boolean; call: string; at: number };
+  // A hidden agent event that starts a new context. It clears the todo list.
+  contextReset?: boolean;
 };
 export type Session = {
   id: string;

@@ -447,7 +447,7 @@ describe('CLI record formats', () => {
       [{ id: '0b6f3c1e-5d1a-4c55-9a3e-2f8f1d1f0b01', name: 'file-edit', input: {
         filePath: 'src/app.ts', description: 'Update the greeting', diff: '-hi\n+hello', oldContent: undefined, newContent: undefined,
       } }],
-      [{ id: 'call-ls', name: 'run_shell_command', input: { command: 'ls' }, result: 'README.md\nsrc\n', isError: false }],
+      [{ id: 'call-ls', name: 'run_shell_command', input: { command: 'ls' }, result: 'README.md\nsrc\n', isError: false, ended: true }],
     ]);
   });
   it('should prefer the stored text result of a Claude tool and keep structured results as text', () => {

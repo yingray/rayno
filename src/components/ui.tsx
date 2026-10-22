@@ -62,6 +62,11 @@ import {
   play,
   pause,
   handLeftOutline,
+  locateOutline,
+  listOutline,
+  checkmarkCircle,
+  radioButtonOnOutline,
+  ellipseOutline,
 } from 'ionicons/icons';
 import { useDemo } from '../data/store';
 import type { Agent } from '../data/types';
@@ -126,6 +131,11 @@ const icons = {
   play,
   pause,
   handLeftOutline,
+  locateOutline,
+  listOutline,
+  checkmarkCircle,
+  radioButtonOnOutline,
+  ellipseOutline,
 };
 export type IconName = keyof typeof icons;
 export const Icon = memo(function Icon({
