@@ -79,9 +79,9 @@ test('structured tool results and past replies should stay readable in the trans
   const write = await workspace.openTool('Write');
   await workspace.expectDecision('Write', 'Allowed · Edits');
   await expect(write).toContainText('File created successfully at: /real/project/NOTES.md');
-  const todo = await workspace.openTool('TodoWrite');
-  await expect(todo.getByRole('listitem', { name: 'Ship it, Done' })).toBeVisible();
-  await expect(todo.getByRole('listitem', { name: 'Write notes, To do' })).toBeVisible();
+  // A TodoWrite row shows the newTodos list from the result in the row, as Happy Web TodoView does.
+  await expect(page.getByText('Todo list · 1 of 2 done', { exact: true })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Todo items', exact: true }).getByRole('listitem')).toHaveText(['Done: Ship it', 'Pending: Write notes']);
   const fetch = await workspace.openTool('WebFetch');
   await workspace.expectDecision('WebFetch', 'Denied');
   await expect(fetch).toContainText('Denied: Not this site');

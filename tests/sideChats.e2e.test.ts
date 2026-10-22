@@ -14,7 +14,7 @@ async function withSideChats(server: HappyServer) {
     { createdAt: 1700000007000 });
   await server.setMessages([
     { role: 'user', content: { type: 'text', text: 'Side question' } },
-    { role: 'session', content: { role: 'agent', ev: { t: 'text', text: 'Side answer' } } },
+    { role: 'session', content: { role: 'agent', turn: 't1', ev: { t: 'text', text: 'Side answer' } } },
   ], 'side-1');
 }
 async function prepare(server: HappyServer, flavor: 'claude' | 'codex') {
@@ -147,7 +147,8 @@ test('a phone side chat list should create a side chat and open it full size', a
   await expect(page).toHaveURL(/\/session\/created-session$/);
   // Happy Web SideChatModal titles a side chat with the same number as the parent's list.
   await expect(page.getByRole('region', { name: 'Chat session', exact: true }).getByText('Side chat 1', { exact: true })).toBeVisible();
-  await expect(page).toHaveTitle('Rayno · Side chat 1');
+  // The tab attention count can lead the title.
+  await expect(page).toHaveTitle(/^(\(\d+\) )?Rayno · Side chat 1$/);
   expect(server.spawns[0]).toMatchObject({ isSideChat: true, parentSessionId: 'real-session', resumeClaudeSessionId: 'copied-claude-id' });
   await workspace.parentBack().click();
   await expect(workspace.row('Side chat 1')).toBeVisible();
