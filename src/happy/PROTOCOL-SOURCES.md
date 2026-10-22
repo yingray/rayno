@@ -36,8 +36,22 @@ Claude meta prompts, compact summaries, and sidechain records do not show in the
 Rayno does not attach them to the parent tool call. Session envelopes with a `subagent` field still show: the CLI mapper
 (`claude/utils/sessionProtocolMapper.ts`) passes the subagent id on through `parentUuid`, so the parent tool result and the
 main reply after a subagent carry it too. Agent `service` text shows as agent text. ACP `file-edit` is a tool call, and ACP
-`terminal-output` is a tool result that shows only when it matches a call. A Claude tool result uses the stored
-`toolUseResult` text only when it is a string.
+`terminal-output` is a tool result that shows only when it matches a call. As in `sync/typesRaw.ts`, a Claude tool result
+uses the stored `toolUseResult` when it is set, as text or a structured value. The tool_result text stays as `resultText`.
+
+`../data/toolResults.ts` renders structured results in the style of `components/tools/knownTools.tsx`,
+`components/tools/views/*`, and `utils/toolResult.ts`: Bash stdout/stderr and exit status, Edit/MultiEdit/Write
+`structuredPatch` diffs (or the edit arguments before a result), Read file ranges, Grep/Glob files and matches,
+Task/Agent reports, TodoWrite `newTodos`, AskUserQuestion `answers`, WebFetch, and WebSearch. Images and
+`originalFile` do not render. Unknown values show the tool_result text, else JSON. Diffs show at most 400 lines.
+
+`toolDecisions.ts` follows `sync/reducer/reducer.ts` and `components/tools/PermissionFooter.tsx`. A tool call shows the
+past permission reply from the tool_result `permissions` field (`happy-cli/src/claude/claudeRemoteLauncher.ts`), else
+from `agentState.completedRequests` joined by `toolUseId` or the request ID. Both `allowedTools` and `allowTools` are read.
+A session approval is a Codex `approved_for_session` decision or an allowed tool that names the tool or `Bash(command)`.
+AskUserQuestion answers come from the result `answers` map, keyed by question text. Answered
+`completedCommunications` forms join by `toolUseId` (`sync/agentCommunications.ts`). Answers stay visible in a
+collapsed tool group. Unlike v1, a completed request without a loaded tool call does not add a placeholder row.
 
 Archive classification follows the overlay's `sync/storage.ts`: a lifecycle marker or an inactive
 non-Rig CLI session belongs in the archive. An inactive Rig session remains live work unless marked.

@@ -450,7 +450,7 @@ describe('CLI record formats', () => {
       [{ id: 'call-ls', name: 'run_shell_command', input: { command: 'ls' }, result: 'README.md\nsrc\n', isError: false }],
     ]);
   });
-  it('should prefer the stored text result of a Claude tool and keep structured results as text', () => {
+  it('should prefer the stored Claude tool result and keep the model text of a structured result', () => {
     // Arrange
     const call = (id: string, tool: string, seq: number) => row(`call-${id}`, seq, output({ ...claude, type: 'assistant', uuid: `uuid-${id}`,
       message: { role: 'assistant', model: 'claude-opus-4-20250514', content: [{ type: 'tool_use', id, name: tool, input: {} }] } }));
@@ -468,6 +468,8 @@ describe('CLI record formats', () => {
     // Act
     const calls = visibleMessages(rows).flatMap((message) => message.toolCalls || []);
     // Assert
-    expect(calls.map((item) => item.result)).toEqual(['- /test-project/\n  - readme.md\n', [{ type: 'text', text: 'Summary' }]]);
+    expect(calls.map((item) => item.result)).toEqual(['- /test-project/\n  - readme.md\n',
+      { content: [{ type: 'text', text: 'Summary' }], totalDurationMs: 51327, totalTokens: 20915, totalToolUseCount: 2 }]);
+    expect(calls.map((item) => item.resultText)).toEqual([expect.stringContaining('NOTE: do any of the files'), 'Summary']);
   });
 });

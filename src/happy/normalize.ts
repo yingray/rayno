@@ -2,6 +2,7 @@ import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, Tool
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
 import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
+import { resultPermission } from './toolDecisions';
 
 // These records are protocol boundaries. Keep unknown metadata fields for CAS updates.
 export type Json = Record<string, any>;
@@ -199,6 +200,10 @@ function sentSettings(meta: Json): MessageSettings | undefined {
   if (typeof meta.permissionMode === 'string' && meta.permissionMode) settings.permissionMode = meta.permissionMode;
   return Object.keys(settings).length ? settings : undefined;
 }
+// The text of a Claude tool_result: a string, or the text blocks of a block list.
+const resultText = (content: unknown) => typeof content === 'string' ? content : Array.isArray(content)
+  ? content.filter(part => part?.type === 'text' && typeof part.text === 'string').map(part => part.text).join('\n') || undefined
+  : undefined;
 // Tool calls that move a Claude agent into (true) or out of (false) plan mode, as in Happy sync/messagePlanMode.ts.
 const planTools = new Map([['EnterPlanMode', true], ['enter_plan_mode', true], ['ExitPlanMode', false], ['exit_plan_mode', false]]);
 const normalizedMessages = new WeakMap<MessageRecord, Message | null>();
@@ -280,7 +285,11 @@ export function normalizeMessage(row: MessageRecord): Message | null {
     const active = typeof tool === 'string' ? planTools.get(tool) : undefined;
     if (active !== undefined) message.planMode = { active, call: text(id, row.id), at: row.createdAt };
   };
-  const addResult = (id: unknown, result: unknown, isError: unknown) => results.push({ id: text(id), result, isError: isError === true });
+  const addResult = (id: unknown, result: unknown, isError: unknown, resultText?: string, permissions?: unknown) => {
+    const permission = resultPermission(permissions);
+    results.push({ id: text(id), result, isError: isError === true,
+      ...(resultText && resultText !== result ? { resultText } : {}), ...(permission ? { permission } : {}) });
+  };
   if (envelope) {
     const event = record(envelope.ev);
     if (event.t === 'tool-call-start') addCall(event.call, event.title || event.name, event.args, event.name);
@@ -289,11 +298,14 @@ export function normalizeMessage(row: MessageRecord): Message | null {
     const data = record(content.data);
     if (content.type === 'output') {
       const chunks = data.message?.content;
-      // Claude also stores the result without the text that it adds for the model. Structured values stay in the text form.
-      const stored = typeof data.toolUseResult === 'string' && data.toolUseResult ? data.toolUseResult : undefined;
+      // Like v1 typesRaw.ts, the stored toolUseResult (text or a structured value) replaces the text for the model.
+      // The text stays as resultText for unknown structured values.
+      const stored = data.toolUseResult ? data.toolUseResult : undefined;
       if (Array.isArray(chunks)) for (const chunk of chunks) {
         if (chunk.type === 'tool_use' || chunk.type === 'tool-call') addCall(chunk.callId || chunk.id, chunk.name, chunk.input);
-        if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result') addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, stored ?? chunk.content ?? chunk.output, chunk.is_error);
+        if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result')
+          addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, stored ?? chunk.content ?? chunk.output, chunk.is_error,
+            resultText(chunk.content), chunk.permissions);
       }
     } else if (content.type === 'codex' || content.type === 'acp') {
       if (data.type === 'tool-call') addCall(data.callId, data.name, data.input);
@@ -332,7 +344,8 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
       const result = results.get(call.id);
       if (!result) return call;
       matched.add(call.id);
-      return { ...call, result: result.result, isError: result.isError };
+      return { ...call, result: result.result, isError: result.isError,
+        ...(result.resultText ? { resultText: result.resultText } : {}), ...(result.permission ? { permission: result.permission } : {}) };
     }) };
   });
   const output: Message[] = [];
