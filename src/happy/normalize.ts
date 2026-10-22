@@ -1,4 +1,4 @@
-import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading, UsageWindow, ContextUsage } from '../data/types';
+import type { Agent, AgentEvent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading, UsageWindow, ContextUsage } from '../data/types';
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
 import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
@@ -274,6 +274,24 @@ function reasoningCall(raw: Json): string | undefined {
   if (raw.role === 'agent' && (content.type === 'codex' || content.type === 'acp') && data.type === 'tool-call')
     return reasoningTools.has(data.name) ? text(data.callId) : undefined;
 }
+// The event rows of Happy Web. Like its reducer, `ready`, receipts, and the `Turn started` marker show no row.
+// Its zod schema drops any other event, so Rayno shows no row for those too.
+function agentEvent(data: Json): AgentEvent | null {
+  if (data.type === 'switch' && (data.mode === 'local' || data.mode === 'remote')) return { type: 'switch', mode: data.mode };
+  if (data.type === 'message' && typeof data.message === 'string' && data.message.trim() && data.message !== 'Turn started')
+    return { type: 'message', message: data.message };
+  if (data.type === 'limit-reached' && typeof data.endsAt === 'number' && Number.isFinite(data.endsAt))
+    return { type: 'limit-reached', endsAt: data.endsAt };
+  return null;
+}
+// Happy Web sync/reducer/messageToEvent.ts: this Claude reply text is a usage limit event, with the end in Unix seconds.
+function limitReached(texts: unknown[]): AgentEvent | null {
+  for (const value of texts) {
+    const match = typeof value === 'string' ? /^Claude AI usage limit reached\|(\d+)$/.exec(value) : null;
+    if (match) return { type: 'limit-reached', endsAt: Number(match[1]) };
+  }
+  return null;
+}
 const normalizedMessages = new WeakMap<MessageRecord, Message | null>();
 // ACP thinking records are stream chunks. The chat joins neighbors without a break.
 const thinkingChunks = new WeakSet<Message>();
@@ -346,6 +364,8 @@ export function normalizeMessage(row: MessageRecord): Message | null {
     } else if (content.type === 'event') {
       // ApiSession.sendSessionEvent in happy-cli. Happy Web sync/reducer/reducer.ts clears the todos on this event.
       if (data.type === 'message' && data.message === 'Context was reset') message.contextReset = true;
+      const shown = agentEvent(data);
+      if (shown) message.event = shown;
     } else if (content.type === 'codex' || content.type === 'acp') {
       if (data.type === 'message') message.content = text(data.message);
       // V1 shows Codex and ACP reasoning as text. Rayno treats it as thinking, like ACP `thinking` records.
@@ -398,12 +418,22 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       if (content.type === 'acp' && data.type === 'terminal-output') results.push({ id: text(data.callId), result: data.data, isError: false, hideUnmatched: true });
     }
   }
+  // Like Happy Web, the whole message becomes the event row.
+  const limit = message.role === 'assistant' ? limitReached(envelope
+    ? [event.t === 'text' && !event.thinking ? event.text : undefined]
+    : output?.type === 'assistant' && Array.isArray(output.message?.content)
+      ? output.message.content.filter((chunk: Json) => chunk?.type === 'text').map((chunk: Json) => chunk.text) : []) : null;
+  if (limit) {
+    const result: Message = { id: row.id, role: 'assistant', content: '', event: limit };
+    normalizedMessages.set(row, result);
+    return result;
+  }
   if (calls.length) { message.toolCalls = calls; message.tools = calls.map(call => call.name); }
   if (results.length) message.toolResults = results;
   message.content = stripLeadingTaskNotificationWrappers(message.content);
   if (!message.thinking?.trim()) delete message.thinking;
   const result = message.content || message.thinking || message.tools?.length || message.toolResults?.length
-    || message.attachments?.length || message.settings || message.contextReset ? message : null;
+    || message.attachments?.length || message.settings || message.contextReset || message.event ? message : null;
   normalizedMessages.set(row, result);
   return result;
 }
@@ -649,7 +679,7 @@ export function contextUsage(rows: Iterable<MessageRecord>): ContextUsage | unde
   }
   return latest && { size: latest.size, ...(latest.window ? { window: latest.window } : {}) };
 }
-// Happy's usage popup shows only these two plan windows (AgentInput.tsx usageRows).
+// Happy's usage popup shows only these two plan windows (AgentInput.tsx usageRows), each one when the provider reports it.
 const usageWindows = { five_hour: 5 * 3600000, seven_day: 7 * 86400000 } as const;
 function windowReading(windows: Json[], id: keyof typeof usageWindows, now: number): UsageWindow | null {
   const window = windows.find((window) => window.id === id);
@@ -663,20 +693,20 @@ function windowReading(windows: Json[], id: keyof typeof usageWindows, now: numb
     resetAt,
   };
 }
-export function weeklyUsage(
+export function planUsage(
   agent: Agent,
   windows: Json[],
   capturedAt: number,
   now = Date.now(),
 ): UsageReading | null {
   const week = windowReading(windows, 'seven_day', now);
-  if (!week) return null;
   const fiveHour = windowReading(windows, 'five_hour', now);
+  const main = week ?? fiveHour;
+  if (!main) return null;
   return {
     agent,
-    ...week,
-    ...(fiveHour ? { fiveHour } : {}),
+    ...(week ? { week, ...(fiveHour ? { fiveHour } : {}) } : { fiveHour: main }),
     capturedAt,
-    stale: (!!week.resetAt && week.resetAt <= now) || now - capturedAt > 15 * 60000,
+    stale: (!!main.resetAt && main.resetAt <= now) || now - capturedAt > 15 * 60000,
   };
 }

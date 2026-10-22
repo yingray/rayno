@@ -985,12 +985,12 @@ describe('Happy client protocol', () => {
     } } }) });
     await first;
     // Assert
-    expect(client.getSnapshot().usage[0]).toMatchObject({ agent: 'Claude', usedPercent: 42, machineId: 'computer', stale: false });
+    expect(client.getSnapshot().usage[0]).toMatchObject({ agent: 'Claude', week: { usedPercent: 42 }, machineId: 'computer', stale: false });
     // Act
     bash.mockRejectedValue(new Error('Computer did not answer'));
     await client.refreshUsage();
     // Assert
-    expect(client.getSnapshot().usage[0]).toMatchObject({ usedPercent: 42, stale: true });
+    expect(client.getSnapshot().usage[0]).toMatchObject({ week: { usedPercent: 42 }, stale: true });
     expect(client.getSnapshot().usageErrors).toEqual(['Test computer usage: Computer did not answer']);
     expect(client.getSnapshot().usageLoading).toBe(false);
     expect(client.getSnapshot().error).toBe('');

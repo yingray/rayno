@@ -40,7 +40,15 @@ export type Message = {
   delivery?: { status: 'pending'; queued: boolean; since: number } | { status: 'rejected'; reason: string };
   // A hidden agent event that starts a new context. It clears the todo list.
   contextReset?: boolean;
+  // A compact agent event row, such as a switch to local mode. It has no content, so it is not reply text.
+  event?: AgentEvent;
 };
+// The agent events that Happy Web shows (`sync/typesRaw.ts` agentEventSchema, `components/MessageView.tsx` AgentEventBlock).
+// `endsAt` is in Unix seconds.
+export type AgentEvent =
+  | { type: 'switch'; mode: 'local' | 'remote' }
+  | { type: 'message'; message: string }
+  | { type: 'limit-reached'; endsAt: number };
 // Tokens in the agent's context after its latest reply, and the model's window when the CLI reports it.
 export type ContextUsage = { size: number; window?: number };
 export type Session = {
@@ -100,10 +108,9 @@ export type UsageWindow = {
   reset: string;
   resetAt?: number | null;
 };
-// The weekly plan window, with the 5-hour window when the agent reports it.
-export type UsageReading = UsageWindow & {
+// The plan windows that the agent reports: the weekly window, the 5-hour window, or both.
+export type UsageReading = ({ week: UsageWindow; fiveHour?: UsageWindow } | { week?: undefined; fiveHour: UsageWindow }) & {
   agent: Agent;
-  fiveHour?: UsageWindow;
   capturedAt?: number;
   stale?: boolean;
   machineId?: string;

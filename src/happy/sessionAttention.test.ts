@@ -134,3 +134,20 @@ describe('Session attention', () => {
     });
   });
 });
+
+describe('Agent event rows in session attention', () => {
+  it('should not count a mode switch or an agent message event as a reply', () => {
+    // Arrange
+    const state = receiveAttention(restoreAttention(null, 0), row(1, 'A reply\n\n<options><option>Go</option></options>'));
+    const rows: MessageRecord[] = [
+      { id: '2', seq: 2, createdAt: 2, raw: { role: 'agent', content: { id: 'e2', type: 'event', data: { type: 'switch', mode: 'local' } } } },
+      { id: '3', seq: 3, createdAt: 3, raw: { role: 'agent', content: { id: 'e3', type: 'event', data: { type: 'message', message: 'Aborted by user' } } } },
+    ];
+    // Act
+    const next = rows.reduce((current, item) => receiveAttention(current, item), state);
+    // Assert
+    expect(rows.map((item) => attentionMessage(item))).toEqual([null, null]);
+    expect(next).toEqual(state);
+    expect(next.optionsSeq).toBe(1);
+  });
+});

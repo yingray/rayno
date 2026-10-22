@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isRecapOnly, recapView } from './recapView';
 import { demoRecapReply } from './recapDemo';
 import { parseMessageRecap, RECAP_REQUEST } from './messageRecap';
-import { hasOpenRecapRequest, unansweredMessageIds } from './replyTurns';
+import { hasAgentReply, hasOpenRecapRequest, unansweredMessageIds } from './replyTurns';
 import type { Message } from './types';
 
 const user = (id: string, content: string, recapRequest = false): Message =>
@@ -176,5 +176,19 @@ describe('Demo recap answer', () => {
     expect(view.recaps.get('a1')).toMatchObject({ manual: true, targets: [true, true] });
     expect(view.recaps.get('a1')!.recap.text.length).toBeLessThanOrEqual(200);
     expect(demoRecapReply([user('r1', RECAP_REQUEST, true)])).toBe('<rayno-recap>\nThe previous reply has no text to recap.\n</rayno-recap>');
+  });
+});
+
+describe('Agent event rows in recaps', () => {
+  it('should not answer a recap request or become the recap target', () => {
+    // Arrange
+    const event: Message = { id: 'switch', role: 'assistant', content: '', event: { type: 'switch', mode: 'local' } };
+    const messages = [user('u1', 'Fix it'), agent('reply', 'Fixed.'), event, user('ask', RECAP_REQUEST, true), { ...event, id: 'abort' }];
+    // Act
+    const view = recapView(messages);
+    // Assert
+    expect(hasOpenRecapRequest(messages)).toBe(true);
+    expect(view.pending).toEqual({ requestId: 'ask', targetId: 'reply' });
+    expect(hasAgentReply([user('u1', 'Fix it'), event])).toBe(false);
   });
 });

@@ -153,3 +153,52 @@ test('usage details should show both plan windows and keep actions reachable on 
     await workspace.expectNoPageOverflow();
   }
 });
+
+test('a plan with only a 5-hour window should still show its reading in the summary, details, and Monitor', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  server.weekReported = false;
+  await server.install(page);
+  const workspace = new LiveWorkspacePage(page);
+  // Act
+  await page.goto('/sessions');
+  // Assert
+  await expect(workspace.usageSummary().getByRole('meter', { name: 'Claude 5-hour usage' })).toHaveAttribute('aria-valuenow', '12');
+  await expect(workspace.usageSummary().getByRole('meter', { name: 'Codex 5-hour usage' })).toHaveAttribute('aria-valuenow', '44');
+  await expect(workspace.usageSummary()).toContainText('12%');
+  await expect(workspace.usageSummary()).toContainText('44%');
+  await expect(workspace.usageSummary().getByText('5h', { exact: true })).toHaveCount(2);
+  // Act
+  await workspace.openUsage();
+  // Assert
+  await expect(workspace.usageDetails().getByText('5-hour limit', { exact: true })).toHaveCount(2);
+  await expect(workspace.usageDetails().getByText('Weekly limit', { exact: true })).toHaveCount(0);
+  await expect(workspace.usageDetails()).not.toContainText('No usage reported');
+  for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 420], [844, 390]]) {
+    // Act
+    await page.setViewportSize({ width, height });
+    await page.goto('/sessions');
+    if (width >= 768) await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Sessions', exact: true }).click();
+    // Assert
+    await expect(workspace.usageSummary()).toContainText('12%');
+    const summary = workspace.usageSummary();
+    const dimensions = await summary.evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth }));
+    expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width);
+    expect((await summary.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    // Act
+    await workspace.openUsage();
+    // Assert
+    await workspace.expectUsageDetailsFit();
+    await workspace.expectNoPageOverflow();
+    // Act
+    await page.keyboard.press('Escape');
+  }
+  // Act
+  await page.goto('/monitor');
+  // Assert
+  await expect(page.getByRole('meter', { name: 'Claude 5-hour usage' })).toHaveAttribute('aria-valuenow', '12');
+  await expect(page.getByRole('meter', { name: 'Codex 5-hour usage' })).toHaveAttribute('aria-valuenow', '44');
+  await expect(page.getByText('of 5 hours used · Real computer')).toHaveCount(2);
+  await expect(page.getByText('Day 1', { exact: true })).toHaveCount(0);
+  await workspace.expectNoPageOverflow();
+});

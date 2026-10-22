@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupChatActivity, toolCount } from './chatBlocks';
+import { agentEventText, groupChatActivity, toolCount } from './chatBlocks';
 import type { Message } from './types';
 
 const tool = (id: string, name = 'Read'): Message => ({
@@ -65,5 +65,31 @@ describe('Chat activity groups', () => {
       { kind: 'message', id: 'message:answer', message: messages[5] },
     ]);
     expect(toolCount(blocks[1] as Parameters<typeof toolCount>[0])).toBe(2);
+  });
+});
+
+describe('Agent event blocks', () => {
+  it('should show each event as its own row and split tool runs', () => {
+    // Arrange
+    const messages: Message[] = [
+      tool('first'),
+      { id: 'local', role: 'assistant', content: '', event: { type: 'switch', mode: 'local' } },
+      tool('second'),
+      { id: 'abort', role: 'assistant', content: '', event: { type: 'message', message: 'Aborted by user' } },
+    ];
+    // Act
+    const blocks = groupChatActivity(messages);
+    // Assert
+    expect(blocks.map((block) => block.kind)).toEqual(['tools', 'event', 'tools', 'event']);
+    expect(blocks[1]).toEqual({ kind: 'event', id: 'event:local', text: 'Switched to local mode' });
+    expect(blocks[3]).toEqual({ kind: 'event', id: 'event:abort', text: 'Aborted by user' });
+  });
+  it('should write the limit end as a local time, as Happy Web does', () => {
+    // Arrange
+    const endsAt = 1760000000;
+    const time = new Date(endsAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Act / Assert
+    expect(agentEventText({ type: 'limit-reached', endsAt })).toBe(`Usage limit reached until ${time}`);
+    expect(agentEventText({ type: 'switch', mode: 'remote' })).toBe('Switched to remote mode');
   });
 });

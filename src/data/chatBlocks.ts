@@ -1,4 +1,4 @@
-import type { Message, ToolCall } from './types';
+import type { AgentEvent, Message, ToolCall } from './types';
 
 export type ToolActivityBlock = {
   kind: 'tools';
@@ -10,7 +10,17 @@ export type ToolActivityBlock = {
   duration?: string;
 };
 export type ThinkingBlock = { kind: 'thinking'; id: string; text: string };
-export type ChatBlock = ToolActivityBlock | ThinkingBlock | { kind: 'message'; id: string; message: Message };
+export type EventBlock = { kind: 'event'; id: string; text: string };
+export type ChatBlock = ToolActivityBlock | ThinkingBlock | EventBlock | { kind: 'message'; id: string; message: Message };
+
+// The text of an agent event row, as Happy Web MessageView.tsx AgentEventBlock writes it.
+export function agentEventText(event: AgentEvent): string {
+  if (event.type === 'switch') return `Switched to ${event.mode} mode`;
+  if (event.type === 'message') return event.message;
+  const end = new Date(event.endsAt * 1000);
+  const time = Number.isNaN(end.getTime()) ? 'unknown time' : end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `Usage limit reached until ${time}`;
+}
 
 // The text of a tool argument or result, as the tool row shows it.
 export function formatToolValue(value: unknown) {
@@ -37,6 +47,10 @@ export function groupChatActivity(messages: readonly Message[]): ChatBlock[] {
     return block;
   };
   for (const message of messages) {
+    if (message.event) {
+      blocks.push({ kind: 'event', id: `event:${message.id}`, text: agentEventText(message.event) });
+      continue;
+    }
     let fresh: ToolActivityBlock | undefined;
     if (thinkingRow(message)) {
       const previous = blocks.at(-1);

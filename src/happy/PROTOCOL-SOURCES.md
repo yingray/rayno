@@ -74,6 +74,18 @@ Unlike v1 (`sync/reducer/reducer.ts`), a completed request without a loaded tool
 The effect: a denied or aborted Codex command does not show in the transcript. The Codex mapper does not map
 `exec_approval_request` (`codex/utils/sessionProtocolMapper.ts`), so a command has a tool call only after approval.
 
+Agent events follow `components/MessageView.tsx` `AgentEventBlock`, `sync/typesRaw.ts` `agentEventSchema`, and
+`sync/reducer/reducer.ts`. The CLI writes them with `api/apiSession.ts` `sendSessionEvent` as a legacy
+`{ role: 'agent', content: { type: 'event', data } }` record. A `switch` shows `Switched to local mode` or
+`Switched to remote mode`. A `message` shows its text, for example `Aborted by user`, `Context was reset`, or a Codex
+error. A `limit-reached` event shows `Usage limit reached until` and the local time of `endsAt` (Unix seconds).
+Like `sync/reducer/messageToEvent.ts`, a Claude text `Claude AI usage limit reached|<seconds>` becomes that limit row.
+`ready`, `Turn started`, and send receipts show no row. The v1 schema drops other event types, such as
+`permission-mode-changed`, so Rayno shows no row for them. An event row is a centered, secondary line with no content.
+It does not count as a reply for attention, unread state, options, recaps, or the recap button.
+Rayno does not port the two tool conversions of `messageToEvent.ts`. `mcp__happy__change_title` and `EnterPlanMode`
+stay tool rows, because the plan-mode reading uses the `EnterPlanMode` call, and v1 drops the other content of that message.
+
 Like `normalizeSessionEnvelope` in `sync/typesRaw.ts`, Rayno drops an agent session envelope without a `turn`, except a usage-only
 `service` event and a `user-message-accepted` or `user-message-rejected` receipt. None of these three makes a chat row in Rayno.
 
@@ -187,7 +199,10 @@ warning at 10% and 5% remaining. The Model & effort sheet shows the reading when
 Unlike the Happy reducer, subagent usage does not count, and a later record wins a timestamp tie. A subagent row is a row inside
 the subagent `start` and `stop` bounds (`subagentOf`), because the Claude mapper also tags the main answer after a subagent with its id.
 Usage details show the `five_hour` and `seven_day` windows, like the usage popup in `components/AgentInput.tsx`.
-The compact summary keeps the weekly window. Other provider windows stay hidden.
+Like that popup, each window shows when the provider reports it, so a plan with only a `five_hour` window still has a reading.
+The compact summary and the Monitor card show the weekly window. Without one, they show the 5-hour window:
+the summary marks it `5h`, and the Monitor card says `of 5 hours used`.
+Other provider windows stay hidden. The composer warning and the Model & effort reading show context use, not plan windows.
 Codex effort choices follow `CODEX_EFFORTS_BY_MODEL` in `components/modelModeOptions.ts`. A model outside
 that table gets `low` through `xhigh`. The `thinkingLevels` of a published computer catalog still win.
 The current session's source computer is preferred in the compact summary; expanded details retain
