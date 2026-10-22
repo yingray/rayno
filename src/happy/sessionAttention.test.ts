@@ -150,4 +150,18 @@ describe('Agent event rows in session attention', () => {
     expect(next).toEqual(state);
     expect(next.optionsSeq).toBe(1);
   });
+  it('should count a usage limit row as news because the agent stopped', () => {
+    // Arrange
+    const state = receiveAttention(restoreAttention(null, 0), row(1, 'A reply'));
+    const limit: MessageRecord = { id: '2', seq: 2, createdAt: 2, raw: { role: 'agent', content: { type: 'output', data: {
+      type: 'assistant', uuid: 'u1', parentUuid: null, isSidechain: false,
+      message: { role: 'assistant', model: 'claude-opus-5', content: [{ type: 'text', text: 'Claude AI usage limit reached|1760000000' }] },
+    } } } };
+    // Act
+    const next = receiveAttention(state, limit);
+    // Assert
+    expect(attentionMessage(limit)).toBe('assistant');
+    expect(next.assistantSeq).toBe(2);
+    expect(next.optionsSeq).toBe(state.optionsSeq);
+  });
 });

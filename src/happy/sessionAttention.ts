@@ -32,7 +32,10 @@ const noMarks: SubagentMarks = new Map();
 // Subagent work and thinking are not replies. `marks` holds the subagent bounds that the caller knows.
 export function attentionMessage(row: MessageRecord, marks = noMarks): 'user' | 'assistant' | null {
   const message = normalizeMessage(row);
-  if (!message || message.recapRequest || (!message.content.trim() && !message.attachments?.length)) return null;
+  if (!message || message.recapRequest) return null;
+  // A usage limit stops the agent, so it is news for the user like a reply.
+  const limit = message.event?.type === 'limit-reached';
+  if (!limit && !message.content.trim() && !message.attachments?.length) return null;
   return subagentOf(row, marks) ? null : message.role;
 }
 

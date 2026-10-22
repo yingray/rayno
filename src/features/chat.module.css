@@ -282,7 +282,7 @@
 .agentEvent {
   align-self: center;
   max-width: 100%;
-  margin: -10px 0;
+  margin: -6px 0;
   padding: 2px 8px;
   color: var(--muted);
   font-size: calc(12px * var(--font-scale));
