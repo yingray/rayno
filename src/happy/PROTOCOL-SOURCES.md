@@ -33,9 +33,42 @@ RPC replies from older CLIs; other reads still require JSON. Encrypted RPC error
 
 Message records follow `sync/typesRaw.ts` for these CLI shapes. A Claude prompt typed in the terminal shows as a user message.
 Claude meta prompts, compact summaries, and legacy sidechain output records do not show in the main thread and do not change attention.
-Rayno does not attach those legacy records to the parent tool call. Agent `service` text shows as agent text. ACP `file-edit` is a
-tool call, and ACP `terminal-output` is a tool result that shows only when it matches a call. A Claude tool result uses the stored
-`toolUseResult` text only when it is a string.
+Rayno does not attach those legacy records to the parent tool call. Session envelopes with a `subagent` field go under their
+parent tool call (see the subagent paragraph below). Agent `service` text shows as agent text. ACP `file-edit` is a tool call, and ACP
+`terminal-output` is a tool result that shows only when it matches a call. As in `sync/typesRaw.ts`, a Claude tool result
+uses the stored `toolUseResult` when it is set, as text or a structured value. The tool_result text stays as `resultText`.
+A session tool call keeps its tool name as `tool` because its row shows the title. As in `sync/typesRaw.ts`, a
+`tool-call-end` without a result ends the call with a `null` result, and the row says that no result text came.
+
+Structured results, the tool_result `permissions` field, and Claude AskUserQuestion answers exist only in legacy Claude
+`output` records from older CLIs. The current CLI sends every Claude record as a session envelope (`api/apiSession.ts`
+`sendClaudeSessionMessage`, `claude/utils/sessionProtocolMapper.ts`). Its `tool-call-end` has only `call`
+(`happy-wire/src/sessionProtocol.ts`), so it has no result, `toolUseResult`, or `permissions`. In legacy records, local
+mode carries `toolUseResult` from the Claude Code JSONL and no `permissions`. Remote mode carries `permissions`
+(`claude/claudeRemoteLauncher.ts`) and no `toolUseResult`, because `claude/utils/sdkToLogConverter.ts` copies only
+`message`, `parent_tool_use_id`, and `isMeta`. For a current Claude session, the reply comes only from
+`agentState.completedRequests`. That entry keeps the original `arguments` and not the answers
+(`claude/utils/permissionHandler.ts`), so answered Claude questions show only the Answered badge. Happy Web also shows
+no answers for a completed AskUserQuestion (`components/tools/views/AskUserQuestionView.tsx`).
+
+`../data/toolResults.ts` renders structured results in the style of `components/tools/knownTools.tsx`,
+`components/tools/views/*`, and `utils/toolResult.ts`: Bash stdout/stderr and exit status, Edit/MultiEdit/Write
+`structuredPatch` diffs (or the edit arguments before a result), Read file ranges, Grep/Glob files and matches,
+Task/Agent reports, TodoWrite `newTodos`, AskUserQuestion `answers`, WebFetch, and WebSearch. Images and
+`originalFile` do not render. Unknown values show the tool_result text, else JSON. Diffs show at most 400 lines.
+
+`toolDecisions.ts` follows `sync/reducer/reducer.ts` and `components/tools/PermissionFooter.tsx`. A tool call shows the
+past permission reply from `agentState.completedRequests`, joined by `toolUseId` or the request ID. A legacy tool_result
+`permissions` field (`happy-cli/src/claude/claudeRemoteLauncher.ts`) merges over it, and the agent-state `reason` and
+`decision` stay, as in the v1 reducer. Both `allowedTools` and `allowTools` are read.
+A session approval is a Codex `approved_for_session` decision or an allowed tool that names the tool or `Bash(command)`.
+AskUserQuestion answers come from the legacy result `answers` map, keyed by question text. Answered
+`completedCommunications` forms join by `toolUseId` (`sync/agentCommunications.ts`). Answers show in a group above the
+tool rows, so the row does not repeat them.
+
+Unlike v1 (`sync/reducer/reducer.ts`), a completed request without a loaded tool call does not add a placeholder row.
+The effect: a denied or aborted Codex command does not show in the transcript. The Codex mapper does not map
+`exec_approval_request` (`codex/utils/sessionProtocolMapper.ts`), so a command has a tool call only after approval.
 
 Like `normalizeSessionEnvelope` in `sync/typesRaw.ts`, Rayno drops an agent session envelope without a `turn`, except a usage-only
 `service` event and a `user-message-accepted` or `user-message-rejected` receipt. None of these three makes a chat row in Rayno.

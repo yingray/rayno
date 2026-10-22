@@ -1147,6 +1147,43 @@
 
 .diffRemoved { color: #fca5a5; }
 .diffAdded { color: #86efac; }
+.diffHunk { color: var(--muted); }
+.toolDetails pre[data-tone='error'] { color: #fca5a5; }
+.toolDetails summary > span:first-child, .toolLabel > span:first-child { margin-right: 8px; }
+.toolLabel { min-width: 0; }
+/* Past permission replies, as in Happy Web PermissionFooter. */
+.toolDecision {
+  display: inline-block;
+  padding: 0 7px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  font: 500 calc(11px * var(--font-scale)) / 18px Geist, sans-serif;
+  color: var(--green);
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+.toolDecision[data-tone='denied'] { color: var(--red); }
+.toolNote {
+  margin: 8px 0 0;
+  font: calc(12px * var(--font-scale)) / 1.5 Geist, sans-serif;
+  color: var(--secondary);
+}
+.toolNote[data-tone='error'] { color: var(--red); }
+.toolTodos { display: grid; gap: 2px; font-size: 12px; color: var(--body); }
+.toolTodos > div { display: flex; gap: 8px; }
+.toolTodos > div > span { flex: none; }
+.toolTodos > [data-status='completed'] { color: var(--green); text-decoration: line-through; }
+.toolTodos > [data-status='in_progress'] { color: var(--accent-soft); }
+.toolAnswered {
+  display: grid;
+  gap: 8px;
+  padding: 2px 14px 12px 34px;
+  min-width: 0;
+}
+.toolAnswered > .toolNote { margin: 0; }
+.toolAnswers { display: grid; gap: 6px; margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.toolAnswers dt { font: calc(12px * var(--font-scale)) / 1.5 Geist, sans-serif; color: var(--secondary); }
+.toolAnswers dd { margin: 0; font: 500 calc(13px * var(--font-scale)) / 1.5 Geist, sans-serif; color: var(--body); }
 
 .chat { --chat-gutter: 12px; --chat-max-width: none; }
 .chat[data-chat-width='medium'] { --chat-max-width: 1120px; }

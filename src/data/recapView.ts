@@ -1,4 +1,5 @@
 import { formatToolValue } from './chatBlocks';
+import { toolSections, toolSectionsText } from './toolResults';
 import { partsForMessage } from './messageOptions';
 import type { Recap } from './messageRecap';
 import { findRecapQuote, markdownText, RECAP_BLOCK_BREAK } from './recapQuote';
@@ -41,10 +42,7 @@ function toolSourceTexts(message: Message): string[] {
     texts = (message.tools || []).map((name, index) => {
       const call = message.toolCalls?.[index];
       if (!call || (call.input === undefined && call.result === undefined)) return name;
-      const edit = call.input && typeof call.input === 'object' ? call.input as Record<string, unknown> : {};
-      const diff = typeof edit.old_string === 'string' && typeof edit.new_string === 'string' ? [edit.old_string, edit.new_string] : [];
-      return [name, formatToolValue(call.input), ...diff, call.result === undefined ? '' : formatToolValue(call.result)]
-        .join(RECAP_BLOCK_BREAK);
+      return [name, formatToolValue(call.input), ...toolSectionsText(toolSections(call))].join(RECAP_BLOCK_BREAK);
     });
     toolTexts.set(message, texts);
   }

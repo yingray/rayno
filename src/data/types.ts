@@ -1,8 +1,17 @@
 export type Agent = 'Claude' | 'Codex' | 'Happy Agent';
 export type Status = 'idle' | 'running' | 'blocked' | 'offline';
 export type Attachment = { name: string; size: number; type: string; file?: File; ref?: string };
+// A permission reply to a tool call, from the tool result or the completed agent-state request.
+export type ToolPermission = {
+  status: 'approved' | 'denied' | 'canceled'; mode?: string; allowedTools?: string[]; decision?: string; reason?: string;
+};
+// resultText is the tool result text that the agent got, when the result itself is a structured value.
+// tool is the tool name when name shows a session tool call title.
 // children: the work of a subagent that this call started, in order.
-export type ToolCall = { id: string; name: string; input?: unknown; result?: unknown; isError?: boolean; children?: Message[] };
+export type ToolCall = {
+  id: string; name: string; tool?: string; input?: unknown; result?: unknown; resultText?: string; isError?: boolean;
+  permission?: ToolPermission; children?: Message[];
+};
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
 export type RecapMode = 'auto' | 'manual';
 export type Message = {
@@ -13,7 +22,9 @@ export type Message = {
   thinking?: string;
   tools?: string[];
   toolCalls?: ToolCall[];
-  toolResults?: { id: string; result: unknown; isError?: boolean; hideUnmatched?: boolean }[];
+  toolResults?: {
+    id: string; result: unknown; resultText?: string; isError?: boolean; hideUnmatched?: boolean; permission?: ToolPermission;
+  }[];
   duration?: string;
   attachments?: Attachment[];
   // Modes that a user message carried in its meta, and the server time of that message.

@@ -9,7 +9,11 @@ import { unansweredMessageIds } from '../data/replyTurns';
 import { recapView, type MessageRecap } from '../data/recapView';
 import type { RecapSegment } from '../data/messageRecap';
 import { remarkPlugins } from '../data/recapQuote';
-import type { BubbleColor, Message, ToolCall } from '../data/types';
+import type { BubbleColor, Message, ToolCall, ToolPermission } from '../data/types';
+import { toolAnswers, toolSections } from '../data/toolResults';
+import { completedForms, completedPermissions, mergedPermission, permissionSummary, toolName, type AnsweredForm } from '../happy/toolDecisions';
+import { permissionLabel } from '../happy/permissionOptions';
+import { ToolAnswers, ToolDecision, ToolSections, type ToolOutcome } from './ToolDetails';
 import { useEventCallback } from '../components/useEventCallback';
 import styles from './chat.module.css';
 import { RecapButton, RecapCard } from './RecapCard';
@@ -30,33 +34,29 @@ function Thinking({ text }: { text: string }) {
   </details>;
 }
 
-function ToolDetails({ tool, detail }: { tool: string; detail: ToolCall }) {
-  const call = detail.input !== undefined || detail.result !== undefined;
-  return <details className={styles.toolDetails}>
-    <summary>{tool}</summary>
-    {call && <><h4>Arguments</h4><pre>{formatToolValue(detail.input)}</pre><ToolDiff input={detail.input} /></>}
-    {!!detail.children?.length && <>
-      <h4>Subagent</h4>
-      <ol className={styles.subagentWork} aria-label="Subagent work">
-        {detail.children.map((child) => <li key={child.id}>
-          {child.thinking ? <p className={styles.subagentThinking}>{child.thinking}</p> : null}
-          {child.tools?.length ? <span><Icon name="codeSlash" size={13} />{child.tools.join(', ')}</span> : null}
-          {child.content.trim() ? <pre>{child.content}</pre> : null}
-          {child.attachments?.map((file, index) => <span key={index}><Icon name="documentTextOutline" size={13} />{file.name}</span>)}
-        </li>)}
-      </ol>
-    </>}
-    {call && <><h4>{detail.isError ? 'Error' : 'Result'}</h4>
-      <pre>{detail.result === undefined ? 'No result reported yet.' : formatToolValue(detail.result)}</pre></>}
-  </details>;
+function SubagentWork({ items }: { items: Message[] }) {
+  return <><h4>Subagent</h4>
+    <ol className={styles.subagentWork} aria-label="Subagent work">
+      {items.map((child) => <li key={child.id}>
+        {child.thinking ? <p className={styles.subagentThinking}>{child.thinking}</p> : null}
+        {child.tools?.length ? <span><Icon name="codeSlash" size={13} />{child.tools.join(', ')}</span> : null}
+        {child.content.trim() ? <pre>{child.content}</pre> : null}
+        {child.attachments?.map((file, index) => <span key={index}><Icon name="documentTextOutline" size={13} />{file.name}</span>)}
+      </li>)}
+    </ol>
+  </>;
 }
 
-const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block: ToolActivityBlock; compactTools: boolean }) {
+const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes }: {
+  block: ToolActivityBlock; compactTools: boolean; outcomes?: (ToolOutcome | undefined)[];
+}) {
   const rowsId = useId();
   const [expanded, setExpanded] = useState(
     !compactTools && window.innerWidth >= 768,
   );
   const count = toolCount(block);
+  // Answered questions stay visible in a collapsed group.
+  const answered = outcomes?.flatMap((outcome, index) => outcome?.answers?.length || outcome?.dismissed ? [{ index, outcome }] : []) || [];
   return (
     <section className={styles.toolGroup} aria-label="Tool activity">
       <button
@@ -71,15 +71,28 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block
           · {count} {count === 1 ? 'tool' : 'tools'}
         </span>
       </button>
+      {answered.length > 0 && <div className={styles.toolAnswered} role="group" aria-label="Answered questions">
+        {answered.map(({ index, outcome }) => outcome.answers?.length
+          ? <ToolAnswers key={index} items={outcome.answers} />
+          : <div key={index} className={styles.toolNote}>The question was dismissed.</div>)}
+      </div>}
       <ul className={styles.toolRows} id={rowsId} hidden={!expanded}>
         {block.tools.map((tool, index) => {
-          const thinking = block.thinking?.[index], detail = block.details?.[index];
+          const thinking = block.thinking?.[index], call = block.details?.[index];
+          const decision = outcomes?.[index]?.permission;
+          // The answered questions group already shows the answers of this call.
+          const sections = !call ? [] : toolSections(call).filter((section) => section.kind !== 'answers' || !outcomes?.[index]?.answers?.length);
           return <li key={index}>
-            <Icon name={thinking !== undefined ? 'sparklesOutline' : detail?.children?.length ? 'gitNetworkOutline' : 'codeSlash'} size={14} />
+            <Icon name={thinking !== undefined ? 'sparklesOutline' : call?.children?.length ? 'gitNetworkOutline' : 'codeSlash'} size={14} />
             {thinking !== undefined ? <details className={`${styles.toolDetails} ${styles.thinkingRow}`}>
               <summary>{tool}</summary><p>{thinking}</p>
-            </details> : detail && (detail.input !== undefined || detail.result !== undefined || detail.children?.length)
-              ? <ToolDetails tool={tool} detail={detail} /> : <span>{tool}</span>}
+            </details> : call && (call.input !== undefined || call.result !== undefined || call.children?.length) ? <details className={styles.toolDetails}>
+              <summary><span>{tool}</span>{decision && <ToolDecision value={decision} />}</summary>
+              {decision && <div className={styles.toolNote} data-tone={decision.tone === 'denied' ? 'error' : undefined}>{decision.detail}</div>}
+              {(call.input !== undefined || call.result !== undefined) && <><h4>Arguments</h4><pre>{formatToolValue(call.input)}</pre></>}
+              {!!call.children?.length && <SubagentWork items={call.children} />}
+              <ToolSections sections={sections} />
+            </details> : <span className={styles.toolLabel}><span>{tool}</span>{decision && <ToolDecision value={decision} />}</span>}
           </li>;
         })}
       </ul>
@@ -91,16 +104,23 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools }: { block
   && previous.block.tools.length === next.block.tools.length
   && previous.block.tools.every((tool, index) => tool === next.block.tools[index])
   && previous.block.thinking?.length === next.block.thinking?.length
-  && (previous.block.thinking || []).every((text, index) => text === next.block.thinking![index]));
+  && (previous.block.thinking || []).every((text, index) => text === next.block.thinking![index])
+  && JSON.stringify(previous.outcomes) === JSON.stringify(next.outcomes));
 
-function ToolDiff({ input }: { input: unknown }) {
-  if (!input || typeof input !== 'object') return null;
-  const edit = input as Record<string, unknown>;
-  if (typeof edit.old_string !== 'string' || typeof edit.new_string !== 'string') return null;
-  return <><h4>Changes</h4><pre aria-label="Tool diff">
-    <span className={styles.diffRemoved}>{edit.old_string.split('\n').map(line => `- ${line}`).join('\n')}</span>{'\n'}
-    <span className={styles.diffAdded}>{edit.new_string.split('\n').map(line => `+ ${line}`).join('\n')}</span>
-  </pre></>;
+// The past permission reply and question answers of one tool call.
+function toolOutcome(call: ToolCall | undefined, permissions: Map<string, ToolPermission>, forms: Map<string, AnsweredForm>,
+  modeLabel: (mode: string) => string): ToolOutcome | undefined {
+  if (!call) return undefined;
+  const permission = mergedPermission(call.permission, permissions.get(call.id));
+  const form = forms.get(call.id);
+  const answers = form?.status === 'answered' ? form.items : toolAnswers(call);
+  const outcome: ToolOutcome = {
+    ...(permission ? { permission: permissionSummary(call, permission, modeLabel) } : {}),
+    ...(answers.length ? { answers } : {}),
+    ...(!answers.length && (form?.status === 'cancelled' || (toolName(call) === 'AskUserQuestion' && permission && permission.status !== 'approved'))
+      ? { dismissed: true } : {}),
+  };
+  return Object.keys(outcome).length ? outcome : undefined;
 }
 
 const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify }: {
@@ -242,15 +262,22 @@ export const MessageList = memo(function MessageList({
   onRecap?: () => unknown;
   onUnpin?: () => void;
 }) {
-  const { bubble, compactTools, notify, autoplay } = useDemo((store) => ({
+  const { bubble, compactTools, notify, autoplay, agentState, metadata } = useDemo((store) => ({
     bubble: store.state.preferences.bubble, compactTools: store.state.preferences.compactTools,
     notify: store.notify, autoplay: store.state.preferences.recapAutoplay,
+    agentState: store.snapshot?.sessionData[sessionId]?.agentState, metadata: store.snapshot?.sessionData[sessionId]?.metadata,
   }));
   const view = useMemo(() => recapView(messages), [messages]);
   const recaps = useStableRecaps(view.recaps);
   const visible = useMemo(() => view.hidden.size ? messages.filter((message) => !view.hidden.has(message.id)) : messages,
     [messages, view]);
   const blocks = useMemo(() => groupChatActivity(visible), [visible]);
+  const outcomes = useMemo(() => {
+    const permissions = completedPermissions(agentState), forms = completedForms(agentState);
+    const modeLabel = (mode: string) => permissionLabel(metadata || {}, mode);
+    return new Map(blocks.flatMap((block) => block.kind === 'tools' && block.details
+      ? [[block.id, block.details.map((call) => toolOutcome(call, permissions, forms, modeLabel))] as const] : []));
+  }, [blocks, agentState, metadata]);
   const unanswered = useMemo(() => unansweredMessageIds(messages), [messages]);
   const writing = !!view.pending && recapBusy;
   const writingTarget = writing ? view.pending!.targetId : undefined;
@@ -321,7 +348,7 @@ export const MessageList = memo(function MessageList({
   const showButton = !!onRecap && !!lastReply && !recaps.has(lastReply) && !writing && !running;
   return <>
     {blocks.map((block) => block.kind === 'tools'
-      ? <ToolActivity key={block.id} block={block} compactTools={compactTools} />
+      ? <ToolActivity key={block.id} block={block} compactTools={compactTools} outcomes={outcomes.get(block.id)} />
       : block.kind === 'thinking'
         ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} /></article>
         : <Fragment key={block.id}>
