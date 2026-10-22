@@ -1232,6 +1232,15 @@ describe('Happy client worktree cleanup', () => {
     await expect(client.worktreeCleanup('session')).resolves.toBe('');
     expect(socket.emitWithAck).not.toHaveBeenCalled();
   });
+  it('should not offer the parent worktree when a side chat closes after its parent ended', async () => {
+    // Arrange: happy-cli runClaude writes isSideChat and parentSessionId, and the side chat runs in the parent's folder.
+    metadata.isSideChat = true;
+    metadata.parentSessionId = 'parent';
+    await prepare();
+    // Act / Assert
+    await expect(client.worktreeCleanup('session')).resolves.toBe('');
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+  });
   it('should remove the worktree from the main checkout with a quoted path', async () => {
     // Arrange: Happy Web utils/worktree.ts removeWorktree.
     await prepare();

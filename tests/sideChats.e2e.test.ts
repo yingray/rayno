@@ -258,3 +258,35 @@ test('a side chat without a known parent should return to the session list', asy
   await expect(page).toHaveURL(/\/sessions$/);
   await expect(workspace.parentBack()).toHaveCount(0);
 });
+
+const worktree = '/real/project/.dev/worktree/feature-check';
+for (const from of ['the session menu', 'Session info', 'the side chat list'] as const) {
+  test(`closing a side chat from ${from} should not offer the parent's worktree`, async ({ page }) => {
+    // Arrange: the parent ended, and its only side chat runs in the parent's clean worktree.
+    const server = new HappyServer();
+    server.gitStatus = '';
+    await server.install(page);
+    await server.updateMetadata({ path: worktree, claudeSessionId: 'original-provider-id' });
+    server.setSessionActive('real-session', false);
+    await server.addSession('side-1', { parentSessionId: 'real-session', isSideChat: true, claudeSessionId: 'side-provider-1' });
+    const workspace = new SideChatsPage(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    // Act
+    if (from === 'the side chat list') {
+      await page.goto('/session/real-session/side');
+      await workspace.close('Side chat 1').click();
+    } else if (from === 'Session info') {
+      await page.goto('/session/side-1/info');
+      await page.getByRole('button', { name: 'Close side chat', exact: true }).click();
+    } else {
+      await page.goto('/session/side-1');
+      await workspace.openActions(); await workspace.chooseAction('Close side chat');
+    }
+    // Assert: every close path archives the side chat the same way, without a worktree check.
+    await expect(page).toHaveURL(/\/session\/real-session\/side$/);
+    await expect(workspace.panel().getByText('Closed side chats (1)', { exact: true })).toBeVisible();
+    await expect(workspace.worktreeDialog()).toHaveCount(0);
+    expect(server.mutations).toContain('side-1:killSession');
+    expect(server.bashCommands).toEqual([]);
+  });
+}

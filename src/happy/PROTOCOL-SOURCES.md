@@ -121,6 +121,10 @@ The session path must contain `/.dev/worktree/`, no other connected session may 
 `git status --porcelain` must succeed with empty output. A failed check skips the prompt. Delete worktree sends
 `git worktree remove <path> --force` from the main checkout, then the archive or delete continues; Keep files only
 continues. Rayno quotes the path and skips the check for an offline computer. Closing the Rayno prompt cancels the action.
+A side chat (`metadata.isSideChat`) never gets the prompt, because it runs in its parent's folder. Happy Web closes a side chat
+from its panel without the check (`-session/SessionView.tsx` `archiveSideChatSession`). Its Session info archive and delete have
+no side chat exception, so after the parent ended they can offer the parent's worktree. Rayno skips the check on every close and
+delete path of a side chat.
 
 Like `sync/sync.ts`, Rayno skips a session, computer, or message that does not decrypt. The other records still load
 and the cursors still advance. A skipped message keeps its id and seq with empty content. The error still shows when

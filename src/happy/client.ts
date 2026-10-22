@@ -1160,7 +1160,8 @@ export class HappyClient implements DemoAdapter {
   async worktreeCleanup(id: string): Promise<string> {
     const { metadata } = this.getSession(id);
     const path = typeof metadata.path === 'string' ? metadata.path : '', machineId = metadata.machineId;
-    if (metadata.bot || !path.includes(WORKTREE_MARKER) || !this.machines.get(machineId)?.wire.active) return '';
+    // A side chat runs in its parent's folder, so it never offers the parent's worktree (SessionView.tsx closeSideChat).
+    if (metadata.bot || metadata.isSideChat === true || !path.includes(WORKTREE_MARKER) || !this.machines.get(machineId)?.wire.active) return '';
     if ([...this.sessions.values()].some((other) => other.wire.id !== id && other.wire.active && other.metadata.path === path)) return '';
     // A failed check (not a repository or an offline computer) and uncommitted changes skip the offer.
     const status = await this.bash(machineId, 'git status --porcelain', path, true).catch(() => undefined);
