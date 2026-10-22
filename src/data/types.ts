@@ -74,6 +74,8 @@ export type Session = {
   deletions: number;
   gitReported?: boolean;
   context?: ContextUsage;
+  // The main todo list, when the client knows subagent bounds beyond the loaded messages.
+  todos?: Todo[];
   messages: Message[];
 };
 export type Machine = {

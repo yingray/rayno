@@ -644,6 +644,36 @@ describe('Happy client protocol', () => {
       // Assert
       expect(client.getSnapshot().sessions[0]).toMatchObject({ needsReply: true, unread: true });
     });
+  it('should keep a subagent TodoWrite out of the todo chip when its start is only in the cached bounds', async () => {
+    // Arrange
+    const subagent = 'c744020fe7d250cca47a5ae1';
+    // happy-cli claude/utils/sessionProtocolMapper.ts: the subagent TodoWrite call and its end, from inside the running subagent.
+    const envelope = (id: string, ev: Json) => ({ role: 'session', content: { id, time: 1792678304099, role: 'agent',
+      turn: 'w3cn3ht73qf295i3adyacvvq', subagent, ev }, meta: { sentFrom: 'cli' } });
+    const rows = [
+      envelope('m2v8k1q0t7c3x9r5w4n6b2za', { t: 'tool-call-start', call: 'toolu_child_todo', name: 'TodoWrite', title: 'TodoWrite call',
+        description: 'TodoWrite call', args: { todos: [{ content: 'Subagent step', status: 'in_progress', activeForm: 'Doing the subagent step' }] } }),
+      envelope('m2v8k1q0t7c3x9r5w4n6b2zb', { t: 'tool-call-end', call: 'toolu_child_todo' }),
+    ];
+    const wire = await Promise.all(rows.map(async (raw, index) => ({ id: raw.content.id, seq: index + 6, createdAt: 200,
+      content: { t: 'encrypted', c: await client.encryption.encrypt(raw, null) } })));
+    session.seq = 7;
+    client.dispose();
+    vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue({ version: 1, savedAt: 50, machines: [],
+      sessions: [{ wire: { ...session, metadata: undefined }, metadata, agentState: {} }],
+      subagents: { session: [{ id: subagent, title: 'Find config', bounds: [[5, true]] }] } } as never);
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions') ? response({ sessions: [session], hasNext: false })
+      : url.includes('/v1/machines') ? response([]) : response({ messages: [...wire].reverse(), hasMore: false }));
+    client = await HappyClient.create(credentials);
+    await start();
+    // Act
+    await client.loadHistory('session');
+    // Assert
+    const current = client.getSnapshot().sessions[0];
+    expect(current.messages.flatMap((message) => message.toolCalls || [])).toMatchObject([{ id: 'toolu_child_todo', ended: true }]);
+    expect(current.todos).toEqual([]);
+    expect(current.needsReply).toBe(false);
+  });
   it('should reuse the encrypted packet and local ID after a lost send acknowledgement', async () => {
     // Arrange
     await start();

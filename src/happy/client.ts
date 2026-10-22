@@ -55,9 +55,11 @@ import type { GoalAction } from './agentGoal';
 import { imageMime, transferUrl, validateImages } from './attachments';
 import { resumeUnavailable } from './resume';
 import { RECAP_REQUEST } from './systemPrompt';
-import type { Message } from '../data/types';
+import type { Message, Todo } from '../data/types';
+import { latestTodos } from '../data/todos';
 
 const emptyJson: Json = Object.freeze({});
+const boundCount = (marks?: SubagentMarks) => [...marks?.values() || []].reduce((total, entry) => total + entry.bounds.size, 0);
 // Happy CLI handlers for these methods return void, so a successful reply is an empty plaintext.
 const voidRpcMethods = new Set(['abort', 'switch', 'permission']);
 // An incremental session read starts this far before the newest server update
@@ -126,7 +128,8 @@ export class HappyClient implements DemoAdapter {
   private sessions = new Map<string, SessionRecord>();
   private machines = new Map<string, MachineRecord>();
   private messages = new Map<string, Map<string, MessageRecord>>();
-  private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; hold: boolean; messages: Message[]; context?: ContextUsage }>();
+  private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; hold: boolean; messages: Message[];
+    context?: ContextUsage; marked: number; todos: Todo[] }>();
   private historyCursors = new Map<string, number>();
   private deletedSessions = new Set<string>();
   private historyRequests = new Map<string, Promise<void>>();
@@ -220,9 +223,16 @@ export class HappyClient implements DemoAdapter {
           const rows = this.messages.get(id);
           let history = this.visibleHistory.get(id);
           const hold = sendsMessageReceipts(source.metadata);
+          const bounds = this.subagentBounds.get(id), marked = boundCount(bounds);
           if (!history || history.source !== rows || history.size !== (rows?.size || 0) || history.hold !== hold) {
             const list = [...(rows?.values() || [])];
-            history = { source: rows, size: rows?.size || 0, hold, messages: visibleMessages(list, hold), context: contextUsage(list) };
+            const messages = visibleMessages(list, hold);
+            history = { source: rows, size: rows?.size || 0, hold, messages, context: contextUsage(list),
+              marked, todos: latestTodos(messages, list, bounds) };
+            this.visibleHistory.set(id, history);
+          } else if (history.marked !== marked) {
+            // A scan of other pages can add bounds without new rows. The todo chip then checks its call again.
+            history = { ...history, marked, todos: latestTodos(history.messages, rows?.values(), bounds) };
             this.visibleHistory.set(id, history);
           }
           const attention = this.sessionAttention(source.wire.id);
@@ -235,6 +245,7 @@ export class HappyClient implements DemoAdapter {
             this.sentTimes.get(id),
           );
           if (history.context) next.context = history.context;
+          next.todos = history.todos;
           return previous && shallowEqual(previous, next) ? previous : next;
         })
         .sort(compareSessionActivity);

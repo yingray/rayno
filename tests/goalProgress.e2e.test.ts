@@ -150,3 +150,48 @@ test('a TodoWrite row without a valid list should show its raw arguments', async
   await expect(row.getByText(/"status": "done"/)).toBeVisible();
   await expect(row.getByRole('list', { name: 'Todo items', exact: true })).toHaveCount(0);
 });
+
+test('a running subagent TodoWrite should not replace the todo chip after a reload when its start is on an older page', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  await server.setWorking(false);
+  const subagent = 'c744020fe7d250cca47a5ae1';
+  let next = 0;
+  // happy-cli claude/utils/sessionProtocolMapper.ts: rows from inside a subagent carry its id.
+  const row = (ev: object, tagged = true) => ({ role: 'session', content: {
+    id: `cmh1subagent${String(++next).padStart(12, '0')}`, time: 1700000001000, role: 'agent', turn: 'cmh1turn00000000000000000', ev,
+    ...(tagged ? { subagent } : {}) }, meta: { sentFrom: 'cli' } });
+  await server.setMessages([
+    { role: 'user', content: { type: 'text', text: 'Port the goal bar' } },
+    row({ t: 'tool-call-start', call: 'toolu_todo', name: 'TodoWrite', title: 'TodoWrite call', description: 'TodoWrite call', args: { todos } }, false),
+    row({ t: 'tool-call-end', call: 'toolu_todo' }, false),
+    row({ t: 'tool-call-start', call: 'toolu_agent', name: 'Agent', title: 'Find config', description: 'Find config',
+      args: { description: 'Find config', prompt: 'Find the config file.', subagent_type: 'general-purpose', sessionSubagent: subagent } }, false),
+    row({ t: 'start', title: 'Find config' }),
+    ...Array.from({ length: 110 }, (_, index) => [
+      row({ t: 'tool-call-start', call: `toolu_glob_${index}`, name: 'Glob', title: 'Glob call', description: 'Glob call', args: { pattern: `*.${index}` } }),
+      row({ t: 'tool-call-end', call: `toolu_glob_${index}` }),
+    ]).flat(),
+    row({ t: 'tool-call-start', call: 'toolu_child_todo', name: 'TodoWrite', title: 'TodoWrite call', description: 'TodoWrite call',
+      args: { todos: [{ content: 'Subagent step', status: 'in_progress', activeForm: 'Doing the subagent step' }] } }),
+    row({ t: 'tool-call-end', call: 'toolu_child_todo' }),
+    row({ t: 'text', text: 'I updated the todo list.' }),
+  ]);
+  const workspace = new GoalProgressPage(page);
+  await workspace.openOtherSession();
+  // The first attention scan reads every page down to the user message, so it sees the subagent start.
+  await expect.poll(() => server.requests.filter((request) => request.path.includes('/real-session/messages?before_seq=')).length)
+    .toBeGreaterThanOrEqual(3);
+  // The scan saves the subagent bounds with the encrypted workspace after the 500 ms cache delay.
+  await page.waitForTimeout(1000);
+  // Act
+  await page.reload();
+  await workspace.expectConnected();
+  await workspace.openGoalChat();
+  // Assert
+  // The newest page does not hold the subagent start, so the transcript shows the call as a main row.
+  await expect(page.getByText('I updated the todo list.', { exact: true })).toBeVisible();
+  await expect(workspace.todoChip(0, 1)).toHaveCount(0);
+  await expect(workspace.dock()).toHaveCount(0);
+});

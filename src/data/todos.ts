@@ -1,3 +1,4 @@
+import { markSubagents, subagentOf, type MessageRecord, type SubagentMarks } from '../happy/normalize';
 import type { Message, Todo, ToolCall } from './types';
 
 // Adapted from Happy Web sync/storageTypes.ts (TodoItemSchema), components/tools/views/TodoView.tsx,
@@ -54,14 +55,24 @@ export function todoProgress(todos: readonly Todo[]) {
   };
 }
 
+const copyMarks = (marks?: SubagentMarks): SubagentMarks =>
+  new Map([...marks || []].map(([id, entry]) => [id, { ...entry, bounds: new Map(entry.bounds) }]));
+
 // The list from the newest main-thread TodoWrite call that finished without an error. A context reset clears the list.
 // Session-protocol tool ends carry no result, so the call input supplies the list, as in TodoView.
-// Subagent calls (nested as tool call children) and calls without a valid list do not change the list, as in Happy Web
-// sync/reducer/reducer.ts.
-export function latestTodos(messages: readonly Message[]): Todo[] {
+// Calls without a valid list do not change the list. Subagent calls do not change it either, as Happy Web
+// sync/reducer/reducer.ts skips sidechain messages. `visibleMessages` nests the calls inside the loaded subagent bounds.
+// With `rows` and `known` (the bounds that the client read on other pages or before a reload), a call whose row is
+// inside a subagent is skipped too. A row without a known bound stays a main row.
+export function latestTodos(messages: readonly Message[], rows: Iterable<MessageRecord> = [], known?: SubagentMarks): Todo[] {
+  const byId = new Map<string, MessageRecord>();
+  for (const row of rows) byId.set(row.id, row);
+  const marks = markSubagents(copyMarks(known), byId.values());
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
     if (message.contextReset) return [];
+    const row = byId.get(message.id);
+    if (row && subagentOf(row, marks)) continue;
     const calls = message.toolCalls || [];
     for (let index = calls.length - 1; index >= 0; index--) {
       const call = calls[index];

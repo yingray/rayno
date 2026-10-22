@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { visibleMessages, type MessageRecord } from '../happy/normalize';
+import { markSubagents, visibleMessages, type MessageRecord } from '../happy/normalize';
 import { latestTodos, resultTodos, todoItems, todoProgress, todoRowList, toolTodos } from './todos';
 
 const row = (id: string, seq: number, raw: object): MessageRecord => ({ id, seq, raw, createdAt: 1000 + seq });
@@ -103,6 +103,30 @@ describe('todo list', () => {
     expect(latestTodos(running).map(todo => todo.content)).toEqual(['Main step']);
     expect(done.some(message => message.id === 'start-toolu_after')).toBe(true);
     expect(latestTodos(done).map(todo => todo.content)).toEqual(['Main step', 'Main follow-up']);
+  });
+
+  it('should skip a subagent TodoWrite whose start is only in the bounds that the client read before', () => {
+    // Arrange
+    const subagent = { subagent: 'c744020fe7d250cca47a5ae1' };
+    const older = [
+      row('agent', 3, envelope({ t: 'tool-call-start', call: 'toolu_agent', name: 'Agent', title: 'Find config', description: 'Find config',
+        args: { description: 'Find config', prompt: 'Find the config file.', subagent_type: 'general-purpose', sessionSubagent: subagent.subagent } })),
+      row('sub-start', 4, envelope({ t: 'start', title: 'Find config' }, subagent)),
+    ];
+    const main = [{ content: 'Main step', status: 'in_progress', activeForm: 'Doing the main step' }];
+    const child = [{ content: 'Subagent step', status: 'in_progress', activeForm: 'Doing the subagent step' }];
+    const loaded = [...todoCall('toolu_child', 5, child, subagent)];
+    const finished = [...loaded, row('sub-stop', 7, envelope({ t: 'stop' }, subagent)), ...todoCall('toolu_after', 8, main, subagent)];
+    const known = markSubagents(new Map(), older);
+    // Act
+    const running = visibleMessages(loaded);
+    // Assert
+    // The loaded page has no bound, so the call shows as a main row. The client bounds still keep it off the chip.
+    expect(running.flatMap(message => message.toolCalls || []).map(call => call.id)).toEqual(['toolu_child']);
+    expect(latestTodos(running)).toHaveLength(1);
+    expect(latestTodos(running, loaded, known)).toEqual([]);
+    expect(latestTodos(visibleMessages(finished), finished, known).map(todo => todo.content)).toEqual(['Main step']);
+    expect(known.get(subagent.subagent)?.bounds.size).toBe(1);
   });
 
   it('should clear the list after the CLI context reset event', () => {

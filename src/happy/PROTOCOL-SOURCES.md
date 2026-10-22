@@ -282,7 +282,9 @@ or with an error, shows the raw arguments and result, as `knownTools.tsx` falls 
 TodoWrite call that ended without an error and has a valid list. Unlike Happy Web `latestTodos`, it also reads session-protocol calls, whose
 `tool-call-end` has no result. The CLI `Context was reset` event clears the chip. Archived sessions do not show it.
 Subagent TodoWrite calls do not change the chip, as Happy Web skips sidechain messages. `visibleMessages` puts the calls
-between a subagent's `start` and `stop` under the parent tool call (`subagentOf`), so the chip does not see them. The CLI
+between a subagent's `start` and `stop` under the parent tool call (`subagentOf`), so the chip does not see them. The chip
+also checks each call row with `subagentOf` against the bounds that the client knows from other pages and the offline cache,
+so a call from a running subagent whose `start` is on an unloaded page does not replace the list. The CLI
 mapper keeps the id on later main records through `parentUuid`, so a call after `stop` still counts as a main call. The
 TodoWrite row shows its list in the row; the generic structured result view (`../data/toolResults.ts`) is the fallback.
 
