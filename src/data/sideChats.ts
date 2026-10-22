@@ -18,6 +18,32 @@ export function sideChatLabel(session: Session, index: number, name = SIDE_CHAT_
   return session.title && session.title !== SIDE_CHAT_TITLE ? session.title : `${name} ${index + 1}`;
 }
 
+/** The labels of one parent's side chats as its panel and list show them (sideChatsOf order). */
+export function sideChatLabels(chats: Session[]) {
+  const open = chats.filter((chat) => !isSideChatClosed(chat)), closed = chats.filter(isSideChatClosed);
+  return new Map([...open.map((chat, index) => [chat.id, sideChatLabel(chat, index)] as const),
+    ...closed.map((chat, index) => [chat.id, sideChatLabel(chat, index, 'Closed side chat')] as const)]);
+}
+
+/** The full-view title of a side chat, numbered like the parent's list (Happy Web SideChatModal). */
+export function sideChatTitle(sessions: Session[], id: string | undefined) {
+  const session = id ? sessions.find((item) => item.id === id) : undefined;
+  return session?.isSideChat && session.parentSessionId ? sideChatLabels(sideChatsOf(sessions, session.parentSessionId)).get(session.id) : undefined;
+}
+
+export const SIDE_CHAT_AGENT_LIMIT = 'This agent cannot start side chats.';
+
+/**
+ * Show the side chat entry unless the agent can never start one (a Rig, bot, or other agent) and none exist.
+ * Happy Web offers side chats only for a session that it can fork (utils/sessionFork.ts getSessionForkSource).
+ */
+export function showSideChatEntry(sessions: Session[], session: Session, live?: { branchUnavailable(id: string, kind: 'side'): string } | null) {
+  if (session.isSideChat) return false;
+  if (sessions.some((item) => item.isSideChat && item.parentSessionId === session.id)) return true;
+  if (!live) return session.agent !== 'Happy Agent';
+  try { return live.branchUnavailable(session.id, 'side') !== SIDE_CHAT_AGENT_LIMIT; } catch { return true; }
+}
+
 /** The open side chat to show: the requested one, else the newest open one. */
 export function activeSideChat(open: Session[], requested?: string | null) {
   return open.find((session) => session.id === requested) || open[open.length - 1];

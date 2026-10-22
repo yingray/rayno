@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from './fixtures';
-import { activeSideChat, archiveAction, countOpenSideChats, leaveRoute, SIDE_CHAT_TITLE, sideChatLabel, sideChatsOf } from './sideChats';
+import { activeSideChat, archiveAction, countOpenSideChats, leaveRoute, showSideChatEntry, SIDE_CHAT_AGENT_LIMIT, SIDE_CHAT_TITLE, sideChatLabel, sideChatLabels, sideChatsOf, sideChatTitle } from './sideChats';
 
 const base = createInitialState(1000000).sessions[0];
 const side = (id: string, createdAt: number, patch = {}) =>
@@ -27,6 +27,32 @@ describe('Side chats', () => {
       side('closed', 200, { archived: true, sideChatClosed: true }), { ...base, id: 'fork', parentSessionId: 'parent' }];
     // Act / Assert
     expect(countOpenSideChats(sessions, 'parent')).toBe(2);
+  });
+
+  it('should number open and closed side chats apart and give the full view the same title', () => {
+    // Arrange
+    const sessions = [side('first', 1), side('closed', 2, { archived: true, sideChatClosed: true }),
+      side('ended', 3, { archived: true }), side('named', 4, { title: 'Check the parser' })];
+    // Act
+    const labels = sideChatLabels(sideChatsOf(sessions, 'parent'));
+    // Assert
+    expect([...labels]).toEqual([['first', 'Side chat 1'], ['ended', 'Side chat 2'], ['named', 'Check the parser'], ['closed', 'Closed side chat 1']]);
+    expect(sideChatTitle(sessions, 'ended')).toBe('Side chat 2');
+    expect(sideChatTitle([...sessions, base], base.id)).toBeUndefined();
+  });
+
+  it('should hide the side chat entry only for an agent that can never start one and has none', () => {
+    // Arrange
+    const rig = { ...base, id: 'parent', agent: 'Happy Agent' as const };
+    const limited = { branchUnavailable: () => SIDE_CHAT_AGENT_LIMIT };
+    const missingId = { branchUnavailable: () => 'The original provider conversation ID is unavailable.' };
+    // Act / Assert
+    expect(showSideChatEntry([], rig)).toBe(false);
+    expect(showSideChatEntry([side('a', 1)], rig)).toBe(true);
+    expect(showSideChatEntry([], { ...base, id: 'parent' }, limited)).toBe(false);
+    expect(showSideChatEntry([side('a', 1)], { ...base, id: 'parent' }, limited)).toBe(true);
+    expect(showSideChatEntry([], { ...base, id: 'parent' }, missingId)).toBe(true);
+    expect(showSideChatEntry([], side('a', 1))).toBe(false);
   });
 
   it('should close an ended side chat and return it to the parent list', () => {

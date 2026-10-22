@@ -11,7 +11,7 @@ import { titleOf } from '../data/reducer';
 import { latestAgentMode, latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, type SentModes, type SessionModes } from '../happy/modelPreferences';
 import { OfflineStatus } from '../components/OfflineStatus';
 import type { Attachment, MessageSettings, Session } from '../data/types';
-import { countOpenSideChats, SIDE_CHAT_TITLE } from '../data/sideChats';
+import { countOpenSideChats, showSideChatEntry, SIDE_CHAT_TITLE, sideChatTitle } from '../data/sideChats';
 import styles from './chat.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { useEventCallback } from '../components/useEventCallback';
@@ -61,10 +61,12 @@ export const Chat = memo(function Chat({
   embedded?: boolean;
   onSettings?: (sessionId: string, settings: MessageSettings) => void;
 }) {
-  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline, sideChats, parentKnown } = useDemo((store) => ({
+  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline, sideChats, parentKnown, sideEntry, sideTitle } = useDemo((store) => ({
     // A side chat whose parent is gone returns to the session list.
     parentKnown: !!session.parentSessionId && store.state.sessions.some((item) => item.id === session.parentSessionId),
     sideChats: session.isSideChat || embedded ? 0 : countOpenSideChats(store.state.sessions, session.id),
+    sideEntry: !embedded && showSideChatEntry(store.state.sessions, session, store.live),
+    sideTitle: embedded || !session.isSideChat ? undefined : sideChatTitle(store.state.sessions, session.id),
     preferences: store.state.preferences,
     savedChoice: store.state.modelChoices?.[modelChoiceKey(session.agent, session.machineId)],
     liveMetadata: store.snapshot?.sessionData[session.id]?.metadata,
@@ -402,7 +404,7 @@ export const Chat = memo(function Chat({
         <button className={styles.titleCapsule} onClick={onInfo} aria-label="Open session info">
           <Avatar agent={session.agent} size={36} />
           <span className={styles.titleText}>
-            <strong>{titleOf(session)}</strong>
+            <strong>{sideTitle || titleOf(session)}</strong>
             <span className={styles.subtitle}>
               {session.isSideChat && titleOf(session) !== SIDE_CHAT_TITLE && <span className={styles.sideTag}>Side chat</span>}
               <WorkspaceTag name={session.workspace} small />
@@ -425,7 +427,7 @@ export const Chat = memo(function Chat({
           aria-label="Toggle session info"
           onClick={onInfo}
         />
-        {!session.isSideChat && (
+        {sideEntry && (
           <Button
             className={styles.sideChatsButton}
             icon="chatbubblesOutline"

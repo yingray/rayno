@@ -38,6 +38,7 @@ import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, res
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
+import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
 import { imageMime, transferUrl, validateImages } from './attachments';
 import { resumeUnavailable } from './resume';
 import { RECAP_REQUEST } from './systemPrompt';
@@ -1254,7 +1255,7 @@ export class HappyClient implements DemoAdapter {
     const metadata = this.getSession(id).metadata;
     if (kind === 'side' && metadata.isSideChat === true) return 'A side chat cannot start another side chat.';
     if (isRig(metadata) || metadata.bot || metadata.capabilities?.fork === false || !['claude', 'codex'].includes(metadata.flavor || 'claude'))
-      return kind === 'side' ? 'This agent cannot start side chats.' : 'This agent cannot fork or duplicate conversations.';
+      return kind === 'side' ? SIDE_CHAT_AGENT_LIMIT : 'This agent cannot fork or duplicate conversations.';
     if (!metadata.machineId || !metadata.path) return 'The original computer and workspace are required.';
     if (!(metadata.flavor === 'codex' ? metadata.codexThreadId : metadata.claudeSessionId))
       return 'The original provider conversation ID is unavailable.';

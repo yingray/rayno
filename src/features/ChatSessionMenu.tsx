@@ -11,14 +11,15 @@ import chatStyles from './chat.module.css';
 import { needsSessionResume } from '../happy/resume';
 import { buildHandoffDraft } from '../happy/handoff';
 import { draftInWorkspace } from '../data/workspaces';
-import { archiveAction, countOpenSideChats, leaveRoute } from '../data/sideChats';
+import { archiveAction, countOpenSideChats, leaveRoute, showSideChatEntry } from '../data/sideChats';
 
 type Point = { id: string; text: string; timestamp: number };
 
 export function ChatSessionMenu({ session, settings }: { session: Session; settings: MessageSettings }) {
-  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, parentKnown } = useDemo(store => ({
+  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, parentKnown, sideEntry } = useDemo(store => ({
     parentKnown: !!session.parentSessionId && store.state.sessions.some(item => item.id === session.parentSessionId),
     sideChats: session.isSideChat ? 0 : countOpenSideChats(store.state.sessions, session.id),
+    sideEntry: showSideChatEntry(store.state.sessions, session, store.live),
     live: store.live, adapter: store.adapter, mode: store.mode, dispatch: store.dispatch,
     connection: store.snapshot?.connection, offline: store.snapshot?.offline,
     machine: store.machines.find(machine => machine.id === session.machineId),
@@ -135,7 +136,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
         if (!workspaceDraft) return;
         dispatch({ type: 'newDraft', value: workspaceDraft }); close(false); navigate('/new');
       }}><Icon name="add" />New session in same workspace</button>
-      {!session.isSideChat && <button role="menuitem" disabled={busy} onClick={() => { close(false); navigate(`/session/${session.id}/side`); }}>
+      {sideEntry && <button role="menuitem" disabled={busy} onClick={() => { close(false); navigate(`/session/${session.id}/side`); }}>
         <Icon name="chatbubblesOutline" />Side chats{sideChats ? <small className={styles.count}>{sideChats} open</small> : null}</button>}
       <button role="menuitem" disabled={busy || !handoff} onClick={() => {
         if (!handoff) return;

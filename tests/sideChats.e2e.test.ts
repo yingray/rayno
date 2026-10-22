@@ -145,7 +145,9 @@ test('a phone side chat list should create a side chat and open it full size', a
   await workspace.panel().getByRole('button', { name: 'New side chat', exact: true }).click();
   // Assert
   await expect(page).toHaveURL(/\/session\/created-session$/);
-  await expect(page.getByRole('region', { name: 'Chat session', exact: true }).getByText('Side chat', { exact: true })).toHaveCount(1);
+  // Happy Web SideChatModal titles a side chat with the same number as the parent's list.
+  await expect(page.getByRole('region', { name: 'Chat session', exact: true }).getByText('Side chat 1', { exact: true })).toBeVisible();
+  await expect(page).toHaveTitle('Rayno · Side chat 1');
   expect(server.spawns[0]).toMatchObject({ isSideChat: true, parentSessionId: 'real-session', resumeClaudeSessionId: 'copied-claude-id' });
   await workspace.parentBack().click();
   await expect(workspace.row('Side chat 1')).toBeVisible();
@@ -199,6 +201,7 @@ test('an ended side chat that the user did not close should stay open with a res
   await expect(workspace.row('Side chat 2')).toContainText('Ended');
   await workspace.row('Side chat 2').click();
   await expect(page).toHaveURL(/\/session\/side-ended$/);
+  await expect(page.getByRole('region', { name: 'Chat session', exact: true }).getByText('Side chat 2', { exact: true })).toBeVisible();
   await workspace.openActions();
   await expect(workspace.menu().getByRole('menuitem', { name: 'Resume session', exact: true })).toBeVisible();
   await workspace.chooseAction('Close side chat');
@@ -224,6 +227,20 @@ test('closing a side chat from Session info should return to the parent side cha
   expect(server.mutations).toContain('side-1:killSession');
   await expect(workspace.row('Side chat 1')).toHaveCount(0);
   await expect(workspace.panel().getByText('Closed side chats (2)', { exact: true })).toBeVisible();
+});
+
+test('a Happy Agent parent should hide the side chat entry until it has side chats', async ({ page }) => {
+  // Arrange: Happy Web offers side chats only for a Claude or Codex session that it can fork.
+  const server = new HappyServer();
+  await server.install(page);
+  await server.updateMetadata({ flavor: 'rig', client: { id: 'rig' } });
+  const workspace = new SideChatsPage(page);
+  await workspace.openSession();
+  // Act
+  await workspace.openActions();
+  // Assert
+  await expect(workspace.menu().getByRole('menuitem', { name: /^Side chats/ })).toHaveCount(0);
+  await expect(workspace.headerButton()).toHaveCount(0);
 });
 
 test('a side chat without a known parent should return to the session list', async ({ page }) => {

@@ -4,7 +4,7 @@ import { Button, Empty, Icon } from '../components/ui';
 import { useMinuteNow } from '../components/useMinuteNow';
 import { useDemo } from '../data/store';
 import { formatSessionTimestamp } from '../data/sessionList';
-import { activeSideChat, isSideChatClosed, SIDE_CHAT_TITLE, sideChatLabel, sideChatsOf } from '../data/sideChats';
+import { activeSideChat, isSideChatClosed, SIDE_CHAT_AGENT_LIMIT, SIDE_CHAT_TITLE, sideChatLabels, sideChatsOf } from '../data/sideChats';
 import type { MessageSettings, Session } from '../data/types';
 import { messageError } from '../happy/errors';
 import { Chat } from './Chat';
@@ -37,8 +37,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
   const chats = useMemo(() => sideChatsOf(sessions, parent.id), [sessions, parent.id]);
   const open = useMemo(() => chats.filter((chat) => !isSideChatClosed(chat)), [chats]);
   const closed = useMemo(() => chats.filter(isSideChatClosed), [chats]);
-  const labels = useMemo(() => new Map([...open.map((chat, index) => [chat.id, sideChatLabel(chat, index)] as const),
-    ...closed.map((chat, index) => [chat.id, sideChatLabel(chat, index, 'Closed side chat')] as const)]), [open, closed]);
+  const labels = useMemo(() => sideChatLabels(chats), [chats]);
   const [requested, setRequested] = useState<string | null>(() => (location.state as { sideChat?: string } | null)?.sideChat ?? null);
   const active = layout === 'panel' ? activeSideChat(open, requested) : undefined;
   const [busy, setBusy] = useState('');
@@ -48,7 +47,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
   let unavailable = disconnected ? offline ? 'Reconnect to start a side chat.' : 'Connect to Happy to start a side chat.' : '';
   if (!unavailable && live) {
     try { unavailable = live.branchUnavailable(parent.id, 'side'); } catch (error) { unavailable = messageError(error); }
-  } else if (!unavailable && parent.agent === 'Happy Agent') unavailable = 'This agent cannot start side chats.';
+  } else if (!unavailable && parent.agent === 'Happy Agent') unavailable = SIDE_CHAT_AGENT_LIMIT;
   else if (!unavailable && machineOnline === false) unavailable = 'Bring the original computer online first.';
   useEffect(() => {
     if (!active) return;

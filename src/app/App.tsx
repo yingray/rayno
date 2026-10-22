@@ -7,6 +7,7 @@ import { OfflineStatus } from '../components/OfflineStatus';
 import styles from './app.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
 import type { MessageSettings } from '../data/types';
+import { sideChatTitle } from '../data/sideChats';
 const Chat = lazy(() => import('../features/Chat').then((module) => ({ default: module.Chat })));
 const NewSession = lazy(() => import('../features/NewSession').then((module) => ({ default: module.NewSession })));
 const SessionInfo = lazy(() => import('../features/SessionInfo').then((module) => ({ default: module.SessionInfo })));
@@ -51,9 +52,10 @@ export function App() {
   const sessionId = sessionRoute ? path.split('/')[2] : undefined;
   const sessionsArea = path === '/sessions' || sessionRoute || path === '/new';
   const showConversation = sessionRoute || (!mobile && path === '/sessions');
-  const { session, dispatch, toast, mode, live, logout, loading, offlineWorkspace, retrying, unauthorized, connectionError } = useDemo((store) => ({
+  const { session, sideTitle, dispatch, toast, mode, live, logout, loading, offlineWorkspace, retrying, unauthorized, connectionError } = useDemo((store) => ({
     session: sessionRoute ? store.state.sessions.find((item) => item.id === sessionId)
       : showConversation ? store.state.sessions.find((item) => !item.archived && !item.isSideChat) : undefined,
+    sideTitle: sessionRoute ? sideChatTitle(store.state.sessions, sessionId) : undefined,
     dispatch: store.dispatch, toast: store.toast, mode: store.mode, live: store.live, logout: store.logout,
     loading: store.snapshot?.loading, offlineWorkspace: store.snapshot?.offline, retrying: store.snapshot?.retrying,
     unauthorized: store.snapshot?.unauthorized, connectionError: store.snapshot?.error || store.snapshot?.connectionError,
@@ -114,8 +116,8 @@ export function App() {
     };
   }, []);
   useEffect(() => {
-    document.title = `Rayno · ${infoOpen ? 'Session info' : sideOpen && mobile ? 'Side chats' : path === '/new' ? 'New session' : sessionRoute && session ? session.customTitle || session.title : navigation.find((item) => item.key === active)?.name || 'Floating Panels'}`;
-  }, [path, active, session, infoOpen, sideOpen, mobile]);
+    document.title = `Rayno · ${infoOpen ? 'Session info' : sideOpen && mobile ? 'Side chats' : path === '/new' ? 'New session' : sessionRoute && session ? sideTitle || session.customTitle || session.title : navigation.find((item) => item.key === active)?.name || 'Floating Panels'}`;
+  }, [path, active, session, sideTitle, infoOpen, sideOpen, mobile]);
 
   const closeInfo = useCallback(() => navigate(`/session/${session?.id}`), [navigate, session?.id]);
   const closeSide = closeInfo;

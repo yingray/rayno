@@ -138,6 +138,9 @@ A side chat that lost its CLI connection (`active: false` from `presence/timeout
 and the normal resume path. Close uses the normal archive flow (`killSession`, else the server archive) and then writes the archived
 lifecycle marker. Happy Web hides a closed side chat only in memory (`closedSideChatIds`) because the server archive sets only
 `active: false`; the marker keeps it closed after a reload and on other clients. A resume removes the marker. Closed side chats stay
-readable from the parent. The Session info close and the menu close return to the parent's list. Happy Web shows side chats only in the desktop sidebar. Rayno shows them in a panel at 1280px and wider, in a
+readable from the parent. The full view, the Session info close, and the menu close return to the parent's list, and the full-view title
+uses the same "Side chat N" number as the list (`SideChatModal`). The side chat entry is hidden for an agent that cannot fork when the
+parent has no side chats. Happy Web shows side chats only in the desktop sidebar. Rayno shows them in a panel at 1280px and wider, in a
 drawer on tablets, and on a page from the session menu on phones. A Happy CLI that ignores `isSideChat` starts a regular fork; Rayno
-opens it and says so.
+opens it and says so. Scope choice: Rayno does not port the `newSideChat` chord (`keyboard/shortcuts.ts`, ⌥⌘S or Ctrl+Alt+S). Happy Web
+listens for it only while the empty sidebar picker or its add menu is open (`FilesSidebar.tsx`), and Rayno has no such picker.
