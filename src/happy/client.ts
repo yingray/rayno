@@ -145,7 +145,8 @@ export class HappyClient implements DemoAdapter {
   private dirtyHistories = new Set<string>();
   private restoredHistories = new Set<string>();
   private sentTimes = new Map<string, number>();
-  // A cache restore is not a server read. This turns true after the first readable server read.
+  // A cache restore is not a server read. This turns true after the first readable server read;
+  // until then the cache keeps its restored copy and saved time.
   private serverRead = false;
   readonly storageKey: string;
   private constructor(
@@ -254,13 +255,14 @@ export class HappyClient implements DemoAdapter {
     if (!this.cacheReady || this.cacheDisabled || this.disposed) return;
     this.cacheDirty = true;
     if (id) this.dirtyHistories.add(id);
-    if (this.cacheTimer !== undefined) return;
+    // Until a readable server read, a save would only stamp the restored copy with a new time.
+    if (this.cacheTimer !== undefined || !this.serverRead) return;
     this.cacheTimer = window.setTimeout(() => { void this.flushCache(); }, 500);
   }
   private flushCache() {
     window.clearTimeout(this.cacheTimer);
     this.cacheTimer = undefined;
-    if (!this.cacheDirty || this.cacheDisabled) return this.cacheWrite;
+    if (!this.cacheDirty || this.cacheDisabled || !this.serverRead) return this.cacheWrite;
     this.cacheDirty = false;
     const workspace: CachedWorkspace = {
       version: 1, savedAt: Date.now(),

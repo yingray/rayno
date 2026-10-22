@@ -1197,9 +1197,33 @@ describe('Happy client damaged records', () => {
       await vi.waitFor(() => expect(client.getSnapshot().error).not.toBe(''), { interval: 1 });
       expect(client.getSnapshot()).toMatchObject({ loading: false, cachedAt: 50 });
       expect(client.getSnapshot().sessions.map((row) => row.title)).toEqual(['Agent title']);
+      socket.handlers.get('ephemeral')!({ type: 'activity', id: 'session', active: true, activeAt: 999 });
+      socket.handlers.get('ephemeral')!({ type: 'machine-activity', id: 'computer', active: false, activeAt: 999 });
       await new Promise((resolve) => setTimeout(resolve, 600));
       expect(save).not.toHaveBeenCalled();
+      expect(client.getSnapshot().cachedAt).toBe(50);
     });
+  it('should save the cache again after a readable read follows a failed read after a restore', async () => {
+    // Arrange
+    client.dispose();
+    vi.spyOn(OfflineCache.prototype, 'workspace').mockResolvedValue({ version: 1, savedAt: 50, machines: [],
+      sessions: [{ wire: { ...session, metadata: undefined }, metadata, agentState: {} }] } as never);
+    const save = vi.spyOn(OfflineCache.prototype, 'save').mockResolvedValue(true);
+    let readable = false;
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [readable ? session : { ...session, metadataVersion: 2, metadata: damaged }], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([]) : response({ messages: [], hasMore: false }));
+    client = await HappyClient.create(credentials);
+    client.start();
+    await expect(client.refresh()).rejects.toThrow();
+    socket.handlers.get('ephemeral')!({ type: 'activity', id: 'session', active: true, activeAt: 999 });
+    readable = true;
+    // Act
+    await client.refresh();
+    // Assert
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(client.getSnapshot()).toMatchObject({ error: '', cachedAt: Date.now() });
+  });
   it('should keep the readable session fields when a realtime update does not decrypt', async () => {
     // Arrange
     await start();
