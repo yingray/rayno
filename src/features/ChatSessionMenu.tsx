@@ -11,11 +11,14 @@ import chatStyles from './chat.module.css';
 import { needsSessionResume } from '../happy/resume';
 import { buildHandoffDraft } from '../happy/handoff';
 import { draftInWorkspace } from '../data/workspaces';
+import { countOpenSideChats } from '../data/sideChats';
 
 type Point = { id: string; text: string; timestamp: number };
 
 export function ChatSessionMenu({ session, settings }: { session: Session; settings: MessageSettings }) {
-  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft } = useDemo(store => ({
+  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, parentKnown } = useDemo(store => ({
+    parentKnown: !!session.parentSessionId && store.state.sessions.some(item => item.id === session.parentSessionId),
+    sideChats: session.isSideChat ? 0 : countOpenSideChats(store.state.sessions, session.id),
     live: store.live, adapter: store.adapter, mode: store.mode, dispatch: store.dispatch,
     connection: store.snapshot?.connection, offline: store.snapshot?.offline,
     machine: store.machines.find(machine => machine.id === session.machineId),
@@ -32,6 +35,8 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
   const pending = useRef(false);
   const id = useId();
   const disconnected = mode === 'live' && (connection !== 'connected' || !!offline);
+  // A closed or deleted side chat returns to its parent's side chat list.
+  const leave = session.isSideChat && parentKnown ? `/session/${session.parentSessionId}/side` : '/sessions';
   const branchReason = live ? live.branchUnavailable(session.id) : '';
   const ended = mode === 'live' && needsSessionResume(session);
   const recoveryReason = ended ? live?.resumeUnavailable(session.id) : '';
@@ -123,13 +128,15 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
       {ended ? <button role="menuitem" disabled={busy || disconnected || !!recoveryReason}
         onClick={() => void run(() => live!.resumeSession(session.id))}><Icon name="refreshOutline" />Resume session</button>
         : <button role="menuitem" disabled={busy || disconnected} onClick={() => void run(async () => {
-          await adapter.archiveSession(session.id); if (!session.archived) navigate('/sessions');
-        })}><Icon name="archiveOutline" />{session.archived ? 'Restore session' : 'Archive session'}</button>}
+          await adapter.archiveSession(session.id); if (!session.archived) navigate(leave);
+        })}><Icon name="archiveOutline" />{session.archived ? 'Restore session' : session.isSideChat ? 'Close side chat' : 'Archive session'}</button>}
       {recoveryReason && <p className={styles.reason}>{recoveryReason}</p>}
       <button role="menuitem" disabled={busy || !workspaceDraft} onClick={() => {
         if (!workspaceDraft) return;
         dispatch({ type: 'newDraft', value: workspaceDraft }); close(false); navigate('/new');
       }}><Icon name="add" />New session in same workspace</button>
+      {!session.isSideChat && <button role="menuitem" disabled={busy} onClick={() => { close(false); navigate(`/session/${session.id}/side`); }}>
+        <Icon name="chatbubblesOutline" />Side chats{sideChats ? <small className={styles.count}>{sideChats} open</small> : null}</button>}
       <button role="menuitem" disabled={busy || !handoff} onClick={() => {
         if (!handoff) return;
         dispatch({ type: 'newDraft', value: handoff }); close(false); navigate('/new');
@@ -148,7 +155,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
       {error && <p role="alert">{error}</p>}
       <footer><Button disabled={busy} onClick={() => setConfirmDelete(false)}>Cancel</Button>
         <Button variant="danger" disabled={busy} onClick={() => void run(async () => {
-          await adapter.deleteSession(session.id); setConfirmDelete(false); navigate('/sessions');
+          await adapter.deleteSession(session.id); setConfirmDelete(false); navigate(leave);
         })}>Delete session</Button></footer>
     </Dialog>}
     {duplicate && <DuplicateDialog session={session} busy={busy} error={error}

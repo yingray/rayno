@@ -13,3 +13,4 @@
 .points button[aria-checked='true'] { border-color: var(--accent-soft); background: #8b5cf61a; }
 .points span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; line-height: 1.5; }
 .points small { display: block; margin-top: 6px; font-size: 11px; color: var(--muted); }
+.count { margin-left: auto; font-size: 11px; color: var(--muted); }

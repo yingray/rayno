@@ -126,3 +126,13 @@ Priority feature contracts were checked against the local Happy snapshot `2dcac1
 - `normalize.ts`: `sync/typesRaw.ts`. Session, Claude output, and Codex/ACP tool calls retain their IDs and join later results by call ID. Raw strings and edit arguments stay readable without HTML execution.
 
 Chat-header Fork and Duplicate follow `utils/sessionFork.ts`, `components/DuplicateSheet.tsx`, and `sync/ops.ts` in the same Happy snapshot. Claude uses `claude-fork-session`, `claude-list-rewind-points`, and `claude-duplicate-session`; Codex uses the matching thread RPCs. A second `spawn-happy-session` call attaches to the copied provider ID and carries `parentSessionId`. Rayno supplies concrete model/effort/permission values, retains the copy after an explicit spawn failure, and refuses an automatic second copy when the first result is unknown.
+
+Side chats follow `sync/ops.ts` (`spawnSideChat`, `forkAndSpawn`), `sync/storage.ts` (`useSideChatSessions` and the list filters),
+`components/SideChatPanel.tsx`, and `-session/SessionView.tsx` in the same Happy snapshot. On the CLI side, `daemon/run.ts` turns the
+`spawn-happy-session` field `isSideChat` into `HAPPY_SIDE_CHAT`, and `claude/runClaude.ts` and `codex/runCodex.ts` write `metadata.isSideChat`
+and `metadata.parentSessionId`. They do not replay the parent history into the side chat UI. `../data/sideChats.ts` selects the side chats of
+a parent by these two fields, oldest first. A regular fork has `parentSessionId` without `isSideChat` and stays in the session list.
+Rayno starts a side chat with the same fork RPC and spawn as Fork (kind `side`) and adds `isSideChat: true` and the parent's concrete
+model/effort/permission. Close uses the normal archive flow (`killSession`, then the server archive). Closed side chats stay readable
+from the parent. Happy Web shows side chats only in the desktop sidebar. Rayno shows them in a panel at 1280px and wider, in a drawer
+on tablets, and on a page from the session menu on phones. A Happy CLI that ignores `isSideChat` starts a regular fork; Rayno opens it and says so.

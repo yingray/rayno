@@ -2,6 +2,7 @@ import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, Tool
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
 import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
+import { SIDE_CHAT_TITLE } from '../data/sideChats';
 
 // These records are protocol boundaries. Keep unknown metadata fields for CAS updates.
 export type Json = Record<string, any>;
@@ -133,7 +134,7 @@ export function normalizeSession(
     Object.keys(record(a.communications)).some((id) => !record(a.completedCommunications)[id]);
   return {
     id: wire.id,
-    title: text(m.summary?.text, path.split('/').filter(Boolean).pop() || 'Untitled session'),
+    title: text(m.summary?.text, m.isSideChat === true ? SIDE_CHAT_TITLE : path.split('/').filter(Boolean).pop() || 'Untitled session'),
     customTitle: m.name || undefined,
     workspace: m.bot?.id
       ? `@${text(m.bot.username)}`
@@ -162,6 +163,7 @@ export function normalizeSession(
     lastActivityAt: m.lastMeaningfulMessageAt ?? wire.createdAt,
     machineOffline: machine ? !machine.wire.active : false,
     isSideChat: m.isSideChat === true,
+    parentSessionId: typeof m.parentSessionId === 'string' && m.parentSessionId ? m.parentSessionId : undefined,
     additions: typeof m.git?.insertions === 'number' ? m.git.insertions : 0,
     deletions: typeof m.git?.deletions === 'number' ? m.git.deletions : 0,
     gitReported: !!m.git,

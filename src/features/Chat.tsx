@@ -10,7 +10,8 @@ import { messageError } from '../happy/errors';
 import { titleOf } from '../data/reducer';
 import { latestAgentMode, latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, type SentModes, type SessionModes } from '../happy/modelPreferences';
 import { OfflineStatus } from '../components/OfflineStatus';
-import type { Attachment, Session } from '../data/types';
+import type { Attachment, MessageSettings, Session } from '../data/types';
+import { countOpenSideChats, SIDE_CHAT_TITLE } from '../data/sideChats';
 import styles from './chat.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { useEventCallback } from '../components/useEventCallback';
@@ -50,12 +51,20 @@ export const Chat = memo(function Chat({
   session,
   onInfo,
   onList,
+  embedded = false,
+  onSettings,
 }: {
   session: Session;
   onInfo: () => void;
   onList: () => void;
+  /** A side chat inside its parent's panel. The panel owns the header. */
+  embedded?: boolean;
+  onSettings?: (sessionId: string, settings: MessageSettings) => void;
 }) {
-  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline } = useDemo((store) => ({
+  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline, sideChats, parentKnown } = useDemo((store) => ({
+    // A side chat whose parent is gone returns to the session list.
+    parentKnown: !!session.parentSessionId && store.state.sessions.some((item) => item.id === session.parentSessionId),
+    sideChats: session.isSideChat || embedded ? 0 : countOpenSideChats(store.state.sessions, session.id),
     preferences: store.state.preferences,
     savedChoice: store.state.modelChoices?.[modelChoiceKey(session.agent, session.machineId)],
     liveMetadata: store.snapshot?.sessionData[session.id]?.metadata,
@@ -137,7 +146,9 @@ export const Chat = memo(function Chat({
   const input = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const pinned = useRef(true);
-  const view = location.pathname.endsWith('/changes')
+  const sideOpen = location.pathname === `/session/${session.id}/side`;
+  const parentId = session.isSideChat && parentKnown ? session.parentSessionId : undefined;
+  const view = embedded ? 'chat' : location.pathname.endsWith('/changes')
     ? 'changes'
     : location.pathname.endsWith('/files')
       ? 'files'
@@ -162,6 +173,7 @@ export const Chat = memo(function Chat({
         permissionMode: selectedPermission || undefined,
       }
     : {}, [mode, model, efforts.length, selectedEffort, selectedPermission]);
+  useEffect(() => { onSettings?.(session.id, messageSettings); }, [onSettings, session.id, messageSettings]);
 
   // Save only explicit picks. A value saved on every render would outrank the modes of later messages.
   function pickModes(value: Omit<SessionModes, 'at' | 'agentCall'>) {
@@ -369,14 +381,16 @@ export const Chat = memo(function Chat({
       data-chat-width={preferences.chatWidth}
       data-connection={mode === 'live' ? connection : undefined}
       data-keyboard-open={keyboardOpen}
-      aria-label="Chat session"
+      data-embedded={embedded || undefined}
+      aria-label={embedded ? 'Side chat conversation' : 'Chat session'}
     >
-      <header className={styles.header}>
+      {!embedded && <header className={styles.header}>
         <Button
-          className={styles.back}
+          className={`${styles.back} ${parentId ? styles.parentBack : ''}`}
           icon="arrowBack"
-          aria-label="Back to sessions"
-          onClick={() => navigate('/sessions')}
+          aria-label={parentId ? 'Back to parent chat' : 'Back to sessions'}
+          title={parentId ? 'Back to parent chat' : undefined}
+          onClick={() => parentId ? navigate(`/session/${parentId}/side`, { state: { sideChat: session.id } }) : navigate('/sessions')}
         />
         <Button
           className={styles.listButton}
@@ -390,6 +404,7 @@ export const Chat = memo(function Chat({
           <span className={styles.titleText}>
             <strong>{titleOf(session)}</strong>
             <span className={styles.subtitle}>
+              {session.isSideChat && titleOf(session) !== SIDE_CHAT_TITLE && <span className={styles.sideTag}>Side chat</span>}
               <WorkspaceTag name={session.workspace} small />
               <span className={styles.branch}>
                 <Icon name="gitBranchOutline" size={12} />
@@ -410,9 +425,19 @@ export const Chat = memo(function Chat({
           aria-label="Toggle session info"
           onClick={onInfo}
         />
+        {!session.isSideChat && (
+          <Button
+            className={styles.sideChatsButton}
+            icon="chatbubblesOutline"
+            aria-label={sideChats ? `Side chats, ${sideChats} open` : 'Side chats'}
+            aria-expanded={sideOpen}
+            title="Side chats"
+            onClick={() => navigate(sideOpen ? `/session/${session.id}` : `/session/${session.id}/side`)}
+          >{sideChats ? <span className={styles.sideChatsCount}>{sideChats}</span> : null}</Button>
+        )}
         <ChatSessionMenu session={session} settings={messageSettings} />
-      </header>
-      <OfflineStatus label="Conversation availability" />
+      </header>}
+      <OfflineStatus label={embedded ? 'Side chat availability' : 'Conversation availability'} />
       {view === 'chat' ? (
         <>
           <div

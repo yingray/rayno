@@ -1,4 +1,4 @@
-import { lazy, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dialog, Empty, Icon, Mark } from '../components/ui';
 import type { IconName } from '../components/ui';
@@ -6,6 +6,7 @@ import { useDemo } from '../data/store';
 import { OfflineStatus } from '../components/OfflineStatus';
 import styles from './app.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
+import type { MessageSettings } from '../data/types';
 const Chat = lazy(() => import('../features/Chat').then((module) => ({ default: module.Chat })));
 const NewSession = lazy(() => import('../features/NewSession').then((module) => ({ default: module.NewSession })));
 const SessionInfo = lazy(() => import('../features/SessionInfo').then((module) => ({ default: module.SessionInfo })));
@@ -13,6 +14,7 @@ const Settings = lazy(() => import('../features/Settings').then((module) => ({ d
 const Monitor = lazy(() => import('../features/Monitor').then((module) => ({ default: module.Monitor })));
 const MachineDetail = lazy(() => import('../features/Monitor').then((module) => ({ default: module.MachineDetail })));
 const Inbox = lazy(() => import('../features/Inbox').then((module) => ({ default: module.Inbox })));
+const SideChats = lazy(() => import('../features/SideChats').then((module) => ({ default: module.SideChats })));
 const SessionList = lazy(() => import('../features/Sessions').then((module) => ({ default: module.SessionList })));
 
 const navigation: { key: string; name: string; icon: IconName; route: string }[] = [
@@ -60,6 +62,12 @@ export function App() {
     if (live && session?.id) return live.watchSession(session.id);
   }, [live, session?.id]);
   const infoOpen = sessionRoute && path.endsWith('/info') && !!session;
+  // Side chats open from their parent: a panel at 1280px and wider, a drawer on tablets, and a page on phones.
+  const sideOpen = sessionRoute && path.endsWith('/side') && !!session && !session.isSideChat;
+  const sidePanel = sideOpen && width >= 1280;
+  const composerSettings = useRef(new Map<string, MessageSettings>());
+  const keepSettings = useCallback((id: string, value: MessageSettings) => { composerSettings.current.set(id, value); }, []);
+  const readSettings = useCallback(() => composerSettings.current.get(session?.id || '') || {}, [session?.id]);
   const active = path.startsWith('/settings')
     ? 'settings'
     : path.startsWith('/monitor') || path.startsWith('/machine')
@@ -68,7 +76,7 @@ export function App() {
         ? 'inbox'
         : 'sessions';
   const showList =
-    sessionsArea && (mobile ? path === '/sessions' : width >= 1024 && !(infoOpen && width >= 1280));
+    sessionsArea && (mobile ? path === '/sessions' : width >= 1024 && !((infoOpen || sideOpen) && width >= 1280));
   const showTabs =
     (mobile && ['/sessions', '/inbox', '/monitor'].includes(path)) ||
     (mobile && path.startsWith('/settings'));
@@ -89,13 +97,13 @@ export function App() {
       if (event.key === 'Escape') {
         if (document.querySelector('[role="dialog"]')) return;
         if (listOpen) setListOpen(false);
-        else if (infoOpen && session) navigate(`/session/${session.id}`);
+        else if ((infoOpen || sideOpen) && session) navigate(`/session/${session.id}`);
         else if (path === '/new') navigate('/sessions');
       }
     }
     window.addEventListener('keydown', search);
     return () => window.removeEventListener('keydown', search);
-  }, [sessionsArea, mobile, width, path, listOpen, infoOpen, session, navigate]);
+  }, [sessionsArea, mobile, width, path, listOpen, infoOpen, sideOpen, session, navigate]);
   useEffect(() => {
     const update = () => setOffline(!navigator.onLine);
     window.addEventListener('online', update);
@@ -106,10 +114,11 @@ export function App() {
     };
   }, []);
   useEffect(() => {
-    document.title = `Rayno · ${infoOpen ? 'Session info' : path === '/new' ? 'New session' : sessionRoute && session ? session.customTitle || session.title : navigation.find((item) => item.key === active)?.name || 'Floating Panels'}`;
-  }, [path, active, session, infoOpen]);
+    document.title = `Rayno · ${infoOpen ? 'Session info' : sideOpen && mobile ? 'Side chats' : path === '/new' ? 'New session' : sessionRoute && session ? session.customTitle || session.title : navigation.find((item) => item.key === active)?.name || 'Floating Panels'}`;
+  }, [path, active, session, infoOpen, sideOpen, mobile]);
 
   const closeInfo = useCallback(() => navigate(`/session/${session?.id}`), [navigate, session?.id]);
+  const closeSide = closeInfo;
   const openInfo = useCallback(() => navigate(infoOpen ? `/session/${session?.id}` : `/session/${session?.id}/info`), [navigate, infoOpen, session?.id]);
   const openList = useCallback(() => setListOpen(true), []);
   if (path === '/') return <Navigate to="/sessions" replace />;
@@ -246,12 +255,15 @@ export function App() {
               <Inbox />
             ) : mobile && infoOpen ? (
               <LazyBoundary><SessionInfo session={session!} onClose={closeInfo} /></LazyBoundary>
+            ) : mobile && sideOpen ? (
+              <LazyBoundary><SideChats parent={session!} layout="page" settings={readSettings} onClose={closeSide} /></LazyBoundary>
             ) : session ? (
               <Chat
                 key={session.id}
                 session={session}
                 onInfo={openInfo}
                 onList={openList}
+                onSettings={keepSettings}
               />
             ) : (
               <Empty
@@ -278,6 +290,16 @@ export function App() {
           <aside className={styles.infoPanel}>
             <LazyBoundary><SessionInfo session={session!} onClose={closeInfo} /></LazyBoundary>
           </aside>
+        )}
+        {sidePanel && (
+          <aside className={styles.sidePanel}>
+            <LazyBoundary><SideChats key={session!.id} parent={session!} layout="panel" settings={readSettings} onClose={closeSide} /></LazyBoundary>
+          </aside>
+        )}
+        {!mobile && sideOpen && width < 1280 && (
+          <Dialog title="Side chats" onClose={closeSide} className={`${styles.infoDrawer} ${styles.sideDrawer}`}>
+            <LazyBoundary><SideChats parent={session!} layout="drawer" settings={readSettings} onClose={closeSide} /></LazyBoundary>
+          </Dialog>
         )}
         {!mobile && infoOpen && width < 1280 && (
           <Dialog title="Session info" onClose={closeInfo} className={styles.infoDrawer}>

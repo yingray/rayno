@@ -93,6 +93,7 @@ export { messageError } from './errors';
 export const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
 // The recap mode and style change only the instructions. They are not part of a message fingerprint.
 export type SendSettings = MessageSettings & { recapMode?: RecapMode; recapStyle?: string };
+export type BranchKind = 'fork' | 'duplicate' | 'side';
 // recap marks a hidden recap request. The user cannot see or retry its draft.
 type Outbox = { fingerprint: string; localId: string; content: string; files?: { localId: string; content: string }[]; recap?: true };
 
@@ -1246,10 +1247,11 @@ export class HappyClient implements DemoAdapter {
     this.assertAlive();
     return new Blob([bytes as BlobPart], { type });
   }
-  branchUnavailable(id: string) {
+  branchUnavailable(id: string, kind: BranchKind = 'fork') {
     const metadata = this.getSession(id).metadata;
+    if (kind === 'side' && metadata.isSideChat === true) return 'A side chat cannot start another side chat.';
     if (isRig(metadata) || metadata.bot || metadata.capabilities?.fork === false || !['claude', 'codex'].includes(metadata.flavor || 'claude'))
-      return 'This agent cannot fork or duplicate conversations.';
+      return kind === 'side' ? 'This agent cannot start side chats.' : 'This agent cannot fork or duplicate conversations.';
     if (!metadata.machineId || !metadata.path) return 'The original computer and workspace are required.';
     if (!(metadata.flavor === 'codex' ? metadata.codexThreadId : metadata.claudeSessionId))
       return 'The original provider conversation ID is unavailable.';
@@ -1272,7 +1274,8 @@ export class HappyClient implements DemoAdapter {
       return typeof key === 'string' && key ? [{ id: key, text: text.trim() === RECAP_REQUEST ? 'Recap' : text, timestamp: Number(point.timestamp) || 0 }] : [];
     }).reverse();
   }
-  branchSession(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
+  /** A side chat is a fork that happy-cli marks with isSideChat (ops.ts spawnSideChat). */
+  branchSession(id: string, kind: BranchKind, point: string | undefined, options: MessageSettings): Promise<string> {
     const key = JSON.stringify([id, kind, point]);
     const existing = this.branching.get(key);
     if (existing) return existing;
@@ -1280,9 +1283,9 @@ export class HappyClient implements DemoAdapter {
     this.branching.set(key, pending);
     return pending;
   }
-  private async performBranch(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
+  private async performBranch(id: string, kind: BranchKind, point: string | undefined, options: MessageSettings): Promise<string> {
     if (this.snapshot.connection !== 'connected' || this.snapshot.offline) throw new Error('Reconnect before you create a session.');
-    const reason = this.branchUnavailable(id);
+    const reason = this.branchUnavailable(id, kind);
     if (reason) throw new Error(reason);
     if (kind === 'duplicate' && !point) throw new Error('Choose a message to duplicate from.');
     const metadata = this.getSession(id).metadata;
@@ -1300,7 +1303,8 @@ export class HappyClient implements DemoAdapter {
       save();
       const params: Json = { directory, [codex ? 'codexThreadId' : 'claudeSessionId']: codex ? metadata.codexThreadId : metadata.claudeSessionId };
       if (kind === 'duplicate') params[codex ? 'cutAfterItemId' : 'cutAfterUuid'] = point;
-      const result = await this.rpc(machineId, codex ? kind === 'fork' ? 'codex-fork-thread' : 'codex-duplicate-thread' : kind === 'fork' ? 'claude-fork-session' : 'claude-duplicate-session', params, true);
+      const copy = kind === 'duplicate' ? 'duplicate' : 'fork';
+      const result = await this.rpc(machineId, codex ? `codex-${copy}-thread` : `claude-${copy}-session`, params, true);
       if (result.type !== 'success') {
         sessionStorage.removeItem(storageKey);
         throw new Error(result.errorMessage || 'This Happy CLI could not copy the conversation.');
@@ -1320,13 +1324,13 @@ export class HappyClient implements DemoAdapter {
       if (!isConcreteModel(pending.model) || !modelOptions(metadata).some(option => !option.disabled && option.value === pending.model)
         || (levels.length && !levels.includes(pending.effort)) || !permissionOptions(metadata).some(option => !option.disabled && option.value === pending.permissionMode))
         throw new Error('The saved model or permission choice is no longer available. Check the copied conversation before you retry.');
-      if (this.branchUnavailable(id) || this.getSession(id).metadata.machineId !== machineId) throw new Error('The original computer is no longer available.');
+      if (this.branchUnavailable(id, kind) || this.getSession(id).metadata.machineId !== machineId) throw new Error('The original computer is no longer available.');
       pending.spawnUnknown = true; save();
       const result = await this.rpc(machineId, 'spawn-happy-session', {
         type: 'spawn-in-directory', directory, agent: codex ? 'codex' : 'claude', approvedNewDirectoryCreation: false,
         [codex ? 'resumeCodexThreadId' : 'resumeClaudeSessionId']: pending.providerId,
         parentSessionId: id, modelMode: pending.model, permissionMode: pending.permissionMode,
-        ...(pending.effort ? { effortLevel: pending.effort } : {}),
+        ...(pending.effort ? { effortLevel: pending.effort } : {}), ...(kind === 'side' ? { isSideChat: true } : {}),
       }, true);
       if (result.type !== 'success' || typeof result.sessionId !== 'string') {
         pending.spawnUnknown = false; save();

@@ -1,0 +1,273 @@
+.panel,
+.list {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 8px 18px;
+  flex: none;
+  color: var(--secondary);
+}
+.panelHeader h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.iconButton {
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 10px;
+  overflow-x: auto;
+  flex: none;
+  scrollbar-width: none;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  flex: none;
+  max-width: 190px;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--secondary);
+}
+.tab[data-active] {
+  border-color: var(--border-control);
+  background: linear-gradient(#24242a, #1c1c21);
+  color: var(--text);
+}
+.tab > button {
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 11px;
+}
+.tab > button:first-child {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tabClose {
+  width: 32px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tabClose:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.unread {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent-soft);
+}
+.panelNotice {
+  flex: none;
+  padding: 0 18px;
+}
+.conversation {
+  background: var(--main);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 6px 0 18px;
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+}
+.chat {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.empty {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0 18px 18px;
+}
+.panelClosed {
+  flex: none;
+  max-height: 40%;
+  overflow: auto;
+  padding: 0 14px;
+  border-top: 1px solid var(--border);
+}
+.status,
+.reason,
+.error {
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.status {
+  color: #c4b5fd;
+}
+.reason {
+  color: var(--muted);
+}
+.error {
+  color: #fca5a5;
+}
+.pageHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 0;
+  flex: none;
+}
+.pageHeader h1 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+.listBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+}
+.list[data-layout='page'] .listBody {
+  padding: 12px 16px calc(var(--mobile-bottom, 0px) + 16px);
+}
+.intro {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--secondary);
+}
+.newButton {
+  width: 100%;
+  min-height: 44px;
+  flex: none;
+}
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding-right: 4px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--well);
+}
+.row[data-closed] {
+  padding-right: 0;
+}
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 14px;
+  border: 0;
+  border-radius: 15px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.rowMain > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rowMain strong {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowMain small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.rowMain > span:first-child,
+.rowMain > span:last-child {
+  color: var(--secondary);
+}
+.row[data-closed] .rowMain {
+  color: var(--secondary);
+}
+.none {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.closed summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--secondary);
+  cursor: pointer;
+  list-style: none;
+  border-radius: 10px;
+}
+.closed summary::-webkit-details-marker {
+  display: none;
+}
+.closed[open] .rows {
+  margin-bottom: 10px;
+}
+@media (hover: none) and (pointer: coarse) {
+  .tab > button {
+    min-height: 44px;
+  }
+  .tabClose {
+    width: 44px;
+  }
+}

@@ -104,6 +104,22 @@ describe('Happy record normalization', () => {
     expect(primary).toMatchObject({ project: 'project', workspace: 'project' });
     expect(named).toMatchObject({ project: 'Native project', workspace: 'Named workspace', isSideChat: true, machineOffline: true });
   });
+  it('should read the side chat parent link that happy-cli runClaude writes into metadata', () => {
+    // Arrange: HAPPY_FORKED_FROM_SESSION_ID and HAPPY_SIDE_CHAT become these metadata fields.
+    const source = {
+      wire: { id: 'side', active: true, createdAt: 100, updatedAt: 200 },
+      metadata: { path: '/real/project', flavor: 'claude', parentSessionId: 'parent', isSideChat: true },
+      agentState: {}, key: null,
+    };
+    // Act
+    const sideChat = normalizeSession(source, []);
+    const titled = normalizeSession({ ...source, metadata: { ...source.metadata, summary: { text: 'Check the parser' } } }, []);
+    const fork = normalizeSession({ ...source, metadata: { path: '/real/project', parentSessionId: 'parent' } }, []);
+    // Assert
+    expect(sideChat).toMatchObject({ isSideChat: true, parentSessionId: 'parent', title: 'Side chat' });
+    expect(titled.title).toBe('Check the parser');
+    expect(fork).toMatchObject({ isSideChat: false, parentSessionId: 'parent', title: 'project' });
+  });
   it('should order and deduplicate messages across legacy, Codex, and session envelopes', () => {
     // Arrange
     const rows = [

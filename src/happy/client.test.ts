@@ -853,6 +853,36 @@ describe('Happy client protocol', () => {
     await expect(client.branchSession('session', 'fork', undefined, {})).rejects.toThrow('previous copy has no confirmation');
     expect(socket.emitWithAck).toHaveBeenCalledTimes(1);
   });
+  it('should start a side chat as a marked fork with the parent link and explicit modes', async () => {
+    // Arrange
+    metadata.claudeSessionId = 'provider-session';
+    metadata.models = [{ code: 'model-a', value: 'Model A' }];
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const child = { ...session, id: 'side', createdAt: 300, metadata: await client.encryption.encrypt({ ...metadata,
+      claudeSessionId: 'copied-session', parentSessionId: 'session', isSideChat: true, summary: undefined }, null) };
+    const sessions = [session];
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({}, null) };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions') ? response({ sessions, hasNext: false })
+      : url.endsWith('/v1/machines') ? response([machine]) : response({ messages: [], hasMore: false }));
+    await start(); socket.handlers.get('connect')?.(); await client.refresh();
+    socket.emitWithAck.mockImplementation(async (_event: string, payload: Json) => {
+      if (payload.method.endsWith(':claude-fork-session')) return rpcReply({ type: 'success', newClaudeSessionId: 'copied-session' });
+      sessions.push(child);
+      return rpcReply({ type: 'success', sessionId: 'side' });
+    });
+    // Act
+    const id = await client.branchSession('session', 'side', undefined, { model: 'model-a', permissionMode: 'acceptEdits' });
+    // Assert
+    expect(id).toBe('side');
+    const methods = socket.emitWithAck.mock.calls.map(([, payload]) => payload.method);
+    expect(methods).toEqual(['computer:claude-fork-session', 'computer:spawn-happy-session']);
+    const spawn = await client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[1][1].params, null);
+    expect(spawn).toMatchObject({ type: 'spawn-in-directory', directory: '/real/project', agent: 'claude', isSideChat: true,
+      parentSessionId: 'session', resumeClaudeSessionId: 'copied-session', modelMode: 'model-a', permissionMode: 'acceptEdits' });
+    expect(client.getSnapshot().sessions.find((item) => item.id === 'side')).toMatchObject({ isSideChat: true, parentSessionId: 'session', title: 'Side chat' });
+    expect(client.branchUnavailable('side', 'side')).toBe('A side chat cannot start another side chat.');
+  });
   it('should reject a duplicate without a selected provider message before a copy starts', async () => {
     // Arrange
     metadata.claudeSessionId = 'provider-session';
