@@ -32,7 +32,7 @@ import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
 import { permissionOptions, canSelectPermission, resolveNewSessionPermission } from './permissionOptions';
-import { latestSentModes, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
+import { latestAgentMode, latestSentModes, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
@@ -1306,8 +1306,10 @@ export class HappyClient implements DemoAdapter {
     if (reason) throw new Error(reason);
     let saved: SessionModes | null = null;
     try { saved = JSON.parse(this.readLocal(`composerModes.${id}`) || 'null'); } catch { /* Ignore an invalid saved choice. */ }
-    const sent = latestSentModes(this.snapshot.sessions.find(session => session.id === id)?.messages || []) || await this.findSentModes(id);
-    const ranked = rankSessionModes(saved, sent, currentPermission(source.metadata));
+    const messages = this.snapshot.sessions.find(session => session.id === id)?.messages || [];
+    const sent = latestSentModes(messages) || await this.findSentModes(id);
+    const ranked = rankSessionModes(saved, sent, currentPermission(source.metadata),
+      latestAgentMode(messages, source.agentState, source.metadata));
     const choice = resolveModelChoice(source.metadata, ranked.modelCandidates);
     if (!choice.model) throw new Error('No model is available for this session.');
     const permission = ranked.permission || currentPermission(source.metadata);

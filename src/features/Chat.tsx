@@ -8,7 +8,7 @@ import { currentPermission, pendingPermissions, record, type Json } from '../hap
 import { permissionOptions, permissionLabel, canSelectPermission } from '../happy/permissionOptions';
 import { messageError } from '../happy/errors';
 import { titleOf } from '../data/reducer';
-import { latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, type SentModes, type SessionModes } from '../happy/modelPreferences';
+import { latestAgentMode, latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, type SentModes, type SessionModes } from '../happy/modelPreferences';
 import { OfflineStatus } from '../components/OfflineStatus';
 import type { Attachment, Session } from '../data/types';
 import styles from './chat.module.css';
@@ -95,8 +95,10 @@ export const Chat = memo(function Chat({
     return () => { active = false; };
   }, [live, historyLoaded, !!loadedModes, session.id]);
   const sentModes = loadedModes && (!olderModes || loadedModes.sentAt >= olderModes.sentAt) ? loadedModes : olderModes;
-  const ranked = useMemo(() => rankSessionModes(savedModes, sentModes, inheritedPermission),
-    [savedModes, sentModes, inheritedPermission]);
+  const agentMode = useMemo(() => latestAgentMode(session.messages, agentState || {}, metadata),
+    [session.messages, agentState, metadata]);
+  const ranked = useMemo(() => rankSessionModes(savedModes, sentModes, inheritedPermission, agentMode),
+    [savedModes, sentModes, inheritedPermission, agentMode]);
   const preferenceKey = modelChoiceKey(session.agent, session.machineId);
   const selection = useMemo(() => resolveModelChoice(metadata, [
     ...ranked.modelCandidates,

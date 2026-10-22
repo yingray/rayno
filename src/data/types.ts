@@ -18,6 +18,8 @@ export type Message = {
   sentAt?: number;
   // A hidden user message that asks the agent to recap its previous reply.
   recapRequest?: boolean;
+  // The agent's own plan-mode tool call, its call id, and the server time of its message.
+  planMode?: { active: boolean; call: string; at: number };
 };
 export type Session = {
   id: string;

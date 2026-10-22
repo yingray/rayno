@@ -73,6 +73,14 @@ agent-default aliases and send explicit model IDs and supported effort values. P
 own account store, separate by agent and, for legacy Happy Agent sessions, by computer. Existing chats
 retain their explicit session choices. Happy Agent is hidden from new-session and agent-switch controls.
 
+Plan mode follows `sync/messagePlanMode.ts`, `sync/sync.ts` (`enteredPlanMode`), and
+`components/tools/PermissionFooter.tsx`. The Claude CLI does not report a mode that Claude takes itself, and
+each message's `meta.permissionMode` resets the SDK mode (`claudeRemoteLauncher.ts`, `handleModeChange`).
+`latestAgentMode` reads the last `EnterPlanMode` tool call as `plan`. An `ExitPlanMode` call counts only after
+`completedRequests[call].status` is `approved`; it gives the approved `mode`, else `default`, as
+`claude/utils/permissionHandler.ts` applies it. That mode replaces a pick or a sent message only when the
+server time of its tool-call message is newer.
+
 New-session permission choices use the same CLI catalogs as chat. Rayno retains the latest explicit choice
 for each agent in its account store and uses Auto when no valid choice exists. The machine's
 `spawn-happy-session` RPC receives `permissionMode`; the first encrypted message receives the same mode.

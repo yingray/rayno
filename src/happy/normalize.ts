@@ -192,6 +192,8 @@ function sentSettings(meta: Json): MessageSettings | undefined {
   if (typeof meta.permissionMode === 'string' && meta.permissionMode) settings.permissionMode = meta.permissionMode;
   return Object.keys(settings).length ? settings : undefined;
 }
+// Tool calls that move a Claude agent into (true) or out of (false) plan mode, as in Happy sync/messagePlanMode.ts.
+const planTools = new Map([['EnterPlanMode', true], ['enter_plan_mode', true], ['ExitPlanMode', false], ['exit_plan_mode', false]]);
 const normalizedMessages = new WeakMap<MessageRecord, Message | null>();
 export function normalizeMessage(row: MessageRecord): Message | null {
   if (normalizedMessages.has(row)) return normalizedMessages.get(row)!;
@@ -254,11 +256,15 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   }
   const calls: ToolCall[] = [];
   const results: NonNullable<Message['toolResults']> = [];
-  const addCall = (id: unknown, name: unknown, input: unknown) => calls.push({ id: text(id, row.id), name: text(name, 'Tool call'), input });
+  const addCall = (id: unknown, name: unknown, input: unknown, tool = name) => {
+    calls.push({ id: text(id, row.id), name: text(name, 'Tool call'), input });
+    const active = typeof tool === 'string' ? planTools.get(tool) : undefined;
+    if (active !== undefined) message.planMode = { active, call: text(id, row.id), at: row.createdAt };
+  };
   const addResult = (id: unknown, result: unknown, isError: unknown) => results.push({ id: text(id), result, isError: isError === true });
   if (envelope) {
     const event = record(envelope.ev);
-    if (event.t === 'tool-call-start') addCall(event.call, event.title || event.name, event.args);
+    if (event.t === 'tool-call-start') addCall(event.call, event.title || event.name, event.args, event.name);
     if (event.t === 'tool-call-end') addResult(event.call, event.result, event.isError);
   } else if (raw.role === 'agent') {
     const data = record(content.data);

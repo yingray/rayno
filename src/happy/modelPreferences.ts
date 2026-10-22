@@ -1,7 +1,8 @@
 import type { Agent, Message, MessageSettings, ModelChoice, Session } from '../data/types';
 import { compareSessionActivity } from '../data/sessionList';
 import { canSelectModel, defaultEffort, effortOptions, isConcreteModel, modelOptions } from './modelOptions';
-import { currentEffort, currentModel, type Json } from './normalize';
+import { currentEffort, currentModel, record, type Json } from './normalize';
+import { permissionOptions } from './permissionOptions';
 
 export function modelChoiceKey(agent: Agent, machineId: string): string {
   return agent === 'Happy Agent' ? `${agent}:${machineId}` : agent;
@@ -52,15 +53,37 @@ export function latestSentModes(messages: Message[]): SentModes | undefined {
   return undefined;
 }
 
+export type AgentModeChange = { permission: string; at: number };
+
+/**
+ * The permission mode that the agent took itself, as Happy Web applies it (sync.ts, PermissionFooter.tsx):
+ * EnterPlanMode starts plan mode. An approved ExitPlanMode ends it with the approved mode, as the CLI applies it.
+ */
+export function latestAgentMode(messages: Message[], agentState: Json, metadata: Json): AgentModeChange | undefined {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const plan = messages[index].planMode;
+    if (!plan) continue;
+    const exit = record(record(agentState.completedRequests)[plan.call]);
+    if (!plan.active && exit.status !== 'approved') continue;
+    const permission = plan.active ? 'plan'
+      : ['default', 'acceptEdits', 'bypassPermissions'].includes(exit.mode) ? exit.mode : 'default';
+    return permissionOptions(metadata).some((option) => option.value === permission && !option.disabled)
+      ? { permission, at: plan.at } : undefined;
+  }
+  return undefined;
+}
+
 /**
  * Rank the sources for the composer modes of an open session:
  * the newer of an explicit pick and the last sent message, then the other one,
  * then the reported session values, then values without a pick time.
+ * A permission mode that the agent took after the pick and the last sent message replaces both.
  */
 export function rankSessionModes(
   saved: SessionModes | null | undefined,
   sent: SentModes | undefined,
   inheritedPermission?: string,
+  agentMode?: AgentModeChange,
 ) {
   const picked = typeof saved?.at === 'number' ? saved : undefined;
   const legacy = saved && !picked ? saved : undefined;
@@ -76,6 +99,8 @@ export function rankSessionModes(
   if (pickedFirst && 'permission' in picked) permission = picked.permission;
   else if (sent?.permissionMode) permission = sent.permissionMode;
   else if (picked && 'permission' in picked) permission = picked.permission;
+  if (agentMode && (!picked || agentMode.at > picked.at!) && (!sent || agentMode.at > sent.sentAt))
+    permission = agentMode.permission;
   return {
     modelCandidates: ordered as (Partial<ModelChoice> | undefined)[],
     legacy,
