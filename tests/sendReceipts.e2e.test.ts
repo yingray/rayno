@@ -75,3 +75,77 @@ test('a session without receipt support should not hold or label sent messages',
   const raw = await server.encryption.decrypt<Json>(server.sends[0].content, server.dataKey);
   expect(raw.meta).not.toHaveProperty('expectsAcceptance');
 });
+
+async function openRigSession(server: HappyServer, page: import('@playwright/test').Page, width: number, height: number) {
+  await server.install(page);
+  await page.setViewportSize({ width, height });
+  const metadata = await server.encryption.decrypt<Json>(server.sessions[0].metadata, server.dataKey);
+  server.sessions[0].metadata = await server.encryption.encrypt({ ...metadata, ...rigMetadata }, server.dataKey);
+  await withAgentState(server, {});
+  const workspace = new AgentRequestsPage(page);
+  await workspace.openSession();
+  return workspace;
+}
+const options = 'Pick the next step:\n\n<options><option>Ship it</option><option>Wait</option></options>';
+
+for (const [width, height] of [[320, 640], [390, 844], [844, 390]]) {
+  test(`Happy Agent reply options should reopen after a rejected answer and close only after acceptance at ${width}x${height}`, async ({ page }) => {
+    // Arrange
+    const server = new HappyServer();
+    const workspace = await openRigSession(server, page, width, height);
+    await server.pushReply(options);
+    const buttons = workspace.replyOptions().getByRole('button');
+    await expect(buttons.first()).toBeEnabled();
+    // Act
+    await workspace.selectReply('Ship it');
+    // Assert
+    await workspace.expectSendState('Ship it', 'Sending…');
+    await expect(buttons.first()).toBeDisabled();
+    // Act
+    await server.pushReceipt('sent-' + server.sends[0].localId, 'That model is not available.');
+    // Assert
+    await workspace.expectSendState('Ship it', 'Not sent: That model is not available.');
+    await expect(buttons.first()).toBeEnabled();
+    await workspace.expectReplyTargetsReachable();
+    await workspace.showSessions();
+    await expect(workspace.indicator('Needs input')).toBeVisible();
+    // Act
+    await workspace.openRow();
+    await workspace.selectReply('Wait');
+    await expect(buttons.first()).toBeDisabled();
+    await server.pushReceipt('sent-' + server.sends[1].localId);
+    // Assert
+    await workspace.expectSendState('Wait', null);
+    await expect(buttons.first()).toBeDisabled();
+    await workspace.showSessions();
+    await expect(workspace.indicator('Needs input')).toHaveCount(0);
+    await workspace.expectNoPageOverflow();
+    expect(server.sends).toHaveLength(2);
+  });
+}
+
+test('a queued message that the agent accepts after the turn options should answer them in the chat and the session list', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  const workspace = await openRigSession(server, page, 390, 844);
+  await server.setWorking(true);
+  await workspace.send('Steer to the tests');
+  await workspace.expectSendState('Steer to the tests', 'Sends after this turn');
+  // Act
+  await server.pushReply(options);
+  await server.setWorking(false);
+  // Assert
+  await expect(workspace.replyOptions().getByRole('button').first()).toBeEnabled();
+  await workspace.expectLastMessage('Steer to the tests');
+  // Act
+  await server.pushReceipt('sent-' + server.sends[0].localId);
+  // Assert
+  await workspace.expectSendState('Steer to the tests', null);
+  await workspace.expectLastMessage('Steer to the tests');
+  await expect(workspace.replyOptions().getByRole('button').first()).toBeDisabled();
+  await workspace.showSessions();
+  await expect(workspace.indicator('Needs input')).toHaveCount(0);
+  await page.reload();
+  await workspace.showSessions();
+  await expect(workspace.indicator('Needs input')).toHaveCount(0);
+});

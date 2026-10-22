@@ -220,10 +220,12 @@ const isPoint = (index: number) => (segment: RecapSegment): segment is Extract<R
   segment.kind === 'point' && segment.index === index;
 
 export const MessageList = memo(function MessageList({
-  sessionId = '', messages, disabled, pending, running = false, recapBusy = false, scroll, railHost = null,
+  sessionId = '', messages, disabled, pending, answered, running = false, recapBusy = false, scroll, railHost = null,
   onOption, onRecap, onUnpin,
 }: {
   sessionId?: string; messages: Message[]; disabled: boolean; pending: boolean;
+  // Options that the user chose in this chat. A held answer does not answer them yet.
+  answered?: ReadonlySet<string>;
   // The agent works now. The recap button waits for the end of the reply.
   running?: boolean;
   // A manual recap request is on its way or the agent answers it now.
@@ -318,7 +320,7 @@ export const MessageList = memo(function MessageList({
           <MessageBlock sessionId={sessionId} message={block.message}
             bubble={bubble} notify={notify}
             recap={recaps.get(block.message.id)} recapWriting={writingTarget === block.message.id} onJump={jump}
-            optionsDisabled={disabled || pending || !unanswered.has(block.message.id)} onOption={onOption} />
+            optionsDisabled={disabled || pending || !unanswered.has(block.message.id) || !!answered?.has(block.message.id)} onOption={onOption} />
           {showButton && block.message.id === lastReply
             && <RecapButton disabled={disabled || pending} onClick={() => void onRecap!()} />}
         </Fragment>)}

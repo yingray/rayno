@@ -1,5 +1,5 @@
 import { partsForMessage } from '../data/messageOptions';
-import { normalizeMessage, type MessageRecord } from './normalize';
+import { messageReceipt, normalizeMessage, type MessageRecord } from './normalize';
 
 export type SessionAttention = {
   readSeq: number;
@@ -34,10 +34,22 @@ export function attentionMessage(row: MessageRecord): 'user' | 'assistant' | nul
   return message.role;
 }
 
-export function receiveAttention(state: SessionAttention, row: MessageRecord): SessionAttention {
-  const kind = attentionMessage(row);
-  if (kind === 'user') return { ...state, userSeq: Math.max(state.userSeq, row.seq) };
-  if (kind !== 'assistant') return state;
+// True when the row starts a user turn, with the receipt rules of `visibleMessages`. With `receipts`, a message that
+// expects a receipt starts its turn only with its accepted receipt, at the receipt's seq. A rejected message never does.
+// `sent` finds the row of a receipt ref, so an accepted hidden recap request does not count. An unknown ref counts.
+export function userTurn(row: MessageRecord, receipts = false, sent?: (id: string) => MessageRecord | undefined): boolean {
+  const receipt = messageReceipt(row.raw);
+  if (receipt) {
+    const message = receipt.reason === undefined ? sent?.(receipt.ref) : undefined;
+    return receipt.reason === undefined && (!message || attentionMessage(message) === 'user');
+  }
+  return attentionMessage(row) === 'user' && !(receipts && row.raw.meta?.expectsAcceptance === true);
+}
+
+export function receiveAttention(state: SessionAttention, row: MessageRecord, receipts = false,
+  sent?: (id: string) => MessageRecord | undefined): SessionAttention {
+  if (userTurn(row, receipts, sent)) return { ...state, userSeq: Math.max(state.userSeq, row.seq) };
+  if (attentionMessage(row) !== 'assistant') return state;
   const message = normalizeMessage(row)!;
   const options = partsForMessage(message).some((part) => part.kind === 'options');
   return { ...state, assistantSeq: Math.max(state.assistantSeq, row.seq),

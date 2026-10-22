@@ -37,7 +37,7 @@ import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
 import { permissionOptions, canSelectPermission, resolveNewSessionPermission, newSessionCatalog } from './permissionOptions';
 import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
-import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
+import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, userTurn, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
 import { imageMime, transferUrl, validateImages } from './attachments';
@@ -636,6 +636,7 @@ export class HappyClient implements DemoAdapter {
       if (!Array.isArray(result.messages)) throw new Error('Could not read session activity.');
       let reachedBoundary = false;
       let next = cursor;
+      const rows: MessageRecord[] = [];
       for (const wire of result.messages) {
         if (!Number.isSafeInteger(wire.seq) || wire.seq < 0) continue;
         next = Math.min(next, wire.seq);
@@ -643,11 +644,16 @@ export class HappyClient implements DemoAdapter {
         if (wire.seq <= boundary) { reachedBoundary = true; continue; }
         const row = await this.decryptMessage(source, wire).catch(() => undefined);
         if (this.disposed || !this.sessions.has(id)) return;
-        if (!row) continue;
-        const kind = attentionMessage(row);
-        foundUser ||= kind === 'user';
-        foundAssistant ||= kind === 'assistant';
-        this.attention.set(id, receiveAttention(this.sessionAttention(id), row));
+        if (row) rows.push(row);
+      }
+      // A receipt can come before its message on the page. Look up the ref in the whole page.
+      const page = new Map(rows.map((row) => [row.id, row]));
+      const receipts = sendsMessageReceipts(source.metadata);
+      const sent = (ref: string) => page.get(ref) || this.messages.get(id)?.get(ref);
+      for (const row of rows) {
+        foundUser ||= userTurn(row, receipts, sent);
+        foundAssistant ||= attentionMessage(row) === 'assistant';
+        this.attention.set(id, receiveAttention(this.sessionAttention(id), row, receipts, sent));
       }
       if (!result.hasMore || reachedBoundary || (foundUser && (foundAssistant || !needAssistant))) break;
       if (next >= cursor) throw new Error('The session activity cursor did not advance.');
@@ -868,7 +874,8 @@ export class HappyClient implements DemoAdapter {
       if (messages.has(row.id)) continue;
       messages.set(row.id, row);
       session.wire.seq = Math.max(session.wire.seq || 0, row.seq);
-      this.attention.set(id, receiveAttention(this.sessionAttention(id), row));
+      this.attention.set(id, receiveAttention(this.sessionAttention(id), row, sendsMessageReceipts(session.metadata),
+        (ref) => messages.get(ref)));
     }
     this.saveAttention(id);
     this.scheduleCache(id);

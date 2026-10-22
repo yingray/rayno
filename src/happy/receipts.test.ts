@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { deliveryMeta, messageReceipt, sendsMessageReceipts, visibleMessages } from './normalize';
 import type { Json, MessageRecord } from './normalize';
 import { unansweredMessageIds } from '../data/replyTurns';
+import { receiveAttention, restoreAttention } from './sessionAttention';
+import { RECAP_REQUEST } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: Json, createdAt = 1000, localId?: string): MessageRecord => ({ id, seq, raw, createdAt, localId });
 const sent = (id: string, seq: number, text: string, meta: Json = { expectsAcceptance: true, queuedWhileBusy: false }) =>
@@ -109,5 +111,48 @@ describe('Happy Agent message receipts', () => {
       { expectsAcceptance: true, queuedWhileBusy: true }, { expectsAcceptance: true, queuedWhileBusy: false },
       { expectsAcceptance: true, queuedWhileBusy: true }, {},
     ]);
+  });
+});
+
+// The session-list fold, with the page lookup that HappyClient.fetchAttention and mergeMessages give it.
+const attention = (rows: MessageRecord[], receipts = true) => {
+  const byId = new Map(rows.map((item) => [item.id, item]));
+  const state = rows.reduce((value, item) => receiveAttention(value, item, receipts, (ref) => byId.get(ref)), restoreAttention(null, 0));
+  return state.optionsSeq > state.userSeq;
+};
+const choose = (id: string, seq: number) => reply(id, seq, 'Pick one\n<options><option>A</option><option>B</option></options>');
+const recapRequest = (id: string, seq: number) => row(id, seq, { role: 'user', content: { type: 'text', text: RECAP_REQUEST },
+  meta: { sentFrom: 'web', raynoRecap: true, displayText: 'Recap', expectsAcceptance: true, queuedWhileBusy: false } }, 1000 + seq);
+
+describe('Happy Agent receipts in reply state', () => {
+  it('should keep needs reply and the chat options in step for a queued message that the agent accepts after the options', () => {
+    // Arrange
+    const held = [reply('working', 1, 'Working'), sent('steer', 2, 'Steer', { expectsAcceptance: true, queuedWhileBusy: true }), choose('options', 3)];
+    const settled = [...held, accepted('steer', 4), reply('done', 5, 'Steered')];
+    // Act
+    const states = [held, settled].map((rows) => ({
+      list: attention(rows), chat: unansweredMessageIds(visibleMessages(rows, true)).has('options'),
+    }));
+    // Assert
+    expect(states).toEqual([{ list: true, chat: true }, { list: false, chat: false }]);
+  });
+  it('should keep needs reply and the chat options open when the agent rejects the answer', () => {
+    // Arrange
+    const rows = [choose('options', 1), sent('answer', 2, 'A'), rejected('answer', 3)];
+    // Act
+    const list = attention(rows);
+    const chat = unansweredMessageIds(visibleMessages(rows, true)).has('options');
+    // Assert
+    expect({ list, chat }).toEqual({ list: true, chat: true });
+  });
+  it('should not let an accepted recap request answer options, and count a plain send at once without receipts', () => {
+    // Arrange
+    const recap = [choose('options', 1), recapRequest('recap', 2), accepted('recap', 3)];
+    const plain = [choose('options', 1), sent('answer', 2, 'A')];
+    // Act / Assert
+    expect(attention(recap)).toBe(true);
+    expect(unansweredMessageIds(visibleMessages(recap, true)).has('options')).toBe(true);
+    expect(attention(plain, false)).toBe(false);
+    expect(attention(plain, true)).toBe(true);
   });
 });
