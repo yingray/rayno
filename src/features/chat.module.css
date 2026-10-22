@@ -1308,3 +1308,38 @@
 .chat[data-embedded] .recapRail,
 .chat[data-embedded] .recapPill { display: none; }
 .chat[data-embedded]:has(.recapRail:not(:empty)) .messageScroll { padding-right: 0; }
+
+/* Context window use, from Happy AgentInput.tsx AgentInputUsageRow. The composer shows only the near-limit warning. */
+.context, .contextWarning {
+  display: flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.context {
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--well);
+  font-size: 13px;
+  color: var(--text);
+}
+.context .contextTokens { color: var(--secondary); margin-left: auto; }
+.contextWarning {
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 18px;
+  padding: 6px 18px 0;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.contextWarning .contextTokens { color: var(--muted); }
+.context svg, .contextWarning svg { flex: none; transform: rotate(-90deg); }
+.context circle, .contextWarning circle { fill: none; stroke-width: 2.5; stroke: #3f3f46; }
+.context circle + circle, .contextWarning circle + circle { stroke: currentColor; stroke-linecap: round; }
+:is(.context, .contextWarning)[data-tone='warning'] { color: var(--orange); }
+:is(.context, .contextWarning)[data-tone='critical'] { color: var(--red); }
+@media (max-width: 767px) {
+  .contextWarning { padding: 4px 14px 0; min-height: 16px; font-size: 10.5px; }
+}

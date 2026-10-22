@@ -21,6 +21,14 @@ const CODEX_MODELS = [
   ['gpt-5.6-sol', 'GPT-5.6 Sol'], ['gpt-5.6-terra', 'GPT-5.6 Terra'],
   ['gpt-5.6-luna', 'GPT-5.6 Luna'],
 ];
+// Happy's per-model Codex registry. A model outside it gets the set that every gpt-5 accepts.
+const CODEX_EFFORTS_BY_MODEL: Record<string, readonly string[]> = {
+  'gpt-6-astra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+  'gpt-5.6-sol': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+  'gpt-5.6-terra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+  'gpt-5.6-luna': ['low', 'medium', 'high', 'xhigh', 'max'],
+};
+const CODEX_EFFORTS_FALLBACK = ['low', 'medium', 'high', 'xhigh'] as const;
 const strings = (value: unknown): string[] => Array.isArray(value)
   ? [...new Set(value.filter((item): item is string => typeof item === 'string' && !!item))]
   : [];
@@ -72,14 +80,7 @@ export function effortOptions(metadata: Json, model: string): string[] {
     return levels.length ? levels : strings(metadata.thoughtLevels?.map((level: Json) => level.code));
   }
   if (!metadata.flavor || metadata.flavor === 'claude') return ['low', 'medium', 'high', 'xhigh', 'max'];
-  if (metadata.flavor === 'codex') {
-    const levels = ['low', 'medium', 'high', 'xhigh'];
-    if (CODEX_MODELS.some(([id]) => id === model)) {
-      levels.push('max');
-      if (!model.endsWith('luna')) levels.push('ultra');
-    }
-    return levels;
-  }
+  if (metadata.flavor === 'codex') return [...(CODEX_EFFORTS_BY_MODEL[model] ?? CODEX_EFFORTS_FALLBACK)];
   return [];
 }
 

@@ -258,6 +258,20 @@ export class LiveWorkspacePage extends WorkspacePage {
   usageSummary() { return this.page.getByRole('button', { name: 'Agent usage summary', exact: true }); }
   usageDetails() { return this.page.getByRole('region', { name: 'Usage details', exact: true }); }
   async openUsage() { await this.usageSummary().click(); await expect(this.usageDetails()).toBeVisible(); }
+  async expectUsageDetailsFit() {
+    const details = this.usageDetails();
+    const viewport = this.page.viewportSize()!;
+    const box = (await details.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(await details.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    const monitor = details.getByRole('button', { name: 'Open Monitor', exact: true });
+    await monitor.scrollIntoViewIfNeeded();
+    await expect(monitor).toBeInViewport();
+    await details.evaluate((element) => { element.scrollTop = 0; });
+    await this.expectNoPageOverflow();
+  }
   async refreshUsage() { await this.usageDetails().getByRole('button', { name: 'Refresh usage', exact: true }).click(); }
   async expectUsagePlacement() {
     await this.sessionRows().last().scrollIntoViewIfNeeded();
@@ -401,6 +415,35 @@ export class LiveWorkspacePage extends WorkspacePage {
   }
   async expectWorkspaceLoading(loading: boolean) {
     await expect(this.page.getByRole('progressbar', { name: 'Load workspace' })).toHaveCount(loading ? 1 : 0);
+  }
+  contextMeter() { return this.page.getByRole('dialog', { name: 'Model & effort' }).getByRole('meter', { name: 'Context window', exact: true }); }
+  contextWarning() {
+    return this.page.getByRole('region', { name: 'Chat session', exact: true }).getByRole('meter', { name: 'Context window', exact: true });
+  }
+  async expectContextWarningFits() {
+    const warning = (await this.contextWarning().boundingBox())!;
+    const send = (await this.page.getByRole('button', { name: 'Send message', exact: true }).boundingBox())!;
+    const viewport = this.page.viewportSize()!;
+    expect(warning.y).toBeGreaterThanOrEqual(send.y + send.height);
+    expect(warning.y + warning.height).toBeLessThanOrEqual(viewport.height);
+    expect(warning.x).toBeGreaterThanOrEqual(0);
+    expect(warning.x + warning.width).toBeLessThanOrEqual(viewport.width);
+    await expect(this.page.getByRole('textbox', { name: 'Message', exact: true })).toBeInViewport();
+    await this.expectNoPageOverflow();
+  }
+  async expectContextMeterFits() {
+    const dialog = this.page.getByRole('dialog', { name: 'Model & effort' });
+    const viewport = this.page.viewportSize()!;
+    await this.contextMeter().scrollIntoViewIfNeeded();
+    await expect(this.contextMeter()).toBeInViewport();
+    const meter = (await this.contextMeter().boundingBox())!;
+    expect(meter.x).toBeGreaterThanOrEqual(0);
+    expect(meter.x + meter.width).toBeLessThanOrEqual(viewport.width);
+    expect(await dialog.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    const done = dialog.getByRole('button', { name: 'Done', exact: true });
+    await done.scrollIntoViewIfNeeded();
+    await expect(done).toBeInViewport();
+    await this.expectNoPageOverflow();
   }
   async openSession() {
     await this.page.goto('/session/real-session');

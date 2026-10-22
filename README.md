@@ -133,7 +133,7 @@ Archived Claude and Codex sessions show Resume even when the server still report
 - Read-only directory and file previews, Git status, and staged/unstaged diffs through the session RPC.
 - Computer health and Claude/Codex quota reads on explicit Monitor refresh.
 - Agent icons identify the compact weekly-usage bars and retain accessible names.
-- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. The composer has no connection or usage footer.
+- Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. The composer has no connection or usage footer. It warns only when 10% or less of the context window remains; Model & effort shows the full context reading.
 
 Existing sessions prefer the daemon's model catalog. New sessions offer agent, model, effort, and permission mode selection before Start.
 Permission mode always has a selected value. It restores the last explicit choice for that agent from a new session or chat, or selects Yolo without a valid choice.

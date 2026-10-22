@@ -44,8 +44,8 @@ export const machines: Machine[] = [
   },
 ];
 export const usageReadings: UsageReading[] = [
-  { agent: 'Claude', usedPercent: 38, pacePercent: 46, reset: '3d 18h' },
-  { agent: 'Codex', usedPercent: 62, pacePercent: 46, reset: '3d 18h' },
+  { agent: 'Claude', usedPercent: 38, pacePercent: 46, reset: '3d 18h', fiveHour: { usedPercent: 24, pacePercent: 58, reset: '2h 6m' } },
+  { agent: 'Codex', usedPercent: 62, pacePercent: 46, reset: '3d 18h', fiveHour: { usedPercent: 71, pacePercent: 58, reset: '2h 6m' } },
 ];
 export const modelOptions = [
   'Opus 5 · High',
@@ -68,6 +68,7 @@ export function createInitialState(now = Date.now()): DemoState {
       branch: 'feat/floating-panels',
       additions: 42,
       deletions: 9,
+      context: { size: 84000, window: 200000 },
       status: 'idle',
       unread: false,
       age: 2,

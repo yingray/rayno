@@ -167,6 +167,12 @@
   font: 8px 'Geist Mono';
   color: var(--muted);
 }
+.fiveHour { margin-top: 20px; font-size: 11px; color: var(--secondary); }
+.fiveHour > div { display: flex; justify-content: space-between; gap: 8px; }
+.fiveHour b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.fiveHourBar { display: flex; height: 4px; margin: 7px 0 5px; border-radius: 999px; background: #27272a; overflow: hidden; }
+.fiveHourBar > span { background: #a1a1aa; }
+.fiveHour p { margin: 0; font-size: 10px; color: var(--muted); }
 .usageCard footer {
   display: flex;
   justify-content: space-between;
@@ -563,6 +569,8 @@
   .weekdays {
     font-size: 6px;
   }
+  .fiveHour { margin-top: 16px; font-size: 10px; }
+  .fiveHour p { font-size: 8.5px; }
   .usageCard footer {
     margin-top: 18px;
     flex-direction: column;

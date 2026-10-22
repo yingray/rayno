@@ -35,6 +35,9 @@ export class HappyServer {
   usageFailure = false;
   usagePercent = 25;
   codexPercent = 31;
+  // The 5-hour windows that Claude get_usage and Codex account/rateLimits/read also report.
+  fiveHourPercent = 12;
+  codexFiveHourPercent = 44;
   sends: Json[] = [];
   failFirstSend = false;
   abortReply: unknown = undefined;
@@ -351,6 +354,11 @@ export class HappyServer {
                     claude: this.usageFailure ? { ok: false, error: 'Usage unavailable' } : {
                       ok: true,
                       data: {
+                        five_hour: {
+                          utilization: this.fiveHourPercent,
+                          resets_at: new Date(Date.now() + 2 * 3600000).toISOString(),
+                        },
+                        seven_day_opus: null,
                         seven_day: {
                           utilization: this.usagePercent,
                           resets_at: new Date(Date.now() + 3 * 86400000).toISOString(),
@@ -358,7 +366,10 @@ export class HappyServer {
                       },
                     },
                     codex: this.usageFailure ? { ok: false, error: 'Codex unavailable' } : {
-                      ok: true, data: { rateLimits: { secondary: {
+                      ok: true, data: { rateLimits: { primary: {
+                        usedPercent: this.codexFiveHourPercent, windowDurationMins: 300,
+                        resetsAt: Math.round((Date.now() + 3 * 3600000) / 1000),
+                      }, secondary: {
                         usedPercent: this.codexPercent, windowDurationMins: 10080,
                         resetsAt: Math.round((Date.now() + 3 * 86400000) / 1000),
                       } } },

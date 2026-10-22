@@ -37,6 +37,8 @@ export type Message = {
   // Happy Agent send state of a user message. An accepted message has none.
   delivery?: { status: 'pending'; queued: boolean; since: number } | { status: 'rejected'; reason: string };
 };
+// Tokens in the agent's context after its latest reply, and the model's window when the CLI reports it.
+export type ContextUsage = { size: number; window?: number };
 export type Session = {
   id: string;
   title: string;
@@ -65,6 +67,7 @@ export type Session = {
   additions: number;
   deletions: number;
   gitReported?: boolean;
+  context?: ContextUsage;
   messages: Message[];
 };
 export type Machine = {
@@ -83,12 +86,16 @@ export type Machine = {
   homeDir?: string;
   cliVersion?: string;
 };
-export type UsageReading = {
-  agent: Agent;
+export type UsageWindow = {
   usedPercent: number;
   pacePercent: number | null;
   reset: string;
   resetAt?: number | null;
+};
+// The weekly plan window, with the 5-hour window when the agent reports it.
+export type UsageReading = UsageWindow & {
+  agent: Agent;
+  fiveHour?: UsageWindow;
   capturedAt?: number;
   stale?: boolean;
   machineId?: string;

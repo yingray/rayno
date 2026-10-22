@@ -303,9 +303,17 @@ export function Monitor() {
                     <span key={day}>{day}</span>
                   ))}
                 </div>
+                {usage.fiveHour && (
+                  <div className={styles.fiveHour} role="meter" aria-label={`${usage.agent} 5-hour usage`}
+                    aria-valuenow={usage.fiveHour.usedPercent} aria-valuemin={0} aria-valuemax={100}>
+                    <div><span>5-hour limit</span><b>{usage.fiveHour.usedPercent}%</b></div>
+                    <span className={styles.fiveHourBar}><span style={{ width: `${usage.fiveHour.usedPercent}%` }} /></span>
+                    <p>{mode === 'demo' ? 'Resets in' : 'Resets'} {usage.fiveHour.reset}</p>
+                  </div>
+                )}
                 <footer>
                   <span>
-                    {mode === 'demo' ? 'Resets in' : 'Resets'} {usage.reset}
+                    {usage.fiveHour ? 'Week resets' : 'Resets'}{mode === 'demo' ? ' in' : ''} {usage.reset}
                   </span>
                   <span>
                     {mode === 'live'

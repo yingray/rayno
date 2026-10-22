@@ -82,7 +82,12 @@
 .details p { font-size: 11px; color: var(--secondary); margin: 5px 0 0; line-height: 1.5; }
 .reading { background: var(--well); border-radius: 14px; padding: 12px; margin-top: 10px; }
 .reading strong, .reading b { font-size: 12.5px; font-weight: 600; }
-.reading .bar { margin: 10px 0; }
+.reading > div:first-child > span { font-size: 11px; color: var(--secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.window { margin-top: 10px; }
+.window > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #d4d4d8; }
+.window b { font-variant-numeric: tabular-nums; }
+.window .bar { margin: 8px 0 0; }
+.window p { margin-top: 3px; }
 .details .empty { padding: 10px 0; }
 .details .error { color: var(--orange); overflow-wrap: anywhere; }
 .details .note { color: var(--muted); margin: 14px 0 8px; }

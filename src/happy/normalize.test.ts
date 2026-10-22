@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   markSubagents,
+  contextUsage,
   messageMeta,
   normalizeMachine,
   normalizeSession,
@@ -11,6 +12,7 @@ import {
 import type { MessageRecord } from './normalize';
 import { agentSubagentTurn, agentSubagentWork, codexCollabTurn, codexReasoningSection, taskSubagentTurn } from './subagentEnvelopes.fixture';
 import { groupChatActivity } from '../data/chatBlocks';
+import { claudeWindows, codexWindows } from './manualUsage';
 import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
@@ -334,6 +336,28 @@ describe('Happy record normalization', () => {
     expect(usage).toMatchObject({ usedPercent: 30, pacePercent: 50, stale: false });
     expect(expired?.stale).toBe(true);
     expect(weeklyUsage('Claude', [], now, now)).toBeNull();
+  });
+  it('should keep the 5-hour window next to the weekly window', () => {
+    // Arrange
+    const now = 7 * 86400000;
+    const rateLimits = {
+      five_hour: { utilization: 41.6, resets_at: new Date(now + 2.5 * 3600000).toISOString() },
+      seven_day: { utilization: 30, resets_at: new Date(now + 3.5 * 86400000).toISOString() },
+      seven_day_opus: null,
+    };
+    const codex = { rateLimits: {
+      primary: { usedPercent: 12, windowDurationMins: 300, resetsAt: (now + 4 * 3600000) / 1000 },
+      secondary: { usedPercent: 64, windowDurationMins: 10080, resetsAt: (now + 86400000) / 1000 },
+    } };
+    // Act
+    const claude = weeklyUsage('Claude', claudeWindows(rateLimits), now, now);
+    const codexReading = weeklyUsage('Codex', codexWindows(codex), now, now);
+    const weekOnly = weeklyUsage('Claude', claudeWindows({ seven_day: rateLimits.seven_day }), now, now);
+    // Assert
+    expect(claude).toMatchObject({ usedPercent: 30, pacePercent: 50, fiveHour: { usedPercent: 42, pacePercent: 50 } });
+    expect(codexReading).toMatchObject({ usedPercent: 64, fiveHour: { usedPercent: 12, pacePercent: 20, resetAt: now + 4 * 3600000 } });
+    expect(weekOnly).not.toHaveProperty('fiveHour');
+    expect(weeklyUsage('Claude', claudeWindows({ five_hour: rateLimits.five_hour }), now, now)).toBeNull();
   });
 });
 
@@ -681,5 +705,55 @@ describe('Thinking records', () => {
       ['The request timed out.', undefined, undefined],
     ]);
     expect(groupChatActivity(messages).map((block) => block.kind)).toEqual(['thinking', 'message', 'thinking', 'message']);
+  });
+});
+
+describe('Context usage', () => {
+  // Shapes from happy-cli SDKToLogConverter (Claude output), the Claude session mapper, and the Codex token_count mapper.
+  const at = (record: MessageRecord, createdAt: number) => ({ ...record, createdAt });
+  const claudeOutput = (id: string, seq: number, usage: object, isSidechain = false) => row(id, seq, {
+    role: 'agent', content: { type: 'output', data: {
+      type: 'assistant', uuid: `${id}-uuid`, parentUuid: null, isSidechain,
+      message: { role: 'assistant', model: 'claude-opus-5', content: [{ type: 'text', text: 'Done' }], usage },
+    } },
+  });
+  const envelope = (id: string, seq: number, time: number, fields: object) => row(id, seq, {
+    role: 'session', content: { id, time, role: 'agent', ...fields }, meta: { sentFrom: 'cli' },
+  });
+  const event = (id: string, seq: number, message: string) =>
+    row(id, seq, { role: 'agent', content: { id, type: 'event', data: { type: 'message', message } } });
+
+  it('should count input, cache creation, and cache reads against the reported window', () => {
+    // Arrange
+    const rows = [
+      at(claudeOutput('a', 1, { input_tokens: 1200, cache_creation_input_tokens: 40, cache_read_input_tokens: 500, output_tokens: 80 }), 1000),
+      at(claudeOutput('b', 2, { input_tokens: 10422, cache_read_input_tokens: 113536, output_tokens: 2140, context_window: 258400 }), 2000),
+    ];
+    // Act / Assert
+    expect(contextUsage(rows.slice(0, 1))).toEqual({ size: 1740 });
+    expect(contextUsage(rows)).toEqual({ size: 123958, window: 258400 });
+    expect(contextUsage(rows.map((record) => at(record, 1000)))).toEqual({ size: 123958, window: 258400 });
+    expect(contextUsage([at(claudeOutput('c', 3, { input_tokens: 5 }), 3000)])).toBeUndefined();
+  });
+  it('should read usage-only Codex envelopes and ignore subagent usage and older readings', () => {
+    // Arrange
+    const usage = { input_tokens: 9000, output_tokens: 300, cache_read_input_tokens: 1000, context_window: 272000 };
+    const rows = [
+      envelope('main', 1, 5000, { turn: 't1', usage, ev: { t: 'text', text: 'Main reply' } }),
+      envelope('child', 2, 6000, { turn: 't1', subagent: 'c744020fe7d250cca47a5ae1', usage: { ...usage, input_tokens: 90000 }, ev: { t: 'text', text: 'Child' } }),
+      envelope('late', 3, 4000, { usage: { ...usage, input_tokens: 1 }, ev: { t: 'service', text: '' } }),
+    ];
+    // Act / Assert
+    expect(contextUsage(rows)).toEqual({ size: 10000, window: 272000 });
+    expect(visibleMessages(rows).map((message) => message.content)).toEqual(['Main reply', 'Child']);
+  });
+  it('should clear the context after a reset or a compaction until the next reply', () => {
+    // Arrange
+    const reply = at(claudeOutput('a', 1, { input_tokens: 50000, output_tokens: 10, context_window: 200000 }), 1000);
+    // Act / Assert
+    expect(contextUsage([reply, at(event('reset', 2, 'Context was reset'), 2000)])).toEqual({ size: 0 });
+    expect(contextUsage([reply, at(event('compact', 2, 'Compaction completed'), 2000),
+      at(claudeOutput('b', 3, { input_tokens: 3000, output_tokens: 10, context_window: 200000 }), 3000)])).toEqual({ size: 3000, window: 200000 });
+    expect(contextUsage([at(claudeOutput('c', 1, { input_tokens: 9, output_tokens: 1 }, true), 1000)])).toBeUndefined();
   });
 });

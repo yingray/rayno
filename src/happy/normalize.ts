@@ -1,4 +1,4 @@
-import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading } from '../data/types';
+import type { Agent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading, UsageWindow, ContextUsage } from '../data/types';
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
 import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
@@ -558,26 +558,70 @@ export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false
   }
   return output;
 }
+const tokens = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
+const contextResets = new Set(['Context was reset', 'Compaction completed']);
+/**
+ * The context use of the main thread, as in Happy sync/reducer/reducer.ts processUsageData.
+ * The newest usage wins, and a later record wins a tie. A reset or compaction clears it. Subagent usage does not count.
+ */
+export function contextUsage(rows: Iterable<MessageRecord>): ContextUsage | undefined {
+  let latest: (ContextUsage & { at: number }) | undefined;
+  for (const row of [...rows].sort((a, b) => a.seq - b.seq)) {
+    const raw = record(row.raw), content = record(raw.content);
+    const envelope = raw.role === 'session' ? record(content.type === 'session' ? content.data : content)
+      : content.type === 'session' ? record(content.data) : null;
+    let usage: Json | null = null, at = row.createdAt;
+    if (envelope) {
+      if (envelope.role !== 'agent' || envelope.subagent) continue;
+      usage = record(envelope.usage);
+      if (typeof envelope.time === 'number') at = envelope.time;
+    } else if (raw.role === 'agent' && content.type === 'output') {
+      const data = record(content.data);
+      if (data.type !== 'assistant' || data.isSidechain) continue;
+      usage = record(data.message?.usage);
+    } else if (raw.role === 'agent' && content.type === 'event') {
+      const data = record(content.data);
+      if (data.type === 'message' && contextResets.has(data.message)) latest = { size: 0, at };
+      continue;
+    } else continue;
+    if (typeof usage.input_tokens !== 'number' || typeof usage.output_tokens !== 'number' || (latest && at < latest.at)) continue;
+    const window = tokens(usage.context_window);
+    latest = {
+      size: tokens(usage.input_tokens) + tokens(usage.cache_creation_input_tokens) + tokens(usage.cache_read_input_tokens),
+      ...(window ? { window } : {}),
+      at,
+    };
+  }
+  return latest && { size: latest.size, ...(latest.window ? { window: latest.window } : {}) };
+}
+// Happy's usage popup shows only these two plan windows (AgentInput.tsx usageRows).
+const usageWindows = { five_hour: 5 * 3600000, seven_day: 7 * 86400000 } as const;
+function windowReading(windows: Json[], id: keyof typeof usageWindows, now: number): UsageWindow | null {
+  const window = windows.find((window) => window.id === id);
+  if (!window || typeof window.utilization !== 'number') return null;
+  const resetAt = typeof window.resetsAt === 'number' ? window.resetsAt : null;
+  const length = usageWindows[id];
+  return {
+    usedPercent: Math.round(window.utilization),
+    pacePercent: resetAt ? Math.max(0, Math.min(100, ((now - resetAt + length) / length) * 100)) : null,
+    reset: resetAt ? new Date(resetAt).toLocaleString() : 'Unknown',
+    resetAt,
+  };
+}
 export function weeklyUsage(
   agent: Agent,
   windows: Json[],
   capturedAt: number,
   now = Date.now(),
 ): UsageReading | null {
-  const window = windows.find((window) => window.id === 'seven_day');
-  if (!window || typeof window.utilization !== 'number') return null;
-  const resetAt = typeof window.resetsAt === 'number' ? window.resetsAt : null;
-  const week = 7 * 86400000;
-  const pacePercent = resetAt
-    ? Math.max(0, Math.min(100, ((now - resetAt + week) / week) * 100))
-    : null;
+  const week = windowReading(windows, 'seven_day', now);
+  if (!week) return null;
+  const fiveHour = windowReading(windows, 'five_hour', now);
   return {
     agent,
-    usedPercent: Math.round(window.utilization),
-    pacePercent,
-    reset: resetAt ? new Date(resetAt).toLocaleString() : 'Unknown',
-    resetAt,
+    ...week,
+    ...(fiveHour ? { fiveHour } : {}),
     capturedAt,
-    stale: (resetAt !== null && resetAt <= now) || now - capturedAt > 15 * 60000,
+    stale: (!!week.resetAt && week.resetAt <= now) || now - capturedAt > 15 * 60000,
   };
 }

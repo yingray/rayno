@@ -22,15 +22,23 @@ test('session usage should read real quotas, expand, refresh, and open Monitor',
   await expect(workspace.usageDetails()).toContainText('Real computer');
   await expect(workspace.usageDetails()).toContainText('Resets');
   await expect(workspace.usageDetails()).toContainText('Read ');
+  await expect(workspace.usageDetails().getByRole('meter', { name: 'Claude 5-hour usage' })).toHaveAttribute('aria-valuenow', '12');
+  await expect(workspace.usageDetails().getByRole('meter', { name: 'Codex 5-hour usage' })).toHaveAttribute('aria-valuenow', '44');
+  await expect(workspace.usageDetails().getByRole('meter', { name: 'Codex weekly usage' })).toHaveAttribute('aria-valuenow', '31');
+  await expect(workspace.usageDetails().getByText('5-hour limit', { exact: true })).toHaveCount(2);
+  await expect(workspace.usageDetails().getByText('Weekly limit', { exact: true })).toHaveCount(2);
+  await workspace.expectUsageDetailsFit();
   expect(server.usageReads).toBe(1);
   // Act
   server.usagePercent = 88;
   server.codexPercent = 99;
+  server.fiveHourPercent = 63;
   await workspace.refreshUsage();
   // Assert
   await expect(workspace.usageSummary()).toContainText('88%');
   await expect(workspace.usageSummary()).toContainText('99%');
   await expect(workspace.usageDetails()).toContainText('88% used');
+  await expect(workspace.usageDetails()).toContainText('63% used');
   expect(server.usageReads).toBe(2);
   expect(server.sends).toEqual([]);
   expect(server.mutations).toEqual([]);
@@ -46,6 +54,10 @@ test('session usage should read real quotas, expand, refresh, and open Monitor',
   // Assert
   await expect(page).toHaveURL(/\/monitor$/);
   await expect(page.getByText('88%', { exact: true })).toBeVisible();
+  await expect(page.getByRole('meter', { name: 'Claude 5-hour usage' })).toHaveAttribute('aria-valuenow', '63');
+  await expect(page.getByRole('meter', { name: 'Codex 5-hour usage' })).toHaveAttribute('aria-valuenow', '44');
+  await workspace.expectNoPageOverflow();
+  await workspace.capture(`${testInfo.project.name}-monitor-usage`);
 });
 
 test('usage failures should retain stale readings and offline machines should disable refresh', async ({ page }) => {
@@ -99,5 +111,45 @@ test('missing usage should stay unknown and the compact footer should fit narrow
     expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width);
     await workspace.expectNoPageOverflow();
     if (width === 768) await page.keyboard.press('Escape');
+  }
+});
+
+test('usage details should show both plan windows and keep actions reachable on phones', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  const workspace = new LiveWorkspacePage(page);
+  await page.goto('/sessions');
+  await expect(workspace.usageSummary()).toContainText('25%');
+  for (const [width, height] of [[320, 568], [360, 640], [390, 420], [430, 932], [844, 390]]) {
+    // Act
+    await page.setViewportSize({ width, height });
+    await page.goto('/sessions');
+    // Wider screens open the latest chat; the navigation shows the list again.
+    if (width >= 768) await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Sessions', exact: true }).click();
+    await expect(workspace.usageSummary()).toContainText('25%');
+    await workspace.openUsage();
+    // Assert
+    await expect(workspace.usageDetails().getByRole('meter', { name: 'Claude 5-hour usage' })).toBeVisible();
+    const summary = (await workspace.usageSummary().boundingBox())!;
+    expect(summary.height).toBeGreaterThanOrEqual(44);
+    await workspace.expectUsageDetailsFit();
+    // Act
+    await page.keyboard.press('Escape');
+    // Assert
+    await expect(workspace.usageDetails()).toHaveCount(0);
+  }
+  await page.goto('/monitor');
+  for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [844, 390]]) {
+    // Act
+    await page.setViewportSize({ width, height });
+    const meter = page.getByRole('meter', { name: 'Claude 5-hour usage' });
+    await meter.scrollIntoViewIfNeeded();
+    // Assert
+    await expect(meter).toBeInViewport();
+    const box = (await meter.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    await workspace.expectNoPageOverflow();
   }
 });

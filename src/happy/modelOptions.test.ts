@@ -7,8 +7,24 @@ describe('Model and effort selection', () => {
     // Act / Assert
     expect(modelOptions({ flavor: 'claude' }).map((model) => model.value)).toContain('claude-opus-5');
     expect(modelOptions({ flavor: 'codex' }).map((model) => model.value)).toContain('gpt-6-astra');
-    expect(effortOptions({ flavor: 'codex' }, 'gpt-6-astra')).toContain('ultra');
-    expect(effortOptions({ flavor: 'codex' }, 'gpt-6-luna')).not.toContain('ultra');
+  });
+  it('should take Codex efforts from the per-model table and keep unknown models at the shared set', () => {
+    // Act / Assert
+    expect(effortOptions({ flavor: 'codex' }, 'gpt-6-astra')).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
+    expect(effortOptions({ flavor: 'codex' }, 'gpt-5.6-terra')).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
+    expect(effortOptions({ flavor: 'codex' }, 'gpt-5.6-luna')).toEqual(['low', 'medium', 'high', 'xhigh', 'max']);
+    expect(effortOptions({ flavor: 'codex' }, 'gpt-6.1-sol')).toEqual(['low', 'medium', 'high', 'xhigh']);
+    expect(effortOptions({ flavor: 'codex' }, 'workspace-model')).toEqual(['low', 'medium', 'high', 'xhigh']);
+  });
+  it('should prefer the thinking levels that a computer publishes over the Codex table', () => {
+    // Arrange
+    const metadata = { flavor: 'codex', models: [
+      { code: 'gpt-6-astra', value: 'GPT-6 Astra', thinkingLevels: ['low', 'high'] },
+      { code: 'gpt-6.1-sol', value: 'GPT-6.1 Sol', thinkingLevels: ['medium', 'xhigh', 'max', 'ultra'] },
+    ] };
+    // Act / Assert
+    expect(effortOptions(metadata, 'gpt-6-astra')).toEqual(['low', 'high']);
+    expect(effortOptions(metadata, 'gpt-6.1-sol')).toEqual(['medium', 'xhigh', 'max', 'ultra']);
   });
   it('should use the reported catalog and keep identical model IDs distinct by provider', () => {
     // Arrange
