@@ -322,6 +322,36 @@ describe('Happy client protocol', () => {
     await expect(client.respondPermission('session', 'tool-1', true)).rejects.toThrow();
     expect(Object.keys(client.getAgentState('session').requests)).toEqual(['tool-1']);
   });
+  // Shape from Happy Web sync/storageTypes.ts AgentCommunicationSchema and sync/ops.ts sessionAnswerQuestion.
+  const questionState = { communications: { 'form-1': { kind: 'form', createdAt: 1, toolUseId: 'call-1',
+    form: { questions: [{ id: 'q1', header: 'Pick', question: 'Which?', options: [{ label: 'A' }] }] } } } };
+  it('should close the form when the agent returns void to the communication answer', async () => {
+    // Arrange: Happy Web sessionEncryption.ts decryptRaw reads an empty reply as null and completes the answer.
+    session.agentState = await client.encryption.encrypt(questionState, null);
+    await start();
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt(undefined, null) });
+    // Act
+    await client.answerQuestions('session', 'form-1', { q1: { options: ['A'] } });
+    // Assert
+    const [, payload] = socket.emitWithAck.mock.calls.find(([event]) => event === 'rpc-call')!;
+    expect(payload.method).toBe('session:communication');
+    expect(await client.encryption.decrypt(payload.params, null))
+      .toEqual({ id: 'form-1', kind: 'form', status: 'answered', answers: { q1: { options: ['A'] } } });
+    expect(client.getAgentState('session').communications).toEqual({});
+    await expect(client.answerQuestions('session', 'form-1', null)).rejects.toThrow('This request already has a reply.');
+    expect(socket.emitWithAck.mock.calls.filter(([event]) => event === 'rpc-call')).toHaveLength(1);
+  });
+  it('should reject a damaged communication reply and keep the form open', async () => {
+    // Arrange
+    session.agentState = await client.encryption.encrypt(questionState, null);
+    await start();
+    const damaged = Uint8Array.from(atob(await client.encryption.encrypt(undefined, null)), (char) => char.charCodeAt(0));
+    damaged[damaged.length - 1] ^= 1;
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: base64(damaged) });
+    // Act / Assert
+    await expect(client.answerQuestions('session', 'form-1', { q1: { options: ['A'] } })).rejects.toThrow();
+    expect(Object.keys(client.getAgentState('session').communications)).toEqual(['form-1']);
+  });
   it('should report an encrypted stop failure and reject empty replies for data requests', async () => {
     // Arrange
     await start();

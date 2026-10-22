@@ -57,7 +57,8 @@ import type { Message } from '../data/types';
 
 const emptyJson: Json = Object.freeze({});
 // Happy CLI handlers for these methods return void, so a successful reply is an empty plaintext.
-const voidRpcMethods = new Set(['abort', 'switch', 'permission']);
+// Happy Web reads every session reply this way (sessionEncryption.ts decryptRaw), so an agent may return void to 'communication'.
+const voidRpcMethods = new Set(['abort', 'switch', 'permission', 'communication']);
 // An incremental session read starts this far before the newest server update
 // that the client has seen, so a late commit with an older timestamp is not lost.
 const SESSION_CHANGE_OVERLAP = 30000;

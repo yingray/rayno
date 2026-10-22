@@ -137,9 +137,11 @@ The session list sorts on `utils/sessionActivity.ts`: `metadata.lastMeaningfulMe
 send time, then `createdAt`. Like `markSessionMessageSent` in `sync/storage.ts`, Rayno stamps the time after a
 confirmed send, keeps it in its own account-scoped storage, and removes it when the session is deleted.
 
-The `communication` RPC (`sync/ops.ts` `sessionAnswerQuestion`) has no handler in the Happy CLI or `happy-agent`
-sources in this snapshot, so Rayno still requires a JSON reply for it. Add it to the empty-reply methods only
-after a handler that returns void is confirmed.
+The `communication` RPC (`sync/ops.ts` `sessionAnswerQuestion` and `sessionCancelCommunication`) has no handler in the
+Happy CLI or `happy-agent` sources in this snapshot. Happy Web `sessionEncryption.ts` `decryptRaw` reads an empty reply
+as `null` and completes the answer, so an agent handler can return void. Rayno accepts an authenticated empty plaintext for
+`communication` and then clears the form. A missing handler still replies `{ error: 'Method not found' }`
+(`happy-cli/src/api/rpc/RpcHandlerManager.ts`), and a damaged reply still fails, so both keep the form open.
 
 Model/effort writes also reference `packages/happy-cli/src/api/types.ts`,
 `packages/happy-cli/src/claude/runClaude.ts`, and `packages/happy-cli/src/codex/runCodex.ts`.
