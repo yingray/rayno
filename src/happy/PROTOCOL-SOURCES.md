@@ -66,6 +66,10 @@ The session list sorts on `utils/sessionActivity.ts`: `metadata.lastMeaningfulMe
 send time, then `createdAt`. Like `markSessionMessageSent` in `sync/storage.ts`, Rayno stamps the time after a
 confirmed send, keeps it in its own account-scoped storage, and removes it when the session is deleted.
 
+The `communication` RPC (`sync/ops.ts` `sessionAnswerQuestion`) has no handler in the Happy CLI or `happy-agent`
+sources in this snapshot, so Rayno still requires a JSON reply for it. Add it to the empty-reply methods only
+after a handler that returns void is confirmed.
+
 Model/effort writes also reference `packages/happy-cli/src/api/types.ts`,
 `packages/happy-cli/src/claude/runClaude.ts`, and `packages/happy-cli/src/codex/runCodex.ts`.
 Rayno keeps composer choices in its own account-scoped storage and sends them with the next message.
