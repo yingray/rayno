@@ -197,6 +197,20 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   if (normalizedMessages.has(row)) return normalizedMessages.get(row)!;
   const raw = record(row.raw),
     content = record(raw.content);
+  // V1 skips Claude meta prompts and compact summaries. Subagent records belong to their parent tool, not the main thread.
+  const envelope =
+    raw.role === 'session'
+      ? content.type === 'session'
+        ? content.data
+        : content
+      : content.type === 'session'
+        ? content.data
+        : null;
+  const output = raw.role === 'agent' && content.type === 'output' ? record(content.data) : null;
+  if (output?.isMeta || output?.isCompactSummary || output?.isSidechain || (typeof envelope?.subagent === 'string' && envelope.subagent)) {
+    normalizedMessages.set(row, null);
+    return null;
+  }
   const message: Message = {
     id: row.id,
     role: raw.role === 'user' ? 'user' : 'assistant',
@@ -212,18 +226,11 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       message.sentAt = row.createdAt;
     }
   }
-  const envelope =
-    raw.role === 'session'
-      ? content.type === 'session'
-        ? content.data
-        : content
-      : content.type === 'session'
-        ? content.data
-        : null;
   if (envelope) {
     message.role = envelope.role === 'user' ? 'user' : 'assistant';
     const event = record(envelope.ev);
     if (event.t === 'text' && !event.thinking) message.content = text(event.text);
+    if (event.t === 'service' && message.role === 'assistant') message.content = text(event.text);
     if (message.role === 'user' && event.t === 'text' && text(event.text).trim() === RECAP_REQUEST) message.recapRequest = true;
     if (event.t === 'tool-call-start')
       message.tools = [text(event.title || event.name, 'Tool call')];
@@ -245,6 +252,10 @@ export function normalizeMessage(row: MessageRecord): Message | null {
           .map((x) => text(x.name, 'Tool call'));
         if (tools.length) message.tools = tools;
       }
+      if (data.type === 'user' && typeof data.message?.content === 'string') {
+        message.role = 'user';
+        message.content = data.message.content;
+      }
       if (data.type === 'result' && data.is_error)
         message.content = text(data.result, 'The agent reported an error.');
     } else if (content.type === 'codex' || content.type === 'acp') {
@@ -264,13 +275,19 @@ export function normalizeMessage(row: MessageRecord): Message | null {
     const data = record(content.data);
     if (content.type === 'output') {
       const chunks = data.message?.content;
+      // Claude also stores the result without the text that it adds for the model. Structured values stay in the text form.
+      const stored = typeof data.toolUseResult === 'string' && data.toolUseResult ? data.toolUseResult : undefined;
       if (Array.isArray(chunks)) for (const chunk of chunks) {
         if (chunk.type === 'tool_use' || chunk.type === 'tool-call') addCall(chunk.callId || chunk.id, chunk.name, chunk.input);
-        if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result') addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, chunk.content ?? chunk.output, chunk.is_error);
+        if (chunk.type === 'tool_result' || chunk.type === 'tool-call-result') addResult(chunk.tool_use_id || chunk.callId || chunk.toolCallId, stored ?? chunk.content ?? chunk.output, chunk.is_error);
       }
     } else if (content.type === 'codex' || content.type === 'acp') {
       if (data.type === 'tool-call') addCall(data.callId, data.name, data.input);
       if (data.type === 'tool-result' || data.type === 'tool-call-result') addResult(data.callId, data.output, data.isError);
+      if (content.type === 'acp' && data.type === 'file-edit') addCall(data.id, 'file-edit', {
+        filePath: data.filePath, description: data.description, diff: data.diff, oldContent: data.oldContent, newContent: data.newContent,
+      });
+      if (content.type === 'acp' && data.type === 'terminal-output') addResult(data.callId, data.data, false);
     }
   }
   if (calls.length) { message.toolCalls = calls; message.tools = calls.map(call => call.name); }
