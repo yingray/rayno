@@ -152,10 +152,6 @@ export function NewSession() {
           }}
         >
           <fieldset className={styles.card} disabled={busy}>
-            <div className={styles.agentSection}>
-              <span className={styles.sectionLabel}>CHOOSE AN AGENT</span>
-              <AgentChoices value={agent} onChange={chooseAgent} />
-            </div>
             <div className={styles.pickers}>
               <label className={`${styles.picker} ${styles.widePicker}`} data-focus-frame>
                 <span className={styles.pickerIcon} style={{ color: 'var(--green)' }}>
@@ -181,6 +177,12 @@ export function NewSession() {
                 </span>
                 <Icon name="chevronDown" size={14} />
               </label>
+            </div>
+            <div className={styles.agentSection}>
+              <span className={styles.sectionLabel}>CHOOSE AN AGENT</span>
+              <AgentChoices value={agent} onChange={chooseAgent} />
+            </div>
+            <div className={styles.pickers}>
               <button type="button" className={`${styles.picker} ${styles.pickerButton}`}
                 aria-label="Choose model" onClick={() => setPicker('model')}>
                 <Avatar agent={agent} size={34} />
