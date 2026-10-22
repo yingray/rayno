@@ -566,13 +566,16 @@ const contextResets = new Set(['Context was reset', 'Compaction completed']);
  */
 export function contextUsage(rows: Iterable<MessageRecord>): ContextUsage | undefined {
   let latest: (ContextUsage & { at: number }) | undefined;
-  for (const row of [...rows].sort((a, b) => a.seq - b.seq)) {
+  const sorted = [...rows].sort((a, b) => a.seq - b.seq);
+  // The Claude mapper also tags main rows after a subagent with its id, so only rows inside the subagent bounds are skipped.
+  const marks = markSubagents(new Map(), sorted);
+  for (const row of sorted) {
     const raw = record(row.raw), content = record(raw.content);
     const envelope = raw.role === 'session' ? record(content.type === 'session' ? content.data : content)
       : content.type === 'session' ? record(content.data) : null;
     let usage: Json | null = null, at = row.createdAt;
     if (envelope) {
-      if (envelope.role !== 'agent' || envelope.subagent) continue;
+      if (envelope.role !== 'agent' || subagentOf(row, marks)) continue;
       usage = record(envelope.usage);
       if (typeof envelope.time === 'number') at = envelope.time;
     } else if (raw.role === 'agent' && content.type === 'output') {

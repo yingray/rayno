@@ -738,14 +738,20 @@ describe('Context usage', () => {
   it('should read usage-only Codex envelopes and ignore subagent usage and older readings', () => {
     // Arrange
     const usage = { input_tokens: 9000, output_tokens: 300, cache_read_input_tokens: 1000, context_window: 272000 };
+    const subagent = 'c744020fe7d250cca47a5ae1';
     const rows = [
       envelope('main', 1, 5000, { turn: 't1', usage, ev: { t: 'text', text: 'Main reply' } }),
-      envelope('child', 2, 6000, { turn: 't1', subagent: 'c744020fe7d250cca47a5ae1', usage: { ...usage, input_tokens: 90000 }, ev: { t: 'text', text: 'Child' } }),
-      envelope('late', 3, 4000, { usage: { ...usage, input_tokens: 1 }, ev: { t: 'service', text: '' } }),
+      envelope('start', 2, 5500, { turn: 't1', subagent, ev: { t: 'start', title: 'Find config' } }),
+      envelope('child', 3, 6000, { turn: 't1', subagent, usage: { ...usage, input_tokens: 90000 }, ev: { t: 'text', text: 'Child' } }),
+      envelope('stop', 4, 6100, { turn: 't1', subagent, ev: { t: 'stop' } }),
+      envelope('late', 5, 4000, { usage: { ...usage, input_tokens: 1 }, ev: { t: 'service', text: '' } }),
     ];
+    // The mapper tags the main answer after the stop with the subagent id too.
+    const answer = envelope('answer', 6, 7000, { turn: 't1', subagent, usage: { ...usage, input_tokens: 20000 }, ev: { t: 'text', text: 'Answer' } });
     // Act / Assert
     expect(contextUsage(rows)).toEqual({ size: 10000, window: 272000 });
-    expect(visibleMessages(rows).map((message) => message.content)).toEqual(['Main reply', 'Child']);
+    expect(contextUsage([...rows, answer])).toEqual({ size: 21000, window: 272000 });
+    expect(visibleMessages(rows).map((message) => message.content)).toEqual(['Main reply', '']);
   });
   it('should clear the context after a reset or a compaction until the next reply', () => {
     // Arrange

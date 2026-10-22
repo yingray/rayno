@@ -152,7 +152,8 @@ Unavailable readings remain unknown or visibly stale.
 Context use shows only when the usage carries `context_window`. Happy does not guess the window from a model table.
 Rayno has no `alwaysShowContextSize` setting and no usage footer, so the composer shows only Happy's near-limit
 warning at 10% and 5% remaining. The Model & effort sheet shows the reading whenever the window is known.
-Unlike the Happy reducer, subagent usage does not count, and a later record wins a timestamp tie.
+Unlike the Happy reducer, subagent usage does not count, and a later record wins a timestamp tie. A subagent row is a row inside
+the subagent `start` and `stop` bounds (`subagentOf`), because the Claude mapper also tags the main answer after a subagent with its id.
 Usage details show the `five_hour` and `seven_day` windows, like the usage popup in `components/AgentInput.tsx`.
 The compact summary keeps the weekly window. Other provider windows stay hidden.
 Codex effort choices follow `CODEX_EFFORTS_BY_MODEL` in `components/modelModeOptions.ts`. A model outside
