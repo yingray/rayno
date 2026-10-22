@@ -6,8 +6,9 @@ import { useDemo } from '../data/store';
 import { formatSessionTimestamp } from '../data/sessionList';
 import { activeSideChat, isSideChatClosed, SIDE_CHAT_AGENT_LIMIT, SIDE_CHAT_TITLE, sideChatLabels, sideChatsOf } from '../data/sideChats';
 import type { MessageSettings, Session } from '../data/types';
-import { messageError } from '../happy/errors';
+import { DirectoryApprovalError, messageError } from '../happy/errors';
 import { Chat } from './Chat';
+import { FolderApprovalDialog } from './SessionPrompts';
 import styles from './side-chats.module.css';
 
 const noop = () => {};
@@ -26,10 +27,11 @@ export function SideChats({ parent, layout, settings, onClose }: {
   settings: () => MessageSettings;
   onClose: () => void;
 }) {
-  const { sessions, live, adapter, mode, dispatch, notify, connection, offline, machineOnline } = useDemo((store) => ({
+  const { sessions, live, adapter, mode, dispatch, notify, connection, offline, machineOnline, machineName } = useDemo((store) => ({
     sessions: store.state.sessions, live: store.live, adapter: store.adapter, mode: store.mode, dispatch: store.dispatch,
     notify: store.notify, connection: store.snapshot?.connection, offline: store.snapshot?.offline,
     machineOnline: store.machines.find((machine) => machine.id === parent.machineId)?.online,
+    machineName: store.machines.find((machine) => machine.id === parent.machineId)?.name,
   }));
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,6 +44,8 @@ export function SideChats({ parent, layout, settings, onClose }: {
   const active = layout === 'panel' ? activeSideChat(open, requested) : undefined;
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  // The missing folder that the daemon asks about before it starts the side chat.
+  const [folder, setFolder] = useState('');
   const pending = useRef(false);
   const disconnected = mode === 'live' && (connection !== 'connected' || !!offline);
   let unavailable = disconnected ? offline ? 'Reconnect to start a side chat.' : 'Connect to Happy to start a side chat.' : '';
@@ -59,13 +63,17 @@ export function SideChats({ parent, layout, settings, onClose }: {
     if (pending.current) return;
     pending.current = true; setBusy(key); setError('');
     try { await action(); }
-    catch (error) { setError(messageError(error)); }
+    catch (error) {
+      // A missing folder asks the same question as a new session, Fork, and Duplicate.
+      if (error instanceof DirectoryApprovalError) setFolder(error.directory);
+      else setError(messageError(error));
+    }
     finally { pending.current = false; setBusy(''); }
   }
-  const create = () => run('create', async () => {
+  const create = (approved = false) => run('create', async () => {
     if (unavailable) throw new Error(unavailable);
     let id: string;
-    if (live) id = await live.branchSession(parent.id, 'side', undefined, settings());
+    if (live) id = await live.branchSession(parent.id, 'side', undefined, settings(), approved);
     else {
       id = crypto.randomUUID();
       const at = Date.now();
@@ -73,6 +81,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
         parentSessionId: parent.id, sideChatClosed: false, status: 'idle', archived: false, unread: false, needsReply: false,
         createdAt: at, updatedAt: at, lastActivityAt: at, messages: [] } });
     }
+    setFolder('');
     if (live && live.getMetadata(id).isSideChat !== true) {
       // A Happy CLI without side chat support ignores isSideChat and starts a regular fork.
       notify('This Happy CLI started a regular fork. Update Happy CLI to keep side chats out of the session list.');
@@ -97,7 +106,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
     </Button>;
   const notice = <>
     {busy === 'create' && <p className={styles.status} role="status">Start a side chat on the original computer…</p>}
-    {error && <p className={styles.error} role="alert">{error}</p>}
+    {error && !folder && <p className={styles.error} role="alert">{error}</p>}
     {unavailable && <p className={styles.reason}>{unavailable}</p>}
   </>;
   const row = (chat: Session) => {
@@ -120,6 +129,9 @@ export function SideChats({ parent, layout, settings, onClose }: {
     <summary>Closed side chats ({closed.length})</summary>
     <ul className={styles.rows}>{closed.map(row)}</ul>
   </details>;
+  // Cancel drops the copied conversation, so a later side chat copies the current conversation again.
+  const folderDialog = folder && <FolderApprovalDialog directory={folder} machineName={machineName} busy={busy === 'create'} error={error}
+    onCancel={() => { live?.discardBranch(parent.id, 'side'); setFolder(''); setError(''); }} onCreate={() => void create(true)} />;
   const intro = 'Ask a side question with this conversation as context. Side chats stay out of the session list, and the parent chat does not change.';
 
   if (layout !== 'panel') return (
@@ -136,6 +148,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
           : <p className={styles.none}>No open side chats.</p>}
         {closedList}
       </div>
+      {folderDialog}
     </section>
   );
   return (
@@ -173,6 +186,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
         {closedList}
       </div>}
       {active && closedList && <div className={styles.panelClosed}>{closedList}</div>}
+      {folderDialog}
     </section>
   );
 }

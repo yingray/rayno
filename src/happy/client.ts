@@ -63,7 +63,8 @@ import { latestTodos, sameTodos } from '../data/todos';
 const emptyJson: Json = Object.freeze({});
 const boundCount = (marks?: SubagentMarks) => [...marks?.values() || []].reduce((total, entry) => total + entry.bounds.size, 0);
 // Happy CLI handlers for these methods return void, so a successful reply is an empty plaintext.
-const voidRpcMethods = new Set(['abort', 'switch', 'permission']);
+// Happy Web reads every session reply this way (sessionEncryption.ts decryptRaw), so an agent may return void to 'communication'.
+const voidRpcMethods = new Set(['abort', 'switch', 'permission', 'communication']);
 // An incremental session read starts this far before the newest server update
 // that the client has seen, so a late commit with an older timestamp is not lost.
 const SESSION_CHANGE_OVERLAP = 30000;
@@ -1227,7 +1228,8 @@ export class HappyClient implements DemoAdapter {
   async worktreeCleanup(id: string): Promise<string> {
     const { metadata } = this.getSession(id);
     const path = typeof metadata.path === 'string' ? metadata.path : '', machineId = metadata.machineId;
-    if (metadata.bot || !path.includes(WORKTREE_MARKER) || !this.machines.get(machineId)?.wire.active) return '';
+    // A side chat runs in its parent's folder, so it never offers the parent's worktree (SessionView.tsx closeSideChat).
+    if (metadata.bot || metadata.isSideChat === true || !path.includes(WORKTREE_MARKER) || !this.machines.get(machineId)?.wire.active) return '';
     if ([...this.sessions.values()].some((other) => other.wire.id !== id && other.wire.active && other.metadata.path === path)) return '';
     // A failed check (not a repository or an offline computer) and uncommitted changes skip the offer.
     const status = await this.bash(machineId, 'git status --porcelain', path, true).catch(() => undefined);

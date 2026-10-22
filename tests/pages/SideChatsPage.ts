@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 import type { Locator } from '@playwright/test';
-import { ChatActionsPage } from './ChatActionsPage';
+import { SessionOperationsPage } from './SessionOperationsPage';
 
-export class SideChatsPage extends ChatActionsPage {
+export class SideChatsPage extends SessionOperationsPage {
   panel() { return this.page.getByRole('region', { name: 'Side chats', exact: true }); }
   tabs() { return this.panel().getByRole('group', { name: 'Open side chats', exact: true }); }
   tab(name: string) { return this.tabs().getByRole('button', { name, exact: true }); }
@@ -12,6 +12,7 @@ export class SideChatsPage extends ChatActionsPage {
   newButton() { return this.panel().getByRole('button', { name: /^(New side chat|Start a side chat)$/ }).first(); }
   row(name: string) { return this.panel().getByRole('button', { name: `Open ${name}`, exact: true }); }
   close(name: string) { return this.panel().getByRole('button', { name: `Close ${name}`, exact: true }); }
+  folderDialog() { return this.page.getByRole('dialog', { name: 'Create this folder?', exact: true }); }
   parentBack() { return this.page.getByRole('button', { name: 'Back to parent chat', exact: true }); }
   async openFromMenu() {
     await this.openActions();

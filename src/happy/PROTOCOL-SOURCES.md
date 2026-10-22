@@ -129,6 +129,10 @@ The session path must contain `/.dev/worktree/`, no other connected session may 
 `git status --porcelain` must succeed with empty output. A failed check skips the prompt. Delete worktree sends
 `git worktree remove <path> --force` from the main checkout, then the archive or delete continues; Keep files only
 continues. Rayno quotes the path and skips the check for an offline computer. Closing the Rayno prompt cancels the action.
+A side chat (`metadata.isSideChat`) never gets the prompt, because it runs in its parent's folder. Happy Web closes a side chat
+from its panel without the check (`-session/SessionView.tsx` `archiveSideChatSession`). Its Session info archive and delete have
+no side chat exception, so after the parent ended they can offer the parent's worktree. Rayno skips the check on every close and
+delete path of a side chat.
 
 Like `sync/sync.ts`, Rayno skips a session, computer, or message that does not decrypt. The other records still load
 and the cursors still advance. A skipped message keeps its id and seq with empty content. The error still shows when
@@ -141,9 +145,11 @@ The session list sorts on `utils/sessionActivity.ts`: `metadata.lastMeaningfulMe
 send time, then `createdAt`. Like `markSessionMessageSent` in `sync/storage.ts`, Rayno stamps the time after a
 confirmed send, keeps it in its own account-scoped storage, and removes it when the session is deleted.
 
-The `communication` RPC (`sync/ops.ts` `sessionAnswerQuestion`) has no handler in the Happy CLI or `happy-agent`
-sources in this snapshot, so Rayno still requires a JSON reply for it. Add it to the empty-reply methods only
-after a handler that returns void is confirmed.
+The `communication` RPC (`sync/ops.ts` `sessionAnswerQuestion` and `sessionCancelCommunication`) has no handler in the
+Happy CLI or `happy-agent` sources in this snapshot. Happy Web `sessionEncryption.ts` `decryptRaw` reads an empty reply
+as `null` and completes the answer, so an agent handler can return void. Rayno accepts an authenticated empty plaintext for
+`communication` and then clears the form. A missing handler still replies `{ error: 'Method not found' }`
+(`happy-cli/src/api/rpc/RpcHandlerManager.ts`), and a damaged reply still fails, so both keep the form open.
 
 Model/effort writes also reference `packages/happy-cli/src/api/types.ts`,
 `packages/happy-cli/src/claude/runClaude.ts`, and `packages/happy-cli/src/codex/runCodex.ts`.
@@ -227,9 +233,9 @@ The selected computer's `happyCliVersion` gates the fixed new-session catalog, a
 from `hooks/useStartSessionFromDraft.ts`: a CLI older than `1.2.1-beta.2` does not get Auto. Model and effort catalogs have no version gate there.
 When the daemon answers `requestToApproveDirectoryCreation` (`happy-cli/src/daemon/run.ts`), Rayno asks before it creates
 the folder. The approved retry sends the same draft with `approvedNewDirectoryCreation: true` and keeps the pending request ID.
-Fork and Duplicate use the same question. Happy Web `forkAndSpawn` shows that reply as a generic error instead. The
+Fork, Duplicate, and a new side chat use the same question. Happy Web `forkAndSpawn` shows that reply as a generic error instead. The
 approved retry reuses the copied provider conversation and sends only the second `spawn-happy-session` call.
-Cancel drops the copied conversation, so the next Fork or Duplicate copies the current conversation again.
+Cancel drops the copied conversation, so the next Fork, Duplicate, or side chat copies the current conversation again.
 
 `offlineCache.ts` adds independent, account-scoped IndexedDB persistence for session/machine records, subagent bounds, and loaded history pages.
 Each cached payload uses the existing account encryption helper. No bearer token or plaintext message body enters the database.
