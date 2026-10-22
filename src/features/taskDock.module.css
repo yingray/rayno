@@ -1,0 +1,217 @@
+.dock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-bottom: 8px;
+  padding: 4px;
+  border: 1px solid var(--border-control);
+  border-radius: 18px;
+  background: linear-gradient(#1f1f24, #17171b);
+  box-shadow: inset 0 1px #ffffff10, 0 12px 32px -16px #000;
+}
+.goal,
+.todos {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--secondary);
+  text-align: left;
+  cursor: pointer;
+}
+.goal {
+  flex: 1;
+}
+.goal:hover,
+.todos:hover {
+  background: #ffffff0a;
+}
+.goalText {
+  display: grid;
+  min-width: 0;
+}
+.goalText small {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 15px;
+  color: var(--secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.goalText strong {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.todos {
+  flex: none;
+  gap: 6px;
+  font-size: 12px;
+  color: #c4b5fd;
+}
+.todos b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.todos[data-wide='true'] {
+  flex: 1;
+}
+.todos > span:last-child:not(:first-child) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--body);
+}
+.action {
+  width: 40px;
+  height: 40px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--secondary);
+}
+.status,
+.error {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.status {
+  padding: 0 12px;
+  color: #c4b5fd;
+}
+.error {
+  padding: 10px 14px;
+  color: #fca5a5;
+  border: 1px solid #653434;
+  border-radius: 12px;
+  background: #221717;
+}
+.dialog .status,
+.dialog .error {
+  margin: 12px 0 0;
+}
+.fullGoal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text) !important;
+}
+.meta {
+  font-size: 12px !important;
+  margin: 8px 0;
+}
+.dialog footer {
+  flex-wrap: wrap;
+}
+.dialogAction {
+  flex: 1 1 140px;
+}
+.editForm textarea {
+  display: block;
+  width: 100%;
+  max-height: 40dvh;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: var(--well);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.editForm label {
+  margin-top: 0;
+}
+.todoList {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.todoList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--secondary);
+  overflow-wrap: anywhere;
+}
+.todoList li > :first-child {
+  flex: none;
+  margin-top: 2px;
+}
+.todoList li > span:last-child {
+  min-width: 0;
+}
+.todoList li[data-status='completed'] {
+  color: var(--green);
+}
+.todoList li[data-status='completed'] > span:last-child {
+  text-decoration: line-through;
+}
+.todoList li[data-status='in_progress'] {
+  color: #a5b4fc;
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .goal,
+  .todos {
+    min-height: 44px;
+  }
+  .action {
+    width: 44px;
+    height: 44px;
+  }
+  .dialog header button,
+  .dialog footer button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+@media (max-width: 767px) {
+  .dock {
+    padding: 2px;
+    gap: 2px;
+    margin-bottom: 6px;
+  }
+  .goal {
+    padding: 2px 8px;
+    gap: 7px;
+  }
+  .todos {
+    padding: 2px 8px;
+  }
+}
+/* A phone in landscape has little height. The dock keeps one 44px line, and the dialog keeps the goal progress. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .dock {
+    padding: 0;
+    gap: 0;
+    margin-bottom: 4px;
+  }
+  .goalText small {
+    display: none;
+  }
+}

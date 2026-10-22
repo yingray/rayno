@@ -46,6 +46,7 @@ import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, u
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
 import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
+import type { GoalAction } from './agentGoal';
 import { imageMime, transferUrl, validateImages } from './attachments';
 import { resumeUnavailable } from './resume';
 import { RECAP_REQUEST } from './systemPrompt';
@@ -1165,6 +1166,10 @@ export class HappyClient implements DemoAdapter {
               'The user asked to stop. Stop the current operation and wait for the next instruction.',
           },
     );
+  }
+  // Happy Web sync/ops.ts sessionGoalAction. The CLI answers after the agent confirms the change.
+  async goalAction(id: string, params: { action: GoalAction; objective?: string }) {
+    await this.rpc(id, 'goal-action', params);
   }
   async killSession(id: string) {
     const result = await this.rpc(id, 'killSession', {});

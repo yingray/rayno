@@ -7,9 +7,9 @@ export type ToolPermission = {
 };
 // resultText is the tool result text that the agent got, when the result itself is a structured value.
 // tool is the tool name when name shows a session tool call title.
-// children: the work of a subagent that this call started, in order.
+// children: the work of a subagent that this call started, in order. `ended` marks a call that has its result record.
 export type ToolCall = {
-  id: string; name: string; tool?: string; input?: unknown; result?: unknown; resultText?: string; isError?: boolean;
+  id: string; name: string; tool?: string; input?: unknown; result?: unknown; resultText?: string; isError?: boolean; ended?: boolean;
   permission?: ToolPermission; children?: Message[];
 };
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
@@ -36,6 +36,8 @@ export type Message = {
   planMode?: { active: boolean; call: string; at: number };
   // Happy Agent send state of a user message. An accepted message has none.
   delivery?: { status: 'pending'; queued: boolean; since: number } | { status: 'rejected'; reason: string };
+  // A hidden agent event that starts a new context. It clears the todo list.
+  contextReset?: boolean;
 };
 // Tokens in the agent's context after its latest reply, and the model's window when the CLI reports it.
 export type ContextUsage = { size: number; window?: number };

@@ -63,6 +63,8 @@ export class HappyServer {
   failBranchSpawn = false;
   rewindPoints = Array.from({ length: 18 }, (_, index) => ({ uuid: `claude-${index}`, itemId: `codex-${index}`, text: `Message ${index}: review the workspace`, timestamp: 1700000000000 + index * 1000 }));
   bashCommands: Json[] = [];
+  goalActions: Json[] = [];
+  goalFailure = '';
   worktreeListing = '';
   // `git status --porcelain` output for a worktree check. Other commands keep the dirty default.
   gitStatus = ' M README.md\n';
@@ -336,6 +338,20 @@ export class HappyServer {
             delete state.communications?.[params.id];
             session.agentState = await this.encryption.encrypt(state, this.dataKey);
             session.agentStateVersion++;
+          }
+          if (payload.method.endsWith(':goal-action')) {
+            // happy-cli claude/runClaude.ts: the handler resolves after the new goal status reaches the agent state.
+            this.goalActions.push(params);
+            if (this.goalFailure) result = { error: this.goalFailure };
+            else {
+              const session = this.sessions.find((session) => session.id === payload.method.split(':')[0])!;
+              const state = await this.encryption.decrypt<Json>(session.agentState, this.dataKey);
+              const goal = state.agentGoalStatus;
+              await this.updateAgentState({ ...state, agentGoalStatus: params.action === 'clear'
+                ? { source: goal.source, observedAt: Date.now(), sourceSessionId: goal.sourceSessionId, status: 'inactive', reason: 'cleared' }
+                : { ...goal, observedAt: Date.now(), text: params.objective } });
+              result = { ok: true };
+            }
           }
           if (payload.method.endsWith(':listDirectory'))
             result = { success: true, entries: [{ name: 'README.md', type: 'file', size: 17 }] };

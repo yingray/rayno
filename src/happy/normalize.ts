@@ -334,6 +334,9 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       }
       if (data.type === 'result' && data.is_error)
         message.content = text(data.result, 'The agent reported an error.');
+    } else if (content.type === 'event') {
+      // ApiSession.sendSessionEvent in happy-cli. Happy Web sync/reducer/reducer.ts clears the todos on this event.
+      if (data.type === 'message' && data.message === 'Context was reset') message.contextReset = true;
     } else if (content.type === 'codex' || content.type === 'acp') {
       if (data.type === 'message') message.content = text(data.message);
       // V1 shows Codex and ACP reasoning as text. Rayno treats it as thinking, like ACP `thinking` records.
@@ -391,7 +394,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   message.content = stripLeadingTaskNotificationWrappers(message.content);
   if (!message.thinking?.trim()) delete message.thinking;
   const result = message.content || message.thinking || message.tools?.length || message.toolResults?.length
-    || message.attachments?.length || message.settings ? message : null;
+    || message.attachments?.length || message.settings || message.contextReset ? message : null;
   normalizedMessages.set(row, result);
   return result;
 }
@@ -487,7 +490,7 @@ export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false
     const result = results.get(call.id);
     if (!result) return call;
     matched.add(call.id);
-    return { ...call, result: result.result, isError: result.isError,
+    return { ...call, result: result.result, isError: result.isError, ended: true,
       ...(result.resultText ? { resultText: result.resultText } : {}), ...(result.permission ? { permission: result.permission } : {}) };
   }) };
   const ownerOf = (call: ToolCall) => {

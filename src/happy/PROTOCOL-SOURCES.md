@@ -23,6 +23,8 @@ Paths under `rayno/` and `monitor/` below come from that overlay.
 | `normalize.ts` `contextUsage`, `../features/ContextMeter.tsx` | `sync/reducer/reducer.ts` (`processUsageData`, reset events), `sync/typesRaw.ts` (`usageDataSchema`), `components/AgentInput.tsx` (`getContextStatus`, `formatTokenCount`, `AgentInputUsageRow`) |
 | `modelOptions.ts` | `components/modelModeOptions.ts`, `sync/rig.ts`, `sync/storageTypes.ts` |
 | `permissionOptions.ts` | `components/modelModeOptions.ts`, `utils/permissionModeLabels.ts`, `sync/agentDefaults.ts`, `sync/storageTypes.ts` |
+| `agentGoal.ts`, `../features/TaskDock.tsx` | `components/agentGoalStatus.ts`, `components/AgentGoalBar.tsx`, `-session/agentGoalActionHandler.ts`, `sync/ops.ts` (`sessionGoalAction`), `sync/storageTypes.ts` (`AgentGoalStatusSchema`) |
+| `../data/todos.ts`, `../features/TodoList.tsx` | `components/tools/views/TodoView.tsx`, `components/tools/knownTools.tsx` (`TodoWrite`), `sync/storageTypes.ts` (`TodoItemSchema`), `sync/reducer/reducer.ts` (`latestTodos`) |
 | `handoff.ts` | `rayno/handoffPrompt.ts`, `rayno/useHandoffAction.ts`, `utils/worktreePaths.ts` from overlay commit `ab8283b9f73b578d008cab7d4ffe48c4b372af4f` |
 
 Server contracts also reference `happy-server/sources/app/api/routes/sessionRoutes.ts` and `v3SessionRoutes.ts`.
@@ -246,3 +248,19 @@ parent has no side chats. Happy Web shows side chats only in the desktop sidebar
 drawer on tablets, and on a page from the session menu on phones. A Happy CLI that ignores `isSideChat` starts a regular fork; Rayno
 opens it and says so. Scope choice: Rayno does not port the `newSideChat` chord (`keyboard/shortcuts.ts`, ⌥⌘S or Ctrl+Alt+S). Happy Web
 listens for it only while the empty sidebar picker or its add menu is open (`FilesSidebar.tsx`), and Rayno has no such picker.
+
+Goal and todo progress were checked against the same local Happy snapshot on 2026-10-22. The goal shows above the
+composer only while the session is online and `agentGoalStatus.sourceSessionId` matches the metadata `claudeSessionId`
+or `codexThreadId`. Actions follow the reported `capabilities`. Rayno offers edit and clear only: the CLI handlers
+(`happy-cli/src/claude/runClaude.ts`, `happy-cli/src/codex/runCodex.ts`, parsed by `claudeGoalStatus.ts` and
+`codexGoalStatus.ts`) reject `stop`, and Happy Web ignores it. The `goal-action` RPC sends `{ action }` or
+`{ action: 'edit', objective }`; an empty or unchanged edit sends nothing. The Claude CLI answers after the new goal
+status arrives, or with an error when Claude is busy; Rayno shows that error. A TodoWrite row shows its list from the
+call input, replaced by a valid `newTodos` in the structured Claude `toolUseResult`. A row without a valid list,
+or with an error, shows the raw arguments and result, as `knownTools.tsx` falls back to the generic tool view. The progress chip uses the newest
+TodoWrite call that ended without an error and has a valid list. Unlike Happy Web `latestTodos`, it also reads session-protocol calls, whose
+`tool-call-end` has no result. The CLI `Context was reset` event clears the chip. Archived sessions do not show it.
+Subagent TodoWrite calls do not change the chip, as Happy Web skips sidechain messages. `visibleMessages` puts the calls
+between a subagent's `start` and `stop` under the parent tool call (`subagentOf`), so the chip does not see them. The CLI
+mapper keeps the id on later main records through `parentUuid`, so a call after `stop` still counts as a main call. The
+TodoWrite row shows its list in the row; the generic structured result view (`../data/toolResults.ts`) is the fallback.

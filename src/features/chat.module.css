@@ -1343,3 +1343,10 @@
 @media (max-width: 767px) {
   .contextWarning { padding: 4px 14px 0; min-height: 16px; font-size: 10.5px; }
 }
+
+/* Goal and todo progress above the composer. The open phone keyboard needs the space for the draft. */
+.taskDock:empty { display: none; }
+@media (max-width: 767px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .chat[data-keyboard-open='true'] .taskDock { display: none; }
+}
+.todoTool { display: grid; gap: 2px; min-width: 0; font-family: Geist, sans-serif; }

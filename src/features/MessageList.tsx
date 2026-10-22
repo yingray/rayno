@@ -11,7 +11,7 @@ import type { RecapSegment } from '../data/messageRecap';
 import { remarkPlugins } from '../data/recapQuote';
 import type { BubbleColor, Message, ToolCall, ToolPermission } from '../data/types';
 import { toolAnswers, toolSections } from '../data/toolResults';
-import { completedForms, completedPermissions, mergedPermission, permissionSummary, toolName, type AnsweredForm } from '../happy/toolDecisions';
+import { completedForms, completedPermissions, mergedPermission, permissionSummary, toolName, type AnsweredForm, type PermissionSummary } from '../happy/toolDecisions';
 import { permissionLabel } from '../happy/permissionOptions';
 import { ToolAnswers, ToolDecision, ToolSections, type ToolOutcome } from './ToolDetails';
 import { useEventCallback } from '../components/useEventCallback';
@@ -25,6 +25,8 @@ import {
 import { MermaidDiagram } from './MermaidDiagram';
 import { AttachmentImage } from './AttachmentImage';
 import { CodeBlock } from './CodeBlock';
+import { TodoList } from './TodoList';
+import { isTodoWrite, todoProgress, todoRowList, type Todo } from '../data/todos';
 
 // Thinking is secondary. It stays closed until the user opens it.
 function Thinking({ text }: { text: string }) {
@@ -79,14 +81,14 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes 
       <ul className={styles.toolRows} id={rowsId} hidden={!expanded}>
         {block.tools.map((tool, index) => {
           const thinking = block.thinking?.[index], call = block.details?.[index];
-          const decision = outcomes?.[index]?.permission;
+          const decision = outcomes?.[index]?.permission, todos = call && todoRowList(call);
           // The answered questions group already shows the answers of this call.
           const sections = !call ? [] : toolSections(call).filter((section) => section.kind !== 'answers' || !outcomes?.[index]?.answers?.length);
           return <li key={index}>
-            <Icon name={thinking !== undefined ? 'sparklesOutline' : call?.children?.length ? 'gitNetworkOutline' : 'codeSlash'} size={14} />
+            <Icon name={thinking !== undefined ? 'sparklesOutline' : call?.children?.length ? 'gitNetworkOutline' : call && isTodoWrite(call) ? 'listOutline' : 'codeSlash'} size={14} />
             {thinking !== undefined ? <details className={`${styles.toolDetails} ${styles.thinkingRow}`}>
               <summary>{tool}</summary><p>{thinking}</p>
-            </details> : call && (call.input !== undefined || call.result !== undefined || call.children?.length) ? <details className={styles.toolDetails}>
+            </details> : todos ? <TodoTool todos={todos} decision={decision} /> : call && (call.input !== undefined || call.result !== undefined || call.children?.length) ? <details className={styles.toolDetails}>
               <summary><span>{tool}</span>{decision && <ToolDecision value={decision} />}</summary>
               {decision && <div className={styles.toolNote} data-tone={decision.tone === 'denied' ? 'error' : undefined}>{decision.detail}</div>}
               {(call.input !== undefined || call.result !== undefined) && <><h4>Arguments</h4><pre>{formatToolValue(call.input)}</pre></>}
@@ -121,6 +123,15 @@ function toolOutcome(call: ToolCall | undefined, permissions: Map<string, ToolPe
       ? { dismissed: true } : {}),
   };
   return Object.keys(outcome).length ? outcome : undefined;
+}
+
+// Happy Web TodoView: a TodoWrite call with a list shows it in place of the raw arguments.
+function TodoTool({ todos, decision }: { todos: Todo[]; decision?: PermissionSummary }) {
+  const progress = todoProgress(todos);
+  return <div className={styles.todoTool}>
+    <span className={styles.toolLabel}><span>Todo list · {progress.done} of {progress.total} done</span>{decision && <ToolDecision value={decision} />}</span>
+    <TodoList label="Todo items" todos={todos} />
+  </div>;
 }
 
 const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify }: {
