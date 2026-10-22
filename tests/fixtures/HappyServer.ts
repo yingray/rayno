@@ -401,7 +401,21 @@ export class HappyServer {
             if (this.resumeFailure) result = { type: 'error', errorMessage: 'Recovery failed. Try again.' };
             else { resumed.active = true; result = { type: 'success', sessionId: resumed.id }; }
           }
-          if (payload.method.endsWith(':killSession')) result = { success: true };
+          if (payload.method.endsWith(':killSession')) {
+            // Like registerKillSessionHandler and runClaude cleanup({ archive: true }) in happy-cli.
+            result = { success: true, message: 'Killing happy-cli process' };
+            const killed = this.sessions.find((session) => session.id === payload.method.split(':')[0]);
+            if (killed) {
+              const killedKey = killed.dataEncryptionKey ? this.dataKey : null;
+              const current = await this.encryption.decrypt<Json>(killed.metadata, killedKey);
+              killed.metadata = await this.encryption.encrypt({ ...current, lifecycleState: 'archived',
+                lifecycleStateSince: Date.now(), archivedBy: 'cli', archiveReason: 'User terminated' }, killedKey);
+              killed.metadataVersion++;
+              this.socket?.send('42' + JSON.stringify(['update', { body: { t: 'update-session', id: killed.id,
+                metadata: { version: killed.metadataVersion, value: killed.metadata } } }]));
+              this.setSessionActive(killed.id, false);
+            }
+          }
           answer = { ok: true, result: await this.encryption.encrypt(result, key) };
         }
         socket.send('43' + match[1] + JSON.stringify([answer]));

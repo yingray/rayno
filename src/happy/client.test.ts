@@ -716,5 +716,81 @@ describe('Happy client protocol', () => {
     await expect(client.branchSession('session', 'duplicate', undefined, {})).rejects.toThrow('Choose a message');
     expect(socket.emitWithAck).not.toHaveBeenCalled();
   });
-
+});
+const rpcReply = async (value: unknown) => ({ ok: true, result: await client.encryption.encrypt(value, null) });
+const requests = () => fetchMock.mock.calls.map(([url, init]) => `${init?.method || 'GET'} ${String(url).replace(credentials.server, '')}`);
+describe('Happy client session lifecycle', () => {
+  it('should archive a connected CLI session through killSession without a server archive or metadata write', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce(await rpcReply({ success: true, message: 'Killing happy-cli process' }));
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls).toEqual([['rpc-call', expect.objectContaining({ method: 'session:killSession' })]]);
+    expect(requests()).toEqual([]);
+    expect(client.getSnapshot().sessions[0].archived).toBe(true);
+  });
+  it.each([
+    ['an unavailable agent', { ok: false, error: 'RPC method not available' }],
+    ['a refused kill', { success: false, message: 'Not now' }],
+    ['a lost acknowledgement', new Error('Timeout')],
+  ])('should fall back to the server archive after %s', async (_name, reply) => {
+    // Arrange
+    await start();
+    fetchMock.mockClear();
+    if (reply instanceof Error) socket.emitWithAck.mockRejectedValueOnce(reply);
+    else socket.emitWithAck.mockResolvedValueOnce('ok' in reply ? reply : await rpcReply(reply));
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls.map(([event]) => event)).toEqual(['rpc-call']);
+    expect(requests()).toEqual(['POST /v1/sessions/session/archive']);
+    expect(client.getSnapshot().sessions[0].archived).toBe(true);
+  });
+  it('should archive a Rig session on an offline computer through the server and its archive marker', async () => {
+    // Arrange
+    session.active = false;
+    session.metadata = await client.encryption.encrypt({ ...metadata, flavor: 'rig', client: { id: 'rig' } }, null);
+    const machine = { id: 'computer', active: false, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Computer' }, null) };
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockResolvedValueOnce({ result: 'success', version: 2 });
+    // Act
+    await client.archiveSession('session');
+    // Assert
+    expect(requests()).toEqual(['POST /v1/sessions/session/archive']);
+    expect(socket.emitWithAck.mock.calls.map(([event]) => event)).toEqual(['update-metadata']);
+    const sent = await client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[0][1].metadata, null);
+    expect(sent).toMatchObject({ lifecycleState: 'archived', unknownExtension: { keep: true } });
+    expect(client.getSnapshot().sessions[0].archived).toBe(true);
+  });
+  it('should stop a connected session before the delete and continue when the stop fails', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockClear();
+    socket.emitWithAck.mockRejectedValueOnce(new Error('Timeout'));
+    // Act
+    await client.deleteSession('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls).toEqual([['rpc-call', expect.objectContaining({ method: 'session:killSession' })]]);
+    expect(requests()).toEqual(['DELETE /v1/sessions/session']);
+    expect(socket.emitWithAck.mock.invocationCallOrder[0]).toBeLessThan(fetchMock.mock.invocationCallOrder[0]);
+    expect(client.getSnapshot().sessions).toEqual([]);
+  });
+  it('should delete an ended session without a stop request', async () => {
+    // Arrange
+    session.active = false;
+    await start();
+    fetchMock.mockClear();
+    // Act
+    await client.deleteSession('session');
+    // Assert
+    expect(socket.emitWithAck).not.toHaveBeenCalled();
+    expect(requests()).toEqual(['DELETE /v1/sessions/session']);
+  });
 });

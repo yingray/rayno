@@ -980,14 +980,22 @@ export class HappyClient implements DemoAdapter {
       });
       return;
     }
-    await this.request(`/v1/sessions/${encodeURIComponent(id)}/archive`, { method: 'POST' });
-    source.wire.active = false;
+    // Happy Web stops the agent first. The CLI kill handler writes the archived lifecycle itself.
+    // The server archive is the fallback when the agent does not answer; it only ends the connection.
+    const online = source.wire.active || this.machines.get(source.metadata.machineId)?.wire.active;
+    const killed = online && await this.rpc(id, 'killSession', {}).then((result) => result.success === true, () => false);
+    if (!killed) await this.request(`/v1/sessions/${encodeURIComponent(id)}/archive`, { method: 'POST' });
+    const current = this.sessions.get(id);
+    if (current) current.wire.active = false;
     this.publish(id);
-    await this.mutateMetadata(id, (metadata) => ({ ...metadata, lifecycleState: 'archived' }));
+    // An inactive Rig session stays in the live list without the marker.
+    if (isRig(source.metadata)) await this.mutateMetadata(id, (metadata) => ({ ...metadata, lifecycleState: 'archived' }));
   }
   async deleteSession(id: string) {
     const source = this.getSession(id);
     if (source.metadata.bot) throw new Error('Use the Happy app to manage this bot.');
+    // Happy Web stops a connected agent before the delete. A failed stop does not block the delete.
+    if (source.wire.active) await this.rpc(id, 'killSession', {}).catch(() => undefined);
     await this.request(`/v1/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
     this.deletedSessions.add(id);
     this.sessions.delete(id);
