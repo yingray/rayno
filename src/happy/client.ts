@@ -27,6 +27,8 @@ import {
   pendingPermissions,
   allowsSessionScope,
   isExitPlanTool,
+  terminalControls,
+  controlHandoff,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -111,6 +113,8 @@ export class HappyClient implements DemoAdapter {
   private activeSessions = new Set<string>();
   private sending = new Set<string>();
   private resuming = new Map<string, Promise<void>>();
+  private controlRequests = new Map<string, Promise<void>>();
+  private controlSent = new Map<string, { version: number; at: number }>();
   private branching = new Map<string, Promise<string>>();
   private acknowledged = new Set<string>();
   private attention = new Map<string, SessionAttention>();
@@ -781,6 +785,7 @@ export class HappyClient implements DemoAdapter {
     }
     if (body.t === 'update-session' && this.sessions.has(body.id)) {
       const current = this.getSession(body.id);
+      const wasControlled = current.agentState.controlledByUser;
       for (const field of ['metadata', 'agentState'] as const)
         if (body[field]?.version > current.wire[`${field}Version`]) {
           const version = body[field].version;
@@ -796,6 +801,9 @@ export class HappyClient implements DemoAdapter {
       if (typeof body.updatedAt === 'number') current.wire.updatedAt = body.updatedAt;
       if (Number.isSafeInteger(body.seq)) current.wire.seq = Math.max(current.wire.seq || 0, body.seq);
       this.publish(body.id);
+      // Like Happy Web sync.ts, a control handoff reads the history again so the open chat has the messages of the other side.
+      if (!isRig(current.metadata) && controlHandoff(wasControlled, current.agentState.controlledByUser) && this.activeSessions.has(body.id))
+        void this.loadHistory(body.id, 'forward').catch(() => { /* The next reconnect fills the gap. */ });
       if ((current.wire.seq || 0) > this.sessionAttention(body.id).inspectedSeq)
         void this.inspectAttention(body.id).catch(() => { /* Retain the last attention state until the next scan. */ });
       return;
@@ -1062,6 +1070,25 @@ export class HappyClient implements DemoAdapter {
               'The user asked to stop. Stop the current operation and wait for the next instruction.',
           },
     );
+  }
+  /**
+   * Happy Web sync/ops.ts sessionSwitch. The CLI 'switch' handler ignores `to` and toggles the mode, so a
+   * second request before the CLI reports remote mode can give control back to the terminal.
+   */
+  takeControl(id: string): Promise<void> {
+    const pending = this.controlRequests.get(id);
+    if (pending) return pending;
+    const source = this.sessions.get(id);
+    if (!source?.wire.active || !terminalControls(source.metadata, source.agentState))
+      return Promise.reject(new Error('The terminal does not control this session.'));
+    const version = source.wire.agentStateVersion;
+    const sent = this.controlSent.get(id);
+    if (sent && sent.version === version && Date.now() - sent.at < 15000) return Promise.resolve();
+    const request = this.rpc(id, 'switch', { to: 'remote' })
+      .then(() => { this.controlSent.set(id, { version, at: Date.now() }); })
+      .finally(() => this.controlRequests.delete(id));
+    this.controlRequests.set(id, request);
+    return request;
   }
   async killSession(id: string) {
     const result = await this.rpc(id, 'killSession', {});

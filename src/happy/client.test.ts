@@ -1064,4 +1064,73 @@ describe('Happy client damaged records', () => {
     expect(client.getSnapshot().sessions.map((row) => row.id).sort()).toEqual(['a', 'c']);
     expect(client.getSnapshot().cachedAt).toBe(50);
   });
+  describe('terminal control', () => {
+    const switchCalls = () => socket.emitWithAck.mock.calls.filter(([event, payload]) => event === 'rpc-call' && payload.method === 'session:switch');
+    async function stateUpdate(state: Json, version: number) {
+      socket.handlers.get('update')!({ body: { t: 'update-session', id: 'session',
+        agentState: { version, value: await client.encryption.encrypt(state, null) } } });
+      await vi.waitFor(() => expect(client.getAgentState('session').controlledByUser).toBe(state.controlledByUser));
+    }
+    it('should send one switch request for a local-mode CLI and accept the void reply', async () => {
+      // Arrange: claude/runClaude.ts writes { ...state, controlledByUser: true } for local mode.
+      session.agentState = await client.encryption.encrypt({ controlledByUser: true }, null);
+      session.agentStateVersion = 1;
+      await start();
+      socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt(undefined, null) });
+      // Act
+      const first = client.takeControl('session');
+      const concurrent = client.takeControl('session');
+      await Promise.all([first, concurrent]);
+      await client.takeControl('session');
+      // Assert: the CLI handler toggles the mode, so a repeat before the state changes must not reach it.
+      expect(switchCalls()).toHaveLength(1);
+      expect(await client.encryption.decrypt(switchCalls()[0][1].params, null)).toEqual({ to: 'remote' });
+      expect(client.getSnapshot().sessions[0].terminalControl).toBe(true);
+      // Act
+      await stateUpdate({ controlledByUser: false }, 2);
+      // Assert
+      expect(client.getSnapshot().sessions[0].terminalControl).toBe(false);
+      await expect(client.takeControl('session')).rejects.toThrow('The terminal does not control this session.');
+      expect(switchCalls()).toHaveLength(1);
+      // Act: the terminal takes control again with a double space in claudeRemoteLauncher.ts.
+      await stateUpdate({ controlledByUser: true }, 3);
+      await client.takeControl('session');
+      // Assert
+      expect(switchCalls()).toHaveLength(2);
+    });
+    it('should refuse a remote-mode, disconnected, or Rig session without an RPC', async () => {
+      // Arrange
+      const rig = { ...session, id: 'rig', metadata: await client.encryption.encrypt({ ...metadata, flavor: 'rig', client: { id: 'rig' } }, null),
+        agentState: await client.encryption.encrypt({ controlledByUser: true }, null), agentStateVersion: 1 };
+      const ended = { ...session, id: 'ended', active: false, agentState: rig.agentState, agentStateVersion: 1 };
+      session.agentState = await client.encryption.encrypt({ controlledByUser: false }, null);
+      fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+        ? response({ sessions: [session, rig, ended], hasNext: false })
+        : url.endsWith('/v1/machines') ? response([]) : response({ messages: [], hasMore: false }));
+      await start();
+      // Act / Assert
+      for (const id of ['session', 'rig', 'ended', 'missing'])
+        await expect(client.takeControl(id)).rejects.toThrow('The terminal does not control this session.');
+      expect(socket.emitWithAck.mock.calls.filter(([event]) => event === 'rpc-call')).toEqual([]);
+    });
+    it('should read new messages of an open chat after a control handoff', async () => {
+      // Arrange
+      session.agentState = await client.encryption.encrypt({ controlledByUser: true }, null);
+      session.agentStateVersion = 1;
+      await start();
+      const stopWatching = client.watchSession('session');
+      await client.loadHistory('session');
+      const reads = () => fetchMock.mock.calls.filter(([url]) => String(url).includes('/v3/sessions/session/messages')).length;
+      const before = reads();
+      // Act
+      await stateUpdate({ controlledByUser: true, requests: {} }, 2);
+      // Assert
+      expect(reads()).toBe(before);
+      // Act
+      await stateUpdate({ controlledByUser: false }, 3);
+      // Assert
+      await vi.waitFor(() => expect(reads()).toBe(before + 1));
+      stopWatching();
+    });
+  });
 });

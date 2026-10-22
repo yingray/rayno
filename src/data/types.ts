@@ -41,6 +41,8 @@ export type Session = {
   updatedAt: number;
   lastActivityAt?: number;
   machineOffline?: boolean;
+  // The connected CLI runs in local mode, so its terminal controls the session.
+  terminalControl?: boolean;
   isSideChat?: boolean;
   additions: number;
   deletions: number;
@@ -145,4 +147,6 @@ export interface DemoAdapter {
   stopSession(id: string): void | Promise<void>;
   refreshMonitor(): Promise<void>;
   killSession?(id: string): Promise<void>;
+  // Move control of a local-mode CLI session from its terminal to the remote clients.
+  takeControl?(id: string): Promise<void>;
 }

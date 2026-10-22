@@ -126,3 +126,13 @@ Priority feature contracts were checked against the local Happy snapshot `2dcac1
 - `normalize.ts`: `sync/typesRaw.ts`. Session, Claude output, and Codex/ACP tool calls retain their IDs and join later results by call ID. Raw strings and edit arguments stay readable without HTML execution.
 
 Chat-header Fork and Duplicate follow `utils/sessionFork.ts`, `components/DuplicateSheet.tsx`, and `sync/ops.ts` in the same Happy snapshot. Claude uses `claude-fork-session`, `claude-list-rewind-points`, and `claude-duplicate-session`; Codex uses the matching thread RPCs. A second `spawn-happy-session` call attaches to the copied provider ID and carries `parentSessionId`. Rayno supplies concrete model/effort/permission values, retains the copy after an explicit spawn failure, and refuses an automatic second copy when the first result is unknown.
+
+Terminal control follows `components/ChatFooter.tsx`, `components/ChatList.tsx`, `app/(app)/session/[id]/info.tsx`,
+`sync/controlHandoff.ts`, `sync/rig.ts` (`usesControlledSessionUi`), and `sessionSwitch` in `sync/ops.ts`. The Claude CLI
+(`claude/runClaude.ts`) writes `agentState.controlledByUser` as `mode === 'local'` at start and on each mode change, and sends
+a `switch` session event. Rayno shows terminal control only for a connected non-Rig session. The composer stays usable:
+`claude/claudeLocalLauncher.ts` moves to remote mode when a message reaches its queue. Take control sends the void `switch`
+RPC with `{ to: 'remote' }`. The CLI handlers ignore `to` and toggle the mode (`claudeRemoteLauncher.ts` moves back to
+local), so Rayno sends it only while the newest agent state reports terminal control, and at most once per agent-state
+version for 15 seconds. Rayno does not offer the move back to the terminal; Happy Web has no such control, and a
+daemon-started CLI has no terminal. A control handoff reads newer history for an open chat, as `sync/sync.ts` does.
