@@ -70,7 +70,7 @@ export default defineConfig(({ mode }) => {
           clientsClaim: true,
           navigateFallback: '/index.html',
           globPatterns: ['**/*.{js,css,html,svg,png,ttf}'],
-          globIgnores: ['**/mermaid.worker-*.js'],
+          globIgnores: ['**/mermaid.worker-*.js', 'assets/404.html'],
           runtimeCaching: [{
             urlPattern: /\/assets\/mermaid\.worker-[\w-]+\.js$/,
             handler: 'CacheFirst',

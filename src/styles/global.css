@@ -88,6 +88,21 @@ body {
   padding: 24px;
   color: var(--secondary);
 }
+.screenError {
+  flex-direction: column;
+  text-align: center;
+}
+.screenError p {
+  margin: 0;
+}
+.screenError button {
+  min-height: 44px;
+}
+.screenError code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
 button,
 input,
 textarea,
