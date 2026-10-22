@@ -27,6 +27,8 @@ import {
   pendingPermissions,
   allowsSessionScope,
   isExitPlanTool,
+  deliveryMeta,
+  sendsMessageReceipts,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -104,7 +106,7 @@ export class HappyClient implements DemoAdapter {
   private sessions = new Map<string, SessionRecord>();
   private machines = new Map<string, MachineRecord>();
   private messages = new Map<string, Map<string, MessageRecord>>();
-  private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; messages: Message[] }>();
+  private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; hold: boolean; messages: Message[] }>();
   private historyCursors = new Map<string, number>();
   private deletedSessions = new Set<string>();
   private historyRequests = new Map<string, Promise<void>>();
@@ -187,8 +189,9 @@ export class HappyClient implements DemoAdapter {
             return previous;
           const rows = this.messages.get(id);
           let history = this.visibleHistory.get(id);
-          if (!history || history.source !== rows || history.size !== (rows?.size || 0)) {
-            history = { source: rows, size: rows?.size || 0, messages: visibleMessages([...(rows?.values() || [])]) };
+          const hold = sendsMessageReceipts(source.metadata);
+          if (!history || history.source !== rows || history.size !== (rows?.size || 0) || history.hold !== hold) {
+            history = { source: rows, size: rows?.size || 0, hold, messages: visibleMessages([...(rows?.values() || [])], hold) };
             this.visibleHistory.set(id, history);
           }
           const attention = this.sessionAttention(source.wire.id);
@@ -1108,7 +1111,13 @@ export class HappyClient implements DemoAdapter {
       const levels = effortOptions(metadata, model);
       if (options.effort && !levels.includes(options.effort))
         throw new Error('This model does not support the selected effort. Choose another effort before you send.');
-      const meta = { ...messageMeta(metadata, options, recapMode, recapStyle), ...extraMeta };
+      const pendingSend = this.snapshot.sessions.find((session) => session.id === id)?.messages
+        .some((message) => message.delivery?.status === 'pending') === true;
+      const meta = {
+        ...messageMeta(metadata, options, recapMode, recapStyle),
+        ...deliveryMeta(metadata, source.agentState, !!(source.thinking ?? source.agentState.thinking), pendingSend),
+        ...extraMeta,
+      };
       if (options.model && model !== currentModel(metadata) && !levels.length) {
         if (isRig(metadata)) delete meta.effort;
         else meta.effort = null;

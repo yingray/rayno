@@ -109,6 +109,22 @@ const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename,
   );
 });
 
+// Happy Web MessageView.tsx: a queued send shows its state at once. Other sends wait a short grace period.
+const PENDING_GRACE_MS = 1000;
+function usePendingShown(delivery: Message['delivery']) {
+  const delayed = delivery?.status === 'pending' && !delivery.queued ? delivery.since : null;
+  const [elapsed, setElapsed] = useState(() => delayed !== null && Date.now() - delayed >= PENDING_GRACE_MS);
+  useEffect(() => {
+    if (delayed === null) { setElapsed(false); return; }
+    const remaining = PENDING_GRACE_MS - (Date.now() - delayed);
+    setElapsed(remaining <= 0);
+    if (remaining <= 0) return;
+    const timer = window.setTimeout(() => setElapsed(true), remaining);
+    return () => window.clearTimeout(timer);
+  }, [delayed]);
+  return delivery?.status === 'pending' && (delivery.queued || elapsed);
+}
+
 const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDisabled, onOption, bubble, notify, recap, recapWriting, onJump }: {
   sessionId: string;
   message: Message;
@@ -120,6 +136,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
   recapWriting: boolean;
   onJump: (messageId: string, index: number) => void;
 }) {
+  const pendingShown = usePendingShown(message.delivery);
   const parts = partsForMessage(message);
   const codeFilename = message.content.match(/\/\* ([\w./-]+) \*\//)?.[1] || 'Code';
   // The recap card closes the reply. Options stay last.
@@ -134,8 +151,8 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
       data-message-id={message.id}
       data-role={message.role}
     >
-      {message.role === 'user' ? (
-        <div className={styles.bubble}>
+      {message.role === 'user' ? (<>
+        <div className={styles.bubble} data-pending={pendingShown || undefined}>
           {message.content}
           {message.attachments?.map((file) => (
             file.ref ? <AttachmentImage key={file.ref} sessionId={sessionId} file={file} /> : <span className={styles.messageAttachment} key={file.name}>
@@ -144,7 +161,13 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
             </span>
           ))}
         </div>
-      ) : (
+        {pendingShown && message.delivery?.status === 'pending' && <p className={styles.sendState}>
+          {message.delivery.queued ? 'Sends after this turn' : 'Sending…'}
+        </p>}
+        {message.delivery?.status === 'rejected' && <p className={styles.sendState} data-rejected>
+          Not sent: {message.delivery.reason}
+        </p>}
+      </>) : (
         <div className={styles.markdown}>
           {parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
             <div className={styles.replyOptions} role="group" aria-label="Reply options" key={index}>

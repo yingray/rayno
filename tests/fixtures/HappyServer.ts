@@ -6,6 +6,14 @@ import { base64, deriveKey, HappyCrypto, unbase64 } from '../../src/happy/crypto
 import { DEFAULT_SERVER } from '../../src/happy/auth';
 import type { Json } from '../../src/happy/normalize';
 
+const receipt = (ref: string, runId: string, reason?: string): Json => ({
+  role: 'session',
+  content: reason === undefined
+    ? { id: 'accepted:' + ref, time: 1700000001000, role: 'agent', ev: { t: 'user-message-accepted', id: 'durable-' + ref, ref, runId } }
+    : { id: 'refused:' + ref, time: 1700000001000, role: 'agent', ev: { t: 'user-message-rejected', ref, reason } },
+  meta: { sentFrom: 'rig' },
+});
+
 // Browser contract fixture. All requests stay inside the isolated test context.
 export class HappyServer {
   readonly secret = new Uint8Array(32).fill(11);
@@ -118,13 +126,11 @@ export class HappyServer {
         role: 'user',
         content: { type: 'text', text: 'Earlier message' },
       }),
-      await this.message('reply', 2, {
+      // happy-agent puts the receipt where the agent took the message, before its reply.
+      await this.message('receipt', 2, receipt('first', 'run-first')),
+      await this.message('reply', 3, {
         role: 'session',
         content: { role: 'agent', ev: { t: 'text', text: 'From the real protocol' } },
-      }),
-      await this.message('receipt', 3, {
-        role: 'session',
-        content: { role: 'agent', ev: { t: 'user-message-accepted', ref: 'first' } },
       }),
     ];
     await page.addInitScript(
@@ -480,6 +486,10 @@ export class HappyServer {
     ));
     if (sessionId === 'real-session') this.messages = messages;
     else this.otherMessages.set(sessionId, messages);
+  }
+  /** A Happy Agent send receipt for a stored message, as `pendingUserMessages.spec.ts` in happy-app shows it. */
+  async pushReceipt(ref: string, reason?: string) {
+    await this.pushEvent(receipt(ref, 'run-' + ref, reason));
   }
   async pushReply(text: string) {
     await this.pushEvent({

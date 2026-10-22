@@ -1181,3 +1181,19 @@
     display: none;
   }
 }
+
+/* Happy Agent send receipts: a pending bubble dims, and the state line sits under it. */
+.bubble[data-pending] {
+  opacity: 0.45;
+}
+.sendState {
+  margin: 4px 4px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.sendState[data-rejected] {
+  color: var(--red);
+}

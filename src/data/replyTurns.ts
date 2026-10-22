@@ -3,8 +3,10 @@ import type { Message } from './types';
 // Keep this module free of the Markdown parser. The chat shell imports it before the message list loads.
 
 // Message IDs after the last real user turn. A hidden recap request does not answer the options.
+// A message that the agent rejected never started a turn, as in Happy Web utils/agentTurns.ts.
 export function unansweredMessageIds(messages: readonly Message[]): Set<string> {
-  const lastUser = messages.findLastIndex((message) => message.role === 'user' && !message.recapRequest);
+  const lastUser = messages.findLastIndex((message) => message.role === 'user' && !message.recapRequest
+    && message.delivery?.status !== 'rejected');
   return new Set(messages.slice(lastUser + 1).map((message) => message.id));
 }
 

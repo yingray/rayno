@@ -116,8 +116,9 @@ describe('Happy record normalization', () => {
         content: { type: 'codex', data: { type: 'message', message: 'Codex reply' } },
       }),
       row('a', 1, { role: 'user', content: { type: 'text', text: 'Hello' } }, 'same-send'),
-      row('duplicate', 2, { role: 'user', content: { type: 'text', text: 'Hello' } }, 'same-send'),
-      row('receipt', 5, {
+      row('duplicate', 5, { role: 'user', content: { type: 'text', text: 'Hello' } }, 'same-send'),
+      // The receipt directly follows its message, so the message keeps its place.
+      row('receipt', 2, {
         role: 'session',
         content: { role: 'agent', ev: { t: 'user-message-accepted', ref: 'a' } },
       }),

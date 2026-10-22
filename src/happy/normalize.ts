@@ -132,6 +132,25 @@ export function pendingCommunications(state: Json): PendingCommunication[] {
     return questions.length ? [{ id, createdAt, kind: 'form', questions }] : [];
   }).sort((a, b) => a.createdAt - b.createdAt);
 }
+// Happy Web sync/rig.ts rigSendsMessageReceipts: strict, because a held message waits for a receipt.
+export const sendsMessageReceipts = (metadata: Json) =>
+  metadata.client?.id === 'rig' && (metadata.rigMetadataVersion ?? 0) >= 1 && metadata.capabilities?.messageReceipts === true;
+// Happy Web sync/messageMeta.ts resolveMessageDeliveryMeta. A pending question does not hold a new message.
+export function deliveryMeta(metadata: Json, state: Json, thinking: boolean, hasPendingMessage: boolean): Json {
+  if (!sendsMessageReceipts(metadata)) return {};
+  const busy = Object.keys(record(state.requests)).length > 0 || (!pendingCommunications(state).length && thinking);
+  return { expectsAcceptance: true, queuedWhileBusy: hasPendingMessage || busy };
+}
+// A `user-message-accepted` or `user-message-rejected` receipt. `ref` is the server ID of the user message.
+export function messageReceipt(raw: Json): { ref: string; reason?: string } | null {
+  const content = record(raw.content);
+  const envelope = raw.role === 'session' ? record(content.type === 'session' ? content.data : content)
+    : content.type === 'session' ? record(content.data) : null;
+  const event = envelope ? record(envelope.ev) : raw.role === 'agent' && content.type === 'event' ? record(content.data) : {};
+  const type = envelope ? event.t : event.type;
+  if (typeof event.ref !== 'string' || (type !== 'user-message-accepted' && type !== 'user-message-rejected')) return null;
+  return type === 'user-message-rejected' ? { ref: event.ref, reason: text(event.reason) } : { ref: event.ref };
+}
 export function normalizeSession(
   source: SessionRecord,
   messages: Message[],
@@ -331,18 +350,36 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   normalizedMessages.set(row, result);
   return result;
 }
-export function visibleMessages(rows: MessageRecord[]): Message[] {
+// Happy Web sync/reducer/reducer.ts: a receipt puts its user message at the place where the agent took it.
+// With `holdUntilAccepted`, a message that expects a receipt stays pending at the end until the receipt comes.
+export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false): Message[] {
   const seen = new Set<string>();
-  const messages = [...rows]
+  const ordered = [...rows]
     .sort((a, b) => a.seq - b.seq)
     .filter((row) => {
       const key = row.localId || row.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    })
-    .map(normalizeMessage)
-    .filter((message): message is Message => !!message);
+    });
+  const receipts = new Map<string, { seq: number; reason?: string }>();
+  for (const row of ordered) {
+    const receipt = messageReceipt(record(row.raw));
+    if (receipt && !receipts.has(receipt.ref)) receipts.set(receipt.ref, { seq: row.seq, reason: receipt.reason });
+  }
+  const messages = ordered.flatMap((row) => {
+    const message = normalizeMessage(row);
+    if (!message) return [];
+    if (message.role !== 'user') return [{ message, at: row.seq }];
+    const receipt = receipts.get(row.id);
+    if (receipt) return [{ at: receipt.seq, message: receipt.reason === undefined ? message
+      : { ...message, delivery: { status: 'rejected' as const, reason: receipt.reason } } }];
+    const meta = record(record(row.raw).meta);
+    if (holdUntilAccepted && meta.expectsAcceptance === true) return [{ at: Number.MAX_SAFE_INTEGER, message: {
+      ...message, delivery: { status: 'pending' as const, queued: meta.queuedWhileBusy === true, since: row.createdAt },
+    } }];
+    return [{ message, at: row.seq }];
+  }).sort((a, b) => a.at - b.at).map(({ message }) => message);
   const results = new Map(messages.flatMap(message => (message.toolResults || []).map(result => [result.id, result] as const)));
   const matched = new Set<string>();
   const rendered = messages.map(message => {
