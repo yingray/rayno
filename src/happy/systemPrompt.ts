@@ -20,17 +20,19 @@ When you are in the plan mode, you must use the options mode to give the user a 
 export const RECAP_REQUEST = '[rayno] Recap your previous reply.';
 
 const recapBlock = `<rayno-recap>
-Conclusion first, then key results, with up to 3 <point quote="exact text from your reply">short phrase</point> markers.
+The cache kept <point quote="exact text from your reply">the old shell</point>, so I changed the rule. Read <point quote="other exact text from your reply">the trap section</point> first, because it breaks pages that look fixed.
 </rayno-recap>`;
 
 // Default recap voice. Users can edit it in Settings; an empty value removes the section.
 export const DEFAULT_RECAP_STYLE = `Speak to the user as a warm, approachable technical colleague who is also a senior lead.
-The recap must take 20 seconds or less to read aloud: at most 100 characters in Chinese, or 50 words in English.
+The recap must take 20 seconds or less to read aloud: at most 100 characters in Chinese, or 35 words in English.
 Use this order:
 1. The conclusion of the reply, in one sentence.
 2. Your own short take on it, in one sentence. Say what you think, not what the reply says.
 3. The one part the user should read first. Mark it with the last point, and say why it matters.`;
 export const RECAP_STYLE_LIMIT = 1000;
+// Earlier defaults. A saved style that still equals one of them moves to the current default.
+export const PREVIOUS_RECAP_STYLES = [DEFAULT_RECAP_STYLE.replace('35 words in English', '50 words in English')];
 
 // Rayno recap instructions. Manual mode keeps the format but drops the automatic trigger.
 // The user's style comes before the rules, and the rules win when the two conflict.
@@ -39,7 +41,8 @@ export function recapPrompt(mode: 'auto' | 'manual', style = DEFAULT_RECAP_STYLE
     ? 'When your reply is long (roughly 600+ words, or it contains code changes, several findings, or a decision), end it with a recap the user can read or listen to:'
     : 'Write a recap only when the user asks for one. The user can read or listen to it. Use this format:';
   const rules = [
-    'Under 200 characters of visible text. Write in the user\'s language.',
+    'Count the visible text, point phrases included. Use at most 100 characters in Chinese, or 35 words and 200 characters in English. Write in the user\'s language.',
+    'Put each point inside a sentence, around words that belong to that sentence, as in the example. Never list points or labels after the text.',
     'Lead with the conclusion: what was wrong or decided, and the outcome. No greetings, no restating the question, no "In summary".',
     'Each point\'s quote must be copied verbatim from your reply (max 80 characters) so the app can link to it. Pick the root cause, the change, and the verification when they exist.',
     'Plain sentences that read well aloud: no markdown, code formatting, emoji, or lists inside the recap.',

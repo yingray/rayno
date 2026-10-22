@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState, defaultNewDraft } from './fixtures';
 import { demoReducer, restoreState, titleOf, validateDraft } from './reducer';
-import { DEFAULT_RECAP_STYLE, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
+import { DEFAULT_RECAP_STYLE, PREVIOUS_RECAP_STYLES, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 
 describe('Session lifecycle', () => {
   it('should preserve a typed draft when a reply option sends its own text', () => {
@@ -192,6 +192,7 @@ describe('Browser state restoration', () => {
     ['Speak like a coach.', 'Speak like a coach.'],
     [42, DEFAULT_RECAP_STYLE],
     ['y'.repeat(RECAP_STYLE_LIMIT + 1), 'y'.repeat(RECAP_STYLE_LIMIT)],
+    [PREVIOUS_RECAP_STYLES[0], DEFAULT_RECAP_STYLE],
   ])('should restore the recap style %#', (stored, expected) => {
     // Arrange
     const raw = JSON.parse(JSON.stringify(createInitialState(1000000)));

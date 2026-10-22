@@ -2,7 +2,7 @@ import { defaultNewDraft, defaultPreferences } from './defaults';
 import type { Action, DemoState, NewSessionDraft, Session } from './types';
 import { rememberWorkspace } from './workspaces';
 import { shallowEqual } from './subscriptions';
-import { RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
+import { PREVIOUS_RECAP_STYLES, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 
 export const STORAGE_KEY = 'rayno.demo.v1';
 export const titleOf = (session: Session) => session.customTitle || session.title;
@@ -185,7 +185,9 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
       if (parsed.preferences.recap === 'auto' || parsed.preferences.recap === 'manual')
         preferences.recap = parsed.preferences.recap;
       if (typeof parsed.preferences.recapStyle === 'string')
-        preferences.recapStyle = parsed.preferences.recapStyle.slice(0, RECAP_STYLE_LIMIT);
+        preferences.recapStyle = PREVIOUS_RECAP_STYLES.includes(parsed.preferences.recapStyle)
+          ? defaultPreferences.recapStyle
+          : parsed.preferences.recapStyle.slice(0, RECAP_STYLE_LIMIT);
       if (['small', 'medium', 'large'].includes(String(parsed.preferences.fontSize)))
         preferences.fontSize = parsed.preferences.fontSize as typeof preferences.fontSize;
       if (['full', 'medium', 'standard'].includes(String(parsed.preferences.chatWidth)))
