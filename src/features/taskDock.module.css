@@ -204,3 +204,14 @@
     padding: 2px 8px;
   }
 }
+/* A phone in landscape has little height. The dock keeps one 44px line, and the dialog keeps the goal progress. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .dock {
+    padding: 0;
+    gap: 0;
+    margin-bottom: 4px;
+  }
+  .goalText small {
+    display: none;
+  }
+}

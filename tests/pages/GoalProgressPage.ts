@@ -41,6 +41,11 @@ export class GoalProgressPage extends LiveWorkspacePage {
     expect(dock.y + dock.height).toBeLessThanOrEqual(field.y);
     expect(field.y + field.height).toBeLessThanOrEqual(this.page.viewportSize()!.height);
   }
+  // The height of the conversation that stays visible between the chat header and the dock.
+  async conversationSpace() {
+    const header = (await this.page.getByRole('region', { name: 'Chat session', exact: true }).locator('header').first().boundingBox())!;
+    return (await this.dock().boundingBox())!.y - header.y - header.height;
+  }
   async editGoal(text: string, touch: boolean) {
     await this.press(this.goalAction('Edit goal'), touch);
     const field = this.dialog('Edit goal').getByRole('textbox', { name: 'Goal', exact: true });

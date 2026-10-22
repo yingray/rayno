@@ -47,6 +47,11 @@ for (const [width, height] of [[320, 740], [360, 740], [390, 360], [430, 844], [
     for (const control of [workspace.goal(goalText), workspace.todoChip(1, 3), workspace.goalAction('Edit goal'), workspace.goalAction('Clear goal')])
       await workspace.expectReachable(control, touch);
     expect((await workspace.dock().boundingBox())!.height).toBeLessThanOrEqual(56);
+    // A short phone viewport gets a one-line dock, so more of the conversation stays readable.
+    if (touch && height <= 500) {
+      expect((await workspace.dock().boundingBox())!.height).toBeLessThanOrEqual(46);
+      expect(await workspace.conversationSpace()).toBeGreaterThanOrEqual(112);
+    }
     await workspace.expectDockAboveComposer();
     await workspace.expectNoPageOverflow();
     await workspace.capture(`${testInfo.project.name}-goal-dock-${width}x${height}`);
