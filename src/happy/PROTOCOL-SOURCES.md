@@ -139,3 +139,6 @@ status arrives, or with an error when Claude is busy; Rayno shows that error. A 
 call input, replaced by a valid `newTodos` in the structured Claude `toolUseResult`. The progress chip uses the newest
 TodoWrite call that ended without an error. Unlike Happy Web `latestTodos`, it also reads session-protocol calls, whose
 `tool-call-end` has no result. The CLI `Context was reset` event clears the chip. Archived sessions do not show it.
+Subagent TodoWrite calls do not change the chip, as Happy Web skips sidechain messages. A sidechain call is one that has
+a `subagent` id between that subagent's `start` and `stop` events. The CLI mapper keeps the id on later main records
+through `parentUuid`, so a call after `stop` still counts as a main call.

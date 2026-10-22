@@ -7,9 +7,14 @@ const claude = { userType: 'external', cwd: '/Users/steve/Develop/slopus/happy-c
   version: '1.0.71', gitBranch: 'main' };
 const output = (data: object) => ({ role: 'agent', content: { type: 'output', data }, meta: { sentFrom: 'cli' } });
 // happy-cli claude/utils/sessionProtocolMapper.ts: tool-call-start has the raw name, a `<name> call` title, and no end result.
-const envelope = (ev: object) => ({ role: 'session', content: {
-  id: 'cmh1envelope0000000000000', time: 1000, role: 'agent', turn: 'cmh1turn00000000000000000', ev,
+const envelope = (ev: object, extra: object = {}) => ({ role: 'session', content: {
+  id: 'cmh1envelope0000000000000', time: 1000, role: 'agent', turn: 'cmh1turn00000000000000000', ev, ...extra,
 }, meta: { sentFrom: 'cli' } });
+const todoCall = (id: string, seq: number, list: object[], extra: object = {}) => [
+  row(`start-${id}`, seq, envelope({ t: 'tool-call-start', call: id, name: 'TodoWrite', title: 'TodoWrite call',
+    description: 'TodoWrite call', args: { todos: list } }, extra)),
+  row(`end-${id}`, seq + 1, envelope({ t: 'tool-call-end', call: id }, extra)),
+];
 const todos = [
   { content: 'Implement OPTION_B follow-up', status: 'completed', activeForm: 'Implementing OPTION_B follow-up' },
   { content: 'Inspect ../sibling-dir boundary', status: 'in_progress', activeForm: 'Inspecting ../sibling-dir boundary' },
@@ -63,6 +68,36 @@ describe('todo list', () => {
     const latest = latestTodos(visibleMessages(rows));
     // Assert
     expect(latest.map(todo => todo.content)).toEqual(todos.map(todo => todo.content));
+  });
+
+  it('should ignore a subagent TodoWrite and use a main TodoWrite that keeps the finished subagent id', () => {
+    // Arrange
+    const subagent = { subagent: 'c744020fe7d250cca47a5ae1' };
+    const main = [{ content: 'Main step', status: 'in_progress', activeForm: 'Doing the main step' }];
+    const child = [{ content: 'Subagent step', status: 'in_progress', activeForm: 'Doing the subagent step' }];
+    const after = [{ content: 'Main step', status: 'completed', activeForm: 'Doing the main step' },
+      { content: 'Main follow-up', status: 'in_progress', activeForm: 'Doing the main follow-up' }];
+    const rows = [
+      ...todoCall('toolu_main', 1, main),
+      row('agent', 3, envelope({ t: 'tool-call-start', call: 'toolu_agent', name: 'Agent', title: 'Find config', description: 'Find config',
+        args: { description: 'Find config', prompt: 'Find the config file.', subagent_type: 'general-purpose', sessionSubagent: subagent.subagent } })),
+      row('sub-start', 4, envelope({ t: 'start', title: 'Find config' }, subagent)),
+      ...todoCall('toolu_child', 5, child, subagent),
+    ];
+    const finished = [
+      ...rows,
+      row('sub-stop', 7, envelope({ t: 'stop' }, subagent)),
+      row('agent-end', 8, envelope({ t: 'tool-call-end', call: 'toolu_agent' }, subagent)),
+      ...todoCall('toolu_after', 9, after, subagent),
+    ];
+    // Act
+    const running = visibleMessages(rows);
+    const done = visibleMessages(finished);
+    // Assert
+    expect(running.find(message => message.id === 'start-toolu_child')?.toolCalls?.[0]).toMatchObject({ ended: true, sidechain: true });
+    expect(latestTodos(running).map(todo => todo.content)).toEqual(['Main step']);
+    expect(done.find(message => message.id === 'start-toolu_after')?.toolCalls?.[0].sidechain).toBeUndefined();
+    expect(latestTodos(done).map(todo => todo.content)).toEqual(['Main step', 'Main follow-up']);
   });
 
   it('should clear the list after the CLI context reset event', () => {

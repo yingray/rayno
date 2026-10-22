@@ -37,15 +37,16 @@ export function todoProgress(todos: readonly Todo[]) {
   };
 }
 
-// The list from the newest TodoWrite call that finished without an error. A context reset clears the list.
+// The list from the newest main-thread TodoWrite call that finished without an error. A context reset clears the list.
 // Session-protocol tool ends carry no result, so the call input supplies the list, as in TodoView.
+// Subagent calls do not change the list, as in the main-message phase of Happy Web sync/reducer/reducer.ts.
 export function latestTodos(messages: readonly Message[]): Todo[] {
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
     if (message.contextReset) return [];
     const calls = message.toolCalls || [];
     for (let call = calls.length - 1; call >= 0; call--)
-      if (isTodoWrite(calls[call]) && calls[call].ended && !calls[call].isError) return toolTodos(calls[call]);
+      if (isTodoWrite(calls[call]) && calls[call].ended && !calls[call].isError && !calls[call].sidechain) return toolTodos(calls[call]);
   }
   return [];
 }

@@ -2,9 +2,10 @@ export type Agent = 'Claude' | 'Codex' | 'Happy Agent';
 export type Status = 'idle' | 'running' | 'blocked' | 'offline';
 export type Attachment = { name: string; size: number; type: string; file?: File; ref?: string };
 // `tool` is the raw tool name when the label differs. `resultData` is a structured Claude toolUseResult.
-// `ended` marks a call that has its result record.
+// `ended` marks a call that has its result record. `sidechain` marks a call that a subagent made.
 export type ToolCall = {
   id: string; name: string; tool?: string; input?: unknown; result?: unknown; resultData?: unknown; isError?: boolean; ended?: boolean;
+  sidechain?: boolean;
 };
 export type MessageSettings = { model?: string; effort?: string | null; permissionMode?: string };
 export type RecapMode = 'auto' | 'manual';

@@ -202,6 +202,8 @@ function sentSettings(meta: Json): MessageSettings | undefined {
 // Tool calls that move a Claude agent into (true) or out of (false) plan mode, as in Happy sync/messagePlanMode.ts.
 const planTools = new Map([['EnterPlanMode', true], ['enter_plan_mode', true], ['ExitPlanMode', false], ['exit_plan_mode', false]]);
 const normalizedMessages = new WeakMap<MessageRecord, Message | null>();
+const sessionEnvelope = (raw: Json, content: Json) =>
+  raw.role === 'session' ? (content.type === 'session' ? content.data : content) : content.type === 'session' ? content.data : null;
 export function normalizeMessage(row: MessageRecord): Message | null {
   if (normalizedMessages.has(row)) return normalizedMessages.get(row)!;
   const raw = record(row.raw),
@@ -228,14 +230,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       message.sentAt = row.createdAt;
     }
   }
-  const envelope =
-    raw.role === 'session'
-      ? content.type === 'session'
-        ? content.data
-        : content
-      : content.type === 'session'
-        ? content.data
-        : null;
+  const envelope = sessionEnvelope(raw, content);
   if (envelope) {
     message.role = envelope.role === 'user' ? 'user' : 'assistant';
     const event = record(envelope.ev);
@@ -322,25 +317,41 @@ export function normalizeMessage(row: MessageRecord): Message | null {
 }
 export function visibleMessages(rows: MessageRecord[]): Message[] {
   const seen = new Set<string>();
-  const messages = [...rows]
+  const sorted = [...rows]
     .sort((a, b) => a.seq - b.seq)
     .filter((row) => {
       const key = row.localId || row.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    })
-    .map(normalizeMessage)
-    .filter((message): message is Message => !!message);
+    });
+  // The CLI mapper sends a subagent's records between its `start` and `stop` events. Later main records can keep the
+  // subagent id through parentUuid, so only calls inside that window are sidechain calls (Happy Web sync/typesRaw.ts).
+  const active = new Set<string>();
+  const sidechain = new Set<Message>();
+  const messages: Message[] = [];
+  for (const row of sorted) {
+    const raw = record(row.raw), envelope = record(sessionEnvelope(raw, record(raw.content)));
+    const subagent = typeof envelope.subagent === 'string' && envelope.subagent ? envelope.subagent : '';
+    const event = record(envelope.ev);
+    if (subagent && event.t === 'start') active.add(subagent);
+    if (subagent && event.t === 'stop') active.delete(subagent);
+    const message = normalizeMessage(row);
+    if (!message) continue;
+    if (subagent && active.has(subagent) && message.toolCalls) sidechain.add(message);
+    messages.push(message);
+  }
   const results = new Map(messages.flatMap(message => (message.toolResults || []).map(result => [result.id, result] as const)));
   const matched = new Set<string>();
   const rendered = messages.map(message => {
     if (!message.toolCalls) return message;
+    const side = sidechain.has(message);
     return { ...message, toolCalls: message.toolCalls.map(call => {
       const result = results.get(call.id);
-      if (!result) return call;
+      const marked = side ? { ...call, sidechain: true } : call;
+      if (!result) return marked;
       matched.add(call.id);
-      return { ...call, result: result.result, ...(result.data !== undefined ? { resultData: result.data } : {}), isError: result.isError, ended: true };
+      return { ...marked, result: result.result, ...(result.data !== undefined ? { resultData: result.data } : {}), isError: result.isError, ended: true };
     }) };
   });
   const output: Message[] = [];
