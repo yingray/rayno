@@ -39,8 +39,10 @@ function ToolDetails({ tool, detail }: { tool: string; detail: ToolCall }) {
       <h4>Subagent</h4>
       <ol className={styles.subagentWork} aria-label="Subagent work">
         {detail.children.map((child) => <li key={child.id}>
+          {child.thinking ? <p className={styles.subagentThinking}>{child.thinking}</p> : null}
           {child.tools?.length ? <span><Icon name="codeSlash" size={13} />{child.tools.join(', ')}</span> : null}
           {child.content.trim() ? <pre>{child.content}</pre> : null}
+          {child.attachments?.map((file, index) => <span key={index}><Icon name="documentTextOutline" size={13} />{file.name}</span>)}
         </li>)}
       </ol>
     </>}

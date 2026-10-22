@@ -417,10 +417,10 @@ export function visibleMessages(rows: MessageRecord[]): Message[] {
     assigned.set(call, [...assigned.get(call) || [], message]);
   }
   const childrenOf = (call: ToolCall, list: Message[]) => {
-    const children = list.map(join).filter(shows);
-    // V1 drops the first subagent text when it repeats the prompt of the parent call.
-    const prompt = text(record(call.input).prompt).trim();
-    if (prompt && !children[0]?.tools?.length && children[0]?.content.trim() === prompt) children.shift();
+    const children = list.filter(child => shows(child) || !!child.thinking).map(join);
+    // V1 drops a subagent text that repeats the parent prompt, but only as the first row of its work.
+    const prompt = text(record(call.input).prompt).trim(), first = children[0];
+    if (prompt && first && !first.tools?.length && !first.thinking && first.content.trim() === prompt) children.shift();
     return children;
   };
   const rendered = messages.flatMap(message => {

@@ -41,8 +41,9 @@ Like `normalizeSessionEnvelope` in `sync/typesRaw.ts`, Rayno drops an agent sess
 `service` event and a `user-message-accepted` or `user-message-rejected` receipt. None of these three makes a chat row in Rayno.
 
 Subagent work follows `sync/reducer/reducerTracer.ts` and the sidechain phase of `sync/reducer/reducer.ts`: an envelope with a
-`subagent` id goes under the tool call whose `args.sessionSubagent` has that id, and the first subagent text is dropped when it
-repeats the parent prompt. The CLI mapper (`claude/utils/sessionProtocolMapper.ts`, `mapClaudeLogMessageToSessionEnvelopes`)
+`subagent` id goes under the tool call whose `args.sessionSubagent` has that id, and the subagent text is dropped when it
+repeats the parent prompt and is the first row of the work (`isDuplicateSidechainPrompt`). Subagent thinking and file
+attachments stay in the work list; v1 shows sidechain thinking as italic text. The CLI mapper (`claude/utils/sessionProtocolMapper.ts`, `mapClaudeLogMessageToSessionEnvelopes`)
 passes the subagent id on through `parentUuid` (`claude/utils/sdkToLogConverter.ts` chains every row), so the parent tool result
 and all later main rows of the turn carry it too. v1 nests those main rows as well and hides the main answer. Rayno uses the
 `start` and `stop` events instead (`markSubagents`, `subagentOf` in `normalize.ts`): a tagged row belongs to the subagent only

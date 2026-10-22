@@ -39,7 +39,8 @@ test('subagent work and thinking should stay collapsed while the main answer and
   // Assert
   await expect(page.getByText('I should delegate the search.', { exact: true })).toBeVisible();
   await expect(chat.subagentWork()).toBeVisible();
-  await expect(chat.subagentWork().getByRole('listitem')).toHaveCount(2);
+  await expect(chat.subagentWork().getByRole('listitem')).toHaveCount(3);
+  await expect(chat.subagentWork().getByRole('listitem').first()).toHaveText('Look in the root first.');
   await expect(chat.subagentWork()).toContainText('Glob call');
   await expect(chat.subagentWork()).toContainText('Subagent found config.json <options><option>Child option</option></options>');
   await expect(chat.toolGroups().getByRole('group', { name: 'Reply options' })).toHaveCount(0);

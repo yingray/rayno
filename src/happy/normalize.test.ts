@@ -492,7 +492,8 @@ describe('Subagent work in session envelopes', () => {
     ]);
     const [agent] = messages[2]!.toolCalls!;
     expect(agent).toMatchObject({ id: 'toolu_agent', input: { sessionSubagent: 'c744020fe7d250cca47a5ae1' } });
-    expect(agent.children!.map((child) => [child.content, child.toolCalls?.map((call) => call.name)])).toEqual([
+    expect(agent.children!.map((child) => [child.thinking ?? child.content, child.toolCalls?.map((call) => call.name)])).toEqual([
+      ['Look in the root first.', undefined],
       ['', ['Glob call']],
       ['Subagent found config.json <options><option>Child option</option></options>', undefined],
     ]);
@@ -517,6 +518,19 @@ describe('Subagent work in session envelopes', () => {
       'Search the docs for TypeScript 5.6.', 'TypeScript 5.6 adds iterator helpers. <options><option>Task option</option></options>',
     ]);
   });
+  it('should drop a prompt echo only when it is the first subagent row', () => {
+    // Arrange
+    const rows = rowsOf(agentSubagentWork);
+    const echo = rows.findIndex((item) => item.raw.content.subagent && item.raw.content.ev.text === 'Find the config file.');
+    const swapped = [...rows.slice(0, echo), rows[echo + 1]!, rows[echo]!, ...rows.slice(echo + 2)]
+      .map((item, index) => ({ ...item, seq: index + 1 }));
+    // Act
+    const children = (list: typeof swapped) => visibleMessages(list)[2]!.toolCalls![0].children!
+      .map((child) => child.thinking ?? child.tools?.[0] ?? child.content);
+    // Assert
+    expect(children(rows).slice(0, 2)).toEqual(['Look in the root first.', 'Glob call']);
+    expect(children(swapped).slice(0, 2)).toEqual(['Look in the root first.', 'Find the config file.']);
+  });
   it('should show each Codex subagent row once, under the latest collab call before it', () => {
     // Act
     const messages = visibleMessages(rowsOf(codexCollabTurn));
@@ -528,8 +542,8 @@ describe('Subagent work in session envelopes', () => {
       ['The auth handler is in src/auth.ts. <options><option>Open it</option></options>', undefined, undefined],
     ]);
     const [spawn, wait] = [messages[1]!.toolCalls![0], messages[2]!.toolCalls![0]];
-    expect(spawn.children!.map((child) => child.tools?.[0] ?? child.content)).toEqual([
-      'Run `rg login`', 'Found the auth handler. <options><option>Child option</option></options>',
+    expect(spawn.children!.map((child) => child.thinking ?? child.tools?.[0] ?? child.content)).toEqual([
+      'Read the login handler.', 'Run `rg login`', 'Found the auth handler. <options><option>Child option</option></options>',
     ]);
     expect(wait.children!.map((child) => child.content)).toEqual(['Codex subagent completed: found auth handler']);
   });
@@ -543,8 +557,8 @@ describe('Subagent work in session envelopes', () => {
       ...rows.slice(child + 1)].map((item, index) => ({ ...item, seq: index + 1 })));
     // Assert
     const calls = messages.flatMap((message) => message.toolCalls || []);
-    expect(calls.map((call) => [call.name, call.children?.map((item) => item.tools?.[0] ?? item.content)])).toEqual([
-      ['Inspect auth flow', ['Run `rg login`', 'Found the auth handler. <options><option>Child option</option></options>']],
+    expect(calls.map((call) => [call.name, call.children?.map((item) => item.thinking ?? item.tools?.[0] ?? item.content)])).toEqual([
+      ['Inspect auth flow', ['Read the login handler.', 'Run `rg login`', 'Found the auth handler. <options><option>Child option</option></options>']],
       ['Wait for Codex subagent', ['Codex subagent completed: found auth handler']],
     ]);
   });

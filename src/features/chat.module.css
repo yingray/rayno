@@ -1138,8 +1138,9 @@
 .thinkingRow > p { font-family: inherit; font-size: 12px; line-height: 1.6; }
 .subagentWork { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
 .subagentWork > li { min-width: 0; padding-left: 10px; border-left: 1px solid var(--border); }
-.subagentWork > li > span { display: inline-flex; align-items: center; gap: 6px; }
+.subagentWork > li > span { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
 .subagentWork pre { margin: 2px 0 0; }
+.subagentThinking { margin: 0; color: var(--muted); font-style: italic; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
   .thinking > summary { min-height: 44px; }
 }
