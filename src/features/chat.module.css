@@ -1407,6 +1407,13 @@
 
 /* Goal and todo progress above the composer. The open phone keyboard needs the space for the draft. */
 .taskDock:empty { display: none; }
+/* A short landscape phone puts the terminal notice and the goal dock in one row, so the conversation keeps some space. */
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) and (min-width: 600px) {
+  .composerRows { display: flex; align-items: flex-start; gap: 8px; }
+  .composerRows > .terminalControl { flex: 0 1 auto; max-width: 50%; }
+  .composerRows > .terminalControl p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .composerRows > .taskDock { flex: 1 1 0; min-width: 0; }
+}
 @media (max-width: 767px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .chat[data-keyboard-open='true'] .taskDock { display: none; }
 }
@@ -1432,3 +1439,4 @@
 .takeControl { min-height: 44px; font-size: 12px; white-space: nowrap; }
 .chat[data-keyboard-open='true'] .terminalControl small { display: none; }
 @media (max-height: 480px) { .terminalControl small { display: none; } }
+@media (hover: none) and (pointer: coarse) and (max-height: 500px) { .terminalControl { padding-block: 2px; } }

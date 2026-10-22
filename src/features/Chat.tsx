@@ -562,7 +562,6 @@ export const Chat = memo(function Chat({
                 </Button>
               </div>
             )}
-            {mode === 'live' && <TerminalControl session={session} disabled={disabled || pending} />}
             {error && (
               <p className={styles.sendError} role="alert">
                 {error}
@@ -578,9 +577,12 @@ export const Chat = memo(function Chat({
             {mode === 'live' && disabled && connection === 'connected' && (
               <ResumeSession session={session} />
             )}
-            <div className={styles.taskDock}>
-              <TaskDock goal={goal} todos={todos} disabled={mode !== 'live' || connection !== 'connected' || !!offline}
-                onGoalAction={goalAction} />
+            <div className={styles.composerRows}>
+              {mode === 'live' && <TerminalControl session={session} disabled={disabled || pending} />}
+              <div className={styles.taskDock}>
+                <TaskDock goal={goal} todos={todos} disabled={mode !== 'live' || connection !== 'connected' || !!offline}
+                  onGoalAction={goalAction} />
+              </div>
             </div>
             <div className={styles.composer} data-focus-frame
               onInput={stopRecapSpeech}
