@@ -25,9 +25,8 @@ export function todoItems(value: unknown): Todo[] | null {
 export const isTodoWrite = (call: ToolCall) => (call.tool ?? call.name) === 'TodoWrite';
 
 // TodoView: the input list, replaced by the result's newTodos when the result has a valid list.
-export function toolTodos(call: ToolCall): Todo[] {
-  return todoItems(field(call.resultData ?? call.result, 'newTodos')) ?? todoItems(field(call.input, 'todos')) ?? [];
-}
+const validTodos = (call: ToolCall) => todoItems(field(call.resultData ?? call.result, 'newTodos')) ?? todoItems(field(call.input, 'todos'));
+export const toolTodos = (call: ToolCall): Todo[] => validTodos(call) ?? [];
 
 export function todoProgress(todos: readonly Todo[]) {
   return {
@@ -39,14 +38,17 @@ export function todoProgress(todos: readonly Todo[]) {
 
 // The list from the newest main-thread TodoWrite call that finished without an error. A context reset clears the list.
 // Session-protocol tool ends carry no result, so the call input supplies the list, as in TodoView.
-// Subagent calls do not change the list, as in the main-message phase of Happy Web sync/reducer/reducer.ts.
+// Subagent calls and calls without a valid list do not change the list, as in Happy Web sync/reducer/reducer.ts.
 export function latestTodos(messages: readonly Message[]): Todo[] {
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
     if (message.contextReset) return [];
     const calls = message.toolCalls || [];
-    for (let call = calls.length - 1; call >= 0; call--)
-      if (isTodoWrite(calls[call]) && calls[call].ended && !calls[call].isError && !calls[call].sidechain) return toolTodos(calls[call]);
+    for (let index = calls.length - 1; index >= 0; index--) {
+      const call = calls[index];
+      const todos = isTodoWrite(call) && call.ended && !call.isError && !call.sidechain ? validTodos(call) : null;
+      if (todos) return todos;
+    }
   }
   return [];
 }

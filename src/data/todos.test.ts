@@ -56,18 +56,20 @@ describe('todo list', () => {
     expect(todoProgress(latestTodos(messages))).toEqual({ done: 1, total: 3, current: { content: 'Inspect ../sibling-dir boundary', status: 'in_progress' } });
   });
 
-  it('should ignore a running or failed TodoWrite and keep the earlier list', () => {
+  it('should ignore a running, failed, or invalid TodoWrite and keep the earlier list', () => {
     // Arrange
     const rows = [
       legacyCall('first', 1, { todos }), legacyResult('first', 2, { oldTodos: [], newTodos: todos }),
       legacyCall('failed', 3, { todos: [{ content: 'Broken update', status: 'pending' }] }),
       legacyResult('failed', 4, { error: 'InputValidationError' }, true),
       legacyCall('running', 5, { todos: [{ content: 'Not confirmed yet', status: 'pending' }] }),
+      ...todoCall('toolu_invalid', 6, [{ content: 'Wrong status', status: 'done' }]),
     ];
     // Act
     const latest = latestTodos(visibleMessages(rows));
     // Assert
     expect(latest.map(todo => todo.content)).toEqual(todos.map(todo => todo.content));
+    expect(latestTodos(visibleMessages([...rows, ...todoCall('toolu_empty', 8, [])]))).toEqual([]);
   });
 
   it('should ignore a subagent TodoWrite and use a main TodoWrite that keeps the finished subagent id', () => {
