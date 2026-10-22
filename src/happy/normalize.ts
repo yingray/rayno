@@ -197,17 +197,10 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   if (normalizedMessages.has(row)) return normalizedMessages.get(row)!;
   const raw = record(row.raw),
     content = record(raw.content);
-  // V1 skips Claude meta prompts and compact summaries. Subagent records belong to their parent tool, not the main thread.
-  const envelope =
-    raw.role === 'session'
-      ? content.type === 'session'
-        ? content.data
-        : content
-      : content.type === 'session'
-        ? content.data
-        : null;
+  // V1 skips Claude meta prompts and compact summaries. Sidechain records belong to their parent tool, not the main thread.
+  // Session envelopes stay: the CLI also tags main replies after a subagent with its `subagent` id.
   const output = raw.role === 'agent' && content.type === 'output' ? record(content.data) : null;
-  if (output?.isMeta || output?.isCompactSummary || output?.isSidechain || (typeof envelope?.subagent === 'string' && envelope.subagent)) {
+  if (output?.isMeta || output?.isCompactSummary || output?.isSidechain) {
     normalizedMessages.set(row, null);
     return null;
   }
@@ -226,6 +219,14 @@ export function normalizeMessage(row: MessageRecord): Message | null {
       message.sentAt = row.createdAt;
     }
   }
+  const envelope =
+    raw.role === 'session'
+      ? content.type === 'session'
+        ? content.data
+        : content
+      : content.type === 'session'
+        ? content.data
+        : null;
   if (envelope) {
     message.role = envelope.role === 'user' ? 'user' : 'assistant';
     const event = record(envelope.ev);

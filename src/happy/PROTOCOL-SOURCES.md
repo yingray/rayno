@@ -32,10 +32,12 @@ Trailing user text and inline or incomplete examples remain visible. Stop accept
 RPC replies from older CLIs; other reads still require JSON. Encrypted RPC errors reach the caller.
 
 Message records follow `sync/typesRaw.ts` for these CLI shapes. A Claude prompt typed in the terminal shows as a user message.
-Claude meta prompts, compact summaries, sidechain records, and session envelopes with a `subagent` field do not show
-in the main thread and do not change attention. Rayno does not attach them to the parent tool call. Agent `service` text shows
-as agent text. ACP `file-edit` is a tool call, and ACP `terminal-output` is a tool result. A Claude tool result uses the
-stored `toolUseResult` text only when it is a string.
+Claude meta prompts, compact summaries, and sidechain records do not show in the main thread and do not change attention.
+Rayno does not attach them to the parent tool call. Session envelopes with a `subagent` field still show: the CLI mapper
+(`claude/utils/sessionProtocolMapper.ts`) passes the subagent id on through `parentUuid`, so the parent tool result and the
+main reply after a subagent carry it too. Agent `service` text shows as agent text. ACP `file-edit` is a tool call, and ACP
+`terminal-output` is a tool result. A Claude tool result uses the stored
+`toolUseResult` text only when it is a string.
 
 Archive classification follows the overlay's `sync/storage.ts`: a lifecycle marker or an inactive
 non-Rig CLI session belongs in the archive. An inactive Rig session remains live work unless marked.

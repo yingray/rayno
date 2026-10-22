@@ -8,6 +8,7 @@ import {
   weeklyUsage,
 } from './normalize';
 import type { MessageRecord } from './normalize';
+import { agentSubagentTurn } from './subagentEnvelopes.fixture';
 import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
@@ -387,10 +388,9 @@ describe('CLI record formats', () => {
     // Act / Assert
     expect(visibleMessages(rows)).toEqual([]);
   });
-  it('should keep Claude subagent records and session subagent envelopes out of the main thread', () => {
+  it('should keep Claude sidechain records out of the main thread', () => {
     // Arrange
     const sidechain = { ...claude, sessionId: 'a4e5b271-6948-4581-893b-4595c9ec41ea', version: '1.0.71', isSidechain: true };
-    const subagent = 'c55a0d1eccaf1bf1c20ab88d';
     const rows = [
       row('task', 1, output({ ...claude, isSidechain: false, type: 'assistant', uuid: '5d5f20fb-8a18-4c39-8651-561b34ed3e4b',
         message: { role: 'assistant', model: 'claude-opus-4-1-20250805', content: [{ type: 'tool_use', id: 'toolu_01EmKA8FJ7B2Ah9seGxK1Wct',
@@ -400,17 +400,24 @@ describe('CLI record formats', () => {
       row('reply', 3, output({ ...sidechain, parentUuid: '7e733248-6fc5-4581-b3d3-db3741158fdd', type: 'assistant',
         uuid: '317a6037-41ef-4625-8d61-df44e398f533', message: { role: 'assistant', model: 'claude-sonnet-4-20250514',
           content: [{ type: 'text', text: '<options><option>Search more</option></options>' }] } })),
-      row('start', 4, envelope({ t: 'start', title: 'Search TypeScript 5.6 features' }, { subagent })),
-      row('text', 5, envelope({ t: 'text', text: 'Subagent reply' }, { subagent, claudeUuid: '317a6037-41ef-4625-8d61-df44e398f533' })),
-      row('tool', 6, envelope({ t: 'tool-call-start', call: 'toolu_01NeNNHZD5QYiBQCRYTUwhME', name: 'WebSearch',
-        title: 'WebSearch call', description: 'WebSearch call', args: { query: 'TypeScript 5.6' } }, { subagent })),
-      row('service', 7, envelope({ t: 'service', text: 'Codex subagent running: Reading files' }, { subagent })),
     ];
     // Act
     const messages = visibleMessages(rows);
     // Assert
     expect(messages.map((message) => message.id)).toEqual(['task']);
     expect(messages[0]!.tools).toEqual(['Task']);
+  });
+  it('should keep main replies that the CLI tags with the id of a finished subagent', () => {
+    // Arrange
+    const rows = agentSubagentTurn.map((raw, index) => row(raw.content.id, index + 1, raw));
+    // Act
+    const messages = visibleMessages(rows);
+    // Assert
+    expect(messages.map((message) => message.content)).toEqual([
+      '', 'Find the config file.', 'child result <options><option>Child</option></options>',
+      'TURN1 final answer <options><option>Next</option></options>', 'TURN2 answer',
+    ]);
+    expect(messages[0]!.toolCalls).toMatchObject([{ id: 'toolu_agent', name: 'Find config' }]);
   });
   it('should show agent service text and skip a usage-only service event', () => {
     // Arrange
