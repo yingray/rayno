@@ -7,7 +7,7 @@ import styles from './chat.module.css';
 
 // Draft edits must not render the chat header, message list, or model controls.
 export const DraftComposer = memo(function DraftComposer({
-  sessionId, input, archived, needsResume, disabled, offline, pending, hasAttachments, onSend, children,
+  sessionId, input, archived, needsResume, disabled, offline, pending, terminal = false, hasAttachments, onSend, children,
 }: {
   sessionId: string;
   input: RefObject<HTMLTextAreaElement | null>;
@@ -17,6 +17,8 @@ export const DraftComposer = memo(function DraftComposer({
   disabled: boolean;
   offline: boolean;
   pending: boolean;
+  /** The CLI terminal controls the session. A sent message moves control to the app. */
+  terminal?: boolean;
   hasAttachments: boolean;
   onSend: (value: string, dismissKeyboard?: boolean) => Promise<void>;
   children: ReactNode;
@@ -46,7 +48,7 @@ export const DraftComposer = memo(function DraftComposer({
       placeholder={offline && !archived ? 'Draft a message while offline…'
         : disabled ? needsResume ? 'Resume this session to send a message'
           : archived ? 'Restore this session to send a message' : 'This agent is offline'
-          : 'Type a message…'}
+          : terminal ? 'Send a message to take control…' : 'Type a message…'}
       value={value}
       onChange={(event) => dispatch({ type: 'draft', id: sessionId, value: event.target.value })}
       onCompositionStart={() => { composing.current = true; }}

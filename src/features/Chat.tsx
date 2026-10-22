@@ -17,6 +17,7 @@ import { useEventCallback } from '../components/useEventCallback';
 import { DraftComposer } from './DraftComposer';
 import { selectedImages } from '../happy/attachments';
 import { ResumeSession } from './ResumeSession';
+import { TerminalControl } from './TerminalControl';
 import { ChatSessionMenu } from './ChatSessionMenu';
 import { needsSessionResume } from '../happy/resume';
 import { ChatHistoryStatus } from './ChatHistoryStatus';
@@ -471,6 +472,8 @@ export const Chat = memo(function Chat({
                         : connection !== 'connected' ? 'Connect to Happy…'
                           : 'Agent offline · resume this session'
                       : 'Computer offline'
+                  : session.terminalControl
+                    ? 'The terminal controls this session'
                   : running
                     ? 'Working in your workspace'
                     : 'Ready when you are'}
@@ -497,6 +500,7 @@ export const Chat = memo(function Chat({
                 </Button>
               </div>
             )}
+            {mode === 'live' && <TerminalControl session={session} disabled={disabled || pending} />}
             {error && (
               <p className={styles.sendError} role="alert">
                 {error}
@@ -547,7 +551,7 @@ export const Chat = memo(function Chat({
               <DraftComposer
                 sessionId={session.id} input={input} archived={session.archived}
                 needsResume={mode === 'live' && needsSessionResume(session)}
-                disabled={disabled} offline={!!offline} pending={pending}
+                disabled={disabled} offline={!!offline} pending={pending} terminal={mode === 'live' && !!session.terminalControl}
                 hasAttachments={attachments.length > 0} onSend={send}
               >
                 <input
