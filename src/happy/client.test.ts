@@ -343,6 +343,65 @@ describe('Happy client protocol', () => {
     expect(other.storageKey).not.toBe(client.storageKey);
     other.dispose();
   });
+  it('should read only changed sessions after the first complete read', async () => {
+    // Arrange
+    session.updatedAt = 900000;
+    const older = { ...session, id: 'older', updatedAt: 500000 };
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes('/v1/machines')
+        ? response([])
+        : url.includes('/v2/sessions')
+          ? response({ sessions: url.includes('changedSince=') ? [session] : [session, older], hasNext: false })
+          : response({ messages: [], hasMore: false }),
+    );
+    await start();
+    // Act
+    await client.refresh();
+    // Assert
+    const reads = fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/v2/sessions'));
+    expect(reads).toHaveLength(2);
+    expect(reads[0]).not.toContain('changedSince=');
+    expect(reads[1]).toContain('changedSince=870000');
+    expect(client.getSnapshot().sessions.map((session) => session.id).sort()).toEqual(['older', 'session']);
+  });
+  it('should read every session after a reconnect and remove a session that the server deleted', async () => {
+    // Arrange
+    const older = { ...session, id: 'older' };
+    let rows = [session, older];
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes('/v1/machines')
+        ? response([])
+        : url.includes('/v2/sessions')
+          ? response({ sessions: url.includes('changedSince=') ? [] : rows, hasNext: false })
+          : response({ messages: [], hasMore: false }),
+    );
+    await start();
+    rows = [session];
+    // Act
+    await client.refresh();
+    // Assert
+    expect(client.getSnapshot().sessions).toHaveLength(2);
+    // Act
+    socket.handlers.get('disconnect')?.();
+    socket.handlers.get('connect')?.();
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions.map((session) => session.id)).toEqual(['session']),
+      { interval: 1 });
+    const reads = fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/v2/sessions'));
+    expect(reads.at(-1)).not.toContain('changedSince=');
+  });
+  it('should read only the new messages when it checks a session for unread replies', async () => {
+    // Arrange
+    session.seq = 3;
+    await start();
+    session.seq = 5;
+    fetchMock.mockClear();
+    // Act
+    await client.refresh();
+    // Assert
+    const pages = fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/messages?'));
+    expect(pages).toEqual(['https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=3']);
+  });
   it('should reuse the encrypted packet and local ID after a lost send acknowledgement', async () => {
     // Arrange
     await start();

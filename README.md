@@ -110,6 +110,7 @@ Archived Claude and Codex sessions show Resume even when the server still report
 ## Connected features
 
 - Paginated session lists and encrypted message history, with earlier-message loading.
+  After the first complete read, a refresh reads only the sessions that changed. A reconnect or a manual retry reads the complete list again.
 - An encrypted local session list and previously loaded chat pages that remain readable after an offline reload.
 - Encrypted sends with stable local IDs, explicit acknowledgement, retained failed drafts, and deduplicated retries.
 - Socket.IO updates and history catch-up after reconnect. Background tabs announce background state.

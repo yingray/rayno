@@ -40,6 +40,9 @@ import { resumeUnavailable } from './resume';
 import type { Message } from '../data/types';
 
 const emptyJson: Json = Object.freeze({});
+// An incremental session read starts this far before the newest server update
+// that the client has seen, so a late commit with an older timestamp is not lost.
+const SESSION_CHANGE_OVERLAP = 30000;
 
 export type Snapshot = {
   sessions: Session[];
@@ -107,6 +110,8 @@ export class HappyClient implements DemoAdapter {
   private readingSessions = new Set<string>();
   private attentionInitialized = false;
   private refreshRequest: Promise<void> | null = null;
+  private sessionsChangedAt = 0;
+  private fullRefresh = false;
   private presenceRevision = 0;
   private sessionPresence = new Map<string, number>();
   private machinePresence = new Map<string, number>();
@@ -383,13 +388,17 @@ export class HappyClient implements DemoAdapter {
     this.socket.on('connect', () => {
       this.patch({ connection: 'connected', connectionError: '' });
       this.socket?.emit('app-state', { state: activity() });
-      void this.refresh()
+      void this.refresh(this.fullRefresh)
         .then(() =>
           Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward'))),
         )
         .catch((error) => this.patch({ error: messageError(error) }));
     });
-    this.socket.on('disconnect', () => this.patch({ connection: 'disconnected' }));
+    this.socket.on('disconnect', () => {
+      // The socket can miss a delete-session update while it is down.
+      this.fullRefresh = true;
+      this.patch({ connection: 'disconnected' });
+    });
     this.socket.on('connect_error', () =>
       this.patch({
         connection: 'disconnected',
@@ -481,13 +490,24 @@ export class HappyClient implements DemoAdapter {
       await this.refreshRequest;
       return this.refresh();
     }
-    this.refreshRequest = this.refreshRecords().finally(() => {
-      this.refreshRequest = null;
-    });
+    // Read every session on the first load, after a disconnect, and on a manual
+    // retry. Other refreshes read only the sessions that changed. A complete
+    // list is large because each session row carries its encrypted metadata.
+    const full = this.fullRefresh || !this.sessionsChangedAt;
+    this.fullRefresh = false;
+    this.refreshRequest = this.refreshRecords(full)
+      .catch((error) => {
+        if (full) this.fullRefresh = true;
+        throw error;
+      })
+      .finally(() => {
+        this.refreshRequest = null;
+      });
     return this.refreshRequest;
   }
   async retry() {
     if (this.snapshot.offline || this.disposed) return;
+    this.fullRefresh = true;
     this.patch({ retrying: true, error: '', connectionError: '' });
     if (!this.socket?.connected) this.socket?.connect();
     try {
@@ -499,22 +519,27 @@ export class HappyClient implements DemoAdapter {
       this.patch({ retrying: false });
     }
   }
-  private async refreshRecords() {
+  private async refreshRecords(full: boolean) {
     const presenceRevision = this.presenceRevision;
     const [sessionRows, machineRows] = await Promise.all([
-      this.fetchSessions(),
+      this.fetchSessions(full ? 0 : Math.max(1, this.sessionsChangedAt - SESSION_CHANGE_OVERLAP)),
       this.request('/v1/machines'),
     ]);
     const seen = new Set<string>();
+    let changedAt = this.sessionsChangedAt;
     for (const row of sessionRows) {
       seen.add(row.id);
       await this.upsertSession(row, presenceRevision);
+      if (Number.isSafeInteger(row.updatedAt)) changedAt = Math.max(changedAt, row.updatedAt);
     }
-    for (const id of this.sessions.keys())
-      if (!seen.has(id)) {
-        this.sessions.delete(id);
-        this.messages.delete(id);
-      }
+    // Only a complete list shows which sessions the server no longer has.
+    if (full)
+      for (const id of this.sessions.keys())
+        if (!seen.has(id)) {
+          this.sessions.delete(id);
+          this.messages.delete(id);
+        }
+    this.sessionsChangedAt = changedAt;
     const machines = Array.isArray(machineRows) ? machineRows : machineRows.machines;
     if (!Array.isArray(machines))
       throw new Error('The Happy server returned an invalid computer list.');
@@ -569,8 +594,11 @@ export class HappyClient implements DemoAdapter {
     const needAssistant = head > previous.readSeq;
     let foundUser = false, foundAssistant = false;
     let cursor = 2147483647;
+    // The first page needs only the new messages and the boundary message.
+    let limit = boundary >= 0 ? Math.min(100, Math.max(2, head - boundary + 1)) : 100;
     while (!this.disposed && this.sessions.has(id)) {
-      const result = await this.request(`/v3/sessions/${encodeURIComponent(id)}/messages?before_seq=${cursor}&limit=100`);
+      const result = await this.request(`/v3/sessions/${encodeURIComponent(id)}/messages?before_seq=${cursor}&limit=${limit}`);
+      limit = 100;
       if (!Array.isArray(result.messages)) throw new Error('Could not read session activity.');
       let reachedBoundary = false;
       let next = cursor;
@@ -652,13 +680,13 @@ export class HappyClient implements DemoAdapter {
       ? await this.encryption.decrypt<Json>(wire.content.c, source.key) : {};
     return { id: wire.id, seq: wire.seq, localId: wire.localId, createdAt: wire.createdAt, raw };
   }
-  private async fetchSessions() {
+  private async fetchSessions(changedSince: number) {
     const rows: Json[] = [];
     let cursor = '';
     const seen = new Set<string>();
     while (true) {
       const result = await this.request(
-        `/v2/sessions?limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+        `/v2/sessions?limit=200${changedSince ? `&changedSince=${changedSince}` : ''}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
       );
       if (!Array.isArray(result.sessions))
         throw new Error('The Happy server returned an invalid session list.');
@@ -1450,7 +1478,8 @@ export class HappyClient implements DemoAdapter {
         this.assertAlive();
       }
     }
-    await this.refresh();
+    // A refresh that started before the spawn cannot contain the new session.
+    if (!this.sessions.has(pending.sessionId)) await this.refresh(true);
     if (!this.sessions.has(pending.sessionId))
       throw new Error(
         'The session started, but it is not in the list yet. Retry to load the same session.',
