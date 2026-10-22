@@ -26,6 +26,7 @@ import {
   normalizeMessage,
   pendingPermissions,
   allowsSessionScope,
+  isExitPlanTool,
 } from './normalize';
 import type { History, Json, MachineRecord, MessageRecord, SessionRecord } from './normalize';
 import { MACHINE_HEALTH_SCRIPT, parseMachineHealth } from './machineHealth';
@@ -33,7 +34,7 @@ import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
 import { permissionOptions, canSelectPermission, resolveNewSessionPermission } from './permissionOptions';
-import { latestAgentMode, latestSentModes, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
+import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
 import { attentionMessage, receiveAttention, restoreAttention, mergeAttention, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
@@ -1342,10 +1343,19 @@ export class HappyClient implements DemoAdapter {
     const codex = sessionSource.metadata.flavor === 'codex';
     const args = record(request.arguments);
     const tool = request.tool === 'Bash' && typeof args.command === 'string' ? `Bash(${args.command})` : request.tool;
+    // A plain plan approval puts Claude in default mode; return to the mode from before plan instead.
+    let mode: string | undefined;
+    if (approved && !codex && isExitPlanTool(request.tool)) {
+      let saved: SessionModes | null = null;
+      try { saved = JSON.parse(this.readLocal(`composerModes.${id}`) || 'null'); } catch { /* Ignore an invalid saved choice. */ }
+      mode = modeBeforePlan(saved, this.snapshot.sessions.find(session => session.id === id)?.messages || [],
+        currentPermission(sessionSource.metadata), sessionSource.metadata);
+    }
     await this.rpc(id, 'permission', {
       id: requestId, approved,
       decision: approved ? sessionScope && codex ? 'approved_for_session' : 'approved' : 'denied',
       ...(approved && sessionScope && !codex && allowsSessionScope(request.tool) ? { allowTools: [tool] } : {}),
+      ...(mode ? { mode } : {}),
       ...(updatedInput ? { updatedInput } : {}),
     });
     this.acknowledged.add(key);

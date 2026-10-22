@@ -40,8 +40,11 @@ export function resolveModelChoice(metadata: Json, candidates: (Partial<ModelCho
   return { model, effort: effort || defaultEffort(metadata, model) };
 }
 
-/** Composer modes that the user picked for one session. `at` is absent in values that older builds saved on every render. */
-export type SessionModes = { model?: string; effort?: string | null; permission?: string | null; at?: number };
+/**
+ * Composer modes that the user picked for one session. `at` is absent in values that older builds saved on every render.
+ * `agentCall` is the call of the agent mode change (`latestAgentMode`) that the pick saw.
+ */
+export type SessionModes = { model?: string; effort?: string | null; permission?: string | null; at?: number; agentCall?: string };
 export type SentModes = MessageSettings & { sentAt: number };
 
 export function latestSentModes(messages: Message[]): SentModes | undefined {
@@ -53,24 +56,43 @@ export function latestSentModes(messages: Message[]): SentModes | undefined {
   return undefined;
 }
 
-export type AgentModeChange = { permission: string; at: number };
+export type AgentModeChange = { permission: string; at: number; call: string };
 
 /**
  * The permission mode that the agent took itself, as Happy Web applies it (sync.ts, PermissionFooter.tsx):
- * EnterPlanMode starts plan mode. An approved ExitPlanMode ends it with the approved mode, as the CLI applies it.
+ * EnterPlanMode starts plan mode. An approved ExitPlanMode ends it with the approved mode (see `modeBeforePlan`), else default.
  */
 export function latestAgentMode(messages: Message[], agentState: Json, metadata: Json): AgentModeChange | undefined {
+  const options = permissionOptions(metadata).filter((option) => !option.disabled).map((option) => option.value);
   for (let index = messages.length - 1; index >= 0; index--) {
     const plan = messages[index].planMode;
     if (!plan) continue;
-    const exit = record(record(agentState.completedRequests)[plan.call]);
-    if (!plan.active && exit.status !== 'approved') continue;
-    const permission = plan.active ? 'plan'
-      : ['default', 'acceptEdits', 'bypassPermissions'].includes(exit.mode) ? exit.mode : 'default';
-    return permissionOptions(metadata).some((option) => option.value === permission && !option.disabled)
-      ? { permission, at: plan.at } : undefined;
+    const request = record(record(agentState.completedRequests)[plan.call]);
+    // claude/utils/permissionHandler.ts asks before EnterPlanMode outside bypass and plan modes.
+    if (plan.active ? request.status === 'denied' || request.status === 'canceled'
+      || (!request.status && plan.call in record(agentState.requests)) : request.status !== 'approved') continue;
+    const permission = plan.active ? 'plan' : request.mode !== 'plan' && options.includes(request.mode) ? request.mode : 'default';
+    return options.includes(permission) ? { permission, at: plan.at, call: plan.call } : undefined;
   }
   return undefined;
+}
+
+/** The newest picked or sent mode other than plan. An approved ExitPlanMode returns to it. */
+export function modeBeforePlan(
+  saved: SessionModes | null | undefined,
+  messages: Message[],
+  inheritedPermission: string | undefined,
+  metadata: Json,
+): string | undefined {
+  const usable = (mode: unknown): mode is string => typeof mode === 'string' && mode !== 'plan'
+    && permissionOptions(metadata).some((option) => option.value === mode && !option.disabled);
+  const picked = typeof saved?.at === 'number' && usable(saved.permission) ? saved.permission : undefined;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    const mode = message.role === 'user' ? message.settings?.permissionMode : undefined;
+    if (usable(mode)) return picked && saved!.at! >= (message.sentAt ?? 0) ? picked : mode;
+  }
+  return picked ?? (usable(inheritedPermission) ? inheritedPermission : undefined);
 }
 
 /**
@@ -99,8 +121,9 @@ export function rankSessionModes(
   if (pickedFirst && 'permission' in picked) permission = picked.permission;
   else if (sent?.permissionMode) permission = sent.permissionMode;
   else if (picked && 'permission' in picked) permission = picked.permission;
-  if (agentMode && (!picked || agentMode.at > picked.at!) && (!sent || agentMode.at > sent.sentAt))
-    permission = agentMode.permission;
+  // A pick that saw this agent call is newer, whatever the browser clock says.
+  if (agentMode && (!picked || (picked.agentCall !== agentMode.call && agentMode.at > picked.at!))
+    && (!sent || agentMode.at > sent.sentAt)) permission = agentMode.permission;
   return {
     modelCandidates: ordered as (Partial<ModelChoice> | undefined)[],
     legacy,

@@ -74,12 +74,16 @@ own account store, separate by agent and, for legacy Happy Agent sessions, by co
 retain their explicit session choices. Happy Agent is hidden from new-session and agent-switch controls.
 
 Plan mode follows `sync/messagePlanMode.ts`, `sync/sync.ts` (`enteredPlanMode`), and
-`components/tools/PermissionFooter.tsx`. The Claude CLI does not report a mode that Claude takes itself, and
-each message's `meta.permissionMode` resets the SDK mode (`claudeRemoteLauncher.ts`, `handleModeChange`).
-`latestAgentMode` reads the last `EnterPlanMode` tool call as `plan`. An `ExitPlanMode` call counts only after
-`completedRequests[call].status` is `approved`; it gives the approved `mode`, else `default`, as
-`claude/utils/permissionHandler.ts` applies it. That mode replaces a pick or a sent message only when the
-server time of its tool-call message is newer.
+`components/tools/PermissionFooter.tsx`. The Claude CLI does not report a mode that Claude takes itself.
+`handleModeChange` (`claude/utils/permissionHandler.ts`) pushes a message's `meta.permissionMode` into the SDK
+only when it differs from the handler mode, so a repeated mode does not end plan mode. `latestAgentMode` reads
+the last `EnterPlanMode` tool call as `plan`, unless its request is pending, `denied`, or `canceled`. An
+`ExitPlanMode` call counts only after `completedRequests[call].status` is `approved`; it gives the approved
+`mode`, else `default`. Rayno has no plan approval buttons for other modes, so an `ExitPlanMode` approval sends
+`mode` set to the newest picked or sent mode other than `plan` (`modeBeforePlan`). Without it, the CLI puts a
+yolo session in `default`. The agent mode replaces a sent message when its tool-call message has a newer server
+time. It replaces a pick when it is newer and the pick did not see its call (`agentCall`). As in
+`PermissionFooter.tsx`, edit tools and `ExitPlanMode` have no session approval, so each plan exit asks the user.
 
 New-session permission choices use the same CLI catalogs as chat. Rayno retains the latest explicit choice
 for each agent in its account store and uses Auto when no valid choice exists. The machine's

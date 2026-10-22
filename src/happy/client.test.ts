@@ -187,6 +187,39 @@ describe('Happy client protocol', () => {
       const [, payload] = socket.emitWithAck.mock.calls.find(([event]) => event === 'rpc-call')!;
       expect(await client.encryption.decrypt(payload.params, null)).not.toHaveProperty('allowTools');
     });
+  it('should return to the mode from before plan when the user approves ExitPlanMode', async () => {
+    // Arrange: claude/utils/permissionHandler.ts applies response.mode after an approved ExitPlanMode.
+    session.agentState = await client.encryption.encrypt({ requests: { toolu_2: { tool: 'ExitPlanMode', arguments: { plan: 'Plan' }, createdAt: 1 } } }, null);
+    await start();
+    for (const [seq, permissionMode] of [[1, 'bypassPermissions'], [2, 'plan']] as const) {
+      const message = { id: `m${seq}`, seq, createdAt: 200 + seq, content: { t: 'encrypted', c: await client.encryption.encrypt(
+        { role: 'user', content: { type: 'text', text: 'Go' }, meta: { sentFrom: 'web', permissionMode } }, null) } };
+      socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message } });
+    }
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages).toHaveLength(2));
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt(undefined, null) });
+    // Act
+    await client.respondPermission('session', 'toolu_2', true);
+    // Assert
+    const [, payload] = socket.emitWithAck.mock.calls.find(([event]) => event === 'rpc-call')!;
+    expect(await client.encryption.decrypt(payload.params, null))
+      .toEqual({ id: 'toolu_2', approved: true, decision: 'approved', mode: 'bypassPermissions' });
+  });
+  it('should send no plan exit mode for a denial or without a mode from before plan', async () => {
+    // Arrange
+    session.agentState = await client.encryption.encrypt({ requests: {
+      a: { tool: 'ExitPlanMode', arguments: {}, createdAt: 1 }, b: { tool: 'ExitPlanMode', arguments: {}, createdAt: 1 } } }, null);
+    await start();
+    client.writeLocal('composerModes.session', JSON.stringify({ permission: 'plan', at: 1 }));
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt(undefined, null) });
+    // Act
+    await client.respondPermission('session', 'a', false);
+    await client.respondPermission('session', 'b', true);
+    // Assert
+    const sent = await Promise.all(socket.emitWithAck.mock.calls.filter(([event]) => event === 'rpc-call')
+      .map(([, payload]) => client.encryption.decrypt(payload.params, null)));
+    expect(sent).toEqual([{ id: 'a', approved: false, decision: 'denied' }, { id: 'b', approved: true, decision: 'approved' }]);
+  });
   it('should reject a damaged permission reply and keep the request open', async () => {
     // Arrange
     session.agentState = await client.encryption.encrypt({ requests: { 'tool-1': { tool: 'Read', arguments: {}, createdAt: 1 } } }, null);

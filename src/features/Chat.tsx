@@ -164,8 +164,8 @@ export const Chat = memo(function Chat({
     : {}, [mode, model, efforts.length, selectedEffort, selectedPermission]);
 
   // Save only explicit picks. A value saved on every render would outrank the modes of later messages.
-  function pickModes(value: Omit<SessionModes, 'at'>) {
-    const next = { model, effort: selectedEffort, permission: selectedPermission, ...value, at: Date.now() };
+  function pickModes(value: Omit<SessionModes, 'at' | 'agentCall'>) {
+    const next = { model, effort: selectedEffort, permission: selectedPermission, ...value, at: Date.now(), agentCall: agentMode?.call };
     setSavedModes(next);
     try {
       const json = JSON.stringify(next);
