@@ -46,6 +46,8 @@ export class HappyServer {
   permissionReplies = 0;
   permissionPayloads: Json[] = [];
   resumeRequests: Json[] = [];
+  switchRequests: Json[] = [];
+  switchReply: unknown = undefined;
   resumeFailure = false;
   uploadMethod: 'PUT' | 'POST' = 'PUT';
   uploadFailure = false;
@@ -439,6 +441,11 @@ export class HappyServer {
             this.sessions.unshift(session);
             result = { type: 'success', sessionId: session.id };
             }
+          }
+          if (payload.method.endsWith(':switch')) {
+            // claudeLocalLauncher.ts registers a void handler. runClaude.ts reports the new mode after the launcher exits.
+            result = this.switchReply;
+            this.switchRequests.push(params);
           }
           if (payload.method.endsWith(':resume-happy-session')) {
             this.resumeRequests.push(params);

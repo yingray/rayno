@@ -37,6 +37,14 @@ export const isRig = (metadata: Json) => metadata.client?.id === 'rig' || metada
 // A disconnected Rig session remains visible until it is explicitly archived.
 export const isSessionArchived = ({ wire, metadata }: SessionRecord) =>
   metadata.lifecycleState === 'archived' || (!isRig(metadata) && !wire.active);
+// The Claude CLI sets controlledByUser while it runs in local mode, in the terminal. Rig sessions have no terminal mode.
+export const terminalControls = (metadata: Json, agentState: Json) =>
+  !isRig(metadata) && agentState.controlledByUser === true;
+// A handoff in either direction, as in Happy Web sync/controlHandoff.ts. A missing previous value counts as app control.
+export function controlHandoff(previous: unknown, next: unknown): 'terminal' | 'app' | null {
+  if (next === true && previous !== true) return 'terminal';
+  return previous === true && next === false ? 'app' : null;
+}
 export function currentModel(metadata: Json): string {
   const mode = record(metadata.draft || metadata.lastMode);
   const provider = mode.providerId || metadata.currentModelProviderId || metadata.model?.providerId;
@@ -204,6 +212,7 @@ export function normalizeSession(
     // Happy Web utils/sessionActivity.ts: an older CLI omits the agent time, so use this device's last send.
     lastActivityAt: m.lastMeaningfulMessageAt ?? lastSentAt ?? wire.createdAt,
     machineOffline: machine ? !machine.wire.active : false,
+    terminalControl: !!wire.active && terminalControls(m, a),
     isSideChat: m.isSideChat === true,
     sideChatClosed: m.isSideChat === true && m.lifecycleState === 'archived',
     parentSessionId: typeof m.parentSessionId === 'string' && m.parentSessionId ? m.parentSessionId : undefined,

@@ -264,3 +264,13 @@ Subagent TodoWrite calls do not change the chip, as Happy Web skips sidechain me
 between a subagent's `start` and `stop` under the parent tool call (`subagentOf`), so the chip does not see them. The CLI
 mapper keeps the id on later main records through `parentUuid`, so a call after `stop` still counts as a main call. The
 TodoWrite row shows its list in the row; the generic structured result view (`../data/toolResults.ts`) is the fallback.
+
+Terminal control follows `components/ChatFooter.tsx`, `components/ChatList.tsx`, `app/(app)/session/[id]/info.tsx`,
+`sync/controlHandoff.ts`, `sync/rig.ts` (`usesControlledSessionUi`), and `sessionSwitch` in `sync/ops.ts`. The Claude CLI
+(`claude/runClaude.ts`) writes `agentState.controlledByUser` as `mode === 'local'` at start and on each mode change, and sends
+a `switch` session event. Rayno shows terminal control only for a connected non-Rig session. The composer stays usable:
+`claude/claudeLocalLauncher.ts` moves to remote mode when a message reaches its queue. Take control sends the void `switch`
+RPC with `{ to: 'remote' }`. The CLI handlers ignore `to` and toggle the mode (`claudeRemoteLauncher.ts` moves back to
+local), so Rayno sends it only while the newest agent state reports terminal control, and at most once per agent-state
+version for 15 seconds. Rayno does not offer the move back to the terminal; Happy Web has no such control, and a
+daemon-started CLI has no terminal. A control handoff reads newer history for an open chat, as `sync/sync.ts` does.

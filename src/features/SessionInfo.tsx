@@ -87,6 +87,12 @@ export function SessionInfo({
     mobile?: boolean;
   }[] = [
     { icon: 'pencilOutline', label: 'Rename', run: () => setRenaming(true), mobile: true },
+    ...(live && session.terminalControl ? [{
+      icon: 'terminalOutline' as const,
+      label: 'Take control',
+      detail: 'From the terminal',
+      run: () => void run(() => live.takeControl(session.id), () => notify('Rayno asked the terminal to hand over control.')),
+    }] : []),
     {
       icon: 'gitCompareOutline',
       label: 'View changes',
@@ -174,6 +180,7 @@ export function SessionInfo({
               <span style={{ color: machine?.online ? 'var(--green)' : 'var(--muted)' }}>
                 <i />
                 {machine?.online ? 'Online' : 'Offline'} · {session.agent}
+                {session.terminalControl && ' · Terminal control'}
               </span>
             </div>
           </div>

@@ -61,6 +61,8 @@ export type Session = {
   updatedAt: number;
   lastActivityAt?: number;
   machineOffline?: boolean;
+  // The connected CLI runs in local mode, so its terminal controls the session.
+  terminalControl?: boolean;
   // A side chat is a hidden fork that the parent chat shows. Normal forks also carry a parent.
   isSideChat?: boolean;
   parentSessionId?: string;
@@ -174,4 +176,6 @@ export interface DemoAdapter {
   stopSession(id: string): void | Promise<void>;
   refreshMonitor(): Promise<void>;
   killSession?(id: string): Promise<void>;
+  // Move control of a local-mode CLI session from its terminal to the remote clients.
+  takeControl?(id: string): Promise<void>;
 }
