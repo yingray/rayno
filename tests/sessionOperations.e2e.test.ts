@@ -81,3 +81,62 @@ test('a bot should archive through its agent only and offer no delete action', a
   expect(server.mutations).toEqual(['real-session:killSession']);
   expect(server.bashCommands).toEqual([]);
 });
+
+test('fork should ask before it creates a missing folder and start once after Create folder', async ({ page }, testInfo) => {
+  // Arrange
+  const server = new HappyServer();
+  server.missingDirectories = ['/real/project'];
+  await server.install(page);
+  await server.updateMetadata({ claudeSessionId: 'original-provider-id' });
+  const workspace = new SessionOperationsPage(page);
+  const touch = !!testInfo.project.use.hasTouch;
+  const folder = page.getByRole('dialog', { name: 'Create this folder?', exact: true });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await workspace.openSession();
+  const sizes = touch ? phoneSizes : desktopSizes;
+  // Act / Assert
+  for (const [width, height] of sizes) {
+    await page.setViewportSize({ width, height });
+    await workspace.openActions(); await workspace.chooseAction('Fork');
+    await workspace.expectPromptUsable(folder, '/real/project', ['Close Create this folder?', 'Cancel', 'Create folder']);
+    if (width === 320 || width === 844 || width === 1440) await workspace.capture(`${testInfo.project.name}-fork-folder-${width}`);
+    await workspace.press(folder, 'Cancel', touch);
+    await expect(folder).toBeHidden();
+    await expect(page).toHaveURL(/\/session\/real-session$/);
+  }
+  // Act
+  await workspace.openActions(); await workspace.chooseAction('Fork');
+  await workspace.press(folder, 'Create folder', touch);
+  // Assert
+  await expect(page).toHaveURL(/\/session\/created-session$/);
+  expect(server.branchCalls.map((call) => call.method)).toEqual(['computer:claude-fork-session']);
+  expect(server.spawns).toHaveLength(sizes.length + 2);
+  expect(server.spawns.slice(0, -1).every((spawn) => !spawn.approvedNewDirectoryCreation)).toBe(true);
+  expect(server.spawns.at(-1)).toMatchObject({ directory: '/real/project', approvedNewDirectoryCreation: true,
+    resumeClaudeSessionId: 'copied-claude-id', parentSessionId: 'real-session' });
+});
+
+test('duplicate should replace its picker with the folder question and start after Create folder', async ({ page }, testInfo) => {
+  // Arrange
+  const server = new HappyServer();
+  server.missingDirectories = ['/real/project'];
+  await server.install(page);
+  await server.updateMetadata({ claudeSessionId: 'original-provider-id' });
+  const workspace = new SessionOperationsPage(page);
+  const touch = !!testInfo.project.use.hasTouch;
+  const folder = page.getByRole('dialog', { name: 'Create this folder?', exact: true });
+  await workspace.openSession();
+  // Act
+  await workspace.openActions(); await workspace.chooseAction('Duplicate');
+  await workspace.selectPoint('Message 17:'); await workspace.confirmDuplicate();
+  // Assert
+  await workspace.expectPromptUsable(folder, '/real/project', ['Cancel', 'Create folder']);
+  await expect(workspace.duplicateDialog()).toHaveCount(0);
+  // Act
+  await workspace.press(folder, 'Create folder', touch);
+  // Assert
+  await expect(page).toHaveURL(/\/session\/created-session$/);
+  expect(server.branchCalls).toEqual([{ method: 'computer:claude-duplicate-session',
+    params: expect.objectContaining({ cutAfterUuid: 'claude-17' }) }]);
+  expect(server.spawns.map((spawn) => spawn.approvedNewDirectoryCreation)).toEqual([false, true]);
+});

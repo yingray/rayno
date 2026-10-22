@@ -866,6 +866,35 @@ describe('Happy client protocol', () => {
     await expect(client.branchSession('session', 'duplicate', undefined, {})).rejects.toThrow('Choose a message');
     expect(socket.emitWithAck).not.toHaveBeenCalled();
   });
+  it('should ask before a fork creates a missing folder and retry the spawn with the same copied conversation', async () => {
+    // Arrange
+    metadata.claudeSessionId = 'provider-session';
+    session.metadata = await client.encryption.encrypt(metadata, null);
+    const originalFetch = fetchMock.getMockImplementation()! as (url: string) => Promise<Response>;
+    const machine = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({}, null) };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/v1/machines') ? response([machine]) : originalFetch(url));
+    await start(); socket.handlers.get('connect')?.(); await client.refresh();
+    // Wire shapes from happy-cli claude/utils/forkSession.ts and daemon/run.ts spawnSession.
+    socket.emitWithAck
+      .mockResolvedValueOnce(await rpcReply({ type: 'success', newClaudeSessionId: 'copied-session' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'requestToApproveDirectoryCreation', directory: '/real/project' }))
+      .mockResolvedValueOnce(await rpcReply({ type: 'success', sessionId: 'session' }));
+    const params = (call: number) => client.encryption.decrypt<Json>(socket.emitWithAck.mock.calls[call][1].params, null);
+    // Act
+    const asked = await client.branchSession('session', 'fork', undefined, {}).catch((error) => error);
+    // Assert
+    expect(asked).toBeInstanceOf(DirectoryApprovalError);
+    expect(asked.directory).toBe('/real/project');
+    expect(await params(1)).toMatchObject({ directory: '/real/project', approvedNewDirectoryCreation: false, resumeClaudeSessionId: 'copied-session' });
+    // Act
+    await expect(client.branchSession('session', 'fork', undefined, {}, true)).resolves.toBe('session');
+    // Assert
+    expect(socket.emitWithAck.mock.calls.map(([, payload]) => payload.method)).toEqual([
+      'computer:claude-fork-session', 'computer:spawn-happy-session', 'computer:spawn-happy-session']);
+    expect(await params(2)).toMatchObject({ directory: '/real/project', approvedNewDirectoryCreation: true,
+      resumeClaudeSessionId: 'copied-session', parentSessionId: 'session' });
+  });
 });
 // A ciphertext that no account or session key opens.
 const damaged = base64(new Uint8Array(48).fill(9));

@@ -124,6 +124,8 @@ The selected computer's `happyCliVersion` gates the fixed new-session catalog, a
 from `hooks/useStartSessionFromDraft.ts`: a CLI older than `1.2.1-beta.2` does not get Auto. Model and effort catalogs have no version gate there.
 When the daemon answers `requestToApproveDirectoryCreation` (`happy-cli/src/daemon/run.ts`), Rayno asks before it creates
 the folder. The approved retry sends the same draft with `approvedNewDirectoryCreation: true` and keeps the pending request ID.
+Fork and Duplicate use the same question. Happy Web `forkAndSpawn` shows that reply as a generic error instead. The
+approved retry reuses the copied provider conversation and sends only the second `spawn-happy-session` call.
 
 `offlineCache.ts` adds independent, account-scoped IndexedDB persistence for session/machine records and loaded history pages.
 Each cached payload uses the existing account encryption helper. No bearer token or plaintext message body enters the database.

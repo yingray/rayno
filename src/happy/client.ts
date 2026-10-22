@@ -1332,15 +1332,18 @@ export class HappyClient implements DemoAdapter {
       return typeof key === 'string' && key ? [{ id: key, text: text.trim() === RECAP_REQUEST ? 'Recap' : text, timestamp: Number(point.timestamp) || 0 }] : [];
     }).reverse();
   }
-  branchSession(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
+  // Rejects with DirectoryApprovalError until the user approves a missing folder. The retry keeps the copied conversation.
+  branchSession(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings,
+    approvedNewDirectoryCreation = false): Promise<string> {
     const key = JSON.stringify([id, kind, point]);
     const existing = this.branching.get(key);
     if (existing) return existing;
-    const pending = this.performBranch(id, kind, point, options).finally(() => this.branching.delete(key));
+    const pending = this.performBranch(id, kind, point, options, approvedNewDirectoryCreation).finally(() => this.branching.delete(key));
     this.branching.set(key, pending);
     return pending;
   }
-  private async performBranch(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings): Promise<string> {
+  private async performBranch(id: string, kind: 'fork' | 'duplicate', point: string | undefined, options: MessageSettings,
+    approvedNewDirectoryCreation: boolean): Promise<string> {
     if (this.snapshot.connection !== 'connected' || this.snapshot.offline) throw new Error('Reconnect before you create a session.');
     const reason = this.branchUnavailable(id);
     if (reason) throw new Error(reason);
@@ -1383,13 +1386,15 @@ export class HappyClient implements DemoAdapter {
       if (this.branchUnavailable(id) || this.getSession(id).metadata.machineId !== machineId) throw new Error('The original computer is no longer available.');
       pending.spawnUnknown = true; save();
       const result = await this.rpc(machineId, 'spawn-happy-session', {
-        type: 'spawn-in-directory', directory, agent: codex ? 'codex' : 'claude', approvedNewDirectoryCreation: false,
+        type: 'spawn-in-directory', directory, agent: codex ? 'codex' : 'claude', approvedNewDirectoryCreation,
         [codex ? 'resumeCodexThreadId' : 'resumeClaudeSessionId']: pending.providerId,
         parentSessionId: id, modelMode: pending.model, permissionMode: pending.permissionMode,
         ...(pending.effort ? { effortLevel: pending.effort } : {}),
       }, true);
       if (result.type !== 'success' || typeof result.sessionId !== 'string') {
         pending.spawnUnknown = false; save();
+        if (result.type === 'requestToApproveDirectoryCreation')
+          throw new DirectoryApprovalError(typeof result.directory === 'string' && result.directory ? result.directory : directory);
         throw new Error(result.errorMessage || 'The new session did not start. Retry to use the same copied conversation.');
       }
       pending.sessionId = result.sessionId; save();

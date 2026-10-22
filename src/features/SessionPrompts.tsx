@@ -4,6 +4,21 @@ import { useDemo } from '../data/store';
 import { messageError } from '../happy/errors';
 import styles from './sessionPrompts.module.css';
 
+// The daemon asks before it creates a missing folder for a new, forked, or duplicated session.
+export function FolderApprovalDialog({ directory, machineName, busy = false, error = '', onCancel, onCreate }: {
+  directory: string; machineName?: string; busy?: boolean; error?: string; onCancel: () => void; onCreate: () => void;
+}) {
+  return <Dialog title="Create this folder?" className={styles.prompt} onClose={() => { if (!busy) onCancel(); }}>
+    <p>This folder does not exist on {machineName || 'the selected computer'}. Create it and start the session?</p>
+    <code className={styles.path}>{directory}</code>
+    {error && <p role="alert">{error}</p>}
+    <footer>
+      <Button disabled={busy} onClick={onCancel}>Cancel</Button>
+      <Button variant="accent" icon="folderOutline" disabled={busy} onClick={onCreate}>{busy ? 'Starting…' : 'Create folder'}</Button>
+    </footer>
+  </Dialog>;
+}
+
 type CleanupPrompt = { id: string; path: string; action: () => Promise<void> | void; resolve: (done: boolean) => void };
 
 /**
