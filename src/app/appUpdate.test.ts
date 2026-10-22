@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { checkForUpdate, compareBuild, currentBuild, forceUpdate, formatBuildTime, parseBuild } from './appUpdate';
+import {
+  checkForUpdate, compareBuild, currentBuild, forceUpdate, formatBuildTime, isChunkError, parseBuild, recoverShell,
+} from './appUpdate';
 
 const latest = { commit: 'abc1234', builtAt: '2026-10-22T09:17:22.000Z' };
 const serve = (body: unknown, ok = true) =>
@@ -69,6 +71,48 @@ describe('App update', () => {
     const result = await forceUpdate(reload);
     // Assert
     expect(result.status).toBe('available');
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('should treat only screen chunk load failures as chunk errors', () => {
+    // Arrange
+    const errors = [
+      new TypeError('Failed to fetch dynamically imported module: https://rayno.test/assets/Chat-old.js'),
+      new TypeError('Importing a module script failed.'),
+      new TypeError("'text/html' is not a valid JavaScript MIME type."),
+      new TypeError("Cannot read properties of undefined (reading 'id')"),
+      'Importing a module script failed.',
+    ];
+    // Act
+    const results = errors.map(isChunkError);
+    // Assert
+    expect(results).toEqual([true, true, true, false, false]);
+  });
+
+  it('should clear the shell caches and reload when the page is online', async () => {
+    // Arrange
+    const names = ['rayno-precache-v2', 'rayno-diagrams', 'workbox-runtime', 'account-data'];
+    const remove = vi.fn(async (_name: string) => true);
+    vi.stubGlobal('caches', { keys: async () => names, delete: remove });
+    vi.stubGlobal('navigator', { onLine: true });
+    const reload = vi.fn();
+    // Act
+    await recoverShell(reload);
+    // Assert
+    expect(remove.mock.calls.map(([name]) => name)).toEqual(names.slice(0, 3));
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('should keep the cached shell and only reload when the page is offline', async () => {
+    // Arrange
+    const remove = vi.fn(async (_name: string) => true);
+    vi.stubGlobal('caches', { keys: async () => ['rayno-precache-v2'], delete: remove });
+    vi.stubGlobal('navigator', { onLine: false });
+    const reload = vi.fn();
+    // Act
+    await recoverShell(reload);
+    // Assert
+    expect(remove).not.toHaveBeenCalled();
     expect(reload).toHaveBeenCalledOnce();
   });
 });

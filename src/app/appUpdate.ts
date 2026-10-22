@@ -65,6 +65,22 @@ async function clearShell(registration: ServiceWorkerRegistration | undefined) {
     .map((name) => caches.delete(name)));
 }
 
+// Browsers report a missing or non-JavaScript screen chunk with these messages.
+const CHUNK_ERROR = /dynamically imported module|Importing a module script failed|not a valid JavaScript MIME type|Failed to load module script/i;
+export const isChunkError = (error: unknown) => error instanceof Error && CHUNK_ERROR.test(error.message);
+
+// A screen chunk of the running release is not available. Clear the shell, so the reload uses the server's release.
+// Without a connection, keep the shell for offline use and only reload.
+export async function recoverShell(reload: () => void = () => window.location.reload()) {
+  if (navigator.onLine) {
+    const registration = 'serviceWorker' in navigator
+      ? await navigator.serviceWorker.getRegistration().catch(() => undefined)
+      : undefined;
+    await clearShell(registration).catch(() => undefined);
+  }
+  reload();
+}
+
 // Install the server's release, then reload. A failed install clears the shell, so the reload uses the network.
 // Without a connection, nothing changes: the cached shell must stay for offline use.
 export async function forceUpdate(reload: () => void = () => window.location.reload()): Promise<UpdateCheck> {

@@ -243,7 +243,8 @@ The Pages build image does not read the pnpm version from `package.json` or the 
 
 Pages has no top-level `404.html` here, so it serves `index.html` for every unknown path.
 Routes such as `/session/<id>` work after a reload.
-A missing file under `/assets/` also returns `index.html` with status 200, not 404.
+`public/assets/404.html` makes a missing file under `/assets/` return status 404, not `index.html`.
+A page from an old release then gets a clear load failure. The screen error clears the shell and reloads once.
 
 Every Pages deployment, including each preview URL, is a separate origin.
 Each origin needs its own login.
