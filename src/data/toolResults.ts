@@ -95,16 +95,18 @@ function structured(call: ToolCall, result: Json): ToolSection[] {
   }
   const file = record(result.file);
   if (result.file && (typeof file.filePath === 'string' || typeof file.content === 'string' || typeof file.base64 === 'string')) {
-    if (result.type === 'image' || typeof file.base64 === 'string')
+    if (result.type === 'image')
       return [{ kind: 'note', text: `Image${str(file.type) ? ` (${file.type})` : ''}. The image is not shown here.` }];
     const start = num(file.startLine), lines = num(file.numLines), total = num(file.totalLines);
     const range = start !== undefined && lines !== undefined
       ? lines ? `Lines ${start}–${start + lines - 1}${total !== undefined ? ` of ${total}` : ''}` : `No lines${total !== undefined ? ` of ${total}` : ''}`
       : undefined;
-    return [
+    const sections: ToolSection[] = [
       ...(range ? [{ kind: 'note' as const, text: range }] : []),
       ...(typeof file.content === 'string' ? [{ kind: 'text' as const, label: str(file.filePath) || 'Content', text: file.content }] : []),
     ];
+    // Unchanged files, notebooks, and PDF reads have no text range, so they show the tool_result text.
+    if (sections.length) return sections;
   }
   if (Array.isArray(result.filenames)) {
     const files = result.filenames.filter((name): name is string => typeof name === 'string');

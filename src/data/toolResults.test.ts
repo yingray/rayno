@@ -85,6 +85,21 @@ describe('tool result views', () => {
     expect(views[5]).toBe('14 matches in 1 file\nMatches\nbundle.diff:14');
   });
 
+  it('should show the tool_result text for Read results without a text range', () => {
+    // Arrange: FileReadOutput shapes from @anthropic-ai/claude-agent-sdk sdk-tools.d.ts and a real transcript.
+    const unchanged = call('Read', { type: 'file_unchanged', file: { filePath: '/repo/memory/MEMORY.md' } },
+      { resultText: 'Wasted call — file unchanged since your last Read. Refer to that earlier tool_result instead.' });
+    const notebook = call('Read', { type: 'notebook', file: { filePath: '/repo/a.ipynb', cells: [{ cell_type: 'code', source: 'print(1)' }] } });
+    const pdf = call('Read', { type: 'pdf', file: { filePath: '/repo/spec.pdf', base64: 'JVBERi0x'.repeat(40), originalSize: 2048 } });
+    // Act
+    const views = [unchanged, notebook, pdf].map((item) => text(toolSections(item)));
+    // Assert
+    expect(views[0]).toBe('Result\nWasted call — file unchanged since your last Read. Refer to that earlier tool_result instead.');
+    expect(views[1]).toContain('"cell_type": "code"');
+    expect(views[2]).toContain('"base64": "[320 characters of encoded data]"');
+    expect(views[2]).not.toContain('Image');
+  });
+
   it('should show Task reports, background agents, and todo lists', () => {
     // Arrange
     const task = call('Task', { content: [{ type: 'text', text: '## 5 Major AI Breakthroughs in 2025' }], totalDurationMs: 51327,
