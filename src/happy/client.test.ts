@@ -947,6 +947,54 @@ describe('Happy client session lifecycle', () => {
     expect(requests()).toEqual(['DELETE /v1/sessions/session']);
   });
 });
+describe('Happy client session activity', () => {
+  it('should sort an older CLI session by this device last send and keep it per account', async () => {
+    // Arrange: Happy Web utils/sessionActivity.ts uses lastMeaningfulMessageAt, then lastMessageSentAt, then createdAt.
+    const newer = { ...session, id: 'newer', createdAt: 5000 };
+    const tracked = { ...session, id: 'tracked', metadata: await client.encryption.encrypt({ ...metadata, lastMeaningfulMessageAt: 3000 }, null) };
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url.includes('/v2/sessions')
+      ? response({ sessions: [session, newer, tracked], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([])
+        : init?.method === 'POST'
+          ? response({ messages: JSON.parse(String(init.body)).messages.map((packet: Json, index: number) =>
+            ({ id: 'sent-' + index, seq: index + 1, localId: packet.localId, createdAt: 200 })) })
+          : response({ messages: [], hasMore: false }));
+    await start();
+    const order = () => client.getSnapshot().sessions.map((row) => [row.id, row.lastActivityAt]);
+    expect(order()).toEqual([['newer', 5000], ['tracked', 3000], ['session', 100]]);
+    vi.mocked(Date.now).mockReturnValue(9000);
+    // Act
+    await client.sendMessage('session', 'Continue');
+    // Assert
+    expect(order()).toEqual([['session', 9000], ['newer', 5000], ['tracked', 3000]]);
+    expect(JSON.parse(client.readLocal('lastMessageSentAt')!)).toEqual({ session: 9000 });
+    // Act
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    await start();
+    // Assert
+    expect(order()[0]).toEqual(['session', 9000]);
+    // Act
+    client.dispose();
+    client = await HappyClient.create({ ...credentials, server: 'https://other.test' });
+    await start();
+    // Assert
+    expect(order()).toEqual([['newer', 5000], ['tracked', 3000], ['session', 100]]);
+  });
+  it('should forget the local send time when the session is deleted', async () => {
+    // Arrange
+    client.writeLocal('lastMessageSentAt', JSON.stringify({ session: 9000, other: 8000 }));
+    client.dispose();
+    client = await HappyClient.create(credentials);
+    session.active = false;
+    await start();
+    expect(client.getSnapshot().sessions[0].lastActivityAt).toBe(9000);
+    // Act
+    await client.deleteSession('session');
+    // Assert
+    expect(JSON.parse(client.readLocal('lastMessageSentAt')!)).toEqual({ other: 8000 });
+  });
+});
 describe('Happy client damaged records', () => {
   it('should publish the readable sessions and computers around a damaged record', async () => {
     // Arrange

@@ -117,6 +117,7 @@ export function normalizeSession(
   unread = false,
   machine?: MachineRecord,
   optionsPending = false,
+  lastSentAt?: number,
 ): Session {
   const { wire, metadata: m, agentState: a } = source;
   const path = text(m.path);
@@ -159,7 +160,8 @@ export function normalizeSession(
     archived: isSessionArchived(source),
     createdAt: wire.createdAt,
     updatedAt: wire.updatedAt,
-    lastActivityAt: m.lastMeaningfulMessageAt ?? wire.createdAt,
+    // Happy Web utils/sessionActivity.ts: an older CLI omits the agent time, so use this device's last send.
+    lastActivityAt: m.lastMeaningfulMessageAt ?? lastSentAt ?? wire.createdAt,
     machineOffline: machine ? !machine.wire.active : false,
     isSideChat: m.isSideChat === true,
     additions: typeof m.git?.insertions === 'number' ? m.git.insertions : 0,

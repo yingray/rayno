@@ -49,6 +49,13 @@ const voidRpcMethods = new Set(['abort', 'switch', 'permission']);
 // An incremental session read starts this far before the newest server update
 // that the client has seen, so a late commit with an older timestamp is not lost.
 const SESSION_CHANGE_OVERLAP = 30000;
+// Happy Web sync/persistence.ts keeps the last local send time of each session for older CLIs.
+const readSentTimes = (value: string | null) => {
+  try {
+    return new Map(Object.entries(record(JSON.parse(value || '{}')))
+      .filter((entry): entry is [string, number] => Number.isFinite(entry[1])));
+  } catch { return new Map<string, number>(); }
+};
 
 export type Snapshot = {
   sessions: Session[];
@@ -136,6 +143,7 @@ export class HappyClient implements DemoAdapter {
   private cacheDirty = false;
   private dirtyHistories = new Set<string>();
   private restoredHistories = new Set<string>();
+  private sentTimes = new Map<string, number>();
   // A cache restore is not a server read. This turns true after the first readable server read.
   private serverRead = false;
   readonly storageKey: string;
@@ -150,6 +158,7 @@ export class HappyClient implements DemoAdapter {
       this.snapshot = { ...this.snapshot, offline: true, connection: 'disconnected', loading: false };
     this.storage = localStorage.getItem('rayno.credentials') ? localStorage : sessionStorage;
     this.attentionInitialized = this.readLocal('attentionInitialized') === 'true';
+    this.sentTimes = readSentTimes(this.readLocal('lastMessageSentAt'));
   }
   static async create(credentials: Credentials) {
     const bytes = await crypto.subtle.digest(
@@ -200,6 +209,7 @@ export class HappyClient implements DemoAdapter {
             attention.assistantSeq > attention.readSeq,
             this.machines.get(source.metadata.machineId),
             attention.optionsSeq > attention.userSeq,
+            this.sentTimes.get(id),
           );
           return previous && shallowEqual(previous, next) ? previous : next;
         })
@@ -307,6 +317,14 @@ export class HappyClient implements DemoAdapter {
     const merged = mergeAttention(state, restoreAttention(this.readLocal('attention.' + id), 0));
     this.attention.set(id, merged);
     try { this.writeLocal('attention.' + id, JSON.stringify(merged)); } catch { /* Keep this visit's state if storage is unavailable. */ }
+  }
+  private saveSentTime(id: string, time?: number) {
+    const times = readSentTimes(this.readLocal('lastMessageSentAt'));
+    for (const [key, value] of this.sentTimes) times.set(key, Math.max(value, times.get(key) || 0));
+    if (time === undefined) times.delete(id);
+    else times.set(id, time);
+    this.sentTimes = times;
+    try { this.writeLocal('lastMessageSentAt', JSON.stringify(Object.fromEntries(times))); } catch { /* Keep the time for this visit. */ }
   }
   setSessionReading(id: string, reading: boolean) {
     if (this.disposed) return;
@@ -434,6 +452,11 @@ export class HappyClient implements DemoAdapter {
       }
     };
     const storageChanged = (event: StorageEvent) => {
+      if (event.key === this.storageKey + 'lastMessageSentAt') {
+        this.sentTimes = readSentTimes(event.newValue);
+        this.publish();
+        return;
+      }
       if (!event.key?.startsWith(this.storageKey + 'attention.')) return;
       const id = event.key.slice((this.storageKey + 'attention.').length);
       if (!this.sessions.has(id) || !event.newValue) return;
@@ -810,6 +833,7 @@ export class HappyClient implements DemoAdapter {
       this.deletedSessions.add(body.sid);
       this.sessions.delete(body.sid);
       this.messages.delete(body.sid);
+      if (this.sentTimes.has(body.sid)) this.saveSentTime(body.sid);
       this.publish();
       return;
     }
@@ -1055,6 +1079,7 @@ export class HappyClient implements DemoAdapter {
     this.deletedSessions.add(id);
     this.sessions.delete(id);
     this.messages.delete(id);
+    this.saveSentTime(id);
     this.publish();
   }
   async stopSession(id: string) {
@@ -1181,6 +1206,7 @@ export class HappyClient implements DemoAdapter {
       )
         throw new Error('Happy did not confirm the message. Retry this same draft.');
       sessionStorage.removeItem(key);
+      this.saveSentTime(id, Date.now());
       const rows = result.messages.map((wire: Json) => ({
         ...wire,
         content: { t: 'encrypted', c: packets.find(item => item.localId === wire.localId)!.content },

@@ -55,6 +55,10 @@ no record decrypts on the first workspace read or on the first history page. It 
 on the first read, even when a computer decrypts. Records from the offline cache do not count as a server read: until
 one read succeeds, a read that decrypts nothing (or no session) keeps the cached copy, its saved time, and the error.
 
+The session list sorts on `utils/sessionActivity.ts`: `metadata.lastMeaningfulMessageAt`, then this device's last
+send time, then `createdAt`. Like `markSessionMessageSent` in `sync/storage.ts`, Rayno stamps the time after a
+confirmed send, keeps it in its own account-scoped storage, and removes it when the session is deleted.
+
 Model/effort writes also reference `packages/happy-cli/src/api/types.ts`,
 `packages/happy-cli/src/claude/runClaude.ts`, and `packages/happy-cli/src/codex/runCodex.ts`.
 Rayno keeps composer choices in its own account-scoped storage and sends them with the next message.
