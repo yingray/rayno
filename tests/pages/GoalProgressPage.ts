@@ -7,7 +7,9 @@ export class GoalProgressPage extends LiveWorkspacePage {
     await expect(this.page.getByText('I updated the todo list.', { exact: true })).toBeVisible();
   }
   dock() { return this.page.getByRole('group', { name: 'Session progress', exact: true }); }
-  goal(text: string) { return this.dock().getByRole('button', { name: `Current goal: ${text}`, exact: true }); }
+  goal(text: string, progress = '') {
+    return this.dock().getByRole('button', { name: `Current goal${progress ? `, ${progress}` : ''}: ${text}`, exact: true });
+  }
   goalAction(name: 'Edit goal' | 'Clear goal') { return this.dock().getByRole('button', { name, exact: true }); }
   todoChip(done: number, total: number) {
     return this.dock().getByRole('button', { name: `Todo list: ${done} of ${total} tasks done`, exact: true });

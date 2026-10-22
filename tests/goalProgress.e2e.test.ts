@@ -111,3 +111,15 @@ test('a goal from another Claude session should not show', async ({ page }) => {
   await expect(workspace.todoChip(1, 3)).toBeVisible();
   await expect(workspace.dock().getByRole('button', { name: /^Current goal/ })).toHaveCount(0);
 });
+
+test('the goal button name should include the goal progress', async ({ page }) => {
+  // Arrange
+  const progress = { currentStep: 1, totalSteps: 2, steps: [
+    { text: 'Inspect the source', status: 'in_progress' }, { text: 'Write the fix', status: 'pending' },
+  ] };
+  // Act
+  const { workspace } = await openGoalSession(page, { ...claudeGoal(), progress });
+  // Assert
+  await expect(workspace.goal(goalText, 'Step 1 of 2')).toBeVisible();
+  await expect(workspace.goal(goalText, 'Step 1 of 2')).toContainText('Current goal · Step 1 of 2');
+});

@@ -66,7 +66,7 @@ export const TaskDock = memo(function TaskDock({ goal, todos, disabled, onGoalAc
     <>
       <div className={styles.dock} role="group" aria-label="Session progress">
         {goal && (
-          <button type="button" className={styles.goal} aria-label={`Current goal: ${goal.text}`} title={goal.text}
+          <button type="button" className={styles.goal} aria-label={`Current goal${goalProgress ? `, ${goalProgress}` : ''}: ${goal.text}`} title={goal.text}
             onClick={() => setDialog('goal')}>
             <Icon name="locateOutline" size={16} />
             <span className={styles.goalText}>
