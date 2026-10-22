@@ -98,8 +98,8 @@ only when it differs from the handler mode, so a repeated mode does not end plan
 the last `EnterPlanMode` tool call as `plan`, unless its request is pending, `denied`, or `canceled`. An
 `ExitPlanMode` call counts only after `completedRequests[call].status` is `approved`; it gives the approved
 `mode`, else `default`. Rayno has no plan approval buttons for other modes, so an `ExitPlanMode` approval sends
-`mode` set to the newest picked or sent mode other than `plan` (`modeBeforePlan`). Without it, the CLI puts a
-yolo session in `default`. The agent mode replaces a sent message when its tool-call message has a newer server
+`mode` set to the newest picked or sent mode other than `plan` (`modeBeforePlan`). When no loaded page has a sent
+message, it reads older pages (`findSentModes`). Without `mode`, the CLI puts a yolo session in `default`. The agent mode replaces a sent message when its tool-call message has a newer server
 time. It replaces a pick when it is newer and the pick did not see its call (`agentCall`). As in
 `PermissionFooter.tsx`, edit tools and `ExitPlanMode` have no session approval, so each plan exit asks the user.
 

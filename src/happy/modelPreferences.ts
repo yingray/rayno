@@ -77,12 +77,13 @@ export function latestAgentMode(messages: Message[], agentState: Json, metadata:
   return undefined;
 }
 
-/** The newest picked or sent mode other than plan. An approved ExitPlanMode returns to it. */
+/** The newest picked or sent mode other than plan. An approved ExitPlanMode returns to it. `older` is a sent message outside `messages`. */
 export function modeBeforePlan(
   saved: SessionModes | null | undefined,
   messages: Message[],
   inheritedPermission: string | undefined,
   metadata: Json,
+  older?: SentModes,
 ): string | undefined {
   const usable = (mode: unknown): mode is string => typeof mode === 'string' && mode !== 'plan'
     && permissionOptions(metadata).some((option) => option.value === mode && !option.disabled);
@@ -92,6 +93,7 @@ export function modeBeforePlan(
     const mode = message.role === 'user' ? message.settings?.permissionMode : undefined;
     if (usable(mode)) return picked && saved!.at! >= (message.sentAt ?? 0) ? picked : mode;
   }
+  if (usable(older?.permissionMode)) return picked && saved!.at! >= older.sentAt ? picked : older.permissionMode;
   return picked ?? (usable(inheritedPermission) ? inheritedPermission : undefined);
 }
 

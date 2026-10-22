@@ -235,6 +235,12 @@ describe('Agent plan mode', () => {
     expect(modeBeforePlan({ permission: 'plan', at: 3000 }, messages, 'default', claude)).toBe('acceptEdits');
     expect(modeBeforePlan(null, visibleMessages([userText(1, 1000, 'plan')]), 'default', claude)).toBe('default');
     expect(modeBeforePlan(null, [], 'plan', claude)).toBeUndefined();
+    // A sent message from an older history page counts after the loaded messages.
+    const older = { permissionMode: 'bypassPermissions', sentAt: 1000 };
+    expect(modeBeforePlan(null, [], 'plan', claude, older)).toBe('bypassPermissions');
+    expect(modeBeforePlan({ permission: 'acceptEdits', at: 2000 }, [], 'plan', claude, older)).toBe('acceptEdits');
+    expect(modeBeforePlan({ permission: 'acceptEdits', at: 500 }, [], 'plan', claude, older)).toBe('bypassPermissions');
+    expect(modeBeforePlan(null, [], 'default', claude, { permissionMode: 'plan', sentAt: 1000 })).toBe('default');
   });
 
   it('should ignore plan tool calls for an agent without plan mode', () => {

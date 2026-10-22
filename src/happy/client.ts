@@ -1401,8 +1401,10 @@ export class HappyClient implements DemoAdapter {
     if (approved && !codex && isExitPlanTool(request.tool)) {
       let saved: SessionModes | null = null;
       try { saved = JSON.parse(this.readLocal(`composerModes.${id}`) || 'null'); } catch { /* Ignore an invalid saved choice. */ }
-      mode = modeBeforePlan(saved, this.snapshot.sessions.find(session => session.id === id)?.messages || [],
-        currentPermission(sessionSource.metadata), sessionSource.metadata);
+      const messages = this.snapshot.sessions.find(session => session.id === id)?.messages || [];
+      // A long plan turn can push the last sent message out of the loaded pages.
+      const older = latestSentModes(messages) ? undefined : await this.findSentModes(id).catch(() => undefined);
+      mode = modeBeforePlan(saved, messages, currentPermission(sessionSource.metadata), sessionSource.metadata, older);
     }
     await this.rpc(id, 'permission', {
       id: requestId, approved,

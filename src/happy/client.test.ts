@@ -259,6 +259,26 @@ describe('Happy client protocol', () => {
     expect(await client.encryption.decrypt(payload.params, null))
       .toEqual({ id: 'toolu_2', approved: true, decision: 'approved', mode: 'bypassPermissions' });
   });
+  it('should read an older history page for the mode from before plan', async () => {
+    // Arrange: a long plan turn pushes the last sent message out of the loaded page.
+    session.agentState = await client.encryption.encrypt({ requests: { toolu_2: { tool: 'ExitPlanMode', arguments: { plan: 'Plan' }, createdAt: 1 } } }, null);
+    await start();
+    const exit = { id: 'm2', seq: 2, createdAt: 300, content: { t: 'encrypted', c: await client.encryption.encrypt({ role: 'session', content: {
+      id: 'e2', time: 300, role: 'agent', turn: 't1', ev: { t: 'tool-call-start', call: 'toolu_2', name: 'ExitPlanMode', title: 'ExitPlanMode call', description: 'ExitPlanMode call', args: {} },
+    } }, null) } };
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: exit } });
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages).toHaveLength(1));
+    const sent = { id: 'm1', seq: 1, createdAt: 200, content: { t: 'encrypted', c: await client.encryption.encrypt(
+      { role: 'user', content: { type: 'text', text: 'Go' }, meta: { sentFrom: 'web', permissionMode: 'bypassPermissions' } }, null) } };
+    fetchMock.mockImplementation(async (url: string) => response(url.includes('/messages?before_seq=2&') ? { messages: [sent], hasMore: false } : { messages: [], hasMore: false }));
+    socket.emitWithAck.mockResolvedValue({ ok: true, result: await client.encryption.encrypt(undefined, null) });
+    // Act
+    await client.respondPermission('session', 'toolu_2', true);
+    // Assert
+    const [, payload] = socket.emitWithAck.mock.calls.find(([event]) => event === 'rpc-call')!;
+    expect(await client.encryption.decrypt(payload.params, null))
+      .toEqual({ id: 'toolu_2', approved: true, decision: 'approved', mode: 'bypassPermissions' });
+  });
   it('should send no plan exit mode for a denial or without a mode from before plan', async () => {
     // Arrange
     session.agentState = await client.encryption.encrypt({ requests: {
