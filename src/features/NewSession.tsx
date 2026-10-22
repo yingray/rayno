@@ -37,7 +37,7 @@ export function NewSession() {
   const { model, effort } = selection;
   const permissions = permissionOptions(metadata);
   const permissionMode = resolveNewSessionPermission(metadata, [
-    permissionChoices?.[preferenceKey], draft.agent === agent ? draft.permissionMode : undefined,
+    permissionChoices?.[preferenceKey],
   ]);
   const models = modelOptions(metadata);
   const machine = machines.find((item) => item.id === draft.machineId);
@@ -128,7 +128,6 @@ export function NewSession() {
   }
   return (
     <section className={styles.screen} aria-label="Create session">
-      <div className={styles.grabber} />
       <div className={styles.mobileHeader}>
         <h1>New session</h1>
         <Button

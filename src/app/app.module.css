@@ -368,15 +368,6 @@
     color: #ddd6fe;
     font-weight: 600;
   }
-  .newMobile {
-    animation: sheetUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
-    top: 64px;
-    height: calc(100% - 64px);
-    background: linear-gradient(#19191e, #111113);
-    border: 1px solid var(--border);
-    border-bottom: 0;
-    border-radius: 40px 40px 0 0;
-  }
   .toast {
     bottom: var(--mobile-nav-reserve);
     font-size: 11px;
@@ -386,16 +377,6 @@
   }
 }
 
-@keyframes sheetUp {
-  from {
-    transform: translateY(40px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
 .connection {
   position: fixed;
   top: 8px;
@@ -439,6 +420,26 @@
     overflow: auto;
   }
   .statusShell {
+    padding-top: calc(100px + env(safe-area-inset-top));
+  }
+}
+
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
+  .newSessionShell {
+    padding: 0;
+  }
+  .newSessionShell > .rail,
+  .newSessionShell > .listPanel {
+    display: none;
+  }
+  .newMobile {
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: linear-gradient(#19191e, #111113);
+  }
+  .newSessionShell.statusShell {
     padding-top: calc(100px + env(safe-area-inset-top));
   }
 }

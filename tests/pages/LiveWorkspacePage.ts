@@ -104,6 +104,32 @@ export class LiveWorkspacePage extends WorkspacePage {
     await this.closeListOptions();
   }
   newModelPicker() { return this.page.getByRole('dialog', { name: 'Choose model', exact: true }); }
+  async expectNewSessionFullscreen() {
+    const viewport = this.page.viewportSize()!;
+    for (const panel of [this.page.getByRole('main'), this.page.getByRole('region', { name: 'Create session', exact: true })]) {
+      await expect(panel).toBeVisible();
+      const bounds = (await panel.boundingBox())!;
+      expect(bounds.x).toBe(0);
+      expect(bounds.y).toBe(0);
+      expect(bounds.width).toBe(viewport.width);
+      expect(bounds.height).toBe(viewport.height);
+    }
+    await expect(this.page.getByRole('main')).toHaveCSS('border-radius', '0px');
+    await expect(this.page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden();
+    for (const field of [this.taskDescription(), this.page.getByLabel('Folder', { exact: true })]) {
+      expect(await field.evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16);
+    }
+  }
+  async closeNewSession(touch: boolean) {
+    const button = this.page.getByRole('button', { name: 'Close new session', exact: true });
+    await button.scrollIntoViewIfNeeded();
+    const bounds = (await button.boundingBox())!;
+    expect(bounds.width).toBeGreaterThanOrEqual(44);
+    expect(bounds.height).toBeGreaterThanOrEqual(44);
+    if (touch) await button.tap();
+    else await button.click();
+    await expect(this.page).toHaveURL(/\/sessions$/);
+  }
   newPermissionMode() { return this.page.getByRole('combobox', { name: 'Permission mode', exact: true }); }
   async chooseNewPermission(value: string) { await this.newPermissionMode().selectOption(value); }
   async chooseNewAgent(name: 'Claude' | 'Codex') {
@@ -164,7 +190,12 @@ export class LiveWorkspacePage extends WorkspacePage {
     await button.scrollIntoViewIfNeeded();
     const target = (await button.boundingBox())!;
     expect(target.height).toBeGreaterThanOrEqual(44);
+    expect(target.y).toBeGreaterThanOrEqual(0);
     expect(target.y + target.height).toBeLessThanOrEqual(this.page.viewportSize()!.height);
+    expect(await button.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })).toBe(true);
   }
   handoffAction() { return this.page.getByRole('button', { name: /^Hand Off/ }); }
   taskDescription() { return this.page.getByRole('textbox', { name: 'Task description', exact: true }); }

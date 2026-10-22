@@ -7,7 +7,7 @@ export const defaultNewDraft: NewSessionDraft = {
   worktree: 'main',
   model: 'claude-opus-5',
   effort: 'high',
-  permissionMode: 'auto',
+  permissionMode: 'bypassPermissions',
   agent: 'Claude',
   type: 'Simple',
   prompt: '',

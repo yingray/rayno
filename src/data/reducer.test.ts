@@ -110,16 +110,17 @@ describe('Browser state restoration', () => {
     // Assert
     expect(result.permissionChoices).toEqual({ Claude: 'acceptEdits', Codex: 'safe-yolo' });
   });
-  it('should migrate old drafts to Auto and ignore malformed permission preferences', () => {
+  it.each(['Claude', 'Codex'] as const)('should migrate an old %s draft to Yolo and ignore malformed permission preferences', (agent) => {
     // Arrange
     const state = createInitialState(1000000);
     const raw = JSON.parse(JSON.stringify(state));
     delete raw.newDraft.permissionMode;
+    raw.newDraft.agent = agent;
     raw.permissionChoices = { Claude: 'plan', Codex: null, invalid: 42, empty: '' };
     // Act
     const result = restoreState(JSON.stringify(raw), state);
     // Assert
-    expect(result.newDraft.permissionMode).toBe('auto');
+    expect(result.newDraft.permissionMode).toBe(agent === 'Codex' ? 'yolo' : 'bypassPermissions');
     expect(result.permissionChoices).toEqual({ Claude: 'plan' });
   });
   it('should restore local changes and clear an interrupted response after reload', () => {

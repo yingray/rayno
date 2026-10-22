@@ -3,6 +3,7 @@ import type { Action, DemoState, NewSessionDraft, Session } from './types';
 import { rememberWorkspace } from './workspaces';
 import { shallowEqual } from './subscriptions';
 import { PREVIOUS_RECAP_STYLES, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
+import { resolveNewSessionPermission } from '../happy/permissionOptions';
 
 export const STORAGE_KEY = 'rayno.demo.v1';
 export const titleOf = (session: Session) => session.customTitle || session.title;
@@ -209,6 +210,7 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
       if (parsed.newDraft.type === 'Simple' || parsed.newDraft.type === 'Worktree')
         draft.type = parsed.newDraft.type;
     }
+    draft.permissionMode = resolveNewSessionPermission({ flavor: draft.agent.toLowerCase() }, [draft.permissionMode]);
     return {
       version: 1,
       sessions: parsed.sessions.map((session) => ({

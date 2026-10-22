@@ -246,8 +246,7 @@
   align-items: center;
   cursor: pointer;
 }
-.mobileHeader,
-.grabber {
+.mobileHeader {
   display: none;
 }
 @media (min-width: 768px) and (max-width: 1200px) {
@@ -276,23 +275,14 @@
     gap: 5px;
   }
 }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
   .screen {
-    padding: 0 12px max(14px, env(safe-area-inset-bottom));
+    padding: calc(12px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
     display: flex;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
     overflow: auto;
-  }
-  .grabber {
-    display: block;
-    background: #3f3f46;
-    width: 40px;
-    height: 5px;
-    border-radius: 999px;
-    margin: 11px auto 16px;
-    flex: none;
   }
   .mobileHeader {
     display: flex;
@@ -306,6 +296,10 @@
     font-size: 22px;
     letter-spacing: -0.02em;
     margin: 0;
+  }
+  .mobileHeader > button {
+    min-width: 44px;
+    min-height: 44px;
   }
   .heading {
     display: none;
@@ -358,7 +352,7 @@
   }
   .pickerText input,
   .pickerText select {
-    font-size: 13px;
+    font-size: 16px;
   }
   .segments {
     flex-direction: column;
@@ -380,7 +374,11 @@
   }
   .inputWell > textarea {
     min-height: 82px;
-    font-size: 14px;
+    font-size: 16px;
+  }
+  .attach {
+    min-width: 44px;
+    min-height: 44px;
   }
   .inputActions {
     margin-top: 8px;
@@ -472,7 +470,7 @@
 .pickerDialog .customFolder input { margin: 0; min-width: 0; }
 .customFolder button { flex: none; height: 42px; font-size: 12px; }
 .pickerDialog p.dialogHint { font-size: 12px; margin: -7px 0 0; }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
   .content { margin-block: 0; }
   .content, .content > form, .card { flex: none; min-height: auto; }
   .agentSection { padding: 0 2px; }
@@ -497,6 +495,7 @@
   .pickerDialog > footer { margin-top: 16px; }
   .pickerDialog > header button, .pickerDialog > footer button, .customFolder button { min-width: 44px; min-height: 44px; }
   .workspaceIconButton { width: 44px; height: 44px; }
+  .pickerText .browseWorkspaces { min-height: 44px; }
   .segments > div { height: 52px; }
   .segments button { min-height: 44px; }
   .start { min-height: 44px; }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { PropsWithChildren } from 'react';
 import { StoreProvider } from '../data/store';
-import { defaultPreferences } from '../data/defaults';
+import { defaultNewDraft, defaultPreferences } from '../data/defaults';
 import { restoreState } from '../data/reducer';
 import type { DemoAdapter, DemoState } from '../data/types';
 import { HappyClient } from './client';
@@ -22,7 +22,7 @@ const emptyState = (): DemoState => ({
     path: '',
     worktree: '',
     model: '',
-    permissionMode: 'auto',
+    permissionMode: defaultNewDraft.permissionMode,
     agent: 'Claude',
     type: 'Simple',
     prompt: '',

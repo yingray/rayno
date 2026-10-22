@@ -3,17 +3,18 @@ import { currentPermission, messageMeta } from './normalize';
 import { permissionOptions, permissionLabel, canSelectPermission, resolveNewSessionPermission } from './permissionOptions';
 
 describe('Permission mode display and selection', () => {
-  it.each(['claude', 'codex'])('should select Auto for a new %s session without a valid saved choice', (flavor) => {
+  it.each([['claude', 'bypassPermissions'], ['codex', 'yolo']])('should select Yolo for a new %s session without a valid saved choice', (flavor, permissionMode) => {
     // Arrange
     const metadata = { flavor };
     // Act / Assert
-    expect(resolveNewSessionPermission(metadata, [undefined, null, '', 'removed-mode'])).toBe('auto');
+    expect(resolveNewSessionPermission(metadata, [undefined, null, '', 'removed-mode'])).toBe(permissionMode);
     expect(resolveNewSessionPermission(metadata, ['removed-mode', 'default'])).toBe('default');
+    expect(resolveNewSessionPermission(metadata, ['auto'])).toBe('auto');
   });
   it('should prefer the latest supported choice and reject modes from the other agent', () => {
     // Arrange / Act / Assert
     expect(resolveNewSessionPermission({ flavor: 'claude' }, ['acceptEdits', 'plan'])).toBe('acceptEdits');
-    expect(resolveNewSessionPermission({ flavor: 'claude' }, ['safe-yolo'])).toBe('auto');
+    expect(resolveNewSessionPermission({ flavor: 'claude' }, ['safe-yolo'])).toBe('bypassPermissions');
     expect(resolveNewSessionPermission({ flavor: 'codex' }, ['plan', 'safe-yolo'])).toBe('safe-yolo');
   });
   it('should display the same inherited mode that an encrypted message uses without guessing a default', () => {

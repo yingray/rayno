@@ -149,7 +149,7 @@ export function App() {
         </div>
       )}
       <div
-        className={`${styles.shell} ${showConnectionError ? styles.statusShell : ''} ${expanded ? styles.expandedShell : ''}`}
+        className={`${styles.shell} ${path === '/new' ? styles.newSessionShell : ''} ${showConnectionError ? styles.statusShell : ''} ${expanded ? styles.expandedShell : ''}`}
       >
         {!mobile && (
           <nav
@@ -225,7 +225,7 @@ export function App() {
         )}
         {!(mobile && path === '/sessions') && (
           <main
-            className={`${styles.mainPanel} ${showTabs ? styles.withTabs : ''} ${mobile && path === '/new' ? styles.newMobile : ''}`}
+            className={`${styles.mainPanel} ${showTabs ? styles.withTabs : ''} ${path === '/new' ? styles.newMobile : ''}`}
           >
             <LazyBoundary>{!knownRoute ? (
               <Empty

@@ -136,7 +136,7 @@ Archived Claude and Codex sessions show Resume even when the server still report
 - Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. The composer has no connection or usage footer.
 
 Existing sessions prefer the daemon's model catalog. New sessions offer agent, model, effort, and permission mode selection before Start.
-Permission mode always has a selected value. It restores the last explicit choice for that agent from a new session or chat, or selects Auto without a valid choice.
+Permission mode always has a selected value. It restores the last explicit choice for that agent from a new session or chat, or selects Yolo without a valid choice.
 The spawn request, first encrypted message, and chat controls use the selected mode.
 Known current provider, permission, model, and effort fields remain in outbound messages.
 Unavailable battery, network, latency, or quota data never falls back to samples.

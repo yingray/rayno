@@ -32,7 +32,9 @@ export function canSelectPermission(metadata: Json): boolean {
 
 export function resolveNewSessionPermission(metadata: Json, candidates: (string | null | undefined)[]): string {
   const options = permissionOptions(metadata);
-  return candidates.find((value) => options.some((option) => option.value === value && !option.disabled)) || 'auto';
+  const fallback = metadata.flavor === 'codex' ? 'yolo' : 'bypassPermissions';
+  return [...candidates, fallback].find((value) => options.some((option) => option.value === value && !option.disabled))
+    || options.find((option) => !option.disabled)?.value || 'default';
 }
 
 export function permissionOptions(metadata: Json, configured = currentPermission(metadata)): PermissionOption[] {
