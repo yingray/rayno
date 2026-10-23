@@ -553,10 +553,11 @@ It generates image data URIs locally and never calls the DiceBear API. The lazy 
 
 ## Reading-position response dots (2026-10-23)
 
-The reading rail now shows unnumbered dots aligned with visible formal response starts. It follows the main chat's
-scroll position rather than keeping a fixed whole-document distribution. Native rail scrolling also moves the chat,
-so keyboard focus and touch navigation can reach replies outside the current viewport. The current reply retains
-its accessible location state, and buttons retain numbered accessible labels without displaying the numbers.
+The reading rail shows all loaded formal responses as a compact overview, including history fetched with Load earlier.
+Dots fit in the rail whenever their minimum target spacing permits, and overflow only when necessary. Chat scroll
+progress synchronizes the rail's own scroll range: oldest at the top, latest at the bottom. Independently scrolling
+the dot list does not move the chat; clicking a dot jumps to its response. The current reply retains its accessible
+location state, and buttons retain numbered accessible labels without displaying the numbers.
 
 Small/medium/large dots are 6/10/14px for fewer than 500, 500–1,999, and at least 2,000 visible non-whitespace Unicode
 characters. Markdown syntax, link destinations, recaps, and reply options do not contribute. Code text does count.
@@ -564,14 +565,11 @@ A weak cache retains each immutable message's metadata so streaming updates do n
 Dot size does not change the existing 20px desktop button or 46px coarse-pointer hit area. Dense replies retain gaps.
 Portrait phone layouts keep their existing no-rail behavior; the rail remains available from 768px.
 
-- Type check and production build passed. All 509 unit tests passed across 44 files, including size thresholds,
-  exclusion of non-visible content, and existing rail spacing checks.
+- Updated behavior: type check and production build passed; all five focused anchor metadata and rail layout unit tests passed.
 - Browser verification: 22 passed and two existing phone skips across desktop/mobile Chromium and WebKit.
-  All 12 new cases passed. Existing recap expansion/reload, dense rail hit tests, and recap-free response jumps also passed.
-- Tests confirm dot/response alignment within 2px, a matching 40px movement when the chat scrolls, all three visual
-  sizes, empty button text, active-state updates, and jumping among 18 distant replies without overlapping targets.
+  Covers all three dot sizes, empty button text, compact fitting, independent overflow scrolling, and chat/rail progress
+  at the top, middle, and latest bottom. Loading an older response adds its dot; scrolling to the latest end still shows
+  the newest dot. Clicking distant dots retains jump/flash behavior and independent touch hit areas.
 - Phone interactions cover 320/360/390/430px, 390x360 short height, and 844x390 landscape, including sending, 16px inputs,
-  and 44px-or-larger touch controls. The 844px rail also runs in coarse-pointer contexts.
-- After adding the metadata cache, two direct Tailscale browser checks passed in Chromium and WebKit against the final
-  build, confirming size, alignment, scroll synchronization, and clicking. Screenshots remain in ignored test-results/.
-  Physical device gestures and Cloudflare deployment were not verified.
+  and 44px-or-larger touch controls. The landscape rail runs in coarse-pointer contexts.
+- Physical device gestures and Cloudflare deployment were not verified.

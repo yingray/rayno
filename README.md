@@ -147,7 +147,7 @@ The [Happy Web gap tracker](docs/happy-web-gap-tracker.md) lists every audited i
 - Rename a computer, stop its daemon, or remove it from the account with confirmation. Removal preserves conversations.
 - Read historical tokens and reported USD cost by period, session, model, and date in Settings > Usage.
 - Select English or Traditional Chinese, keep reported context visible, and save an exact custom Codex model ID in Settings > Advanced.
-- Use the desktop reading rail to jump to each formal response, including responses without a recap. Unnumbered dots follow the visible reply starts as the chat scrolls. Small, medium, and large dots represent fewer than 500, 500–1,999, and at least 2,000 visible non-whitespace characters.
+- Use the desktop reading rail to jump to each formal response, including responses without a recap. Unnumbered dots show all loaded replies in a compact overview. When they overflow, the independently scrollable dot list follows chat progress and reaches its latest end when the chat reaches the bottom. Small, medium, and large dots represent fewer than 500, 500–1,999, and at least 2,000 visible non-whitespace characters.
 - Agent icons identify the compact weekly-usage bars and retain accessible names.
 - Independent appearance preferences, drafts, recent folders, responsive panels, and keyboard navigation. The composer warns when 10% or less of the context window remains. Advanced settings can keep the reading visible; Model & effort also shows it.
 

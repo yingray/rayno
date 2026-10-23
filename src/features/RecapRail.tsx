@@ -38,7 +38,6 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
   const desktop = useMediaQuery(DESKTOP_QUERY), coarse = useMediaQuery(COARSE_QUERY);
   const [layout, setLayout] = useState<Layout | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  const syncing = useRef<number | null>(null);
   useLayoutEffect(() => {
     const element = scroll.current;
     if (!element || !host || !desktop) { setLayout(null); return; }
@@ -56,13 +55,13 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
       }
       const height = host.clientHeight, total = Math.max(1,element.scrollHeight);
       const gap=coarse?TOUCH_GAP:PIN+2, inset=coarse?13:0;
-      // Keep anchors in the same scroll coordinate space as their reply starts.
-      const railInset = host.getBoundingClientRect().top - element.getBoundingClientRect().top;
-      const contentHeight=Math.max(height,total-railInset+PIN+2*inset,(offsets.length-1)*gap+PIN+2*inset);
-      const tops = railPinTops(offsets.map(item => item.offset-railInset-inset), contentHeight-2*inset, gap).map(top=>top+inset);
+      // Compress all loaded replies into the rail, growing only to preserve hit areas.
+      const contentHeight=Math.max(height,(offsets.length-1)*gap+PIN+2*inset);
+      const tops = railPinTops(offsets.map(item => item.offset/total*(contentHeight-2*inset)), contentHeight-2*inset, gap).map(top=>top+inset);
+      const progress = element.scrollTop / Math.max(1, total-element.clientHeight);
       const padding = parseFloat(getComputedStyle(element).scrollPaddingTop) || 0;
       const active = offsets.findLast(item => item.offset <= element.scrollTop+padding+1)?.id;
-      setLayout(offsets.length ? {pins:offsets.map((item,i)=>({...item,top:tops[i]})),active,contentHeight,scrollTop:element.scrollTop,
+      setLayout(offsets.length ? {pins:offsets.map((item,i)=>({...item,top:tops[i]})),active,contentHeight,scrollTop:Math.min(1, Math.max(0, progress)) * (contentHeight-height),
         thumb:{top:element.scrollTop/total*height,height:Math.min(1,element.clientHeight/total)*height}} : null);
     }
     const schedule = (resize: boolean) => { changed ||= resize; if (frame === undefined) frame=requestAnimationFrame(measure); };
@@ -76,23 +75,13 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
   useLayoutEffect(() => {
     const rail = scroller.current;
     if (rail && layout && Math.abs(rail.scrollTop - layout.scrollTop) > 0.5) {
-      syncing.current = layout.scrollTop;
       rail.scrollTop = layout.scrollTop;
     }
   }, [layout]);
   if(!host||!layout)return null;
   return createPortal(<nav className={styles.rail} aria-label={t('Agent replies')} data-response-rail data-testid="response-rail">
     <span className={styles.track}/><span className={styles.thumb} style={{top:layout.thumb.top,height:layout.thumb.height}}/>
-    <div ref={scroller} className={styles.railScroller} role="group" aria-label={t('Reply anchors')} tabIndex={0}
-      onScroll={event => {
-        const rail = event.currentTarget, element = scroll.current;
-        if (!element) return;
-        if (syncing.current !== null && Math.abs(rail.scrollTop - syncing.current) < 1) { syncing.current = null; return; }
-        syncing.current = null;
-        const top = Math.max(0, Math.min(element.scrollHeight - element.clientHeight, rail.scrollTop));
-        if (Math.abs(rail.scrollTop - top) > 0.5) { syncing.current = top; rail.scrollTop = top; }
-        if (Math.abs(element.scrollTop - top) > 0.5) { onJump(); element.scrollTop = top; }
-      }}>
+    <div ref={scroller} className={styles.railScroller} role="group" aria-label={t('Reply anchors')} tabIndex={0}>
     <div className={styles.railContent} style={{height:layout.contentHeight}}>
     {layout.pins.map(pin=><button type="button" key={pin.id} className={styles.railPin} style={{top:pin.top}}
       data-size={pin.size} data-active={layout.active===pin.id} aria-current={layout.active===pin.id?'location':undefined}

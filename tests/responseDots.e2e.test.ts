@@ -9,16 +9,13 @@ class ResponseDotsPage extends PriorityFeaturesPage {
   rail() { return this.page.getByRole('navigation', { name: 'Agent replies', exact: true }); }
   pin(index: number) { return this.rail().getByRole('button', { name: `Jump to reply ${index}`, exact: true }); }
   article(index: number) { return this.page.locator(`article[data-message-id="fixture-${index + 1}"]`); }
-  async align(index: number) {
-    await this.article(index).evaluate(element => {
-      const scroll = element.closest('[aria-label="Conversation messages"]')!;
-      const offset = element.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop;
-      scroll.scrollTop = offset - 150;
-    });
-    await expect.poll(async () => {
-      const pin = (await this.pin(index).boundingBox())!, article = (await this.article(index).boundingBox())!;
-      return Math.abs(pin.y + pin.height / 2 - article.y);
-    }).toBeLessThan(2);
+  anchors() { return this.rail().getByRole('group', { name: 'Reply anchors', exact: true }); }
+  async expectRailProgress(progress: number) {
+    await this.conversation().evaluate((element, fraction) => {
+      element.scrollTop = fraction * (element.scrollHeight - element.clientHeight);
+    }, progress);
+    await expect.poll(() => this.anchors().evaluate((element, fraction) =>
+      Math.abs(element.scrollTop - fraction * (element.scrollHeight - element.clientHeight)), progress)).toBeLessThan(2);
   }
   async activate(control: Locator) {
     await control.scrollIntoViewIfNeeded();
@@ -27,10 +24,10 @@ class ResponseDotsPage extends PriorityFeaturesPage {
   }
 }
 
-test('reply anchors should be empty dots sized by reply length and move with the visible reply starts', async ({ page }, info) => {
+test('reply anchors should fit all loaded replies when possible and retain sized empty dots', async ({ page }, info) => {
   const server = new HappyServer(); await server.install(page); await server.setWorking(false);
   await server.setMessages([{ role: 'user', content: { type: 'text', text: 'Read the replies' } }, reply('A short reply.'), reply('中'.repeat(600)), reply(long)]);
-  await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 390 } : { width: 1440, height: 900 });
+  await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 600 } : { width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const view = new ResponseDotsPage(page); await page.goto('/session/real-session');
   await expect(view.rail().getByRole('button')).toHaveText(['', '', '']);
@@ -39,14 +36,11 @@ test('reply anchors should be empty dots sized by reply length and move with the
     await expect(view.pin(index).locator('span')).toHaveCSS('width', `${pixels}px`);
     await expect(view.pin(index).locator('span')).toHaveCSS('height', `${pixels}px`);
   }
-  await view.align(3);
-  const before = (await view.pin(3).boundingBox())!.y;
-  await view.conversation().evaluate(element => { element.scrollTop += 40; });
-  await expect.poll(async () => before - (await view.pin(3).boundingBox())!.y).toBeGreaterThan(38);
-  await expect.poll(async () => {
-    const pin = (await view.pin(3).boundingBox())!, article = (await view.article(3).boundingBox())!;
-    return Math.abs(pin.y + pin.height / 2 - article.y);
-  }).toBeLessThan(2);
+  await expect.poll(() => view.anchors().evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
+  for (const progress of [0, 0.5, 1]) {
+    await view.expectRailProgress(progress);
+    for (const index of [1, 2, 3]) await expect(view.pin(index)).toBeInViewport();
+  }
   await view.activate(view.pin(2));
   await expect(view.article(2)).toHaveClass(/flash/);
   await expect(view.pin(2)).toHaveAttribute('aria-current', 'location');
@@ -54,13 +48,20 @@ test('reply anchors should be empty dots sized by reply length and move with the
   await view.capture(`${info.project.name}-response-dots`);
 });
 
-test('dense touch dots should retain independent targets and rail navigation should move the chat', async ({ page }, info) => {
+test('dense dots should scroll independently and follow chat progress through the latest bottom', async ({ page }, info) => {
   const server = new HappyServer(); await server.install(page); await server.setWorking(false);
-  await server.setMessages([{ role: 'user', content: { type: 'text', text: 'Read all replies' } }, ...Array.from({ length: 18 }, (_, index) => reply(`Reply ${index + 1}.\n\n${long}`))]);
+  await server.setMessages([reply('Previously unloaded response.'), ...Array.from({ length: 18 }, (_, index) => reply(`Reply ${index + 1}.\n\n${long}`))]);
   await page.setViewportSize({ width: 844, height: 390 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const view = new ResponseDotsPage(page); await page.goto('/session/real-session');
   await expect(view.rail().getByRole('button')).toHaveCount(18);
+  await expect.poll(() => view.anchors().evaluate(element => element.scrollHeight - element.clientHeight)).toBeGreaterThan(0);
+  for (const progress of [0, 0.5, 1]) await view.expectRailProgress(progress);
+  await expect(view.pin(18)).toBeInViewport();
+  const chatTop = await view.conversation().evaluate(element => element.scrollTop);
+  await view.anchors().evaluate(element => { element.scrollTop = 0; });
+  await expect(view.pin(1)).toBeInViewport();
+  await expect.poll(() => view.conversation().evaluate(element => element.scrollTop)).toBe(chatTop);
   for (const index of [1, 9, 18]) {
     await view.activate(view.pin(index));
     await expect(view.article(index)).toHaveClass(/flash/);
@@ -73,6 +74,14 @@ test('dense touch dots should retain independent targets and rail navigation sho
       expect(hit.width).toBeGreaterThanOrEqual(44); expect(hit.height).toBeGreaterThanOrEqual(44);
     }
   }
+  await view.loadEarlier();
+  await expect(view.rail().getByRole('button')).toHaveCount(19);
+  await view.expectRailProgress(0);
+  await expect(view.pin(1)).toBeInViewport();
+  await view.expectRailProgress(1);
+  await expect(view.pin(19)).toBeInViewport();
+  await view.activate(view.pin(19));
+  await expect(view.article(18)).toHaveClass(/flash/);
   await view.expectNoPageOverflow();
 });
 
