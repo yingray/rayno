@@ -430,6 +430,7 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   }
   if (calls.length) { message.toolCalls = calls; message.tools = calls.map(call => call.name); }
   if (results.length) message.toolResults = results;
+  if (message.role === 'assistant' && !message.event) message.sentAt = row.createdAt;
   message.content = stripLeadingTaskNotificationWrappers(message.content);
   if (!message.thinking?.trim()) delete message.thinking;
   const result = message.content || message.thinking || message.tools?.length || message.toolResults?.length

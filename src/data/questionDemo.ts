@@ -24,6 +24,7 @@ export function createQuestionDemo(now = Date.now()): Session {
     messages: [{
       id: 'question-demo-intro',
       role: 'assistant',
+      sentAt: now,
       content: 'Try the single-choice and multiple-choice options below. You can tap an entire option, add your own answer, and send or dismiss the form. This demo stays in your browser.',
     }],
   };

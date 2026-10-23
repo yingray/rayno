@@ -451,3 +451,22 @@ sessions; archived sessions, hidden side chats, and read permission requests do 
 - The existing Tailscale preview also showed and dismissed the prompt in Chromium and WebKit at desktop and phone widths, with no page errors. Synthetic-release visual checks block service workers so page routing can intercept the version response.
 - Release detection uses controlled version responses in browser tests; no production release was published.
   Physical iOS keyboard and Cloudflare delivery were not verified.
+
+## Response dividers and timestamps (2026-10-23)
+
+Each formal main-agent response begins with a 1px line and a date/time header, using the same response boundaries
+as the desktop response rail. The time comes from the original server record, uses the local time zone, and follows
+the interface language with a 24-hour clock including seconds. Reloading preserves that timestamp. Tool activity,
+thinking, events, and recap-only records keep their existing presentation. Missing legacy timestamps show
+"Time unavailable" rather than a fabricated date. Fresh demo replies include their simulated creation time.
+
+- Type check and production build: passed.
+- Unit checks at implementation time: 487 passed across 43 files, including original-server-time retention.
+- Final browser run: 22 passed, two existing mobile response-rail skips, across desktop/mobile Chromium and WebKit.
+  All eight new header cases passed, covering timestamp values, English/Traditional Chinese, reloads, and response boundaries.
+  Existing chat-width preference and response-rail navigation checks also passed.
+- Responsive interactions cover 320/360/390/430px, 390x360 keyboard height, 844x390 landscape, and 1440x900 desktop.
+  Tests scroll response headers, verify line/date fit, focus and send from the composer, and check phone touch targets.
+- The existing Tailscale preview displayed dated demo replies in both engines at desktop and 320px phone widths,
+  accepted draft input, and reported no page errors. Screenshots remain in ignored test-results/screenshots/.
+  Cloudflare production and a physical phone keyboard were not verified.

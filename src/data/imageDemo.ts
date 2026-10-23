@@ -8,7 +8,7 @@ export function createImageDemo(now = Date.now()): Session {
     path: '/demo/workspace', branch: 'demo/private-image', machineId: 'mbp', agent: 'Claude',
     model: 'claude-opus-5', effort: 'high', status: 'idle', unread: false, archived: false,
     createdAt: now, updatedAt: now, additions: 0, deletions: 0,
-    messages: [{ id: 'private-image-demo-reply', role: 'assistant', content:
+    messages: [{ id: 'private-image-demo-reply', role: 'assistant', sentAt: now, content:
       '### Try the image preview\n\nThis demo uses a public screenshot of Rayno. Select **Load private image**, then tap the thumbnail to open it or download a copy. No computer files are read or uploaded. Reload this page to try again.\n\n![Rayno chat screenshot](' + imageDemoPath + ')' }],
   };
 }

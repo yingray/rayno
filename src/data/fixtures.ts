@@ -207,6 +207,11 @@ export function createInitialState(now = Date.now()): DemoState {
       },
     ];
   });
+  for (const session of sessions) {
+    session.messages = session.messages.map((message, index, list) => ({
+      ...message, sentAt: (session.updatedAt ?? now) - (list.length - 1 - index) * 60000,
+    }));
+  }
   sessions.push(createQuestionDemo(now));
   sessions.push(createImageDemo(now));
   return {

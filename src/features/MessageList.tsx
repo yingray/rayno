@@ -1,5 +1,5 @@
-import { useText } from "../i18n";
-import { Children, Fragment, isValidElement, memo, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { LanguageContext, useText } from "../i18n";
+import { Children, Fragment, isValidElement, memo, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
 import { Button, Icon } from '../components/ui';
@@ -206,9 +206,25 @@ function usePendingShown(delivery: Message['delivery']) {
   return delivery?.status === 'pending' && (delivery.queued || elapsed);
 }
 
-const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDisabled, onOption, bubble, notify, recap, recapWriting, onJump }: {
+function ResponseHeader({ sentAt }: { sentAt?: number }) {
+  const t = useText();
+  const language = useContext(LanguageContext);
+  const date = sentAt === undefined ? null : new Date(sentAt);
+  const valid = date && Number.isFinite(date.getTime());
+  return <div className={styles.responseHeader} data-response-header>
+    <span role="separator" />
+    {valid ? <time dateTime={date.toISOString()} title={date.toLocaleString(language, { timeZoneName: 'short' })}>
+      {date.toLocaleString(language === 'en' ? 'en-GB' : language, {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+      })}
+    </time> : <span>{t('Time unavailable')}</span>}
+  </div>;
+}
+
+const MessageBlock = memo(function MessageBlock({ sessionId, message, response, optionsDisabled, onOption, bubble, notify, recap, recapWriting, onJump }: {
   sessionId: string;
   message: Message;
+  response: boolean;
   optionsDisabled: boolean;
   onOption: (messageId: string, text: string) => void;
   bubble: BubbleColor;
@@ -233,6 +249,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
       data-message-id={message.id}
       data-role={message.role}
     >
+      {response && <ResponseHeader sentAt={message.sentAt} />}
       {message.role === 'user' ? (<>
         <div className={styles.bubble} data-pending={pendingShown || undefined}>
           {message.content}
@@ -336,6 +353,7 @@ export const MessageList = memo(function MessageList({
       ? [[block.id, block.details.map((call) => toolOutcome(call, permissions, forms, modeLabel))] as const] : []));
   }, [blocks, agentState, metadata]);
   const anchors = useMemo(() => responseAnchors(visible), [visible]);
+  const responseIds = useMemo(() => new Set(anchors.map(anchor => anchor.id)), [anchors]);
   const unanswered = useMemo(() => unansweredMessageIds(messages), [messages]);
   const writing = !!view.pending && recapBusy;
   const writingTarget = writing ? view.pending!.targetId : undefined;
@@ -411,7 +429,7 @@ export const MessageList = memo(function MessageList({
         : block.kind === 'event'
         ? <p key={block.id} className={styles.agentEvent} data-role="event">{block.text}</p>
         : <Fragment key={block.id}>
-          <MessageBlock sessionId={sessionId} message={block.message}
+          <MessageBlock sessionId={sessionId} message={block.message} response={responseIds.has(block.message.id)}
             bubble={bubble} notify={notify}
             recap={recaps.get(block.message.id)} recapWriting={writingTarget === block.message.id} onJump={jump}
             optionsDisabled={disabled || pending || !unanswered.has(block.message.id) || !!answered?.has(block.message.id)} onOption={onOption} />

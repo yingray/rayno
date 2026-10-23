@@ -283,6 +283,18 @@
   align-self: stretch;
   min-width: 0;
 }
+.responseHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.responseHeader > [role='separator'] { height: 1px; flex: 1; min-width: 16px; background: var(--border); }
+.responseHeader > time, .responseHeader > span:last-child { flex: none; }
 /* Happy Web AgentEventBlock: a centered, secondary line between the messages. */
 .agentEvent {
   align-self: center;

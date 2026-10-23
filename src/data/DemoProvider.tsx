@@ -87,6 +87,7 @@ export function DemoProvider({
           message: {
             id: crypto.randomUUID(),
             role: 'assistant',
+            sentAt: Date.now(),
             duration: '3s',
             tools: ['Read the current workspace context', 'Prepare a local demonstration response'],
             content: `I’ve received your request:\n\n> ${prompts.replace(/\n/g, '\n> ')}\n\nThis is a **simulated response** in the Rayno demo. Your message and this conversation stay in this browser.\n\nYou can explore the **Changes** and **Files** tabs, open session details, or start another session.`,

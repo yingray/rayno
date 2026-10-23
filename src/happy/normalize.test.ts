@@ -28,6 +28,12 @@ const row = (id: string, seq: number, raw: object, localId?: string): MessageRec
   createdAt: 1000,
 });
 describe('Happy record normalization', () => {
+  it('should retain the original server time on agent replies across normalization', () => {
+    const source = { ...row('dated', 1, { role: 'agent', content: { type: 'codex', data: { type: 'message', message: 'A dated reply' } } }), createdAt: 1700000001234 };
+    expect(visibleMessages([source])[0]).toMatchObject({ content: 'A dated reply', sentAt: 1700000001234 });
+    expect(visibleMessages([source])[0]?.sentAt).toBe(1700000001234);
+  });
+
   it('should hide stored task notifications and preserve following user text across wire formats', () => {
     // Arrange
     const notification = '<task-notification>\n<task-id>agent-1</task-id>\n<status>completed</status>\n'
@@ -512,7 +518,7 @@ describe('CLI record formats', () => {
     ];
     // Act / Assert
     expect(visibleMessages(rows)).toEqual([
-      { id: 'error', role: 'assistant', content: 'Error: The agent stopped because of an unknown error.' },
+      { id: 'error', role: 'assistant', content: 'Error: The agent stopped because of an unknown error.', sentAt: 1000 },
     ]);
   });
   it('should map ACP file edits to tool calls and drop terminal output that matches no call', () => {

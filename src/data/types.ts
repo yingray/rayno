@@ -30,8 +30,9 @@ export type Message = {
   }[];
   duration?: string;
   attachments?: Attachment[];
-  // Modes that a user message carried in its meta, and the server time of that message.
+  // Modes that a user message carried in its meta.
   settings?: MessageSettings;
+  // Server timestamp in milliseconds; demo replies use their simulated creation time.
   sentAt?: number;
   // A hidden user message that asks the agent to recap its previous reply.
   recapRequest?: boolean;
