@@ -1,3 +1,5 @@
+![Rayno demo with the session list, chat, tool activity, code, and message composer](docs/images/demo-chat.png)
+
 <p align="center">
   <img src="public/icons/icon-512.png" width="120" alt="Rayno rhino logo" />
 </p>
