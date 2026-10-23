@@ -873,21 +873,41 @@ describe('Happy client protocol', () => {
     expect(packets[1].localId).not.toBe(packets[0].localId);
     expect(client.getSnapshot().sessions[0].messages.map(message => message.content)).toEqual(['Ask me to choose', 'Option 1']);
   });
-  it('should not post the same draft again after sync shows the unacknowledged send', async () => {
+  it('should find an unacknowledged send in older history before a different send', async () => {
+    // Arrange: a long agent turn pushed the committed send out of the loaded pages.
+    await start();
+    const packets: Json[] = [];
+    const historyUrls: string[] = [];
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (init?.method !== 'POST') {
+        historyUrls.push(url);
+        return response({ messages: [await wireMessage('first', 1, 'Ask me to choose', packets[0].localId)], hasMore: false });
+      }
+      const packet = JSON.parse(String(init.body)).messages[0];
+      packets.push(packet);
+      if (packets.length === 1) throw new TypeError('Connection lost after server commit');
+      return response({ messages: [{ id: 'option', seq: 300, localId: packet.localId, createdAt: 300 }] });
+    });
+    await expect(client.sendMessage('session', 'Ask me to choose')).rejects.toThrow('Connection lost');
+    // Act
+    await client.sendMessage('session', 'Option 1');
+    // Assert
+    expect(historyUrls).toEqual(['https://happy.test/v3/sessions/session/messages?before_seq=2147483647&limit=100']);
+    expect(packets).toHaveLength(2);
+    expect(packets[1].localId).not.toBe(packets[0].localId);
+  });
+  it('should keep an unacknowledged send that the server history does not have', async () => {
     // Arrange
     await start();
     const packets: Json[] = [];
     fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
-      packets.push(JSON.parse(String(init?.body)).messages[0]);
-      throw new TypeError('Connection lost after server commit');
+      if (init?.method !== 'POST') return response({ messages: [], hasMore: false });
+      packets.push(JSON.parse(String(init.body)).messages[0]);
+      throw new TypeError('Connection lost before server commit');
     });
     await expect(client.sendMessage('session', 'Keep this draft')).rejects.toThrow('Connection lost');
-    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session',
-      message: await wireMessage('first', 1, 'Keep this draft', packets[0].localId) } });
-    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages).toHaveLength(1));
-    // Act
-    await client.sendMessage('session', 'Keep this draft');
-    // Assert
+    // Act / Assert
+    await expect(client.sendMessage('session', 'Option 1')).rejects.toThrow('original draft and model/effort/permission choices');
     expect(packets).toHaveLength(1);
   });
   it('should send a hidden recap request with the normal modes and the selected recap mode', async () => {

@@ -71,6 +71,16 @@ const voidRpcMethods = new Set(['abort', 'switch', 'permission', 'communication'
 // An incremental session read starts this far before the newest server update
 // that the client has seen, so a late commit with an older timestamp is not lost.
 const SESSION_CHANGE_OVERLAP = 30000;
+// Each abort names its cause. Without a reason, Chromium reports "signal is aborted without reason".
+const REQUEST_TIMEOUT = 'timeout';
+const REQUEST_CLOSED = 'closed';
+const abortError = (signal: AbortSignal, timeout: string) =>
+  new Error(signal.reason === REQUEST_TIMEOUT ? timeout : 'The connection closed before Happy answered.');
+// A failed background read tries again with backoff, like the Happy Web sync (utils/time.ts backoff).
+const SYNC_RETRY_MIN = 1000;
+const SYNC_RETRY_MAX = 30000;
+// When a workspace is on screen, the warning appears only after this many background reads fail in a row.
+const SYNC_WARNING_FAILURES = 3;
 // Happy Web sync/persistence.ts keeps the last local send time of each session for older CLIs.
 const readSentTimes = (value: string | null) => {
   try {
@@ -441,7 +451,7 @@ export class HappyClient implements DemoAdapter {
     if (this.snapshot.offline) throw new Error('Reconnect to Happy before this request.');
     const controller = new AbortController();
     this.controllers.add(controller);
-    const timer = window.setTimeout(() => controller.abort(), 25000);
+    const timer = window.setTimeout(() => controller.abort(REQUEST_TIMEOUT), 25000);
     try {
       const response = await fetch(this.credentials.server + path, {
         ...init,
@@ -468,6 +478,9 @@ export class HappyClient implements DemoAdapter {
         );
       }
       return response.status === 204 ? {} : response.json();
+    } catch (error) {
+      if (controller.signal.aborted) throw abortError(controller.signal, 'Happy did not answer within 25 seconds.');
+      throw error;
     } finally {
       clearTimeout(timer);
       this.controllers.delete(controller);
@@ -545,7 +558,7 @@ export class HappyClient implements DemoAdapter {
     const offline = () => {
       this.patch({ offline: true, connection: 'disconnected', loading: false, error: '', connectionError: '', retrying: false });
       this.socket?.disconnect();
-      this.controllers.forEach((controller) => controller.abort());
+      this.controllers.forEach((controller) => controller.abort(REQUEST_CLOSED));
       void this.flushCache();
     };
     const online = () => {
@@ -581,7 +594,7 @@ export class HappyClient implements DemoAdapter {
     this.socket?.removeAllListeners();
     this.socket?.disconnect();
     this.socket = null;
-    this.controllers.forEach((controller) => controller.abort());
+    this.controllers.forEach((controller) => controller.abort(REQUEST_CLOSED));
     this.listeners.clear();
     this.sessions.clear();
     this.messages.clear();
@@ -1404,10 +1417,11 @@ export class HappyClient implements DemoAdapter {
         sessionStorage.removeItem(key);
         packet = null;
       }
-      // The server can commit a send whose acknowledgement is lost. Sync then shows its local IDs, so the packet is done.
-      if (packet && this.delivered(id, packet)) {
+      // The server can commit a send whose acknowledgement is lost. Its history then has the local IDs, so the packet is done.
+      // A retry of the same draft needs no check: the server keeps one message for each local ID.
+      // A failed history check keeps the packet.
+      if (packet && packet.fingerprint !== fingerprint && await this.delivered(id, packet).catch(() => false)) {
         sessionStorage.removeItem(key);
-        if (packet.fingerprint === fingerprint) return;
         packet = null;
       }
       if (packet && packet.fingerprint !== fingerprint)
@@ -1454,15 +1468,32 @@ export class HappyClient implements DemoAdapter {
       this.sending.delete(id);
     }
   }
-  private delivered(id: string, packet: Outbox) {
-    const synced = new Set([...(this.messages.get(id)?.values() || [])].map(row => row.localId));
-    return [...(packet.files || []), packet].every(item => synced.has(item.localId));
+  /** True when the server stored every local ID of the packet. Long agent turns can push it out of the loaded pages. */
+  private async delivered(id: string, packet: Outbox) {
+    const missing = new Set([...(packet.files || []), packet].map(item => item.localId));
+    const stored = [...(this.messages.get(id)?.values() || [])];
+    for (const row of stored) if (row.localId) missing.delete(row.localId);
+    let cursor = stored.length ? Math.min(...stored.map(row => row.seq)) : 2147483647;
+    // Stop after 1000 older messages. The send then keeps the packet and asks for the original draft.
+    for (let page = 0; missing.size && page < 10; page++) {
+      const result = await this.request(`/v3/sessions/${encodeURIComponent(id)}/messages?before_seq=${cursor}&limit=100`);
+      if (!Array.isArray(result.messages)) throw new Error('Could not read the message history.');
+      let next = cursor;
+      for (const wire of result.messages) {
+        if (!Number.isSafeInteger(wire.seq) || wire.seq < 0 || wire.seq >= cursor) continue;
+        next = Math.min(next, wire.seq);
+        if (typeof wire.localId === 'string') missing.delete(wire.localId);
+      }
+      if (!result.hasMore || next >= cursor) break;
+      cursor = next;
+    }
+    return !missing.size;
   }
   private async transfer(value: string, init: RequestInit) {
     const url = transferUrl(value, this.credentials.server);
     const controller = new AbortController();
     this.controllers.add(controller);
-    const timer = window.setTimeout(() => controller.abort(), 45000);
+    const timer = window.setTimeout(() => controller.abort(REQUEST_TIMEOUT), 45000);
     try {
       const headers = new Headers(init.headers);
       if (url.origin === new URL(this.credentials.server).origin) headers.set('Authorization', `Bearer ${this.credentials.token}`);
@@ -1470,6 +1501,9 @@ export class HappyClient implements DemoAdapter {
       this.assertAlive();
       if (!response.ok) throw new Error(`Image transfer failed (${response.status}). Retry with your images still attached.`);
       return response;
+    } catch (error) {
+      if (controller.signal.aborted) throw abortError(controller.signal, 'The image server did not answer within 45 seconds.');
+      throw error;
     } finally { window.clearTimeout(timer); this.controllers.delete(controller); }
   }
   private async uploadImage(id: string, attachment: Attachment) {
