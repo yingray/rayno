@@ -76,6 +76,7 @@ test('intense glass should keep settings, dialogs, headers, and sending usable a
     const dialog = page.getByRole('dialog', { name: 'Model & effort', exact: true });
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveCSS('background-image', menuBackground);
+    await expect.poll(() => dialog.locator('..').evaluate(element => getComputedStyle(element).backdropFilter)).toContain('blur(28px)');
     const close = dialog.getByRole('button', { name: 'Close Model & effort', exact: true });
     if (width < 768 || info.project.use.hasTouch) await view.expectTouchTarget(close);
     await view.activate(close);

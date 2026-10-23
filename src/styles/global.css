@@ -250,7 +250,7 @@ h3 {
   --panel: linear-gradient(155deg, #272334a8, #11131bbd);
   --main: linear-gradient(155deg, #181421b8, #0d1119d4);
   --card: linear-gradient(150deg, #3b334b85, #171a25b8);
-  --glass-floating: linear-gradient(135deg, #65577559, #232536b8 48%, #161c2bca);
+  --glass-floating: linear-gradient(135deg, #3b334be6, #232536ed 48%, #161c2bf5);
   --glass-edge: #e5deff38;
   --glass-filter: blur(28px) saturate(1.65);
   --glass-shadow: inset 0 1px 0 #ffffff40, inset 0 -1px 0 #c4b5fd12, 0 16px 48px -24px #000c;

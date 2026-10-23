@@ -321,3 +321,7 @@
   :global(html[data-glass-style='intense']) .dialog header > button { min-width: 44px; min-height: 44px; }
 }
 :global(html[data-glass-style='intense']) .backdrop { background: #0807108c; }
+:global(html[data-glass-style='intense']) .backdrop {
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}

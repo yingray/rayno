@@ -522,5 +522,8 @@ Reduced-transparency CSS and an unsupported-filter fallback provide opaque float
   were not tested. A native platform preference was not changed during verification.
 
 The final menu/modal refinement uses the same glass surface tokens for Session actions and dialogs. Intense modal
-backdrops use a lighter dim layer to retain the surrounding light. Responsive checks compare the computed menu and
+backdrops use a lighter dim layer and blur the underlying page to retain light without legible background text. Responsive checks compare the computed menu and
 dialog backgrounds and open/close both by touch or pointer. Standard retains the original menu and backdrop styles.
+
+The modal refinement also increases the minimum tint opacity of floating surfaces. This keeps underlying text
+secondary even when a browser reports backdrop-filter support but omits the visual blur in its screenshot renderer.
