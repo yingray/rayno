@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (step 1.3).
+Created: 2026-10-23. Updated: 2026-10-23 (step 1.4).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -79,7 +79,7 @@ Four parallel workers made the cache timings two to three times higher.
 | 1.1b | N01 | `loginWithKey()` in `auth.ts` sends `authRequest()` with no signal, so it has no deadline. Add one | A stalled login rejects after the deadline | done |
 | 1.2 | N02 | In the `update-session` handler, read the record again from `this.sessions` after each `await`. Write a new record object. In `applyMachines`, compare the version again after `await` | Two interleaving tests: session v1→v2 with a REST read in the middle; machine v2 then an old REST v1. The visible version never goes back | done |
 | 1.3 | E01a | Add a `persist` flag to `publish()`. Presence and activity publishes do not call `scheduleCache()` | Unit test: 100 activity events cause zero cache saves | done |
-| 1.4 | N05 | Key `historyRequests` by `id + direction`. A caller that finds a running request waits for it. If an invalidation came during that request, run one more request, not one for each caller | 10 concurrent `forward` calls cause at most 2 fetches | todo |
+| 1.4 | N05 | Key `historyRequests` by `id + direction`. A caller that finds a running request waits for it. If an invalidation came during that request, run one more request, not one for each caller | 10 concurrent `forward` calls cause at most 2 fetches | done |
 | 1.5 | N06 | Keep `contiguousSeq` for each active session. When a socket message has `seq > contiguousSeq + 1`, schedule a `forward` read at once | Drop one socket message in the mock. The chat fills the gap without a reconnect | todo |
 
 ### Phase 2: Active chat first (2 PRs)
@@ -185,4 +185,5 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `e47b3f3` | 1.1 | Vitest | Three new tests fail before the change and pass after it |
 | 2026-10-23 | `84458f3` | 1.1b | Vitest, 32 login and connection browser checks | The stalled sign-in test fails before the change and passes after it |
 | 2026-10-23 | `9a8df11` | 1.2 | Vitest, 165 sync browser checks | Two race tests fail before the change and pass after it |
-| 2026-10-23 | after `9a8df11` | 1.3 | Vitest, 81 offline and presence browser checks, baseline | 100 activity events now cause no cache save. The baseline live phase still saves 0–2 times, because the replies change history |
+| 2026-10-23 | `8088e84` | 1.3 | Vitest, 81 offline and presence browser checks, baseline | 100 activity events now cause no cache save. The baseline live phase still saves 0–2 times, because the replies change history |
+| 2026-10-23 | after `8088e84` | 1.4 | Vitest, 183 history browser checks | 11 forward calls during one read now make 2 reads, not 11 |

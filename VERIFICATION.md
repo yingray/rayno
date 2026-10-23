@@ -624,3 +624,14 @@ The next save for a real change still writes the latest presence.
   After the change, the activity makes no save, and the metadata update makes one save with the latest `activeAt`.
 - All 521 unit tests and the type check passed. 81 browser checks passed with 3 existing skips: offline workspace,
   navigation status, connection, and render isolation across four projects.
+
+## Shared history reads (2026-10-23)
+
+Callers that ask for the same history direction during a running read now share one later read.
+Before, each caller waited and then made its own read, so ten callers made ten reads in a row.
+A failure of the running read still reaches the callers that wait for it.
+
+- The new sharing test makes 11 reads against the previous code and 2 after the change.
+  A second test keeps the failure behavior; it passes before and after.
+- All 523 unit tests and the type check passed. 183 browser checks passed with 5 existing skips: chat presentation,
+  handoff, connection, offline workspace, recap, transcript, response dots, and response headers across four projects.

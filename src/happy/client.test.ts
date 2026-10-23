@@ -1727,6 +1727,49 @@ describe('Happy client damaged records', () => {
     // Assert
     expect(client.getSnapshot().machines[0]?.name).toBe('New name');
   });
+  it('should share one later history read among the callers that come during a running read', async () => {
+    // Arrange
+    await start();
+    const first = await wireMessage('a', 1, 'First');
+    fetchMock.mockImplementation(async (url: string) => response({ messages: url.includes('/messages') ? [first] : [], hasMore: false }));
+    await client.loadHistory('session');
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    let forwardReads = 0;
+    fetchMock.mockImplementation(async (url: string) => {
+      if (!url.includes('after_seq=')) return response({ messages: [], hasMore: false });
+      forwardReads++;
+      if (forwardReads === 1) await gate;
+      return response({ messages: [], hasMore: false });
+    });
+    // Act
+    const running = client.loadHistory('session', 'forward');
+    await vi.waitFor(() => expect(forwardReads).toBe(1), { interval: 1 });
+    const later = Array.from({ length: 10 }, () => client.loadHistory('session', 'forward'));
+    release();
+    await Promise.all([running, ...later]);
+    // Assert
+    expect(forwardReads).toBe(2);
+  });
+  it('should pass a failure of the running history read to the callers that wait for it', async () => {
+    // Arrange
+    await start();
+    const first = await wireMessage('a', 1, 'First');
+    fetchMock.mockImplementation(async (url: string) => response({ messages: url.includes('/messages') ? [first] : [], hasMore: false }));
+    await client.loadHistory('session');
+    let fail = (_error: Error) => {};
+    fetchMock.mockImplementation((url: string) => url.includes('after_seq=')
+      ? new Promise<Response>((_resolve, reject) => { fail = reject; })
+      : Promise.resolve(response({ messages: [], hasMore: false })));
+    // Act
+    const running = client.loadHistory('session', 'forward').catch((error: Error) => error.message);
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('after_seq='))).toBe(true), { interval: 1 });
+    const later = client.loadHistory('session', 'forward').catch((error: Error) => error.message);
+    fail(new Error('The relay is down.'));
+    // Assert
+    expect(await running).toBe('The relay is down.');
+    expect(await later).toBe('The relay is down.');
+  });
   it('should load the readable messages around a damaged message and advance the cursor', async () => {
     // Arrange
     const page = [await wireMessage('a', 1, 'First'), damagedMessage('b', 2), await wireMessage('c', 3, 'Third')];

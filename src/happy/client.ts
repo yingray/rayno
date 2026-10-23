@@ -152,6 +152,8 @@ export class HappyClient implements DemoAdapter {
   private historyCursors = new Map<string, number>();
   private deletedSessions = new Set<string>();
   private historyRequests = new Map<string, Promise<void>>();
+  // One follow-up read for each session and direction, shared by the callers that came during a running read.
+  private queuedHistory = new Map<string, { promise: Promise<void>; quiet: boolean }>();
   private activeSessions = new Set<string>();
   private sending = new Set<string>();
   private resuming = new Map<string, Promise<void>>();
@@ -1185,9 +1187,19 @@ export class HappyClient implements DemoAdapter {
     direction: 'initial' | 'older' | 'forward' = 'initial',
     quiet = false,
   ): Promise<void> {
-    if (this.historyRequests.has(id)) {
-      await this.historyRequests.get(id);
-      return this.loadHistory(id, direction, quiet);
+    const running = this.historyRequests.get(id);
+    if (running) {
+      // Callers that come during a read share one later read. A failure of the running read reaches them, as before.
+      const key = `${id}:${direction}`, queued = this.queuedHistory.get(key);
+      if (queued) {
+        queued.quiet &&= quiet;
+        return queued.promise;
+      }
+      const entry = { quiet, promise: Promise.resolve() };
+      entry.promise = running.finally(() => this.queuedHistory.delete(key))
+        .then(() => this.loadHistory(id, direction, entry.quiet));
+      this.queuedHistory.set(key, entry);
+      return entry.promise;
     }
     if (direction === 'initial' && this.snapshot.histories[id]?.loaded) direction = 'forward';
     const promise = this.fetchHistory(id, direction, quiet).finally(() => this.historyRequests.delete(id));
