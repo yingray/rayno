@@ -154,7 +154,9 @@ export class HappyClient implements DemoAdapter {
   private machines = new Map<string, MachineRecord>();
   private messages = new Map<string, Map<string, MessageRecord>>();
   private visibleHistory = new Map<string, { source: Map<string, MessageRecord> | undefined; size: number; hold: boolean; messages: Message[];
-    context?: ContextUsage; marked: string; todos: Todo[] }>();
+    context?: ContextUsage; marked: string; todos: Todo[];
+    // The last `withRequestHistory` result and its inputs. Equal inputs return the same array.
+    requests?: { messages: Message[]; state: Json; result: Message[] } }>();
   private historyCursors = new Map<string, number>();
   private deletedSessions = new Set<string>();
   private historyRequests = new Map<string, Promise<void>>();
@@ -276,9 +278,13 @@ export class HappyClient implements DemoAdapter {
             this.visibleHistory.set(id, history);
           }
           const attention = this.sessionAttention(source.wire.id);
+          const cached = history.requests;
+          const requested = cached && cached.messages === history.messages && cached.state === source.agentState ? cached.result
+            : timeStage('request-history', () => withRequestHistory(history!.messages, source.agentState, rows?.values() || []));
+          history.requests = { messages: history.messages, state: source.agentState, result: requested };
           const next = normalizeSession(
             source,
-            timeStage('request-history', () => withRequestHistory(history.messages, source.agentState, rows?.values() || [])),
+            requested,
             attention.assistantSeq > attention.readSeq,
             this.machines.get(source.metadata.machineId),
             attention.optionsSeq > attention.userSeq,

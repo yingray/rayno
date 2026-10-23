@@ -1863,6 +1863,21 @@ describe('Happy client damaged records', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(client.getSnapshot().sessions).toHaveLength(0);
   });
+  it('should keep the same messages for activity events when a denied request has no tool call', async () => {
+    // Arrange: Codex can deny a command before it writes a tool call, so the client adds a message for it.
+    session.agentState = await client.encryption.encrypt({ completedRequests: { call_denied: {
+      tool: 'Bash', arguments: { command: 'rm -rf build' }, createdAt: 1, completedAt: 2, status: 'denied' } } }, null);
+    session.agentStateVersion = 1;
+    await start();
+    const before = client.getSnapshot().sessions[0];
+    // Act
+    socket.handlers.get('ephemeral')!({ type: 'activity', id: 'session', active: true, activeAt: 5000, thinking: true });
+    // Assert
+    const after = client.getSnapshot().sessions[0];
+    expect(after.status).toBe('running');
+    expect(after.messages.map((message) => message.id)).toEqual(['request:call_denied']);
+    expect(after.messages).toBe(before.messages);
+  });
   it('should load the readable messages around a damaged message and advance the cursor', async () => {
     // Arrange
     const page = [await wireMessage('a', 1, 'First'), damagedMessage('b', 2), await wireMessage('c', 3, 'Third')];

@@ -673,3 +673,13 @@ the updates of every other session.
 - A second test keeps the order inside one session: messages, then a delete, then a late message. It passes before and after.
 - All 528 unit tests and the type check passed.
 - Full browser suite: 1,218 passed, 54 existing skips, 0 failed.
+
+## Stable request history (2026-10-23)
+
+The client keeps the last result of `withRequestHistory()` with its message list and agent state.
+When both are the same objects, the next publish returns the same message array.
+Before, a session with a denied request and no tool call got a new array on each publish, also for activity events.
+
+- A new test sends an activity event to such a session. It fails against the previous code and passes after it.
+- All 529 unit tests and the type check passed. 76 browser checks passed: agent requests, tool results, and render
+  isolation across four projects.
