@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-24 (Phase 4: M01 measurement).
+Created: 2026-10-23. Updated: 2026-10-24 (Phase 4: M01 measurement, list virtualization evaluation).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -112,10 +112,12 @@ If the encryption is still a long task after 3.5, move it to a worker as a separ
 |---|---|---|
 | E02 | Store image keys with the session id. Add an LRU and a size budget. Run the stale-history cleanup at most once for each session list change, not on each save | done: session id in image keys, the scan on list change, persistent storage, and an image budget (section 6.5). Text history is never evicted |
 | E04 | Refresh usage only while the usage UI is visible, or cache it on the daemon side. Stop the machine loop when the page becomes hidden | no change needed: the usage loop already stops when the tab is hidden or loses focus (`LiveProvider.tsx:89`). Live mode has no machine loop; monitor refresh runs on a click |
-| M01 | Add an LRU for decrypted history of sessions that are not open. Evaluate list virtualization with the recap, anchors, selection, and copy | measured, no change now: 20 visited chats keep about 1.2 MB, and a fully loaded 1,000-tool chat keeps about 4 MB. Do it when a real session keeps more than 50 MB of closed chats. The open large chat (12.3 MB with its DOM) is the case for virtualization |
+| M01 | Add an LRU for decrypted history of sessions that are not open. Evaluate list virtualization with the recap, anchors, selection, and copy | measured, no change now: 20 visited chats keep about 1.2 MB, and a fully loaded 1,000-tool chat keeps about 4 MB. Do it when a real session keeps more than 50 MB of closed chats. Virtualization: evaluated, not now (section 6.6) |
 | M02 | Add a total size budget for attachments. Limit hash and upload concurrency | done: at most 4 at the same time. The limits stay at 20 images and 10 MB, the claude.ai limits (section 6.3). No resize |
 | O01 | Add a queue limit to the Mermaid worker. Cancel stale jobs. Separate queue time from run time | done |
 | O02, A01 | Measure first, then decide | todo |
+| L01 | Load older history pages without a new pass over all loaded rows | todo: 108 pages of a 600-turn chat took 88 s in Chromium and 192 s in WebKit (section 6.6) |
+| L02 | Make the per-reply message pipeline (`visibleMessages`, `markSubagents`, `reuseEqual`) work on the changed rows only | todo: about 57% of the script time for a live reply in a 600-turn chat (section 6.6) |
 | R03 rest | Keep the pins array stable. Update only `active` and `thumb` on scroll | done |
 
 ## 3. Verification for the full plan
@@ -205,6 +207,7 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-24 | `2b4bbd2` | M02 | Vitest, 162 image and composer browser checks | Image hashing and uploads run at most 4 at the same time. Before, hashing read all images together and uploads ran one at a time |
 | 2026-10-24 | `e80cc14` | O01 | Vitest, full browser suite | The Mermaid worker gets one job at a time. The timeout starts when a job runs, and a timeout ends only that job. A changed or unmounted diagram removes its waiting job. At most 8 jobs wait. Full suite: 1,242 passed, 0 failed |
 | 2026-10-24 | after `e80cc14` | M01 measurement | Memory browser test, desktop Chromium, two runs | A visited chat with only its first page keeps 58 to 117 KiB after the user leaves it. A chat with all 1,000 tool calls loaded uses about 12.3 MB while open and keeps about 4.0 to 4.5 MB after the user leaves it. Decision: no LRU now |
+| 2026-10-24 | `7878e91` | Virtualization evaluation | Temporary frame probe, desktop Chromium and WebKit, one worker | See section 6.6. Decision: no list virtualization now; no `content-visibility` |
 
 ## 6. Research for the Phase 4 limits (2026-10-23)
 
@@ -278,3 +281,39 @@ Sources:
 - https://uppy.io/docs/aws-s3/
 - https://uppy.io/docs/xhr-upload/
 
+### 6.6 List virtualization evaluation (2026-10-24)
+
+Input: HEAD `7878e91`, a production build, desktop Chromium and desktop WebKit, one worker.
+The chats use `toolHeavyHistory`, with all history pages loaded. One turn has 5 tool calls.
+A temporary probe measured the time to the next paint. In Chromium, it also read long animation frames.
+The probe is not in the repo.
+
+| Measure | 200 turns, Chromium | 600 turns, Chromium | 200 turns, WebKit | 600 turns, WebKit |
+|---|---|---|---|---|
+| DOM elements in the list | 12,006 | 36,006 | 12,006 | 36,006 |
+| Live reply shown | 15 ms | 66 to 104 ms | 80 to 111 ms | 282 to 285 ms |
+| Open the chat again | 169 ms | 549 to 681 ms | 378 ms | 908 ms |
+| Forced layout after a width change | 6 ms | 18 ms | 20 ms | 56 ms |
+| Scroll frame, 95th percentile | 20 ms | 18 ms | 33 ms | 23 ms |
+
+Where a live reply spends its script time (600 turns, Chromium, unminified build, CPU profile):
+
+| Part | Share | Changes with virtualization |
+|---|---|---|
+| Message pipeline: `visibleMessages`, `markSubagents`, `reuseEqual`, normalize | about 57% | no |
+| React render and commit | about 39% | partly; `MessageList` itself is 10% to 14% |
+
+`content-visibility: auto` on messages and tool groups was also tested:
+
+- It cuts the forced layout (18 ms to 2 ms in Chromium, 56 ms to 7 ms in WebKit).
+- It adds paint work later. Long animation frames for a live reply went from about 65 ms to about 220 ms in Chromium.
+- In WebKit, the list does not stay at the bottom after a live reply. The gap was 172 to 325 px.
+
+Decision:
+
+- No list virtualization now. Scrolling is smooth at 600 turns. Below 200 turns, a live reply costs 15 ms in Chromium.
+- Most of the cost that grows with the chat is in the message pipeline. Virtualization does not change it. L02 is the next step.
+- Loading old history is the slowest part. The 600-turn chat has 10,800 rows in 108 pages. Loading all pages took 88 s in Chromium and 192 s in WebKit, with two workers in parallel. Each page runs a pass over all loaded rows (L01).
+- Virtualization breaks features that read the DOM: the recap jump (`findRecapTarget`), the reply rail (`ResponseRail`), page search, copy across messages, and scroll restore. Each needs a new design.
+- No `content-visibility`, because it breaks the bottom pin in WebKit.
+- Do it again when a live reply in WebKit takes more than 200 ms after L02, at the chat size that real users load.
