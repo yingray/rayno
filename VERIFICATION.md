@@ -874,3 +874,32 @@ and `contentOffsets` reads the scroll box once.
 - 152 rail, recap, and parity browser checks passed. All 556 unit tests passed. Full browser suite: 1,247 passed, 69 skips, 0 failed.
 - The probe that measured these numbers is not in the repo.
 
+## WebKit virtualization, O02, and A01 evaluation (2026-10-24)
+
+Production source: `3ec6672`. This change adds isolated probes and records; it changes no production UI or cache policy.
+The commands and measurement limits are in `benchmarks/README.md`.
+The evaluation is in `WEBKIT-SCALING-EVALUATION.md`; raw samples are in `benchmarks/results/2026-10-24.json`.
+
+- Application typecheck and the separate benchmark typecheck pass. All 556 unit tests pass.
+- 22 final browser probes pass across Chromium and WebKit: 10 chat samples, 8 workspace samples, and 4 phone interaction probes.
+- Chat samples cover full and bounded-tail builds at 600 turns in all four projects, plus full desktop builds at 200 turns.
+  Desktop WebKit median: 260 ms full versus 53 ms tail. The tail is not a complete virtualizer.
+- Workspace samples cover 100 and 1,000 active sessions in all four projects, plus searches of 1,000 to 50,000 files.
+  At 1,000 sessions, each project grouping visits 202,000 entries, but filters take about 0–2 ms.
+  New-session typing causes no session-list renders.
+- Each phone probe exercises 320, 360, 390, and 430px, a short 390x360 viewport, and 844x390 landscape.
+  Tool expansion, detail expansion, scroll-to-latest, drafts, and send work in full and tail builds.
+  All replies keep the bottom pin; the composer send action stays reachable and at least 44px.
+- The probes record an existing defect: the tool-group button is 41px in landscape and fails the 44px hit-area check.
+  This occurs in both builds and both engines. The other five viewport sizes pass that tool-target check.
+  Passing interaction probes do not mark this target as compliant.
+- Real-service-worker transfer probes pass in Chromium and WebKit. Each covers cold install, warm reload,
+  unchanged update, changed update, and an offline reload that checks the updated CSS marker.
+  The PWA probe verifies its temporary Tailscale health route before the measured requests.
+- The local 5196 preview also returned HTTP 200 through its separate Tailscale route.
+  Existing routes, user credentials, and running user services were not changed.
+- The full existing browser suite was not rerun. Only benchmark tools and records changed.
+- Not verified: a complete virtualizer's offscreen navigation, real iPhone Safari, physical display latency,
+  deployed Cloudflare transfer sizes, and account-history offline behavior under a changed cache policy.
+  The simple tail intentionally drops early text and rail pins, so it must not ship.
+

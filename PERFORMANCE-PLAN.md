@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-24 (Phase 4: M01 measurement, list virtualization evaluation, L01 and L02).
+Created: 2026-10-23. Updated: 2026-10-24 (WebKit bounded-rendering evaluation, O02, and A01).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -112,10 +112,12 @@ If the encryption is still a long task after 3.5, move it to a worker as a separ
 |---|---|---|
 | E02 | Store image keys with the session id. Add an LRU and a size budget. Run the stale-history cleanup at most once for each session list change, not on each save | done: session id in image keys, the scan on list change, persistent storage, and an image budget (section 6.5). Text history is never evicted |
 | E04 | Refresh usage only while the usage UI is visible, or cache it on the daemon side. Stop the machine loop when the page becomes hidden | no change needed: the usage loop already stops when the tab is hidden or loses focus (`LiveProvider.tsx:89`). Live mode has no machine loop; monitor refresh runs on a click |
-| M01 | Add an LRU for decrypted history of sessions that are not open. Evaluate list virtualization with the recap, anchors, selection, and copy | measured, no change now: 20 visited chats keep about 1.2 MB, and a fully loaded 1,000-tool chat keeps about 4 MB. Do it when a real session keeps more than 50 MB of closed chats. Virtualization: evaluated, not now (section 6.6) |
+| M01 | Add an LRU for decrypted history of sessions that are not open. Evaluate list virtualization with the recap, anchors, selection, and copy | measured: no history LRU now; closed chats stay below the 50 MB trigger. After L01/L02, bounded rendering cuts a 600-turn desktop WebKit reply from 260 ms to 53 ms. A complete virtualizer prototype is now recommended; production UI stays unchanged (section 6.8) |
 | M02 | Add a total size budget for attachments. Limit hash and upload concurrency | done: at most 4 at the same time. The limits stay at 20 images and 10 MB, the claude.ai limits (section 6.3). No resize |
 | O01 | Add a queue limit to the Mermaid worker. Cancel stale jobs. Separate queue time from run time | done |
-| O02, A01 | Measure first, then decide | todo |
+| O02 | Measure grouping, new-session input, and file suggestions | done, measured: group filters take at most about 2 ms of a 125–291 ms large-list switch. Typing does not render the session list. A 50,000-file search takes about 6–21 ms by query median. Defer implementation (section 6.9) |
+| A01 | Measure cold install, warm cache, and updates | done, measured: cold gzip bodies about 1.89 MB in Chromium and 2.41 MB in WebKit; warm shell reload 0 network bytes; small release about 446 KB. Demo image accounts for about 781 KB. Policy changes remain a follow-up (section 6.10) |
+| V01 | Build a complete virtualizer with data-based recap/rail navigation, scroll restoration, and a full-transcript mode | todo, recommended: prefer a TanStack Virtual prototype. The tail experiment is a performance bound, not a deployable virtualizer. Fix the existing 41px landscape tool target before rollout |
 | L01 | Load older history pages without a new pass over all loaded rows | done: the cause was the reply rail, not the data pass. It ran one list query for each reply. A late page in a 600-turn chat: Chromium 199 to 274 ms to 107 to 137 ms, WebKit 845 to 927 ms to 512 to 593 ms (section 6.7) |
 | L02 | Make the per-reply message pipeline (`visibleMessages`, `markSubagents`, `reuseEqual`) work on the changed rows only | measured, no change: the pipeline takes about 10 ms for 10,800 rows. The rail fix also cut a live reply: Chromium 114 to 116 ms to 31 to 46 ms, WebKit 426 to 469 ms to 252 to 310 ms (section 6.7) |
 | R03 rest | Keep the pins array stable. Update only `active` and `thumb` on scroll | done |
@@ -209,6 +211,7 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-24 | after `e80cc14` | M01 measurement | Memory browser test, desktop Chromium, two runs | A visited chat with only its first page keeps 58 to 117 KiB after the user leaves it. A chat with all 1,000 tool calls loaded uses about 12.3 MB while open and keeps about 4.0 to 4.5 MB after the user leaves it. Decision: no LRU now |
 | 2026-10-24 | `7878e91` | Virtualization evaluation | Temporary frame probe, desktop Chromium and WebKit, one worker | See section 6.6. Decision: no list virtualization now; no `content-visibility` |
 | 2026-10-24 | after `23aea8d` | L01, L02 | Vitest, temporary probe in an unminified build, rail and recap browser checks, full browser suite | See section 6.7. A new browser test fails on the old build (19 rail queries for one reply). Full suite: 1,247 passed, 0 failed |
+| 2026-10-24 | `3ec6672` plus retained probes | WebKit virtualization, O02, A01 | 22 successful browser probes across four projects; real service workers in Chromium and WebKit; 556 unit tests | See sections 6.8–6.10 and `WEBKIT-SCALING-EVALUATION.md`. Timing builds are isolated. No production behavior changed. Raw samples are checked into `benchmarks/results/2026-10-24.json` |
 
 ## 6. Research for the Phase 4 limits (2026-10-23)
 
@@ -345,3 +348,45 @@ That saves at most about 10 ms for each reply at this size.
 
 What remains grows with the DOM: style and layout for 36,000 elements, and the React pass over 3,600 blocks.
 This is the case for virtualization in section 6.6. WebKit pays about 4 times more than Chromium for it.
+
+### 6.8 WebKit bounded rendering (2026-10-24)
+
+The retained probe uses a minified production build and one browser worker.
+It waits inside the page and reports seven event-to-rendering-opportunity samples.
+At 600 turns, desktop WebKit has a 260 ms median with the full list and 53 ms with only 60 rendered blocks.
+The first sample has 36,003 DOM elements in the full list and 1,201 in the tail.
+At 200 turns, the full list has a 78 ms median in desktop WebKit.
+
+Decision: a complete virtualizer prototype is worthwhile for large chats.
+Prefer TanStack Virtual with stable block keys and one owner for scroll and resize behavior.
+The prototype must move recap and rail navigation to data, restore anchors, and offer full-transcript search and selection.
+The current 60-block experiment loses old pins and text. Do not deploy it.
+The full and tail phone probes both show an existing 41px landscape tool target.
+
+See `WEBKIT-SCALING-EVALUATION.md` for the candidate comparison, method, limits, and integration plan.
+
+### 6.9 O02 (2026-10-24)
+
+At 100 sessions, a project-group switch has a 24–26 ms median across the four projects.
+At 1,000 sessions, it has a 182–244 ms median. Repeated filters take about 0–2 ms.
+The session list has no renders during 19 new-session input events.
+Desktop selectors still run about 19,000–20,000 times, while phone selectors run 179 times.
+The sampled input median is about 33 ms, with a two-frame floor. It is not a physical typing latency measurement.
+
+The 50,000-file index has 100,101 entries after folders are added.
+Its parse takes 25–41 ms in the 1,000-session runs; query medians reach 21 ms.
+Decision: keep the measurements; defer O02 changes until real-device evidence shows a practical delay.
+One-pass grouping alone does not address the measured UI cost.
+
+### 6.10 A01 (2026-10-24)
+
+An HTTP server counts gzip response bodies from the page and service worker.
+Cold installs transfer about 1.89 MB in Chromium and 2.41 MB in WebKit.
+The warm shell reload sends no network request. A small CSS/build update transfers about 446 KB in both engines.
+The unchanged check uses two validation requests: no response body in Chromium, about 9.7 KB in WebKit.
+Both engines reopen the updated sign-in shell offline.
+
+The demo screenshot alone transfers 781,318 gzip bytes on cold install.
+Recommend removing it from unconditional precache, with first-use caching if offline demo access remains required.
+Then review unused font entries and hash changes through shared imports.
+Keep the account shell and offline history behavior. No service-worker policy changed in this evaluation.
