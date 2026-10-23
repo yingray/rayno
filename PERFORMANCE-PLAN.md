@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (phase 0).
+Created: 2026-10-23. Updated: 2026-10-23 (step 1.1).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -75,7 +75,7 @@ Four parallel workers made the cache timings two to three times higher.
 
 | Step | ID | Change | Test | Status |
 |---|---|---|---|---|
-| 1.1 | N01 | Use `return await response.json()` in `request()`. Keep the timer and the controller until the body is read. Do the same in `transfer()` (`client.ts:1592`). `auth.ts` does not clear its signal early; see 1.1b | Mock fetch: headers arrive, the body stalls. The call rejects at 25 s. `dispose()` rejects it at once | todo |
+| 1.1 | N01 | Use `return await response.json()` in `request()`. Keep the timer and the controller until the body is read. Do the same in `transfer()` (`client.ts:1592`). `auth.ts` does not clear its signal early; see 1.1b | Mock fetch: headers arrive, the body stalls. The call rejects at 25 s. `dispose()` rejects it at once | done |
 | 1.1b | N01 | `loginWithKey()` in `auth.ts` sends `authRequest()` with no signal, so it has no deadline. Add one | A stalled login rejects after the deadline | todo |
 | 1.2 | N02 | In the `update-session` handler, read the record again from `this.sessions` after each `await`. Write a new record object. In `applyMachines`, compare the version again after `await` | Two interleaving tests: session v1→v2 with a REST read in the middle; machine v2 then an old REST v1. The visible version never goes back | todo |
 | 1.3 | E01a | Add a `persist` flag to `publish()`. Presence and activity publishes do not call `scheduleCache()` | Unit test: 100 activity events cause zero cache saves | todo |
@@ -181,4 +181,5 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 
 | Date | Commit | Step | Browser | Result |
 |---|---|---|---|---|
-| 2026-10-23 | `0b15c38` + changes | 0 | All four projects | Baseline above |
+| 2026-10-23 | `2b7fed4` | 0 | All four projects | Baseline above |
+| 2026-10-23 | after `2b7fed4` | 1.1 | Vitest | Three new tests fail before the change and pass after it |

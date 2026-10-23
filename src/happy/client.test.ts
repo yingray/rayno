@@ -1935,6 +1935,13 @@ describe('Happy client background sync', () => {
   // A real fetch rejects with the abort reason of its signal.
   const hang = (_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) =>
     init?.signal?.addEventListener('abort', () => reject(init.signal!.reason)));
+  // The headers arrive, but the body never ends. Like a real fetch, an abort of the signal fails the body.
+  const stalledBody = (_url: string | URL, init?: RequestInit) => {
+    let fail = (_reason: unknown) => {};
+    init?.signal?.addEventListener('abort', () => fail(init.signal!.reason));
+    return Promise.resolve(new Response(new ReadableStream({ start: (stream) => { fail = (reason) => stream.error(reason); } }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  };
   const failSessions = () => fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
     ? response({ error: 'Could not read the workspace. Try again.' }, 503)
     : url.endsWith('/v1/machines') ? response([]) : response({ messages: [], hasMore: false }));
@@ -1954,6 +1961,45 @@ describe('Happy client background sync', () => {
     const read = client.refresh(true);
     const result = expect(read).rejects.toThrow('Happy did not answer within 25 seconds.');
     await vi.advanceTimersByTimeAsync(25000);
+    // Assert
+    await result;
+  });
+  it('should time out a response whose body stalls after the headers', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockImplementation(stalledBody);
+    // Act
+    const read = client.refresh(true);
+    const result = expect(read).rejects.toThrow('Happy did not answer within 25 seconds.');
+    await vi.advanceTimersByTimeAsync(25000);
+    // Assert
+    await result;
+  });
+  it('should cancel a stalled response body when the client closes', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockImplementation(stalledBody);
+    const read = client.refresh(true);
+    const result = expect(read).rejects.toThrow('The connection closed before Happy answered.');
+    await vi.advanceTimersByTimeAsync(0);
+    // Act
+    client.dispose();
+    // Assert
+    await result;
+  });
+  it('should time out an image download whose body stalls after the headers', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockImplementation(async (url: string | URL, init?: RequestInit) => String(url).includes('request-download')
+      ? response({ downloadUrl: 'https://happy.test/blob' }) : stalledBody(url, init));
+    // Act
+    const image = client.loadImage('session', 'image-ref');
+    const result = expect(image).rejects.toThrow('The image server did not answer within 45 seconds.');
+    // The download timer starts after the cache read and the download request.
+    const downloading = () => fetchMock.mock.calls.some(([url]) => String(url) === 'https://happy.test/blob');
+    for (let step = 0; step < 50 && !downloading(); step++) await vi.advanceTimersByTimeAsync(0);
+    expect(downloading()).toBe(true);
+    await vi.advanceTimersByTimeAsync(45000);
     // Assert
     await result;
   });

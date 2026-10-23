@@ -495,7 +495,10 @@ export class HappyClient implements DemoAdapter {
             : `Happy request failed (${response.status}).`,
         );
       }
-      return response.status === 204 ? {} : response.json();
+      // Read the body before the `finally` block. The timeout and the cancel on close must cover the body too.
+      const body = response.status === 204 ? {} : await response.json();
+      this.assertAlive();
+      return body;
     } catch (error) {
       if (controller.signal.aborted) throw abortError(controller.signal, 'Happy did not answer within 25 seconds.');
       throw error;
@@ -1609,7 +1612,8 @@ export class HappyClient implements DemoAdapter {
     }
     return !missing.size;
   }
-  private async transfer(value: string, init: RequestInit) {
+  // `read` consumes the body inside the deadline. The default reads nothing.
+  private async transfer<T = void>(value: string, init: RequestInit, read?: (response: Response) => Promise<T>): Promise<T> {
     const url = transferUrl(value, this.credentials.server);
     const controller = new AbortController();
     this.controllers.add(controller);
@@ -1620,7 +1624,9 @@ export class HappyClient implements DemoAdapter {
       const response = await fetch(url, { ...init, headers, signal: controller.signal, credentials: 'omit', redirect: 'error' });
       this.assertAlive();
       if (!response.ok) throw new Error(`Image transfer failed (${response.status}). Retry with your images still attached.`);
-      return response;
+      const body = read ? await read(response) : undefined as T;
+      this.assertAlive();
+      return body;
     } catch (error) {
       if (controller.signal.aborted) throw abortError(controller.signal, 'The image server did not answer within 45 seconds.');
       throw error;
@@ -1661,8 +1667,7 @@ export class HappyClient implements DemoAdapter {
       method: 'POST', body: JSON.stringify({ ref }),
     });
     if (typeof result.downloadUrl !== 'string') throw new Error('The image server returned an invalid download request.');
-    const response = await this.transfer(result.downloadUrl, {});
-    const encrypted = new Uint8Array(await response.arrayBuffer());
+    const encrypted = await this.transfer(result.downloadUrl, {}, async (response) => new Uint8Array(await response.arrayBuffer()));
     const bytes = await this.encryption.decryptBlob(encrypted, source.key);
     const type = imageMime(bytes);
     this.assertAlive();

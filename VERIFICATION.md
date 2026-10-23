@@ -590,3 +590,13 @@ A new fixture has 3,600 session-protocol rows: 1,000 tool calls, 200 subagents, 
   test under parallel load, now fixed. `newSessionControls.e2e.test.ts:6` failed once under load and passed 3 of 3
   runs alone; this change does not touch that layout.
 - Emulated browsers only, with no CPU throttle. A physical phone and Cloudflare deployment were not verified.
+
+## Response body deadlines (2026-10-23)
+
+A Happy request and an image download now read the whole response body before they clear their timer and controller.
+Before this change, a body that stalled after the headers had no timeout, and closing the client could not cancel it.
+
+- Three new unit tests cover a stalled request body, a stalled body when the client closes, and a stalled image download.
+  All three fail against the previous code and pass after the change. All 515 unit tests and the type check passed.
+- The image download keeps its 45-second deadline over the full body. Uploads do not read a body.
+- `loginWithKey()` still has no deadline; `PERFORMANCE-PLAN.md` tracks it as step 1.1b.
