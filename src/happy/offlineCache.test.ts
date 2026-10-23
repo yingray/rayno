@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HISTORY_PAGE_ROWS, historyPages, staleCacheKey } from './offlineCache';
+import { HISTORY_PAGE_ROWS, IMAGE_BUDGET_BYTES, historyPages, imageBudget, imagesToEvict, staleCacheKey } from './offlineCache';
 import type { MessageRecord } from './normalize';
 
 const rows = (from: number, count: number): MessageRecord[] =>
@@ -63,5 +63,29 @@ describe('staleCacheKey', () => {
     expect(stale('image.abc_-')).toBe(false);
     expect(stale('workspace')).toBe(false);
     expect(staleCacheKey('other.history.gone', scope, sessions, written)).toBe(false);
+  });
+});
+describe('image budget', () => {
+  const MB = 1024 * 1024;
+  it('should use 250 MB or 10% of the quota, the smaller', () => {
+    // Act / Assert
+    expect(imageBudget(100 * 1024 * MB)).toBe(IMAGE_BUDGET_BYTES);
+    expect(imageBudget(1000 * MB)).toBe(100 * MB);
+    expect(imageBudget(undefined)).toBe(IMAGE_BUDGET_BYTES);
+    expect(imageBudget(0)).toBe(IMAGE_BUDGET_BYTES);
+  });
+  it('should delete the least recently viewed images until the total fits, and never the new image', () => {
+    // Arrange: 4 images of 100 MB with a budget of 250 MB. The new image has the oldest time.
+    const entries = {
+      'image.a.1': { bytes: 100 * MB, used: 30 },
+      'image.a.2': { bytes: 100 * MB, used: 10 },
+      'image.b.3': { bytes: 100 * MB, used: 20 },
+      'image.b.4': { bytes: 100 * MB, used: 5 },
+    };
+    // Act
+    const evict = imagesToEvict(entries, 250 * MB, 'image.b.4');
+    // Assert
+    expect(evict).toEqual(['image.a.2', 'image.b.3']);
+    expect(imagesToEvict(entries, 400 * MB)).toEqual([]);
   });
 });

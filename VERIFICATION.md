@@ -798,3 +798,18 @@ Without this, the browser can delete all offline data under storage pressure, an
 - New unit tests cover the request, a missing API, a refusal, the first input, and an already persistent site.
 - A new browser test counts the requests in four projects: one for the sign-in screen, none on load, one after the first click.
 - All 544 unit tests passed. 8 sign-in checks and 41 offline and connection checks passed.
+
+## Image cache budget (2026-10-24)
+
+Cached images now have a budget: 250 MB or 10% of the quota from `navigator.storage.estimate()`, the smaller.
+An index record `images` holds the size and the last view time of each image. It holds no message content.
+A new image deletes the least recently viewed images until the total fits. Text history is never deleted.
+When a save fails with `QuotaExceededError`, the cache deletes all images and saves once more.
+An image from before the session id was in its key moves to the new key on its first view.
+
+- New unit tests for the budget and the eviction order.
+- A new browser test sets a quota that holds 2.5 images. A third image removes the least recently viewed one,
+  the index matches the stored images, and the two newest images open offline with no download.
+  It passed in four projects, and it fails when eviction is off.
+- Full browser suite: 1,242 passed, 66 skips, 0 failed. All 546 unit tests passed.
+- Not tested: the `QuotaExceededError` retry. A browser test cannot fill a real quota quickly.

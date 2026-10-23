@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (Phase 4: E02 persist).
+Created: 2026-10-23. Updated: 2026-10-24 (Phase 4: E02 image budget).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -110,7 +110,7 @@ If the encryption is still a long task after 3.5, move it to a worker as a separ
 
 | ID | Change | Status |
 |---|---|---|
-| E02 | Store image keys with the session id. Add an LRU and a size budget. Run the stale-history cleanup at most once for each session list change, not on each save | partly done: session id in image keys and the scan on list change are done. The LRU and the size budget wait for a decision on the limit, because AGENTS.md requires loaded chats to stay available offline |
+| E02 | Store image keys with the session id. Add an LRU and a size budget. Run the stale-history cleanup at most once for each session list change, not on each save | done: session id in image keys, the scan on list change, persistent storage, and an image budget (section 6.5). Text history is never evicted |
 | E04 | Refresh usage only while the usage UI is visible, or cache it on the daemon side. Stop the machine loop when the page becomes hidden | no change needed: the usage loop already stops when the tab is hidden or loses focus (`LiveProvider.tsx:89`). Live mode has no machine loop; monitor refresh runs on a click |
 | M01 | Add an LRU for decrypted history of sessions that are not open. Evaluate list virtualization with the recap, anchors, selection, and copy | todo |
 | M02 | Add a total size budget for attachments. Limit hash and upload concurrency | todo |
@@ -200,7 +200,8 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `30a78b6` | 3.5 | Vitest, full browser suite | History saves in pages of 100 rows by seq. 3 new rows in a 1,000-row history rewrite 1 page, not all 1,003 rows. A hidden tab scans attention every 30 s, not every 5 s; it does not stop, because the tab title shows the attention count. Activity updates were not merged: after 1.3 they cost about 2 ms and save nothing |
 | 2026-10-23 | `2f97cb8` | R03 rest | 152 recap, response dot, and parity browser checks | The rail keeps its pins array while only the scroll position changes. Each pin is a memo component, so a scroll frame renders only the pins whose active state changed. No new test: this changes render work only |
 | 2026-10-23 | `9b760f3` | E02 part 1 | Vitest, full browser suite | New image keys hold the session id, and a scan deletes the images of removed sessions. Reads fall back to the old key. The key scan runs only when the session list changes; a removed page is deleted by its key |
-| 2026-10-23 | after `8cec84e` | E02 persist | Vitest, 8 sign-in and 41 offline and connection browser checks | A remembered sign-in asks for persistent storage in the click. A session from an earlier visit asks on the first click or key press, once, and not when the data is already persistent |
+| 2026-10-23 | `e08a7db` | E02 persist | Vitest, 8 sign-in and 41 offline and connection browser checks | A remembered sign-in asks for persistent storage in the click. A session from an earlier visit asks on the first click or key press, once, and not when the data is already persistent |
+| 2026-10-24 | after `e08a7db` | E02 image budget | Vitest, image budget browser test, full browser suite | Images are deleted least recently viewed first above 250 MB or 10% of the quota. With a budget of 2.5 images, a third image removes the oldest one, and the two newest open offline. Full suite: 1,242 passed, 0 failed |
 
 ## 6. Research for the Phase 4 limits (2026-10-23)
 

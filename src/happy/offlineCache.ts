@@ -47,6 +47,32 @@ export function historyPages(messages: readonly MessageRecord[], saved?: Readonl
 const DATABASE = 'rayno-offline';
 const STORE = 'records';
 
+// Images are a cache that can download again, so they have a budget (PERFORMANCE-PLAN.md 6.5).
+// The budget is 250 MB or 10% of the origin quota, the smaller. Sizes are the length of the stored string.
+export const IMAGE_BUDGET_BYTES = 250 * 1024 * 1024;
+export const IMAGE_BUDGET_SHARE = 0.1;
+export type ImageEntry = { bytes: number; used: number };
+// The image index is `images`. It holds only key names, sizes, and view times, so it is not encrypted.
+// The key names are already plain text in the store.
+const IMAGE_INDEX = 'images';
+
+export const imageBudget = (quota?: number) =>
+  Math.min(IMAGE_BUDGET_BYTES, typeof quota === 'number' && quota > 0 ? quota * IMAGE_BUDGET_SHARE : Infinity);
+
+/** The images to delete, least recently viewed first, until the total fits the budget. `keep` is never deleted. */
+export function imagesToEvict(entries: Readonly<Record<string, ImageEntry>>, budget: number, keep?: string): string[] {
+  let total = Object.values(entries).reduce((sum, entry) => sum + entry.bytes, 0);
+  const evict: string[] = [];
+  for (const [key, entry] of Object.entries(entries).filter(([key]) => key !== keep).sort((a, b) => a[1].used - b[1].used)) {
+    if (total <= budget) break;
+    evict.push(key);
+    total -= entry.bytes;
+  }
+  return evict;
+}
+
+const quotaError = (error: unknown) => (error as { name?: unknown } | null)?.name === 'QuotaExceededError';
+
 /**
  * A key that a save deletes: the history or a page of a removed session, a page that the new index of its history
  * does not list, or an image of a removed session. An image key from before the session id was in it stays.
@@ -70,6 +96,11 @@ export class OfflineCache {
   private saved = new Map<string, Map<number, MessageRecord[]>>();
   // The session ids at the last key scan. The scan for removed sessions runs only when this list changes.
   private scanned: string | undefined;
+  // Image keys (without the scope) with their sizes and view times. A view changes only the copy in memory;
+  // the next write saves it.
+  private imageIndex?: Promise<Record<string, ImageEntry>>;
+  private imageIndexChanged = false;
+  private budget?: Promise<number>;
   constructor(private readonly scope: string, private readonly encryption: HappyCrypto) {}
 
   private async transaction<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore, result: (value: T) => void) => void): Promise<T | null> {
@@ -135,7 +166,7 @@ export class OfflineCache {
     return { version: 1, id, cursor: value.cursor, history: value.history, messages: pages.flatMap((page) => page!.messages) };
   }
 
-  async save(workspace: CachedWorkspace, histories: CachedHistory[]): Promise<boolean> {
+  async save(workspace: CachedWorkspace, histories: CachedHistory[], retried = false): Promise<boolean> {
     try {
       const written = new Map<string, Map<number, MessageRecord[]>>();
       const values: (readonly [string, unknown])[] = [['workspace', workspace]];
@@ -151,31 +182,78 @@ export class OfflineCache {
         .map(async ([key, value]) => [this.scope + key, await this.encryption.encrypt(value, null)] as const)));
       const sessions = new Set(workspace.sessions.map((session) => session.wire.id));
       const list = [...sessions].sort().join('\n'), scan = list !== this.scanned;
+      const images = scan || this.imageIndexChanged ? await this.images() : undefined;
+      let indexChanged = this.imageIndexChanged;
       // A page that the last save wrote and the new index does not list. After a reload, the scan finds such pages.
       const removed = [...written].flatMap(([id, pages]) => [...this.saved.get(id)?.keys() || []]
         .filter((page) => !pages.has(page)).map((page) => this.scope + pageKey(id, page)));
       const saved = await this.transaction<boolean>('readwrite', (store, result) => {
         for (const [key, encrypted] of entries) store.put(encrypted, key);
         removed.forEach((key) => store.delete(key));
+        const writeIndex = () => { if (images && indexChanged) store.put(JSON.stringify({ version: 1, entries: images }), this.scope + IMAGE_INDEX); };
         if (scan) {
           const cursor = store.openKeyCursor();
           cursor.onsuccess = () => {
             const row = cursor.result;
-            if (!row) return;
-            if (typeof row.key === 'string' && staleCacheKey(row.key, this.scope, sessions, written)) store.delete(row.key);
+            if (!row) { writeIndex(); return; }
+            if (typeof row.key === 'string' && staleCacheKey(row.key, this.scope, sessions, written)) {
+              store.delete(row.key);
+              const key = row.key.slice(this.scope.length);
+              if (images && key in images) { delete images[key]; indexChanged = true; }
+            }
             row.continue();
           };
-        }
+        } else writeIndex();
         result(true);
       }) === true;
       if (saved) {
+        if (images) this.imageIndexChanged = false;
         if (scan) this.scanned = list;
         written.forEach((pages, id) => this.saved.set(id, pages));
         [...this.saved.keys()].forEach((id) => { if (!sessions.has(id)) this.saved.delete(id); });
       }
       return saved;
-    } catch {
+    } catch (error) {
+      this.imageIndex = undefined;
+      // Images can download again. When the store is full, delete them first, then save the history once more.
+      if (quotaError(error) && !retried && await this.dropImages()) return this.save(workspace, histories, true);
       // Storage limits or eviction must not prevent an online session from loading.
+      return false;
+    }
+  }
+
+  private images(): Promise<Record<string, ImageEntry>> {
+    return this.imageIndex ??= this.transaction<unknown>('readonly', (store, result) => {
+      const request = store.get(this.scope + IMAGE_INDEX);
+      request.onsuccess = () => result(request.result);
+    }).then((value) => {
+      const index = typeof value === 'string' ? JSON.parse(value) : null;
+      return index?.version === 1 && index.entries && typeof index.entries === 'object' ? index.entries : {};
+    }).catch(() => ({}));
+  }
+
+  private imageBudget(): Promise<number> {
+    return this.budget ??= Promise.resolve(globalThis.navigator?.storage?.estimate?.())
+      .then((estimate) => imageBudget(estimate?.quota)).catch(() => IMAGE_BUDGET_BYTES);
+  }
+
+  // Delete every cached image of this account, also images from before the index. Returns false when that fails.
+  private async dropImages(): Promise<boolean> {
+    try {
+      await this.transaction<void>('readwrite', (store) => {
+        const cursor = store.openKeyCursor();
+        cursor.onsuccess = () => {
+          const row = cursor.result;
+          if (!row) return;
+          if (typeof row.key === 'string' && row.key.startsWith(this.scope + 'image.')) store.delete(row.key);
+          row.continue();
+        };
+        store.put(JSON.stringify({ version: 1, entries: {} }), this.scope + IMAGE_INDEX);
+      });
+      this.imageIndex = Promise.resolve({});
+      this.imageIndexChanged = false;
+      return true;
+    } catch {
       return false;
     }
   }
@@ -190,23 +268,54 @@ export class OfflineCache {
   async image(id: string, ref: string): Promise<string | null> {
     type Saved = { version: number; id: string; ref: string; data: string };
     const valid = (value: Saved | null) => value?.version === 1 && value.id === id && value.ref === ref && typeof value.data === 'string';
-    const value = await this.read<Saved>(await this.imageKey(id, ref));
-    if (valid(value)) return value!.data;
-    const legacy = await this.read<Saved>(await this.imageKey(id, ref, true));
-    return valid(legacy) ? legacy!.data : null;
+    const key = await this.imageKey(id, ref);
+    const value = await this.read<Saved>(key);
+    if (valid(value)) {
+      const images = await this.images();
+      images[key] = { bytes: images[key]?.bytes ?? value!.data.length, used: Date.now() };
+      this.imageIndexChanged = true;
+      return value!.data;
+    }
+    const legacyKey = await this.imageKey(id, ref, true);
+    const legacy = await this.read<Saved>(legacyKey);
+    if (!valid(legacy)) return null;
+    // Move an image from before the session id was in the key, so it counts toward the budget.
+    void this.storeImage(id, ref, legacy!.data, legacyKey);
+    return legacy!.data;
   }
 
   async saveImage(id: string, ref: string, data: Uint8Array): Promise<void> {
+    await this.storeImage(id, ref, base64(data));
+  }
+
+  private async storeImage(id: string, ref: string, data: string, legacyKey?: string, retried = false): Promise<void> {
     try {
-      const key = this.scope + await this.imageKey(id, ref);
-      const encrypted = await this.encryption.encrypt({ version: 1, id, ref, data: base64(data) }, null);
-      await this.transaction<void>('readwrite', store => { store.put(encrypted, key); });
-    } catch { /* Storage limits do not block an online image preview. */ }
+      const key = await this.imageKey(id, ref);
+      const encrypted = await this.encryption.encrypt({ version: 1, id, ref, data }, null);
+      const images = await this.images(), budget = await this.imageBudget();
+      images[key] = { bytes: encrypted.length, used: Date.now() };
+      const evict = imagesToEvict(images, budget, key);
+      evict.forEach((old) => delete images[old]);
+      await this.transaction<void>('readwrite', (store) => {
+        store.put(encrypted, this.scope + key);
+        evict.forEach((old) => store.delete(this.scope + old));
+        if (legacyKey) store.delete(this.scope + legacyKey);
+        store.put(JSON.stringify({ version: 1, entries: images }), this.scope + IMAGE_INDEX);
+      });
+      this.imageIndexChanged = false;
+    } catch (error) {
+      // Read the index again, so it matches the store after a failed write.
+      this.imageIndex = undefined;
+      if (quotaError(error) && !retried && await this.dropImages()) return this.storeImage(id, ref, data, legacyKey, true);
+      /* Storage limits do not block an online image preview. */
+    }
   }
 
   async clear(): Promise<void> {
     this.saved.clear();
     this.scanned = undefined;
+    this.imageIndex = undefined;
+    this.imageIndexChanged = false;
     try {
       await this.transaction<void>('readwrite', (store) => {
         const cursor = store.openKeyCursor();

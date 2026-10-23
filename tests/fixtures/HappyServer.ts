@@ -510,6 +510,11 @@ export class HappyServer {
       });
     });
   }
+  /** Serve an attachment blob for a download, as if an earlier upload stored it. */
+  async serveBlob(ref: string, data: Uint8Array) {
+    if (!this.storageUrl) await this.startStorage();
+    this.blobs.set(ref, Buffer.from(data));
+  }
   private async startStorage() {
     if (this.storageServer) return;
     // A real HTTP sink exercises multipart bytes and CORS in WebKit. Route
