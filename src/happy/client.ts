@@ -791,6 +791,8 @@ export class HappyClient implements DemoAdapter {
       this.assertAlive();
       readable++;
       const current = this.machines.get(wire.id);
+      // A socket update can bring a newer version during the decryption. Then this older list row must not replace it.
+      if (current && current.wire.metadataVersion > wire.metadataVersion) continue;
       const preservePresence = current && (this.machinePresence.get(wire.id) || 0) > presenceRevision;
       this.machines.set(wire.id, {
         wire: preservePresence ? { ...wire, active: current.wire.active, activeAt: current.wire.activeAt } : wire,
@@ -1028,22 +1030,31 @@ export class HappyClient implements DemoAdapter {
       return;
     }
     if (body.t === 'update-session' && this.sessions.has(body.id)) {
-      const current = this.getSession(body.id);
-      const wasControlled = current.agentState.controlledByUser;
+      const before = this.getSession(body.id);
+      const wasControlled = before.agentState.controlledByUser;
+      const values: Partial<Record<'metadata' | 'agentState', { version: number; value: Json }>> = {};
       for (const field of ['metadata', 'agentState'] as const)
-        if (body[field]?.version > current.wire[`${field}Version`]) {
-          const version = body[field].version;
+        if (body[field]?.version > before.wire[`${field}Version`]) {
           // A damaged value keeps the last readable one. The next refresh reads the field again.
-          const decrypted = body[field].value
-            ? await this.encryption.decrypt<Json>(body[field].value, current.key).catch(() => undefined)
+          const value = body[field].value
+            ? await this.encryption.decrypt<Json>(body[field].value, before.key).catch(() => undefined)
             : {};
-          if (decrypted && version > current.wire[`${field}Version`]) {
-            current[field] = decrypted;
-            current.wire[`${field}Version`] = version;
-          }
+          if (value) values[field] = { version: body[field].version, value };
         }
+      // A list read can replace the record during the decryption. Apply the newer fields to the record that is there now.
+      const latest = this.sessions.get(body.id);
+      if (!latest || this.disposed) return;
+      const current: SessionRecord = { ...latest, wire: { ...latest.wire } };
+      for (const field of ['metadata', 'agentState'] as const) {
+        const value = values[field];
+        if (value && value.version > current.wire[`${field}Version`]) {
+          current[field] = value.value;
+          current.wire[`${field}Version`] = value.version;
+        }
+      }
       if (typeof body.updatedAt === 'number') current.wire.updatedAt = body.updatedAt;
       if (Number.isSafeInteger(body.seq)) current.wire.seq = Math.max(current.wire.seq || 0, body.seq);
+      this.sessions.set(body.id, current);
       this.publish(body.id);
       // Like Happy Web sync.ts, a control handoff reads the history again so the open chat has the messages of the other side.
       if (!isRig(current.metadata) && controlHandoff(wasControlled, current.agentState.controlledByUser) && this.activeSessions.has(body.id))
@@ -1149,9 +1160,12 @@ export class HappyClient implements DemoAdapter {
     // The next attention scan (a session update, a `done` event, or a refresh) decides with the read range, and
     // attention keeps the highest seq that any classification found.
     const marks = this.boundsFor(id, added);
+    // A list read can replace the record during the decryption. Raise the seq of the record that is there now.
+    const latest = this.sessions.get(id);
+    if (!latest) return;
     for (const row of added) {
-      session.wire.seq = Math.max(session.wire.seq || 0, row.seq);
-      this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks, sendsMessageReceipts(session.metadata),
+      latest.wire.seq = Math.max(latest.wire.seq || 0, row.seq);
+      this.attention.set(id, receiveAttention(this.sessionAttention(id), row, marks, sendsMessageReceipts(latest.metadata),
         (ref) => messages.get(ref)));
     }
     this.saveAttention(id);

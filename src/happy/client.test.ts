@@ -1680,6 +1680,53 @@ describe('Happy client damaged records', () => {
     await vi.waitFor(() => expect(client.getSnapshot().sessions[0].title).toBe('Readable title'), { interval: 1 });
     expect(client.getSnapshot().error).toBe('');
   });
+  // Hold one decryption until the test releases it, so a second read can run during it.
+  function holdDecrypt(target: string) {
+    const decrypt = client.encryption.decrypt.bind(client.encryption);
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    let held = false;
+    vi.spyOn(client.encryption, 'decrypt').mockImplementation(async (...args: Parameters<typeof decrypt>) => {
+      if (args[0] === target && !held) { held = true; await gate; }
+      return decrypt(...args);
+    });
+    return { release, held: () => held };
+  }
+  it('should apply a realtime session update to the record that a list read put in place during the decryption', async () => {
+    // Arrange
+    await start();
+    const value = await client.encryption.encrypt({ ...metadata, summary: { text: 'New title' } }, null);
+    const decryption = holdDecrypt(value);
+    // Act
+    socket.handlers.get('update')!({ body: { t: 'update-session', id: 'session', metadata: { version: 2, value } } });
+    await vi.waitFor(() => expect(decryption.held()).toBe(true), { interval: 1 });
+    await client.refresh(true);
+    decryption.release();
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].title).toBe('New title'), { interval: 1 });
+    await client.refresh(true);
+    expect(client.getSnapshot().sessions[0].title).toBe('New title');
+  });
+  it('should keep a newer realtime computer update when an older list read finishes after it', async () => {
+    // Arrange
+    const old = await client.encryption.encrypt({ host: 'Old name' }, null);
+    const computer = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null, metadata: old };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([computer]) : response({ messages: [], hasMore: false }));
+    await start();
+    const decryption = holdDecrypt(old);
+    // Act
+    const read = client.refresh(true);
+    await vi.waitFor(() => expect(decryption.held()).toBe(true), { interval: 1 });
+    socket.handlers.get('update')!({ body: { t: 'update-machine', machineId: 'computer',
+      metadata: { version: 2, value: await client.encryption.encrypt({ host: 'New name' }, null) } } });
+    await vi.waitFor(() => expect(client.getSnapshot().machines[0]?.name).toBe('New name'), { interval: 1 });
+    decryption.release();
+    await read;
+    // Assert
+    expect(client.getSnapshot().machines[0]?.name).toBe('New name');
+  });
   it('should load the readable messages around a damaged message and advance the cursor', async () => {
     // Arrange
     const page = [await wireMessage('a', 1, 'First'), damagedMessage('b', 2), await wireMessage('c', 3, 'Third')];

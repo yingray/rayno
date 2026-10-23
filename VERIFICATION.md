@@ -602,3 +602,14 @@ Before this change, a body that stalled after the headers had no timeout, and cl
 - Follow-up: each sign-in request now has a 25-second deadline. A caller cancel keeps its reason.
   Three new auth tests passed; the stalled sign-in test fails against the previous code. All 518 unit tests passed.
   32 login and connection browser checks passed across the four projects.
+
+## Realtime and list read races (2026-10-23)
+
+A realtime session update now applies its decrypted fields to the record that is in place after the decryption.
+Before, a list read could replace the record during the decryption, and the update went to the old object.
+A list read of computers now skips a row when a realtime update brought a newer version during its decryption.
+New messages raise the seq of the current record, not of an object that a list read replaced.
+
+- Two new tests hold one decryption while the other read runs. Both fail against the previous code and pass after it.
+- All 520 unit tests and the type check passed. 165 browser checks passed with 3 existing skips across four projects:
+  connection, agent requests, handoff, navigation status, offline workspace, and session operations.
