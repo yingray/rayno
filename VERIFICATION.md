@@ -707,3 +707,16 @@ On desktop, each live reply blocked the main thread for about 200 ms.
   26 resize checks passed across four projects.
 - Baseline, 20 replies shown after: desktop Chromium 215 ms (before 699 ms), desktop WebKit 1,722 ms (before 3,053 ms).
 - All 533 unit tests, the type check, and the build passed.
+
+## Inline questions only for calls with a question (2026-10-23)
+
+The chat now builds one set of the tool call ids that have an open question, from the agent state.
+A tool group mounts an `InlineToolQuestion` only for the calls in that set.
+Before, each tool call mounted one, and each one subscribed to the store with a new selector on each render.
+The selector is now stable for each session.
+
+- A new unit test checks that `questionCallIds` matches `questionForTool` for 200 calls with open, closed, and form questions.
+- All 535 unit tests, the type check, and the build passed.
+- 276 browser checks passed with 4 existing skips: agent requests, chat actions, chat content, chat presentation,
+  render isolation, tool results, web parity, and reply recap. The web parity test checks inline questions
+  at phone, short, and landscape sizes in Chromium and WebKit.

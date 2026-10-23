@@ -30,7 +30,7 @@ import { LocalImage } from './LocalImage';
 import { isLocalImageLink, isLocalImageSource } from '../happy/localImages';
 import { CodeBlock } from './CodeBlock';
 import { TodoList } from './TodoList';
-import { InlineToolQuestion } from '../happy/Requests';
+import { InlineToolQuestion, questionCallIds } from '../happy/Requests';
 import { timeStage } from '../happy/perf';
 import { reuseEqual } from '../data/reuseEqual';
 import { isTodoWrite, todoProgress, todoRowList, type Todo } from '../data/todos';
@@ -58,8 +58,9 @@ function SubagentWork({ items }: { items: Message[] }) {
   </>;
 }
 
-const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes, sessionId }: {
-  block: ToolActivityBlock; compactTools: boolean; outcomes?: (ToolOutcome | undefined)[]; sessionId: string;
+const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes, questions, sessionId }: {
+  block: ToolActivityBlock; compactTools: boolean; outcomes?: (ToolOutcome | undefined)[];
+  questions?: string[]; sessionId: string;
 }) {
   const t = useText();
   const rowsId = useId();
@@ -88,7 +89,8 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
           ? <ToolAnswers key={index} items={outcome.answers} />
           : <div key={index} className={styles.toolNote}>{t("The question was dismissed.")}</div>)}
       </div>}
-      {block.details?.map(call => call && <InlineToolQuestion key={call.id} sessionId={sessionId} call={call} />)}
+      {questions && block.details?.map(call => call && questions.includes(call.id)
+        && <InlineToolQuestion key={call.id} sessionId={sessionId} call={call} />)}
       <ul className={styles.toolRows} id={rowsId} hidden={!expanded}>
         {block.tools.map((tool, index) => {
           const thinking = block.thinking?.[index], call = block.details?.[index];
@@ -118,6 +120,7 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
   && previous.block.tools.every((tool, index) => tool === next.block.tools[index])
   && previous.block.thinking?.length === next.block.thinking?.length
   && (previous.block.thinking || []).every((text, index) => text === next.block.thinking![index])
+  && previous.questions?.join() === next.questions?.join()
   && JSON.stringify(previous.outcomes) === JSON.stringify(next.outcomes));
 
 // The past permission reply and question answers of one tool call.
@@ -360,6 +363,14 @@ export const MessageList = memo(function MessageList({
     return new Map(blocks.flatMap((block) => block.kind === 'tools' && block.details
       ? [[block.id, block.details.map((call) => toolOutcome(call, permissions, forms, modeLabel))] as const] : []));
   }, [blocks, agentState, metadata]);
+  // Only a call with an open question mounts an InlineToolQuestion, so the store subscribers do not grow with the tools.
+  const questions = useMemo(() => {
+    const ids = questionCallIds(agentState);
+    return new Map(ids.size ? blocks.flatMap((block) => {
+      const calls = block.kind === 'tools' ? block.details?.flatMap((call) => call && ids.has(call.id) ? [call.id] : []) : undefined;
+      return calls?.length ? [[block.id, calls] as const] : [];
+    }) : []);
+  }, [blocks, agentState]);
   const anchors = useMemo(() => responseAnchors(visible), [visible]);
   const responseIds = useMemo(() => new Set(anchors.map(anchor => anchor.id)), [anchors]);
   const unanswered = useMemo(() => unansweredMessageIds(messages), [messages]);
@@ -431,7 +442,8 @@ export const MessageList = memo(function MessageList({
   const showButton = !!onRecap && !!lastReply && !recaps.has(lastReply) && !writing && !running;
   return <>
     {blocks.map((block) => block.kind === 'tools'
-      ? <ToolActivity key={block.id} block={block} sessionId={sessionId} compactTools={compactTools} outcomes={outcomes.get(block.id)} />
+      ? <ToolActivity key={block.id} block={block} sessionId={sessionId} compactTools={compactTools} outcomes={outcomes.get(block.id)}
+        questions={questions.get(block.id)} />
       : block.kind === 'thinking'
         ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} /></article>
         : block.kind === 'event'

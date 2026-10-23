@@ -1,7 +1,7 @@
 import { useText } from "../i18n";
-import { memo, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Button } from '../components/ui';
-import { useDemo } from '../data/store';
+import { useDemo, type Store } from '../data/store';
 import { messageError } from './errors';
 import { allowsSessionScope, pendingCommunications, pendingPermissions, record } from './normalize';
 import type { Json } from './normalize';
@@ -16,13 +16,26 @@ export function questionForTool(state: Json, callId: string) {
     && (form.id === callId || record(state.communications?.[form.id]).toolUseId === callId));
   return { permission, form };
 }
+// The tool call ids that have an open question. The chat mounts an `InlineToolQuestion` only for these calls.
+// It matches the same ids as `questionForTool`: the request id, or the `toolUseId` of the request.
+export function questionCallIds(state: Json | undefined): ReadonlySet<string> {
+  const ids = new Set<string>();
+  if (!state) return ids;
+  const add = (id: string, toolUseId: unknown) => { ids.add(id); if (typeof toolUseId === 'string') ids.add(toolUseId); };
+  for (const request of pendingPermissions(state))
+    if (request.tool === 'AskUserQuestion') add(request.id, record(state.requests?.[request.id]).toolUseId);
+  for (const form of pendingCommunications(state))
+    if (form.kind === 'form') add(form.id, record(state.communications?.[form.id]).toolUseId);
+  return ids;
+}
 const loadedCalls = (messages: Message[]): ToolCall[] => messages.flatMap(message => message.toolCalls || []);
 
 export function InlineToolQuestion({ sessionId, call }: { sessionId: string; call: ToolCall }) {
   const t = useText();
-  const { live, state, unavailable } = useDemo(store => ({ live: store.live,
+  const select = useCallback((store: Store) => ({ live: store.live,
     state: store.snapshot?.sessionData[sessionId]?.agentState,
-    unavailable: store.snapshot?.connection !== 'connected' || !!store.snapshot?.offline }));
+    unavailable: store.snapshot?.connection !== 'connected' || !!store.snapshot?.offline }), [sessionId]);
+  const { live, state, unavailable } = useDemo(select);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const request = questionForTool(state || {}, call.id);
   if (!live || (!request.permission && request.form?.kind !== 'form')) return null;
