@@ -761,3 +761,13 @@ the existing visibility handler reads the workspace and catches up.
 - Activity updates were not merged. After step 1.3, they cost about 2 ms each and do not save the cache.
 - All 539 unit tests and the type check passed. Full browser suite: 1,234 passed, 66 skips, 0 failed.
 - Not tested: an offline open of a copy in the old single-record format. That read path is the previous code.
+
+## Stable rail pins (2026-10-23)
+
+The response rail keeps the same pins array while only the scroll position changes.
+Each pin is now a memo component with a stable click handler.
+A scroll frame renders only the pin that becomes active and the pin that stops being active.
+
+- 152 browser checks passed with 16 existing skips: reply recap, response dots, and web parity, in four projects.
+- No new test. The change removes render work and keeps the same DOM.
+- E04 needs no change. The usage loop stops when the tab is hidden or loses focus. Live mode has no machine loop.

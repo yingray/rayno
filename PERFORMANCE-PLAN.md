@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (step 3.5).
+Created: 2026-10-23. Updated: 2026-10-23 (Phase 4: E04, R03 rest).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -111,12 +111,12 @@ If the encryption is still a long task after 3.5, move it to a worker as a separ
 | ID | Change | Status |
 |---|---|---|
 | E02 | Store image keys with the session id. Add an LRU and a size budget. Run the stale-history cleanup at most once for each session list change, not on each save | todo |
-| E04 | Refresh usage only while the usage UI is visible, or cache it on the daemon side. Stop the machine loop when the page becomes hidden | todo |
+| E04 | Refresh usage only while the usage UI is visible, or cache it on the daemon side. Stop the machine loop when the page becomes hidden | no change needed: the usage loop already stops when the tab is hidden or loses focus (`LiveProvider.tsx:89`). Live mode has no machine loop; monitor refresh runs on a click |
 | M01 | Add an LRU for decrypted history of sessions that are not open. Evaluate list virtualization with the recap, anchors, selection, and copy | todo |
 | M02 | Add a total size budget for attachments. Limit hash and upload concurrency | todo |
 | O01 | Add a queue limit to the Mermaid worker. Cancel stale jobs. Separate queue time from run time | todo |
 | O02, A01 | Measure first, then decide | todo |
-| R03 rest | Keep the pins array stable. Update only `active` and `thumb` on scroll | todo |
+| R03 rest | Keep the pins array stable. Update only `active` and `thumb` on scroll | done |
 
 ## 3. Verification for the full plan
 
@@ -197,4 +197,5 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `c8820b5` | S01 | Vitest, 26 resize browser checks, diagnostic, baseline | Desktop Chromium frames over 50 ms during 20 replies: 40 (6,043 ms) before, 1 (55 ms) after. 20 replies shown after: desktop Chromium 215 ms, mobile Chromium 161 ms, desktop WebKit 1,722 ms, mobile WebKit 1,128 ms |
 | 2026-10-23 | `a014cea` | 3.3 | Vitest, 276 chat and request browser checks, baseline | With 200 tool calls and 2 open questions, the chat mounts 2 question components, not 200. 20 replies shown after, one run each: desktop Chromium 441 ms, mobile Chromium 333 ms (0 long tasks; the Chromium change from S01 is run noise), desktop WebKit 1,546 ms, mobile WebKit 897 ms |
 | 2026-10-23 | `2e85235` | 3.4 | Vitest, full browser suite, baseline | Load long tasks in Chromium: desktop 826 ms to 0, mobile 561 ms to 0. 20 replies shown after, one run each: desktop Chromium 168 ms, mobile Chromium 135 ms, desktop WebKit 1,373 ms, mobile WebKit 670 ms. Also fixed an older bug: on phones, a recap jump into a collapsed tool group did not scroll |
-| 2026-10-23 | after `2e85235` | 3.5 | Vitest, full browser suite | History saves in pages of 100 rows by seq. 3 new rows in a 1,000-row history rewrite 1 page, not all 1,003 rows. A hidden tab scans attention every 30 s, not every 5 s; it does not stop, because the tab title shows the attention count. Activity updates were not merged: after 1.3 they cost about 2 ms and save nothing |
+| 2026-10-23 | `30a78b6` | 3.5 | Vitest, full browser suite | History saves in pages of 100 rows by seq. 3 new rows in a 1,000-row history rewrite 1 page, not all 1,003 rows. A hidden tab scans attention every 30 s, not every 5 s; it does not stop, because the tab title shows the attention count. Activity updates were not merged: after 1.3 they cost about 2 ms and save nothing |
+| 2026-10-23 | after `30a78b6` | R03 rest | 152 recap, response dot, and parity browser checks | The rail keeps its pins array while only the scroll position changes. Each pin is a memo component, so a scroll frame renders only the pins whose active state changed. No new test: this changes render work only |

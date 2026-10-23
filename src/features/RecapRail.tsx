@@ -6,11 +6,27 @@ import { createPortal } from 'react-dom';
 import { contentOffset, jumpToRecapTarget } from './recapTargets';
 import { COARSE_QUERY, DESKTOP_QUERY, useMediaQuery } from './useMediaQuery';
 import styles from './recap.module.css';
+import { useEventCallback } from '../components/useEventCallback';
 
 const PIN = 20;
 // A pin on a touch screen has a 46px hit area: the CSS extends it 13px on each side.
 const TOUCH_GAP = PIN + 26;
-type Layout = { pins: (ResponseAnchor & { index: number; top: number })[]; active?: string; contentHeight: number; scrollTop: number; thumb: { top: number; height: number } };
+type Pin = ResponseAnchor & { index: number; top: number };
+type Layout = { pins: Pin[]; active?: string; contentHeight: number; scrollTop: number; thumb: { top: number; height: number } };
+
+const samePins = (a: readonly Pin[], b: readonly Pin[]) => a.length === b.length && a.every((pin, index) => {
+  const other = b[index];
+  return pin.id === other.id && pin.top === other.top && pin.index === other.index && pin.size === other.size && pin.label === other.label;
+});
+
+// A scroll frame changes only the active pin, so the other pins skip their render.
+const RailPin = memo(function RailPin({ pin, active, onSelect }: { pin: Pin; active: boolean; onSelect: (id: string) => void }) {
+  const t = useText();
+  return <button type="button" className={styles.railPin} style={{top:pin.top}}
+    data-size={pin.size} data-active={active} aria-current={active?'location':undefined}
+    aria-label={`${t('Jump to reply')} ${pin.index}`} title={pin.label}
+    onClick={()=>onSelect(pin.id)}><span className={styles.railDot} aria-hidden="true" /></button>;
+});
 
 /**
  * The top of each pin in a rail of the given height.
@@ -41,7 +57,7 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
   useLayoutEffect(() => {
     const element = scroll.current;
     if (!element || !host || !desktop) { setLayout(null); return; }
-    let offsets: (ResponseAnchor & { index: number; offset: number })[] = [], frame: number | undefined;
+    let offsets: (ResponseAnchor & { index: number; offset: number })[] = [], frame: number | undefined, pins: Pin[] = [];
     let changed = true;
     function measure() {
       frame = undefined;
@@ -61,7 +77,10 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
       const progress = element.scrollTop / Math.max(1, total-element.clientHeight);
       const padding = parseFloat(getComputedStyle(element).scrollPaddingTop) || 0;
       const active = offsets.findLast(item => item.offset <= element.scrollTop+padding+1)?.id;
-      setLayout(offsets.length ? {pins:offsets.map((item,i)=>({...item,top:tops[i]})),active,contentHeight,scrollTop:Math.min(1, Math.max(0, progress)) * (contentHeight-height),
+      // Keep the same pins array while only the scroll position changes.
+      const next = offsets.map((item,i)=>({...item,top:tops[i]}));
+      if (!samePins(pins, next)) pins = next;
+      setLayout(offsets.length ? {pins,active,contentHeight,scrollTop:Math.min(1, Math.max(0, progress)) * (contentHeight-height),
         thumb:{top:element.scrollTop/total*height,height:Math.min(1,element.clientHeight/total)*height}} : null);
     }
     const schedule = (resize: boolean) => { changed ||= resize; if (frame === undefined) frame=requestAnimationFrame(measure); };
@@ -78,16 +97,16 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
       rail.scrollTop = layout.scrollTop;
     }
   }, [layout]);
+  const select = useEventCallback((id: string) => {
+    const element=scroll.current;const target=element?.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(id)}"]`);
+    if(element&&target){onJump();jumpToRecapTarget(element,target);}
+  });
   if(!host||!layout)return null;
   return createPortal(<nav className={styles.rail} aria-label={t('Agent replies')} data-response-rail data-testid="response-rail">
     <span className={styles.track}/><span className={styles.thumb} style={{top:layout.thumb.top,height:layout.thumb.height}}/>
     <div ref={scroller} className={styles.railScroller} role="group" aria-label={t('Reply anchors')} tabIndex={0}>
     <div className={styles.railContent} style={{height:layout.contentHeight}}>
-    {layout.pins.map(pin=><button type="button" key={pin.id} className={styles.railPin} style={{top:pin.top}}
-      data-size={pin.size} data-active={layout.active===pin.id} aria-current={layout.active===pin.id?'location':undefined}
-      aria-label={`${t('Jump to reply')} ${pin.index}`} title={pin.label}
-      onClick={()=>{const element=scroll.current;const target=element?.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(pin.id)}"]`);
-        if(element&&target){onJump();jumpToRecapTarget(element,target);}}}><span className={styles.railDot} aria-hidden="true" /></button>)}
+    {layout.pins.map(pin=><RailPin key={pin.id} pin={pin} active={layout.active===pin.id} onSelect={select} />)}
     </div></div>
   </nav>,host);
 });
