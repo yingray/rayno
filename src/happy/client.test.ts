@@ -2024,3 +2024,56 @@ describe('Happy client background sync', () => {
     expect(client.getSnapshot()).toMatchObject({ offline: true, error: '' });
   });
 });
+describe('Happy client request load', () => {
+  const reads = (part: string) => fetchMock.mock.calls.filter(([url]) => String(url).includes(part)).length;
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    Object.assign(window, { setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  it('should read the activity of a working session once per burst of session updates', async () => {
+    // Arrange
+    await start();
+    await vi.advanceTimersByTimeAsync(0);
+    fetchMock.mockClear();
+    // Act: the CLI writes a message, then changes its agent state, ten times in a row.
+    for (let seq = 1; seq <= 10; seq++) {
+      socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: await wireMessage(`m${seq}`, seq, `Step ${seq}`) } });
+      socket.handlers.get('update')!({ body: { t: 'update-session', id: 'session',
+        agentState: { version: seq, value: await client.encryption.encrypt({ step: seq }, null) } } });
+      await vi.advanceTimersByTimeAsync(100);
+    }
+    const duringBurst = reads('/messages');
+    await vi.advanceTimersByTimeAsync(5000);
+    // Assert
+    expect(duringBurst).toBe(0);
+    expect(reads('/messages')).toBe(1);
+    expect(reads('/v2/sessions')).toBe(0);
+  });
+  it('should apply a computer update in place and read only the computer list for a new computer', async () => {
+    // Arrange
+    const computer = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
+      metadata: await client.encryption.encrypt({ host: 'Old name' }, null) };
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([computer]) : response({ messages: [], hasMore: false }));
+    await start();
+    await vi.advanceTimersByTimeAsync(0);
+    fetchMock.mockClear();
+    // Act
+    socket.handlers.get('update')!({ body: { t: 'update-machine', machineId: 'computer',
+      daemonState: { version: 4, value: await client.encryption.encrypt({ status: 'running' }, null) } } });
+    socket.handlers.get('update')!({ body: { t: 'update-machine', machineId: 'computer',
+      metadata: { version: 2, value: await client.encryption.encrypt({ host: 'New name' }, null) } } });
+    await vi.waitFor(() => expect(client.getSnapshot().machines[0]?.name).toBe('New name'));
+    const inPlace = fetchMock.mock.calls.length;
+    socket.handlers.get('update')!({ body: { t: 'new-machine', machineId: 'second' } });
+    await vi.waitFor(() => expect(reads('/v1/machines')).toBe(1));
+    // Assert
+    expect(inPlace).toBe(0);
+    expect(reads('/v2/sessions')).toBe(0);
+    expect(reads('/messages')).toBe(0);
+  });
+});

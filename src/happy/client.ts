@@ -81,6 +81,8 @@ const SYNC_RETRY_MIN = 1000;
 const SYNC_RETRY_MAX = 30000;
 // When a workspace is on screen, the warning appears only after this many background reads fail in a row.
 const SYNC_WARNING_FAILURES = 3;
+// Session updates come in bursts while an agent works. One attention scan per session in this window reads the whole burst.
+const ATTENTION_SCAN_INTERVAL = 5000;
 // Happy Web sync/persistence.ts keeps the last local send time of each session for older CLIs.
 const readSentTimes = (value: string | null) => {
   try {
@@ -164,6 +166,8 @@ export class HappyClient implements DemoAdapter {
   // The newest seq range that attention scans read without a gap. A start below it, without a known stop, does not count.
   private subagentReads = new Map<string, BoundsRange>();
   private attentionRequests = new Map<string, Promise<void>>();
+  private attentionTimers = new Map<string, number>();
+  private machineRequest: Promise<void> = Promise.resolve();
   private fileIndexes = new Map<string, { at: number; files: Promise<FileItem[]> }>();
   private sentModeRequests = new Map<string, Promise<SentModes | undefined>>();
   private readingSessions = new Set<string>();
@@ -590,6 +594,8 @@ export class HappyClient implements DemoAdapter {
     void this.flushCache();
     this.disposed = true;
     window.clearTimeout(this.syncTimer);
+    this.attentionTimers.forEach((timer) => window.clearTimeout(timer));
+    this.attentionTimers.clear();
     this.cleanup();
     this.socket?.removeAllListeners();
     this.socket?.disconnect();
@@ -712,9 +718,40 @@ export class HappyClient implements DemoAdapter {
           this.subagentBounds.delete(id);
           this.subagentReads.delete(id);
         }
+    const machines = await this.applyMachines(machineRows, presenceRevision);
+    readable += machines.readable;
+    failure ??= machines.failure;
+    // A first read where nothing decrypts, or no session decrypts, keeps the workspace error visible.
+    // Records from the offline cache do not count: the stale cache keeps its saved time.
+    const firstRead = !known || !this.serverRead;
+    if (failure && firstRead && (!readable || (sessionRows.length && !readableSessions))) throw failure;
+    this.serverRead = true;
+    this.sessionsChangedAt = changedAt;
+    this.publish();
+    this.patch({ loading: false, error: '' });
+    await this.flushCache();
+    if (!this.attentionInitialized) {
+      this.attentionInitialized = true;
+      try { this.writeLocal('attentionInitialized', 'true'); } catch { /* Keep the baseline for this visit. */ }
+    }
+    const pending = [...this.sessions.keys()].filter((id) => {
+      const state = this.sessionAttention(id);
+      return state.inspectedSeq < 0 || (this.getSession(id).wire.seq || 0) > state.inspectedSeq;
+    });
+    await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
+      while (pending.length && !this.disposed) {
+        const id = pending.shift()!;
+        await this.inspectAttention(id).catch(() => {
+          // Keep the last attention state; a background scan is not a workspace connection failure.
+        });
+      }
+    }));
+  }
+  private async applyMachines(machineRows: Json, presenceRevision: number) {
     const machines = Array.isArray(machineRows) ? machineRows : machineRows.machines;
     if (!Array.isArray(machines))
       throw new Error('The Happy server returned an invalid computer list.');
+    let readable = 0, failure: unknown;
     const machineIds = new Set<string>();
     for (const wire of machines) {
       machineIds.add(wire.id);
@@ -742,31 +779,32 @@ export class HappyClient implements DemoAdapter {
       });
     }
     for (const id of this.machines.keys()) if (!machineIds.has(id)) this.machines.delete(id);
-    // A first read where nothing decrypts, or no session decrypts, keeps the workspace error visible.
-    // Records from the offline cache do not count: the stale cache keeps its saved time.
-    const firstRead = !known || !this.serverRead;
-    if (failure && firstRead && (!readable || (sessionRows.length && !readableSessions))) throw failure;
-    this.serverRead = true;
-    this.sessionsChangedAt = changedAt;
-    this.publish();
-    this.patch({ loading: false, error: '' });
-    await this.flushCache();
-    if (!this.attentionInitialized) {
-      this.attentionInitialized = true;
-      try { this.writeLocal('attentionInitialized', 'true'); } catch { /* Keep the baseline for this visit. */ }
-    }
-    const pending = [...this.sessions.keys()].filter((id) => {
-      const state = this.sessionAttention(id);
-      return state.inspectedSeq < 0 || (this.getSession(id).wire.seq || 0) > state.inspectedSeq;
-    });
-    await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
-      while (pending.length && !this.disposed) {
-        const id = pending.shift()!;
-        await this.inspectAttention(id).catch(() => {
-          // Keep the last attention state; a background scan is not a workspace connection failure.
-        });
-      }
-    }));
+    return { readable, failure };
+  }
+  // A new or deleted computer changes only the computer list. Read it without the sessions and the attention scans.
+  // The reads run one after another, so an older list cannot replace a newer one.
+  private refreshMachines(): Promise<void> {
+    const read = async () => {
+      if (this.snapshot.offline || this.disposed) return;
+      const presenceRevision = this.presenceRevision;
+      await this.applyMachines(await this.request('/v1/machines'), presenceRevision);
+      this.publish();
+    };
+    const request = this.machineRequest.then(read, read);
+    this.machineRequest = request.catch(() => {});
+    return request;
+  }
+  // A scan that is already running can end before the newest rows. The timer then waits for it and schedules again.
+  private scheduleAttention(id: string) {
+    if (this.attentionTimers.has(id)) return;
+    this.attentionTimers.set(id, window.setTimeout(() => {
+      this.attentionTimers.delete(id);
+      if (this.disposed || !this.sessions.has(id)) return;
+      if ((this.getSession(id).wire.seq || 0) <= this.sessionAttention(id).inspectedSeq) return;
+      const running = this.attentionRequests.get(id);
+      if (running) void running.catch(() => {}).then(() => this.scheduleAttention(id));
+      else void this.inspectAttention(id).catch(() => { /* Retain the last attention state until the next scan. */ });
+    }, ATTENTION_SCAN_INTERVAL));
   }
   private inspectAttention(id: string): Promise<void> {
     const existing = this.attentionRequests.get(id);
@@ -991,8 +1029,32 @@ export class HappyClient implements DemoAdapter {
       // Like Happy Web sync.ts, a control handoff reads the history again so the open chat has the messages of the other side.
       if (!isRig(current.metadata) && controlHandoff(wasControlled, current.agentState.controlledByUser) && this.activeSessions.has(body.id))
         void this.loadHistory(body.id, 'forward').catch(() => { /* The next reconnect fills the gap. */ });
-      if ((current.wire.seq || 0) > this.sessionAttention(body.id).inspectedSeq)
-        void this.inspectAttention(body.id).catch(() => { /* Retain the last attention state until the next scan. */ });
+      if ((current.wire.seq || 0) > this.sessionAttention(body.id).inspectedSeq) this.scheduleAttention(body.id);
+      return;
+    }
+    // Like Happy Web sync.ts, a computer update changes the known record in place. Rayno does not read daemonState.
+    if (body.t === 'update-machine' && this.machines.has(body.machineId)) {
+      const id = body.machineId;
+      // A damaged value keeps the last readable one. The next refresh reads the field again.
+      const decrypted = body.metadata?.version > this.machines.get(id)!.wire.metadataVersion
+        ? await this.encryption.decrypt<Json>(body.metadata.value, this.machines.get(id)!.key).catch(() => undefined)
+        : undefined;
+      // Apply only the changed fields to the newest record. A presence event can arrive during the decryption.
+      const latest = this.machines.get(id);
+      if (!latest || this.disposed) return;
+      const patch: Json = {};
+      if (decrypted && body.metadata.version > latest.wire.metadataVersion)
+        Object.assign(patch, { metadata: body.metadata.value, metadataVersion: body.metadata.version });
+      if (body.daemonState?.version > (latest.wire.daemonStateVersion ?? -1))
+        Object.assign(patch, { daemonState: body.daemonState.value, daemonStateVersion: body.daemonState.version });
+      if (!Object.keys(patch).length) return;
+      this.machines.set(id, { ...latest, wire: { ...latest.wire, ...patch }, metadata: patch.metadata ? decrypted! : latest.metadata });
+      this.publish(undefined, id);
+      return;
+    }
+    if (['update-machine', 'new-machine', 'delete-machine'].includes(body.t)) {
+      // A failed read here is a background failure. The backoff reads the list again.
+      await this.refreshMachines().catch((error) => this.syncFailed(error));
       return;
     }
     if (body.t === 'delete-session') {
@@ -1006,9 +1068,7 @@ export class HappyClient implements DemoAdapter {
       return;
     }
     if (
-      ['new-session', 'update-machine', 'new-machine', 'delete-machine', 'update-session'].includes(
-        body.t,
-      )
+      ['new-session', 'update-session'].includes(body.t)
     )
       // A failed read here is a background failure. The backoff reads the list again.
       await this.refresh(true).catch((error) => this.syncFailed(error));
