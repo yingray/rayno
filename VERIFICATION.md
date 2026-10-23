@@ -613,3 +613,14 @@ New messages raise the seq of the current record, not of an object that a list r
 - Two new tests hold one decryption while the other read runs. Both fail against the previous code and pass after it.
 - All 520 unit tests and the type check passed. 165 browser checks passed with 3 existing skips across four projects:
   connection, agent requests, handoff, navigation status, offline workspace, and session operations.
+
+## Activity events and the offline cache (2026-10-23)
+
+Session and computer activity events now update the screen without a cache save.
+Before, each activity event scheduled a save of the full workspace snapshot, up to two times each second.
+The next save for a real change still writes the latest presence.
+
+- A new test sends 100 activity events, then one metadata update. It fails against the previous code.
+  After the change, the activity makes no save, and the metadata update makes one save with the latest `activeAt`.
+- All 521 unit tests and the type check passed. 81 browser checks passed with 3 existing skips: offline workspace,
+  navigation status, connection, and render isolation across four projects.

@@ -2050,6 +2050,27 @@ describe('Happy client background sync', () => {
     // Assert
     await result;
   });
+  it('should not save the offline cache for activity events alone', async () => {
+    // Arrange
+    await start();
+    await vi.advanceTimersByTimeAsync(1000);
+    const save = vi.spyOn(OfflineCache.prototype, 'save').mockResolvedValue(true);
+    // Act
+    for (let index = 0; index < 100; index++) {
+      socket.handlers.get('ephemeral')!({ type: 'activity', id: 'session', active: true, activeAt: 1000 + index, thinking: index % 2 === 0 });
+      await vi.advanceTimersByTimeAsync(10);
+    }
+    await vi.advanceTimersByTimeAsync(1000);
+    const afterActivity = save.mock.calls.length;
+    socket.handlers.get('update')!({ body: { t: 'update-session', id: 'session', metadata: { version: 2,
+      value: await client.encryption.encrypt({ ...metadata, summary: { text: 'Saved title' } }, null) } } });
+    await vi.advanceTimersByTimeAsync(1000);
+    // Assert
+    expect(afterActivity).toBe(0);
+    expect(client.getSnapshot().sessions[0].status).toBe('idle');
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0][0].sessions[0].wire.activeAt).toBe(1099);
+  });
   it('should keep a loaded workspace quiet while background reads fail, warn after three failures, and recover', async () => {
     // Arrange
     await start();

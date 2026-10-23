@@ -241,10 +241,11 @@ export class HappyClient implements DemoAdapter {
     this.snapshot = { ...this.snapshot, ...value };
     this.listeners.forEach((listener) => listener());
   }
-  private publish(changedSession?: string, changedMachine?: string) {
-    timeStage('publish', () => this.publishNow(changedSession, changedMachine));
+  // `persist` false is for activity events. They change only presence, and a cache save would write the full workspace.
+  private publish(changedSession?: string, changedMachine?: string, persist = true) {
+    timeStage('publish', () => this.publishNow(changedSession, changedMachine, persist));
   }
-  private publishNow(changedSession?: string, changedMachine?: string) {
+  private publishNow(changedSession: string | undefined, changedMachine: string | undefined, persist: boolean) {
     const previousSessions = new Map(this.snapshot.sessions.map((session) => [session.id, session]));
     const previousMachines = new Map(this.snapshot.machines.map((machine) => [machine.id, machine]));
     const sessions = [...this.sessions.values()]
@@ -296,7 +297,7 @@ export class HappyClient implements DemoAdapter {
       machines: shallowEqual(machines, this.snapshot.machines) ? this.snapshot.machines : machines,
       sessionData: shallowEqual(sessionData, this.snapshot.sessionData) ? this.snapshot.sessionData : sessionData,
     });
-    this.scheduleCache();
+    if (persist) this.scheduleCache();
   }
   private async restoreWorkspace() {
     const cached = await this.cache.workspace();
@@ -1112,14 +1113,14 @@ export class HappyClient implements DemoAdapter {
       source.wire.active = event.active;
       source.wire.activeAt = event.activeAt;
       source.thinking = !!event.thinking;
-      this.publish(event.id);
+      this.publish(event.id, undefined, false);
     }
     if (event.type === 'machine-activity') {
       const source = this.machines.get(event.id);
       if (!source) return;
       this.machinePresence.set(event.id, ++this.presenceRevision);
       source.wire.active = event.active;
-      this.publish(undefined, event.id);
+      this.publish(undefined, event.id, false);
     }
     // The CLI push route sends `done`, `permission`, and `question`. Read the messages so a missed update cannot hide a reply.
     // Agent-state requests still come from update-session: the CLI pushes `permission` before it writes the agent state.
