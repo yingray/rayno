@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (Phase 4: E02 part 1).
+Created: 2026-10-23. Updated: 2026-10-23 (section 6, research for the Phase 4 limits).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -200,3 +200,76 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `30a78b6` | 3.5 | Vitest, full browser suite | History saves in pages of 100 rows by seq. 3 new rows in a 1,000-row history rewrite 1 page, not all 1,003 rows. A hidden tab scans attention every 30 s, not every 5 s; it does not stop, because the tab title shows the attention count. Activity updates were not merged: after 1.3 they cost about 2 ms and save nothing |
 | 2026-10-23 | `2f97cb8` | R03 rest | 152 recap, response dot, and parity browser checks | The rail keeps its pins array while only the scroll position changes. Each pin is a memo component, so a scroll frame renders only the pins whose active state changed. No new test: this changes render work only |
 | 2026-10-23 | after `2f97cb8` | E02 part 1 | Vitest, full browser suite | New image keys hold the session id, and a scan deletes the images of removed sessions. Reads fall back to the old key. The key scan runs only when the session list changes; a removed page is deleted by its key |
+
+## 6. Research for the Phase 4 limits (2026-10-23)
+
+The remaining Phase 4 items need limits. This section records what browsers and similar apps do.
+Section 6.5 gives the recommendation. A number that no source gives is marked as a judgment.
+
+### 6.1 Browser storage
+
+| Fact | Source |
+|---|---|
+| Chrome and Edge: up to 60% of the disk for each origin | MDN |
+| Firefox best-effort: 10% of the disk or 10 GiB, the smaller. Persistent: up to 50% of the disk | MDN |
+| Safari 17 and later: about 60% of the disk for the browser app | MDN |
+| Under storage pressure, the browser deletes best-effort origins in LRU order. It deletes all data of an origin at once | MDN |
+| Safari deletes script data of an origin after 7 days of browser use with no user interaction. A Home Screen web app does not have this rule | MDN |
+| `navigator.storage.persist()` protects the origin from pressure eviction. Ask for it in a user gesture, not on page load | web.dev |
+
+Rayno does not call `navigator.storage.persist()`. So all offline data is best-effort now.
+The quota is not the real risk. The real risk is that the browser deletes all of the data at once.
+
+### 6.2 Similar apps
+
+| App | Text history | Media |
+|---|---|---|
+| Signal | Kept forever by default. The user can set a limit by count (100 to 5,000) or by age (30 days to 1 year) | Removed with the trimmed messages |
+| Telegram | Kept in the cloud | Local cache with a size limit (5, 16, or 32 GB) and a "keep media" age. The oldest files go first, and they download again on demand |
+| Slack web | Persists its store in IndexedDB. No public message limit | The browser cache holds files. Cache buckets older than 7 days are deleted |
+| Workbox (runtime cache) | Not applicable | `maxEntries`, `maxAgeSeconds`, and `purgeOnQuotaError: true` for caches that can download again |
+
+The common pattern: keep text, and put a size or age limit only on media that the app can download again.
+
+### 6.3 Image attachments
+
+| Fact | Source |
+|---|---|
+| claude.ai: 20 images for each message, 10 MB for each image | Anthropic vision docs |
+| Claude 4.7 and later models scale an image down to a long edge of 2,576 px. Other models use 1,568 px | Anthropic vision docs |
+| Signal standard quality sends images at about 1600 px | Signal Desktop issues |
+| Uppy uploads at most 5 (XHR) or 6 (S3) files at the same time. 6 is the HTTP/1.1 limit for each host | Uppy docs |
+
+Rayno already uses the claude.ai limits (`attachments.ts:3`). The gap is the work before the upload:
+all images are read and hashed at the same time.
+
+### 6.4 Worker queues and memory
+
+No standard gives numbers. The common rules for a worker queue are: a bounded queue with an admission rule,
+an id for each job so that the page drops a stale result, and a timeout that starts when the job runs, not when it waits.
+For memory (M01), no public limit from a chat app was found. Measure first.
+
+### 6.5 Recommendation
+
+| Item | Recommendation | Basis |
+|---|---|---|
+| E02 persist | Ask for `navigator.storage.persist()` after sign-in, in the user gesture. Show nothing extra if the browser declines | MDN, web.dev |
+| E02 text history | Do not evict. This matches AGENTS.md and the Signal default | Signal |
+| E02 images | LRU by last view, with a budget of 250 MB or 10% of the quota from `navigator.storage.estimate()`, the smaller. On `QuotaExceededError`, delete images first, then save the history again | Telegram, Workbox. The 250 MB number is a judgment |
+| M02 | Hash and read at most 4 images at the same time. Upload at most 4 at the same time. Keep the 20 image and 10 MB limits | Uppy. The number 4 is a judgment |
+| M02 resize | Do not resize now. The image is also the copy that the user sees in the chat. This needs a separate decision | Anthropic vision docs |
+| O01 | At most 1 pending job for each diagram (a new one replaces the old one), and at most 8 in total. Start the timeout when the job runs | Worker queue practice. The numbers are judgments |
+| M01 | Measure the heap with 20 open and closed tool-heavy chats first. Decide after the measurement | No source |
+
+Sources:
+
+- https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria
+- https://web.dev/articles/persistent-storage
+- https://developer.chrome.com/docs/workbox/modules/workbox-expiration
+- https://slack.engineering/service-workers-at-slack-our-quest-for-faster-boot-times-and-offline-support/
+- https://telegram.org/blog/cache-and-stickers
+- https://platform.claude.com/docs/en/build-with-claude/vision
+- https://github.com/signalapp/Signal-Desktop/issues/7725
+- https://uppy.io/docs/aws-s3/
+- https://uppy.io/docs/xhr-upload/
+
