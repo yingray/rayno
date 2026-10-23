@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (step 3.1).
+Created: 2026-10-23. Updated: 2026-10-23 (step 3.2).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -96,7 +96,7 @@ Keep the full session list. Do not cut it to 150 rows. Make the list read progre
 | Step | ID | Change | Test | Status |
 |---|---|---|---|---|
 | 3.1 | R02 | Cache the `withRequestHistory` result by `history.messages` and `agentState` identity | Two publishes with the same inputs return the same array | done |
-| 3.2 | R01 | Keep a per-session cache from message id and tool result revision to the output object in `visibleMessages`. In `groupChatActivity`, reuse a block and its `details` when its inputs did not change | Append one text to 1,000 tool groups. 1,000 of 1,000 old groups pass the memo comparator | todo |
+| 3.2 | R01 | Keep a per-session cache from message id and tool result revision to the output object in `visibleMessages`. In `groupChatActivity`, reuse a block and its `details` when its inputs did not change | Append one text to 1,000 tool groups. 1,000 of 1,000 old groups pass the memo comparator | done |
 | 3.3 | R06 | Build one `callId → question` map for each `agentState`. Mount `InlineToolQuestion` only for calls in that map. Hoist the selector out of the render | Subscriber count does not grow with the tool count | todo |
 | 3.4 | R05 | Mount tool details only when the row expands. Change the recap jump: find the target in the data, expand it, then scroll | Existing recap jump tests pass. Add one for a collapsed tool target. Verify RWD at 320, 360, 390, 430 px, short keyboard viewport, and landscape, in Chromium and WebKit | todo |
 | 3.5 | E01b, E03 | Save history in pages, or save only the new rows since the last save. Merge timestamp-only activity updates. Pause attention scans while the page is hidden; catch up on `visibilitychange` | Append 3 rows to a 1,000-row history. The save writes 3 rows, not 3,006. No attention fetch while hidden | todo |
@@ -190,4 +190,5 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `281aaef` | 1.5 | Vitest, full browser suite | A seq gap now reads at once. Full suite: 1,217 passed, 1 failed (`newSessionControls.e2e.test.ts:6`, a layout check right after a resize; it passed 12 of 12 runs alone with four workers) |
 | 2026-10-23 | `bc37fa7` | 2.1 | Vitest, 157 recovery browser checks, baseline | A never-ending attention scan no longer blocks the open chat. Baseline connect to caught-up: 55–160 ms, before 57–266 ms; the two-session fixture has no slow scan |
 | 2026-10-23 | `2c50faf` | 2.2 | Vitest, full browser suite | An update that waits for the list no longer blocks other sessions. Full suite: 1,218 passed, 54 existing skips, 0 failed |
-| 2026-10-23 | after `2c50faf` | 3.1 | Vitest, 76 request and tool browser checks | An activity event keeps the same message array for a session with a denied request |
+| 2026-10-23 | `a7bcec9` | 3.1 | Vitest, 76 request and tool browser checks | An activity event keeps the same message array for a session with a denied request |
+| 2026-10-23 | after `a7bcec9` | 3.2 | Vitest, 162 chat browser checks | After one new reply, 200 of 200 old tool messages and all old tool groups keep their identity; without the change, 0 of 200 |

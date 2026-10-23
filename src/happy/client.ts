@@ -52,6 +52,7 @@ import { canSearchFiles, parseRipgrepFiles, type FileItem } from './suggestions'
 import { attentionMessage, receiveAttention, restoreClassifiedAttention, mergeAttention, userTurn, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
+import { reuseEqual } from '../data/reuseEqual';
 import { markRecovery, timeStage, timeStageAsync } from './perf';
 import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
 import type { GoalAction } from './agentGoal';
@@ -272,7 +273,9 @@ export class HappyClient implements DemoAdapter {
           const marked = `${boundCount(bounds)}:${read?.from}:${read?.to}`;
           if (!history || history.source !== rows || history.size !== (rows?.size || 0) || history.hold !== hold || history.marked !== marked) {
             const list = [...(rows?.values() || [])];
-            const messages = timeStage('visible-messages', () => visibleMessages(list, hold, bounds, this.boundsFrom(id)));
+            // Each pass builds new message and tool objects. Keep the old objects that did not change, so memo checks hold.
+            const messages = timeStage('visible-messages', () =>
+              reuseEqual(history?.messages, visibleMessages(list, hold, bounds, this.boundsFrom(id))));
             history = { source: rows, size: rows?.size || 0, hold, messages, context: contextUsage(list, bounds, this.boundsFrom(id)),
               marked, todos: sameTodos(history?.todos, latestTodos(messages, list, bounds, this.boundsFrom(id))) };
             this.visibleHistory.set(id, history);

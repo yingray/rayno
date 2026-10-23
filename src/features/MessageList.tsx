@@ -32,6 +32,7 @@ import { CodeBlock } from './CodeBlock';
 import { TodoList } from './TodoList';
 import { InlineToolQuestion } from '../happy/Requests';
 import { timeStage } from '../happy/perf';
+import { reuseEqual } from '../data/reuseEqual';
 import { isTodoWrite, todoProgress, todoRowList, type Todo } from '../data/todos';
 
 // Thinking is secondary. It stays closed until the user opens it.
@@ -346,7 +347,13 @@ export const MessageList = memo(function MessageList({
   const recaps = useStableRecaps(view.recaps);
   const visible = useMemo(() => view.hidden.size ? messages.filter((message) => !view.hidden.has(message.id)) : messages,
     [messages, view]);
-  const blocks = useMemo(() => timeStage('group-chat-activity', () => groupChatActivity(visible)), [visible]);
+  // Grouping builds new blocks and `details` lists. Keep the unchanged ones, so ToolActivity can skip its render.
+  const previousBlocks = useRef<ReturnType<typeof groupChatActivity>>(undefined);
+  const blocks = useMemo(() => timeStage('group-chat-activity', () => {
+    const next = reuseEqual(previousBlocks.current, groupChatActivity(visible));
+    previousBlocks.current = next;
+    return next;
+  }), [visible]);
   const outcomes = useMemo(() => {
     const permissions = completedPermissions(agentState), forms = completedForms(agentState);
     const modeLabel = (mode: string) => permissionLabel(metadata || {}, mode);

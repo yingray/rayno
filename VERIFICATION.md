@@ -683,3 +683,14 @@ Before, a session with a denied request and no tool call got a new array on each
 - A new test sends an activity event to such a session. It fails against the previous code and passes after it.
 - All 529 unit tests and the type check passed. 76 browser checks passed: agent requests, tool results, and render
   isolation across four projects.
+
+## Stable tool messages and groups (2026-10-23)
+
+Each history pass and each chat grouping now reuses the previous objects that did not change.
+Lists of objects with an `id` match by id, so older pages that load at the top still match.
+Before, every pass built new tool messages and new `details` lists, so the ToolActivity memo check always failed.
+
+- With 50 fixture turns and one new reply, 200 of 200 old tool messages and all old tool groups keep their identity.
+  The same check without the reuse keeps 0 of 200.
+- All 533 unit tests and the type check passed. 162 browser checks passed with 2 existing skips: chat content,
+  tool results, transcript, recap, response dots, chat presentation, render isolation, and agent events.
