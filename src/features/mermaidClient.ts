@@ -1,54 +1,86 @@
-type Pending = { resolve: (svg: string) => void; reject: (error: Error) => void; timer: number };
+// One shared worker renders the diagrams, one job at a time (PERFORMANCE-PLAN.md 6.5).
+// A job waits in this queue until the worker is free. Its timeout starts when it runs, not while it waits.
+// A timeout or a worker failure ends only the running job; the next job gets a new worker.
+// A caller that no longer needs a diagram aborts, and a job that nobody waits for leaves the queue.
+export const MAX_QUEUED_DIAGRAMS = 8;
+export const DIAGRAM_RUN_TIMEOUT = 10000;
+
+type Job = { id: number; source: string; resolve: (svg: string) => void; reject: (error: Error) => void; waiters: number; timer?: ReturnType<typeof setTimeout> };
 let worker: Worker | undefined;
 let nextId = 0;
-const pending = new Map<number, Pending>();
-const cache = new Map<string, Promise<string>>();
+let running: Job | undefined;
+const queue: Job[] = [];
+const cache = new Map<string, { result: Promise<string>; job: Job }>();
 
-function stop(error: Error) {
+function restart() {
   worker?.terminate();
   worker = undefined;
-  for (const request of pending.values()) {
-    clearTimeout(request.timer);
-    request.reject(error);
+}
+
+function finish(job: Job, svg: string | undefined, error?: Error) {
+  if (running === job) {
+    clearTimeout(job.timer);
+    running = undefined;
   }
-  pending.clear();
-  cache.clear();
+  if (typeof svg === 'string') job.resolve(svg);
+  else job.reject(error || new Error('The diagram could not render.'));
+  startNext();
 }
 
 function getWorker() {
   if (worker) return worker;
   worker = new Worker(new URL('./mermaid.worker.ts', import.meta.url), { type: 'module' });
   worker.onmessage = ({ data }: MessageEvent<{ id: number; svg?: string; error?: string }>) => {
-    const request = pending.get(data.id);
-    if (!request) return;
-    pending.delete(data.id);
-    clearTimeout(request.timer);
-    if (typeof data.svg === 'string') request.resolve(data.svg);
-    else request.reject(new Error(data.error || 'The diagram could not render.'));
+    if (running?.id === data.id) finish(running, data.svg, data.error ? new Error(data.error) : undefined);
   };
-  worker.onerror = () => stop(new Error('The diagram renderer could not load.'));
-  worker.onmessageerror = () => stop(new Error('The diagram renderer returned an invalid result.'));
+  const fail = (message: string) => () => {
+    restart();
+    if (running) finish(running, undefined, new Error(message));
+  };
+  worker.onerror = fail('The diagram renderer could not load.');
+  worker.onmessageerror = fail('The diagram renderer returned an invalid result.');
   return worker;
 }
 
+function startNext() {
+  if (running) return;
+  const job = queue.shift();
+  if (!job) return;
+  running = job;
+  job.timer = setTimeout(() => { restart(); finish(job, undefined, new Error('The diagram took too long to render.')); }, DIAGRAM_RUN_TIMEOUT);
+  try { getWorker().postMessage({ id: job.id, source: job.source }); }
+  catch { restart(); finish(job, undefined, new Error('The diagram renderer is unavailable.')); }
+}
+
+function leaveQueue(job: Job, error: Error) {
+  const index = queue.indexOf(job);
+  if (index === -1) return;
+  queue.splice(index, 1);
+  job.reject(error);
+}
+
 // Share one worker and reuse diagrams without parsing them during React renders.
-export function renderDiagram(source: string): Promise<string> {
-  const cached = cache.get(source);
-  if (cached) {
+export function renderDiagram(source: string, signal?: AbortSignal): Promise<string> {
+  let entry = cache.get(source);
+  if (entry) {
     cache.delete(source);
-    cache.set(source, cached);
-    return cached;
+    cache.set(source, entry);
+  } else {
+    let job!: Job;
+    const result = new Promise<string>((resolve, reject) => { job = { id: ++nextId, source, resolve, reject, waiters: 0 }; });
+    entry = { result, job };
+    cache.set(source, entry);
+    if (cache.size > 24) cache.delete(cache.keys().next().value!);
+    void result.catch(() => { if (cache.get(source)?.result === result) cache.delete(source); });
+    // A full queue drops its oldest job. That diagram can ask again when it is on screen.
+    if (queue.length >= MAX_QUEUED_DIAGRAMS) leaveQueue(queue[0], new Error('The diagram renderer is busy. Try again.'));
+    queue.push(job);
+    startNext();
   }
-  const result = new Promise<string>((resolve, reject) => {
-    const renderer = getWorker();
-    const id = ++nextId;
-    const timer = window.setTimeout(() => stop(new Error('The diagram took too long to render.')), 10000);
-    pending.set(id, { resolve, reject, timer });
-    try { renderer.postMessage({ id, source }); }
-    catch { stop(new Error('The diagram renderer is unavailable.')); }
-  });
-  cache.set(source, result);
-  if (cache.size > 24) cache.delete(cache.keys().next().value!);
-  void result.catch(() => { if (cache.get(source) === result) cache.delete(source); });
+  const { job, result } = entry;
+  job.waiters++;
+  signal?.addEventListener('abort', () => {
+    if (--job.waiters === 0) leaveQueue(job, new DOMException('The diagram is no longer needed.', 'AbortError'));
+  }, { once: true });
   return result;
 }

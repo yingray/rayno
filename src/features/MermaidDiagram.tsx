@@ -80,9 +80,11 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source, notify }: {
     if (!visible) return;
     let active = true;
     let url: string | undefined;
+    // A new source or an unmount removes the waiting job from the render queue.
+    const controller = new AbortController();
     // Coalesce partial Mermaid fences while an agent streams a response.
     const timer = window.setTimeout(() => {
-      void renderDiagram(source).then((svg) => {
+      void renderDiagram(source, controller.signal).then((svg) => {
         if (!active) return;
         url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
         setResult({ source, url });
@@ -91,6 +93,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ source, notify }: {
     return () => {
       active = false;
       clearTimeout(timer);
+      controller.abort();
       if (url) URL.revokeObjectURL(url);
     };
   }, [source, visible]);

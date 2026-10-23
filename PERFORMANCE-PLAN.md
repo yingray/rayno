@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-24 (Phase 4: M02).
+Created: 2026-10-23. Updated: 2026-10-24 (Phase 4: O01).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -114,7 +114,7 @@ If the encryption is still a long task after 3.5, move it to a worker as a separ
 | E04 | Refresh usage only while the usage UI is visible, or cache it on the daemon side. Stop the machine loop when the page becomes hidden | no change needed: the usage loop already stops when the tab is hidden or loses focus (`LiveProvider.tsx:89`). Live mode has no machine loop; monitor refresh runs on a click |
 | M01 | Add an LRU for decrypted history of sessions that are not open. Evaluate list virtualization with the recap, anchors, selection, and copy | todo |
 | M02 | Add a total size budget for attachments. Limit hash and upload concurrency | done: at most 4 at the same time. The limits stay at 20 images and 10 MB, the claude.ai limits (section 6.3). No resize |
-| O01 | Add a queue limit to the Mermaid worker. Cancel stale jobs. Separate queue time from run time | todo |
+| O01 | Add a queue limit to the Mermaid worker. Cancel stale jobs. Separate queue time from run time | done |
 | O02, A01 | Measure first, then decide | todo |
 | R03 rest | Keep the pins array stable. Update only `active` and `thumb` on scroll | done |
 
@@ -202,7 +202,8 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `9b760f3` | E02 part 1 | Vitest, full browser suite | New image keys hold the session id, and a scan deletes the images of removed sessions. Reads fall back to the old key. The key scan runs only when the session list changes; a removed page is deleted by its key |
 | 2026-10-23 | `e08a7db` | E02 persist | Vitest, 8 sign-in and 41 offline and connection browser checks | A remembered sign-in asks for persistent storage in the click. A session from an earlier visit asks on the first click or key press, once, and not when the data is already persistent |
 | 2026-10-24 | `33d4f9b` | E02 image budget | Vitest, image budget browser test, full browser suite | Images are deleted least recently viewed first above 250 MB or 10% of the quota. With a budget of 2.5 images, a third image removes the oldest one, and the two newest open offline. Full suite: 1,242 passed, 0 failed |
-| 2026-10-24 | after `33d4f9b` | M02 | Vitest, 162 image and composer browser checks | Image hashing and uploads run at most 4 at the same time. Before, hashing read all images together and uploads ran one at a time |
+| 2026-10-24 | `2b4bbd2` | M02 | Vitest, 162 image and composer browser checks | Image hashing and uploads run at most 4 at the same time. Before, hashing read all images together and uploads ran one at a time |
+| 2026-10-24 | after `2b4bbd2` | O01 | Vitest, full browser suite | The Mermaid worker gets one job at a time. The timeout starts when a job runs, and a timeout ends only that job. A changed or unmounted diagram removes its waiting job. At most 8 jobs wait. Full suite: 1,242 passed, 0 failed |
 
 ## 6. Research for the Phase 4 limits (2026-10-23)
 

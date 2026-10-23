@@ -826,3 +826,18 @@ The limits stay at 20 images and 10 MB, the same as claude.ai.
   Before the change, the peak was 1.
 - All 550 unit tests passed. 162 browser checks passed with 6 existing skips: priority features, local images,
   the image budget, composer input, and the working composer.
+
+## Mermaid render queue (2026-10-24)
+
+The Mermaid worker now gets one job at a time. Other jobs wait in the client queue.
+Before, the client posted all jobs at once, so each 10 s timer also counted the time in the queue.
+One timeout then stopped the worker, rejected every pending job, and cleared the cache.
+
+Now the timeout starts when a job runs. A timeout or a worker failure ends only the running job,
+and the next job gets a new worker. A diagram that changes its source or unmounts aborts its call.
+A job that nobody waits for leaves the queue. At most 8 jobs wait; a 9th drops the oldest waiting job.
+
+- New unit tests with a fake worker: one job at a time in order, a timeout that starts at run time and ends only
+  that job, removal of a stale job, a shared job that stays while one caller waits, and the queue limit.
+  The first test fails against the previous code.
+- All 555 unit tests passed. Full browser suite: 1,242 passed, 66 skips, 0 failed. It includes the Mermaid tests.
