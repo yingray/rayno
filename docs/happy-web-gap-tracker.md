@@ -106,13 +106,14 @@ Their presence is why passing the current test suite does not mean that all know
 | P11 | Resize Side Chat and Session Info | Done | Drag or use the keyboard on the divider at desktop widths. Side Chat is 360–720px; Session Info is 320–560px. Both retain at least 520px of usable main conversation width and adapt to navigation/viewport changes. Each panel stores its own Rayno account-scoped width. Narrow screens retain the existing drawer/page flows. | [width tests](../src/app/panelWidths.test.ts), [browser tests](../tests/resizablePanels.e2e.test.ts), [verification](../VERIFICATION.md#resizable-session-panels-2026-10-23) |
 | P12 | Navigation update action and unread badge | Done | Desktop rail and mobile tabs show Updates only when a newer release is known; current or unconfirmed versions occupy no navigation space. Check on entry, return, reconnect, and every five visible online minutes. New releases open a dismissible prompt without moving focus or reloading; explicit update preserves drafts and account data. Sessions shows an unnumbered unread dot, excluding archived and side chats. | [implementation](../src/app/NavigationUpdate.tsx), [browser tests](../tests/navigationStatus.e2e.test.ts), [verification](../VERIFICATION.md#navigation-updates-and-unread-dots-2026-10-23) |
 | P13 | Divide agent responses and show date/time | Done | Each formal response begins with a 1px divider and the original server timestamp, formatted in the interface language and local time zone. Tools, thinking, and recap-only rows do not create extra headers. Missing legacy timestamps show as unavailable. Demo replies carry simulated creation times. | [rendering](../src/features/MessageList.tsx), [normalization](../src/happy/normalize.ts), [browser tests](../tests/responseHeaders.e2e.test.ts), [verification](../VERIFICATION.md#response-dividers-and-timestamps-2026-10-23) |
+| P14 | Remove completed new-session forms from history | Done | Successful creation replaces the current form entry with the created chat. Browser Back returns to the previous page; Forward returns to the chat. Unfinished forms and folder-approval cancellation retain their drafts. Applies to live and demo creation. | [navigation](../src/features/NewSession.tsx), [history tests](../tests/newSessionHistory.e2e.test.ts), [folder tests](../tests/newSessionFolder.e2e.test.ts), [verification](../VERIFICATION.md#new-session-history-2026-10-23) |
 
 ## Delivery evidence
 
 The baseline `32a06f9` reached the local previews before this continuation.
 The checks below cover the implementation and local previews. Cloudflare production verification is separate.
 
-Current counts: **41 Done, 7 Open, 5 Deferred, 3 Corrected, 2 Intentional**. Total: 58, including the later P10–P13 requests.
+Current counts: **42 Done, 7 Open, 5 Deferred, 3 Corrected, 2 Intentional**. Total: 59, including the later P10–P14 requests.
 
 P10 verification is recorded in [VERIFICATION.md](../VERIFICATION.md#private-local-image-imports-2026-10-23).
 The following counts describe the earlier parity delivery, before P10.

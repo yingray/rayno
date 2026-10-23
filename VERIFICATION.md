@@ -481,3 +481,19 @@ a confirmed update remains accessible after dismissing the prompt or a failed in
 - All 47 applicable browser checks passed across desktop/mobile Chromium and WebKit; five existing project skips.
   Checks cover current-to-available-to-current transitions at 320/360/390/430px, short keyboard height, landscape,
   and desktop, plus update retries, dismissal, explicit reloads, unread indicators, and Settings updates.
+
+## New-session history (2026-10-23)
+
+Successful creation now replaces the /new history entry with the created chat. Browser Back returns to the page
+before the form; Forward returns to the chat. Previously, Back reopened the completed form. Live and demo sessions
+use the same navigation. Folder approval and cancellation keep the unfinished form and its draft.
+
+- Reproduced the old behavior in mobile WebKit: Back returned to /new after successful creation.
+- Type check and production build passed.
+- Final browser run: all 36 cases passed across desktop/mobile Chromium and WebKit. The 32 new cases cover
+  creation, Back/Forward navigation, no completed form in the DOM, usable chat drafts, and a single spawn/first send.
+  Four existing folder-approval cases confirm cancellation keeps the draft and approval still starts the session.
+- Interactions cover 320/360/390/430px phones, 390x360 keyboard height, 844x390 landscape, and 1440x900 desktop.
+  They include touch activation, form scrolling, reachable Start controls, and the tablet session-list drawer.
+- The existing Tailscale preview passed the same Back/Forward flow in both engines at 390x844 using isolated demo data.
+  No real agent started. Native edge-swipe animation on a physical phone and Cloudflare delivery were not tested.

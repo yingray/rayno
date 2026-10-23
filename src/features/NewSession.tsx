@@ -94,7 +94,7 @@ export function NewSession() {
     setBusy(true);
     try {
       const id = await adapter.createSession(request, files, approvedNewDirectoryCreation ? { approvedNewDirectoryCreation } : undefined);
-      if (mounted.current) navigate(`/session/${id}`);
+      if (mounted.current) navigate(`/session/${id}`, { replace: true });
     } catch (err) {
       if (!mounted.current) return;
       if (err instanceof DirectoryApprovalError) setFolderApproval({ directory: err.directory, draft: request, attachments: files });
