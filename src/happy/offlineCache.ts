@@ -18,12 +18,39 @@ export type CachedHistory = {
   cursor: number;
   history: Pick<History, 'loaded' | 'hasMore'>;
 };
+// The stored shape of a history. The rows are in pages by seq, so a new row rewrites only its own page.
+// `history.<id>` holds this index. Each page is in `history.<id>#<page>`.
+type StoredHistory = Omit<CachedHistory, 'version' | 'messages'> & { version: 2; pages: number[] };
+type StoredPage = { version: 2; id: string; page: number; messages: MessageRecord[] };
+
+export const HISTORY_PAGE_ROWS = 100;
+const pageKey = (id: string, page: number) => `history.${id}#${page}`;
+
+/**
+ * Split a history into pages by seq and find the pages that changed since the last save.
+ * Rows never change in place (the client only adds rows), so a page with the same row objects is unchanged.
+ */
+export function historyPages(messages: readonly MessageRecord[], saved?: ReadonlyMap<number, readonly MessageRecord[]>) {
+  const pages = new Map<number, MessageRecord[]>();
+  for (const row of messages) {
+    const page = Number.isSafeInteger(row.seq) && row.seq > 0 ? Math.floor(row.seq / HISTORY_PAGE_ROWS) : 0;
+    const rows = pages.get(page);
+    if (rows) rows.push(row); else pages.set(page, [row]);
+  }
+  const changed = [...pages].filter(([page, rows]) => {
+    const before = saved?.get(page);
+    return !before || before.length !== rows.length || rows.some((row, index) => row !== before[index]);
+  }).map(([page]) => page);
+  return { pages, changed };
+}
 
 const DATABASE = 'rayno-offline';
 const STORE = 'records';
 
 // Keep account data out of the public service-worker cache and v1 storage.
 export class OfflineCache {
+  // The pages of each history in the last save that completed. A save writes only the pages that differ.
+  private saved = new Map<string, Map<number, MessageRecord[]>>();
   constructor(private readonly scope: string, private readonly encryption: HappyCrypto) {}
 
   private async transaction<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore, result: (value: T) => void) => void): Promise<T | null> {
@@ -49,12 +76,23 @@ export class OfflineCache {
   }
 
   private async read<T>(key: string): Promise<T | null> {
+    return (await this.readAll<T>([key]))?.[0] ?? null;
+  }
+
+  // Read several keys in one transaction. A missing key gives null in its place.
+  private async readAll<T>(keys: string[]): Promise<(T | null)[] | null> {
     try {
-      const encrypted = await this.transaction<string>('readonly', (store, result) => {
-        const request = store.get(this.scope + key);
-        request.onsuccess = () => result(request.result);
+      const encrypted = await this.transaction<unknown[]>('readonly', (store, result) => {
+        const values: unknown[] = [];
+        keys.forEach((key, index) => {
+          const request = store.get(this.scope + key);
+          request.onsuccess = () => { values[index] = request.result; };
+        });
+        result(values);
       });
-      return typeof encrypted === 'string' ? await this.encryption.decrypt<T>(encrypted, null) : null;
+      if (!encrypted) return null;
+      return await Promise.all(keys.map((_, index) => typeof encrypted[index] === 'string'
+        ? this.encryption.decrypt<T>(encrypted[index], null) : null));
     } catch {
       return null;
     }
@@ -66,29 +104,54 @@ export class OfflineCache {
   }
 
   async history(id: string): Promise<CachedHistory | null> {
-    const value = await this.read<CachedHistory>('history.' + id);
-    return value?.version === 1 && value.id === id && Array.isArray(value.messages) && value.history?.loaded ? value : null;
+    const value = await this.read<CachedHistory | StoredHistory>('history.' + id);
+    if (value?.id !== id || !value.history?.loaded) return null;
+    // Version 1 holds all rows in one record. A save after this version writes pages.
+    if (value.version === 1) return Array.isArray(value.messages) ? value : null;
+    if (value.version !== 2 || !Array.isArray(value.pages)) return null;
+    const pages = await this.readAll<StoredPage>(value.pages.map((page) => pageKey(id, page)));
+    // A missing page makes the copy incomplete. Then the chat reads the server instead.
+    if (!pages || pages.some((page, index) => page?.version !== 2 || page.id !== id || page.page !== value.pages[index]
+      || !Array.isArray(page.messages))) return null;
+    return { version: 1, id, cursor: value.cursor, history: value.history, messages: pages.flatMap((page) => page!.messages) };
   }
 
   async save(workspace: CachedWorkspace, histories: CachedHistory[]): Promise<boolean> {
     try {
-      const entries = await timeStageAsync('cache-encrypt', () => Promise.all([
-        ['workspace', workspace] as const,
-        ...histories.map((history) => ['history.' + history.id, history] as const),
-      ].map(async ([key, value]) => [this.scope + key, await this.encryption.encrypt(value, null)] as const)));
+      const written = new Map<string, Map<number, MessageRecord[]>>();
+      const values: (readonly [string, unknown])[] = [['workspace', workspace]];
+      for (const history of histories) {
+        const { pages, changed } = historyPages(history.messages, this.saved.get(history.id));
+        written.set(history.id, pages);
+        const index: StoredHistory = { version: 2, id: history.id, cursor: history.cursor, history: history.history, pages: [...pages.keys()] };
+        values.push(['history.' + history.id, index]);
+        for (const page of changed)
+          values.push([pageKey(history.id, page), { version: 2, id: history.id, page, messages: pages.get(page)! } satisfies StoredPage]);
+      }
+      const entries = await timeStageAsync('cache-encrypt', () => Promise.all(values
+        .map(async ([key, value]) => [this.scope + key, await this.encryption.encrypt(value, null)] as const)));
       const sessions = new Set(workspace.sessions.map((session) => session.wire.id));
-      return await this.transaction<boolean>('readwrite', (store, result) => {
+      const saved = await this.transaction<boolean>('readwrite', (store, result) => {
         for (const [key, encrypted] of entries) store.put(encrypted, key);
         const cursor = store.openKeyCursor();
         cursor.onsuccess = () => {
           const row = cursor.result;
           if (!row) return;
           const prefix = this.scope + 'history.';
-          if (typeof row.key === 'string' && row.key.startsWith(prefix) && !sessions.has(row.key.slice(prefix.length))) store.delete(row.key);
+          if (typeof row.key === 'string' && row.key.startsWith(prefix)) {
+            const [id, page] = row.key.slice(prefix.length).split('#');
+            // Delete the history of a removed session, and a page that the new index of its history does not list.
+            if (!sessions.has(id) || (page !== undefined && written.has(id) && !written.get(id)!.has(Number(page)))) store.delete(row.key);
+          }
           row.continue();
         };
         result(true);
       }) === true;
+      if (saved) {
+        written.forEach((pages, id) => this.saved.set(id, pages));
+        [...this.saved.keys()].forEach((id) => { if (!sessions.has(id)) this.saved.delete(id); });
+      }
+      return saved;
     } catch {
       // Storage limits or eviction must not prevent an online session from loading.
       return false;
@@ -114,6 +177,7 @@ export class OfflineCache {
   }
 
   async clear(): Promise<void> {
+    this.saved.clear();
     try {
       await this.transaction<void>('readwrite', (store) => {
         const cursor = store.openKeyCursor();

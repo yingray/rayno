@@ -741,3 +741,23 @@ Now the scroll waits one more frame after an expand.
 - Load long tasks in Chromium: desktop 826 ms to 0, mobile 561 ms to 0.
 - Trade-off: the browser page search no longer finds text inside a closed tool row until the row was opened once.
 - All 535 unit tests and the type check passed. Full browser suite: 1,234 passed, 66 skips (54 existing, 12 desktop runs of the new phone sizes), 0 failed.
+
+## History pages and hidden-tab attention (2026-10-23)
+
+The offline cache now saves each history in pages of 100 rows by seq.
+`history.<id>` holds an index with the cursor, the flags, and the page numbers. Each page is in `history.<id>#<page>`.
+A save writes the index and only the pages with new or different rows. A page that the index does not list is deleted.
+The cache still reads the old single-record format, so a saved copy from before this change opens offline.
+
+A hidden tab now waits 30 s between attention scans, not 5 s. The scans do not stop, because the tab title shows
+the attention count. Pushes for done, permission, and question still scan at once. When the tab shows again,
+the existing visibility handler reads the workspace and catches up.
+
+- New unit tests: 3 new rows in a 1,000-row history change 1 page of at most 100 rows. A second save with no change
+  writes no page. Older rows or a new row object change only their page.
+- A new unit test checks that a hidden tab makes no scan in 10 s, and that it catches up when it shows again.
+  It fails when the hidden interval is the same as the normal one.
+- The offline browser helper reads the index and the pages.
+- Activity updates were not merged. After step 1.3, they cost about 2 ms each and do not save the cache.
+- All 539 unit tests and the type check passed. Full browser suite: 1,234 passed, 66 skips, 0 failed.
+- Not tested: an offline open of a copy in the old single-record format. That read path is the previous code.

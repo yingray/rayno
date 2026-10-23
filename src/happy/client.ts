@@ -91,6 +91,8 @@ const SYNC_RETRY_MAX = 30000;
 const SYNC_WARNING_FAILURES = 3;
 // Session updates come in bursts while an agent works. One attention scan per session in this window reads the whole burst.
 const ATTENTION_SCAN_INTERVAL = 5000;
+// A hidden tab still updates its title count, but it scans less often. Pushes for done, permission, and question scan at once.
+const HIDDEN_ATTENTION_SCAN_INTERVAL = 30000;
 // Happy Web sync/persistence.ts keeps the last local send time of each session for older CLIs.
 const readSentTimes = (value: string | null) => {
   try {
@@ -849,6 +851,8 @@ export class HappyClient implements DemoAdapter {
   // A scan that is already running can end before the newest rows. The timer then waits for it and schedules again.
   private scheduleAttention(id: string) {
     if (this.attentionTimers.has(id)) return;
+    // When the tab shows again, the visibility handler reads the workspace, so a hidden timer does not delay the catch-up.
+    const hidden = document.visibilityState === 'hidden';
     this.attentionTimers.set(id, window.setTimeout(() => {
       this.attentionTimers.delete(id);
       if (this.disposed || !this.sessions.has(id)) return;
@@ -856,7 +860,7 @@ export class HappyClient implements DemoAdapter {
       const running = this.attentionRequests.get(id);
       if (running) void running.catch(() => {}).then(() => this.scheduleAttention(id));
       else void this.inspectAttention(id).catch(() => { /* Retain the last attention state until the next scan. */ });
-    }, ATTENTION_SCAN_INTERVAL));
+    }, hidden ? HIDDEN_ATTENTION_SCAN_INTERVAL : ATTENTION_SCAN_INTERVAL));
   }
   private inspectAttention(id: string): Promise<void> {
     const existing = this.attentionRequests.get(id);

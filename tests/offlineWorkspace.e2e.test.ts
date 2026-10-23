@@ -5,12 +5,18 @@ import { MermaidPage } from './pages/MermaidPage';
 import { base64 } from '../src/happy/crypto';
 import type { CachedHistory } from '../src/happy/offlineCache';
 
+// The saved history is an index in `history.<id>` and its rows in pages in `history.<id>#<page>`.
 async function expectSaved(workspace: LiveWorkspacePage, server: HappyServer, text = 'Earlier message') {
   await expect.poll(async () => {
-    const row = (await workspace.offlineRecords()).find((row) => row.key.endsWith('history.real-session'));
-    if (!row) return false;
-    const history = await server.encryption.decrypt<CachedHistory>(row.value, null);
-    return history.messages.some((row) => JSON.stringify(row.raw).includes(text));
+    const records = await workspace.offlineRecords();
+    const index = records.find((row) => row.key.endsWith('history.real-session'));
+    if (!index) return false;
+    const { pages } = await server.encryption.decrypt<{ pages: number[] }>(index.value, null);
+    const rows = await Promise.all(pages.map(async (page) => {
+      const record = records.find((row) => row.key.endsWith(`history.real-session#${page}`));
+      return record ? (await server.encryption.decrypt<Pick<CachedHistory, 'messages'>>(record.value, null)).messages : [];
+    }));
+    return rows.flat().some((row) => JSON.stringify(row.raw).includes(text));
   }).toBe(true);
 }
 

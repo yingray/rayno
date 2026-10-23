@@ -2317,6 +2317,26 @@ describe('Happy client request load', () => {
     expect(reads('/messages')).toBe(1);
     expect(reads('/v2/sessions')).toBe(0);
   });
+  it('should scan less often in a hidden tab and catch up when the tab shows again', async () => {
+    // Arrange
+    await start();
+    await vi.advanceTimersByTimeAsync(0);
+    const visibility = vi.mocked(document.addEventListener).mock.calls.find(([name]) => name === 'visibilitychange')![1] as () => void;
+    fetchMock.mockClear();
+    Object.assign(document, { visibilityState: 'hidden', hasFocus: () => false });
+    // Act
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: await wireMessage('m1', 1, 'Step 1') } });
+    socket.handlers.get('update')!({ body: { t: 'update-session', id: 'session',
+      agentState: { version: 1, value: await client.encryption.encrypt({ step: 1 }, null) } } });
+    await vi.advanceTimersByTimeAsync(10000);
+    const whileHidden = reads('/messages');
+    Object.assign(document, { visibilityState: 'visible', hasFocus: () => true });
+    visibility();
+    await vi.advanceTimersByTimeAsync(5000);
+    // Assert
+    expect(whileHidden).toBe(0);
+    expect(reads('/messages')).toBe(1);
+  });
   it('should apply a computer update in place and read only the computer list for a new computer', async () => {
     // Arrange
     const computer = { id: 'computer', active: true, metadataVersion: 1, dataEncryptionKey: null,
