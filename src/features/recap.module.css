@@ -159,8 +159,8 @@
   height: 16px;
   box-sizing: border-box;
   border-radius: 999px;
-  background: #2a2337;
-  border: 1px solid #8160b5;
+  background: transparent;
+  border: 0;
   color: #ddd6fe;
   font-size: 9px;
   font-weight: 600;
@@ -280,8 +280,8 @@
   height: 20px;
   box-sizing: border-box;
   border-radius: 999px;
-  background: #2a2337;
-  border: 1px solid #8160b5;
+  background: transparent;
+  border: 0;
   color: #ddd6fe;
   font-size: 10px;
   font-weight: 600;
@@ -299,7 +299,10 @@
 .railPin:hover {
   filter: brightness(1.15);
 }
-.railPin[data-active='true'] {
+.railDot { width: 6px; height: 6px; border-radius: 50%; background: #a78bfa; border: 1px solid #c4b5fd88; pointer-events: none; }
+.railPin[data-size='medium'] .railDot { width: 10px; height: 10px; }
+.railPin[data-size='large'] .railDot { width: 14px; height: 14px; }
+.railPin[data-active='true'] .railDot {
   background: linear-gradient(180deg, #9d74fb, #7c4dee);
   border-color: transparent;
   box-shadow: 0 0 0 4px #8b5cf62e;

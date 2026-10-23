@@ -42,7 +42,7 @@ test('recap card should render collapsed, expand, and keep the open state after 
     await expect(recap.rail()).toHaveCount(0);
     await expect(recap.pill()).toBeHidden();
   } else {
-    await expect(recap.rail().getByRole('button')).toHaveText(['1']);
+    await expect(recap.rail().getByRole('button')).toHaveText(['']);
     await expect(recap.pill()).toBeEnabled();
   }
   // Act
@@ -556,12 +556,12 @@ test('recap rail pins should stay inside the rail and keep their own hit areas',
   await recap.scrollToLatest();
   // Act
   const pins = recap.rail().getByRole('button');
-  await expect(pins).toHaveText(Array.from({length:9},(_,index)=>String(index+1)));
+  await expect(pins).toHaveText(Array.from({length:9},()=>''));
   const layout = [];
   for (const pin of await pins.all()) layout.push(await recap.pinLayout(pin));
   // Assert
   expect(layout.every(pin => pin.inside)).toBe(true);
-  expect(layout.map(pin => pin.hits)).toEqual(Array.from({length:9},(_,index)=>Array(3).fill(String(index+1))));
+  expect(layout.map(pin => pin.hits)).toEqual(Array.from({length:9},(_,index)=>Array(3).fill(`Jump to reply ${index+1}`)));
   if (testInfo.project.use.hasTouch) {
     expect(layout[1].top - layout[0].top).toBeGreaterThanOrEqual(46);
     expect(layout[2].top - layout[1].top).toBeGreaterThanOrEqual(46);

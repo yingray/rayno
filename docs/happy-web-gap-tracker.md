@@ -109,13 +109,14 @@ Their presence is why passing the current test suite does not mean that all know
 | P14 | Remove completed new-session forms from history | Done | Successful creation replaces the current form entry with the created chat. Browser Back returns to the previous page; Forward returns to the chat. Unfinished forms and folder-approval cancellation retain their drafts. Applies to live and demo creation. | [navigation](../src/features/NewSession.tsx), [history tests](../tests/newSessionHistory.e2e.test.ts), [folder tests](../tests/newSessionFolder.e2e.test.ts), [verification](../VERIFICATION.md#new-session-history-2026-10-23) |
 | P15 | Stronger optional glass appearance | Done | Appearance offers Standard and Intense. Standard preserves the existing look; Intense adds translucent tinted surfaces, stronger highlights, and frosted chat controls, navigation, usage cards, menus, autocomplete lists, and dialogs. The device/account-scoped Rayno preference survives reloads; reduced-transparency and unsupported-filter fallbacks retain readable surfaces. | [settings](../src/features/Settings.tsx), [tokens](../src/styles/global.css), [browser tests](../tests/glassStyle.e2e.test.ts), [verification](../VERIFICATION.md#optional-intense-glass-2026-10-23) |
 | P16 | DiceBear Planets session avatars | Done | Avatar style offers DiceBear Planets. A local, pinned Planets renderer uses only the session ID as its deterministic seed. List, header, and Session Info remain consistent across renames, reloads, and cached offline reads. Agent choices without a session keep provider marks. Existing agent mark and initials options remain available. | [renderer](../src/components/planetsAvatar.ts), [avatar component](../src/components/ui.tsx), [browser tests](../tests/planetsAvatar.e2e.test.ts), [verification](../VERIFICATION.md#dicebear-planets-avatars-2026-10-23) |
+| P17 | Reading-position response dots | Done | Replace numbered anchors with 6/10/14px dots based on visible non-whitespace reply characters (<500 / 500–1,999 / ≥2,000). Dots share the chat scroll coordinates and follow visible reply starts. Native rail navigation also moves the chat. Preserve accessible reply numbers, independent touch hit areas, and recap behavior. Completed-message counts use a weak cache. | [anchor metadata](../src/data/responseAnchors.ts), [rail](../src/features/RecapRail.tsx), [browser tests](../tests/responseDots.e2e.test.ts), [verification](../VERIFICATION.md#reading-position-response-dots-2026-10-23) |
 
 ## Delivery evidence
 
 The baseline `32a06f9` reached the local previews before this continuation.
 The checks below cover the implementation and local previews. Cloudflare production verification is separate.
 
-Current counts: **44 Done, 7 Open, 5 Deferred, 3 Corrected, 2 Intentional**. Total: 61, including the later P10–P16 requests.
+Current counts: **45 Done, 7 Open, 5 Deferred, 3 Corrected, 2 Intentional**. Total: 62, including the later P10–P17 requests.
 
 P10 verification is recorded in [VERIFICATION.md](../VERIFICATION.md#private-local-image-imports-2026-10-23).
 The following counts describe the earlier parity delivery, before P10.

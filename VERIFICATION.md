@@ -550,3 +550,28 @@ It generates image data URIs locally and never calls the DiceBear API. The lazy 
   Screenshots remain in ignored test-results/screenshots/. No real agent started or external account changed.
 - Offline browser checks use the existing offline-workspace fixture and encrypted history cache. A physical phone,
   fully disconnected production service-worker reload, and Cloudflare deployment were not verified in this change.
+
+## Reading-position response dots (2026-10-23)
+
+The reading rail now shows unnumbered dots aligned with visible formal response starts. It follows the main chat's
+scroll position rather than keeping a fixed whole-document distribution. Native rail scrolling also moves the chat,
+so keyboard focus and touch navigation can reach replies outside the current viewport. The current reply retains
+its accessible location state, and buttons retain numbered accessible labels without displaying the numbers.
+
+Small/medium/large dots are 6/10/14px for fewer than 500, 500–1,999, and at least 2,000 visible non-whitespace Unicode
+characters. Markdown syntax, link destinations, recaps, and reply options do not contribute. Code text does count.
+A weak cache retains each immutable message's metadata so streaming updates do not reparse unchanged replies.
+Dot size does not change the existing 20px desktop button or 46px coarse-pointer hit area. Dense replies retain gaps.
+Portrait phone layouts keep their existing no-rail behavior; the rail remains available from 768px.
+
+- Type check and production build passed. All 509 unit tests passed across 44 files, including size thresholds,
+  exclusion of non-visible content, and existing rail spacing checks.
+- Browser verification: 22 passed and two existing phone skips across desktop/mobile Chromium and WebKit.
+  All 12 new cases passed. Existing recap expansion/reload, dense rail hit tests, and recap-free response jumps also passed.
+- Tests confirm dot/response alignment within 2px, a matching 40px movement when the chat scrolls, all three visual
+  sizes, empty button text, active-state updates, and jumping among 18 distant replies without overlapping targets.
+- Phone interactions cover 320/360/390/430px, 390x360 short height, and 844x390 landscape, including sending, 16px inputs,
+  and 44px-or-larger touch controls. The 844px rail also runs in coarse-pointer contexts.
+- After adding the metadata cache, two direct Tailscale browser checks passed in Chromium and WebKit against the final
+  build, confirming size, alignment, scroll synchronization, and clicking. Screenshots remain in ignored test-results/.
+  Physical device gestures and Cloudflare deployment were not verified.

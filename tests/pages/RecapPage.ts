@@ -13,7 +13,7 @@ export class RecapPage extends LiveWorkspacePage {
       const composer=document.querySelector('[data-chat-session] [data-focus-frame]')!.getBoundingClientRect();
       const x=box.left+box.width/2;
       return {top:(element as HTMLElement).offsetTop,inside:box.top>=host.top-.5&&box.bottom<=host.bottom+.5&&box.bottom<=composer.top,
-        hits:[box.top+2,box.top+box.height/2,box.bottom-2].map(y=>document.elementFromPoint(x,y)?.closest('button')?.textContent||null)};
+        hits:[box.top+2,box.top+box.height/2,box.bottom-2].map(y=>document.elementFromPoint(x,y)?.closest('button')?.getAttribute('aria-label')||null)};
     });
   }
   ghost() { return this.page.getByTestId('recap-ghost'); }

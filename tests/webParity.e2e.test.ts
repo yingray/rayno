@@ -143,7 +143,7 @@ test('the right rail should anchor formal replies without any recap',async({page
     {role:'agent',content:{type:'codex',data:{type:'message',message:'First formal reply\n\n'+text}}},
     {role:'user',content:{type:'text',text:'Second question'}},
     {role:'agent',content:{type:'codex',data:{type:'message',message:'Second formal reply\n\n'+text}}}]);
-  const view=new ParityPage(page);await view.open('/session/real-session');await expect(view.rail().getByRole('button')).toHaveText(['1','2']);
+  const view=new ParityPage(page);await view.open('/session/real-session');await expect(view.rail().getByRole('button')).toHaveText(['','']);
   await view.rail().getByRole('button',{name:'Jump to reply 1',exact:true}).click();
   await expect(view.article('First formal reply')).toHaveClass(/flash/);await view.expectInView(view.article('First formal reply'));
 });
