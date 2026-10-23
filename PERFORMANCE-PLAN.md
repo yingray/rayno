@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (step 2.1).
+Created: 2026-10-23. Updated: 2026-10-23 (phase 2 done).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -82,12 +82,12 @@ Four parallel workers made the cache timings two to three times higher.
 | 1.4 | N05 | Key `historyRequests` by `id + direction`. A caller that finds a running request waits for it. If an invalidation came during that request, run one more request, not one for each caller | 10 concurrent `forward` calls cause at most 2 fetches | done |
 | 1.5 | N06 | Keep `contiguousSeq` for each active session. When a socket message has `seq > contiguousSeq + 1`, schedule a `forward` read at once | Drop one socket message in the mock. The chat fills the gap without a reconnect | done |
 
-### Phase 2: Active chat first (2 PRs)
+### Phase 2: Active chat first (2 PRs) — done
 
 | Step | ID | Change | Test | Status |
 |---|---|---|---|---|
 | 2.1 | N03 | Split `syncWorkspace()`. On reconnect, start the `forward` read for active sessions at the same time as the list read. Run `flushCache()` and the attention scans after both, without `await` in the recovery path | Make the attention fetch take 10 s. `active-chat-caught-up` still arrives in less than 2 s | done |
-| 2.2 | N04 | Queue updates per session. Replace `refresh(true)` inside the queue with a coalesced, scheduled refresh. Events for known sessions do not wait for it | An unknown-session event with a slow refresh does not delay a `new-message` for the open chat | todo |
+| 2.2 | N04 | Queue updates per session. Replace `refresh(true)` inside the queue with a coalesced, scheduled refresh. Events for known sessions do not wait for it | An unknown-session event with a slow refresh does not delay a `new-message` for the open chat | done |
 
 Keep the full session list. Do not cut it to 150 rows. Make the list read progressive instead.
 
@@ -188,4 +188,5 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `8088e84` | 1.3 | Vitest, 81 offline and presence browser checks, baseline | 100 activity events now cause no cache save. The baseline live phase still saves 0–2 times, because the replies change history |
 | 2026-10-23 | `796d091` | 1.4 | Vitest, 183 history browser checks | 11 forward calls during one read now make 2 reads, not 11 |
 | 2026-10-23 | `281aaef` | 1.5 | Vitest, full browser suite | A seq gap now reads at once. Full suite: 1,217 passed, 1 failed (`newSessionControls.e2e.test.ts:6`, a layout check right after a resize; it passed 12 of 12 runs alone with four workers) |
-| 2026-10-23 | after `281aaef` | 2.1 | Vitest, 157 recovery browser checks, baseline | A never-ending attention scan no longer blocks the open chat. Baseline connect to caught-up: 55–160 ms, before 57–266 ms; the two-session fixture has no slow scan |
+| 2026-10-23 | `bc37fa7` | 2.1 | Vitest, 157 recovery browser checks, baseline | A never-ending attention scan no longer blocks the open chat. Baseline connect to caught-up: 55–160 ms, before 57–266 ms; the two-session fixture has no slow scan |
+| 2026-10-23 | after `bc37fa7` | 2.2 | Vitest, full browser suite | An update that waits for the list no longer blocks other sessions. Full suite: 1,218 passed, 54 existing skips, 0 failed |

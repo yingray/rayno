@@ -661,3 +661,15 @@ An open chat that is not known yet still waits for the list. The sync still fail
 - All 526 unit tests and the type check passed. 157 browser checks passed with 3 existing skips: connection,
   offline workspace, navigation status, chat presentation, handoff, and agent requests across four projects.
 - The baseline recovery marks are in `PERFORMANCE-PLAN.md`. That fixture has two sessions, so the change shows only in the unit test.
+
+## Realtime update queues (2026-10-23)
+
+Realtime updates now wait in one queue for each session and one queue for the computers.
+Before, all updates shared one queue. An update for an unknown session waited for a full list read and held back
+the updates of every other session.
+
+- A new test keeps the list read from answering after an update for an unknown session.
+  It fails against the previous code: the open chat did not show its new message. It passes after the change.
+- A second test keeps the order inside one session: messages, then a delete, then a late message. It passes before and after.
+- All 528 unit tests and the type check passed.
+- Full browser suite: 1,218 passed, 54 existing skips, 0 failed.

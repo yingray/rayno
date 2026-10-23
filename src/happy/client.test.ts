@@ -1834,6 +1834,35 @@ describe('Happy client damaged records', () => {
       .toEqual(['First', 'Reply after the reconnect']), { interval: 1 });
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/sessions/other/messages?before_seq='))).toBe(true);
   });
+  it('should show a message of an open chat while an update of an unknown session waits for the list', async () => {
+    // Arrange
+    let slow = false;
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/v2/sessions')) return slow ? new Promise<Response>(() => {}) : Promise.resolve(response({ sessions: [session], hasNext: false }));
+      if (url.endsWith('/v1/machines')) return Promise.resolve(response([]));
+      return Promise.resolve(response({ messages: [], hasMore: false }));
+    });
+    await start();
+    slow = true;
+    // Act: the list read for the unknown session does not answer.
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'unknown', message: await wireMessage('x', 1, 'Elsewhere') } });
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: await wireMessage('a', 1, 'Here') } });
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages.map((row) => row.content)).toEqual(['Here']), { interval: 1 });
+  });
+  it('should keep the order of the updates of one session', async () => {
+    // Arrange
+    await start();
+    const messages = await Promise.all(Array.from({ length: 5 }, (_, index) => wireMessage(`m${index + 1}`, index + 1, `Step ${index + 1}`)));
+    // Act
+    for (const message of messages) socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message } });
+    socket.handlers.get('update')!({ body: { t: 'delete-session', sid: 'session' } });
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: await wireMessage('late', 6, 'Late') } });
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions).toHaveLength(0), { interval: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(client.getSnapshot().sessions).toHaveLength(0);
+  });
   it('should load the readable messages around a damaged message and advance the cursor', async () => {
     // Arrange
     const page = [await wireMessage('a', 1, 'First'), damagedMessage('b', 2), await wireMessage('c', 3, 'Third')];

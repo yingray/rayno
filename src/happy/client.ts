@@ -73,6 +73,12 @@ const voidRpcMethods = new Set(['abort', 'switch', 'permission', 'communication'
 // that the client has seen, so a late commit with an older timestamp is not lost.
 const SESSION_CHANGE_OVERLAP = 30000;
 // Each abort names its cause. Without a reason, Chromium reports "signal is aborted without reason".
+// The order of updates matters only inside one session, and inside the computer list.
+function updateQueue(body: Json) {
+  if (['update-machine', 'new-machine', 'delete-machine'].includes(body.t)) return 'machines';
+  const id = body.t === 'new-message' || body.t === 'delete-session' ? body.sid : body.id;
+  return typeof id === 'string' ? 'session:' + id : 'other';
+}
 const REQUEST_TIMEOUT = 'timeout';
 const REQUEST_CLOSED = 'closed';
 const abortError = (signal: AbortSignal, timeout: string) =>
@@ -185,7 +191,8 @@ export class HappyClient implements DemoAdapter {
   private sessionPresence = new Map<string, number>();
   private machinePresence = new Map<string, number>();
   private usageRequest: Promise<void> | null = null;
-  private events: Promise<void> = Promise.resolve();
+  // One queue for each session, and one for the computers. A slow update of one session does not delay the others.
+  private events = new Map<string, Promise<void>>();
   private snapshot: Snapshot = { ...emptySnapshot };
   private storage: Storage;
   private cache: OfflineCache;
@@ -547,9 +554,12 @@ export class HappyClient implements DemoAdapter {
       }),
     );
     this.socket.on('update', (event) => {
-      this.events = this.events
-        .then(() => this.update(record(event.body)))
+      const body = record(event.body), key = updateQueue(body);
+      const next = (this.events.get(key) || Promise.resolve())
+        .then(() => this.update(body))
         .catch((error) => this.patch({ error: messageError(error) }));
+      this.events.set(key, next);
+      void next.then(() => { if (this.events.get(key) === next) this.events.delete(key); });
     });
     this.socket.on('ephemeral', (event) => this.ephemeral(record(event)));
     const visibility = () => {
