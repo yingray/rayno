@@ -1404,6 +1404,12 @@ export class HappyClient implements DemoAdapter {
         sessionStorage.removeItem(key);
         packet = null;
       }
+      // The server can commit a send whose acknowledgement is lost. Sync then shows its local IDs, so the packet is done.
+      if (packet && this.delivered(id, packet)) {
+        sessionStorage.removeItem(key);
+        if (packet.fingerprint === fingerprint) return;
+        packet = null;
+      }
       if (packet && packet.fingerprint !== fingerprint)
         throw new Error(
           'A previous send has no confirmation. Retry the original draft and model/effort/permission choices, or check the message in the Happy app.',
@@ -1447,6 +1453,10 @@ export class HappyClient implements DemoAdapter {
     } finally {
       this.sending.delete(id);
     }
+  }
+  private delivered(id: string, packet: Outbox) {
+    const synced = new Set([...(this.messages.get(id)?.values() || [])].map(row => row.localId));
+    return [...(packet.files || []), packet].every(item => synced.has(item.localId));
   }
   private async transfer(value: string, init: RequestInit) {
     const url = transferUrl(value, this.credentials.server);

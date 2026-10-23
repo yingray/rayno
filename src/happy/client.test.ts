@@ -852,6 +852,44 @@ describe('Happy client protocol', () => {
     ]);
     expect(JSON.stringify(packets)).not.toContain('Keep this draft');
   });
+  it('should accept a different send after sync shows the unacknowledged send', async () => {
+    // Arrange: the server commits the first send, but the response is lost. The agent then replies with options.
+    await start();
+    const packets: Json[] = [];
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
+      const packet = JSON.parse(String(init?.body)).messages[0];
+      packets.push(packet);
+      if (packets.length === 1) throw new TypeError('Connection lost after server commit');
+      return response({ messages: [{ id: 'option', seq: 2, localId: packet.localId, createdAt: 300 }] });
+    });
+    await expect(client.sendMessage('session', 'Ask me to choose')).rejects.toThrow('Connection lost');
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session',
+      message: await wireMessage('first', 1, 'Ask me to choose', packets[0].localId) } });
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages).toHaveLength(1));
+    // Act
+    await client.sendMessage('session', 'Option 1');
+    // Assert
+    expect(packets).toHaveLength(2);
+    expect(packets[1].localId).not.toBe(packets[0].localId);
+    expect(client.getSnapshot().sessions[0].messages.map(message => message.content)).toEqual(['Ask me to choose', 'Option 1']);
+  });
+  it('should not post the same draft again after sync shows the unacknowledged send', async () => {
+    // Arrange
+    await start();
+    const packets: Json[] = [];
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => {
+      packets.push(JSON.parse(String(init?.body)).messages[0]);
+      throw new TypeError('Connection lost after server commit');
+    });
+    await expect(client.sendMessage('session', 'Keep this draft')).rejects.toThrow('Connection lost');
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session',
+      message: await wireMessage('first', 1, 'Keep this draft', packets[0].localId) } });
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages).toHaveLength(1));
+    // Act
+    await client.sendMessage('session', 'Keep this draft');
+    // Assert
+    expect(packets).toHaveLength(1);
+  });
   it('should send a hidden recap request with the normal modes and the selected recap mode', async () => {
     // Arrange
     await start();
