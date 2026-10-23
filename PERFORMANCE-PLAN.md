@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (section 6, research for the Phase 4 limits).
+Created: 2026-10-23. Updated: 2026-10-23 (Phase 4: E02 persist).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -199,7 +199,8 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `2e85235` | 3.4 | Vitest, full browser suite, baseline | Load long tasks in Chromium: desktop 826 ms to 0, mobile 561 ms to 0. 20 replies shown after, one run each: desktop Chromium 168 ms, mobile Chromium 135 ms, desktop WebKit 1,373 ms, mobile WebKit 670 ms. Also fixed an older bug: on phones, a recap jump into a collapsed tool group did not scroll |
 | 2026-10-23 | `30a78b6` | 3.5 | Vitest, full browser suite | History saves in pages of 100 rows by seq. 3 new rows in a 1,000-row history rewrite 1 page, not all 1,003 rows. A hidden tab scans attention every 30 s, not every 5 s; it does not stop, because the tab title shows the attention count. Activity updates were not merged: after 1.3 they cost about 2 ms and save nothing |
 | 2026-10-23 | `2f97cb8` | R03 rest | 152 recap, response dot, and parity browser checks | The rail keeps its pins array while only the scroll position changes. Each pin is a memo component, so a scroll frame renders only the pins whose active state changed. No new test: this changes render work only |
-| 2026-10-23 | after `2f97cb8` | E02 part 1 | Vitest, full browser suite | New image keys hold the session id, and a scan deletes the images of removed sessions. Reads fall back to the old key. The key scan runs only when the session list changes; a removed page is deleted by its key |
+| 2026-10-23 | `9b760f3` | E02 part 1 | Vitest, full browser suite | New image keys hold the session id, and a scan deletes the images of removed sessions. Reads fall back to the old key. The key scan runs only when the session list changes; a removed page is deleted by its key |
+| 2026-10-23 | after `8cec84e` | E02 persist | Vitest, 8 sign-in and 41 offline and connection browser checks | A remembered sign-in asks for persistent storage in the click. A session from an earlier visit asks on the first click or key press, once, and not when the data is already persistent |
 
 ## 6. Research for the Phase 4 limits (2026-10-23)
 

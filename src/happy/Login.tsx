@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button, copyText, Mark, Spinner } from '../components/ui';
 import { loginWithKey, readLastServer, saveCredentials, serverOrigin, startPairing } from './auth';
+import { requestPersistentStorage } from './persistentStorage';
 import type { Credentials } from './auth';
 import { messageError } from './errors';
 import styles from './login.module.css';
@@ -140,8 +141,16 @@ export function Login({
       return null;
     }
   }
+  // A remembered sign-in keeps account data on this device, so ask the browser to keep it. This runs in the click.
+  const askedToKeep = useRef(false);
+  function keepOfflineData() {
+    if (!remember || askedToKeep.current) return;
+    askedToKeep.current = true;
+    requestPersistentStorage();
+  }
   async function submit() {
     if (busy) return;
+    keepOfflineData();
     const origin = commitServer();
     if (!origin) return;
     setBusy(true);
@@ -177,13 +186,13 @@ export function Login({
           <Button
             variant={view === 'signin' ? 'accent' : 'ghost'}
             aria-pressed={view === 'signin'}
-            onClick={() => setView('signin')}
+            onClick={() => { keepOfflineData(); setView('signin'); }}
           >
             Sign in
           </Button>
         </div>
         {view === 'install' ? (
-          <InstallGuide onContinue={() => setView('signin')} />
+          <InstallGuide onContinue={() => { keepOfflineData(); setView('signin'); }} />
         ) : (
           <section className={styles.signIn} aria-label="Sign in">
             <h2>Choose a sign-in method</h2>
@@ -191,7 +200,7 @@ export function Login({
               <Button
                 variant={method === 'qr' ? 'default' : 'ghost'}
                 aria-pressed={method === 'qr'}
-                onClick={() => setMethod('qr')}
+                onClick={() => { keepOfflineData(); setMethod('qr'); }}
               >
                 Scan QR code
               </Button>

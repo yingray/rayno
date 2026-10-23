@@ -785,3 +785,16 @@ A page that the last save wrote and the new index does not list is deleted by it
   session ids with dots, old image keys, the workspace, and other accounts stay.
 - All 541 unit tests and the type check passed. Full browser suite: 1,234 passed, 66 skips, 0 failed.
 - Not tested: the number of key scans in a real browser. The scan condition is one string compare.
+
+## Persistent offline storage (2026-10-23)
+
+Rayno now asks the browser to keep its offline data (`navigator.storage.persist()`).
+Without this, the browser can delete all offline data under storage pressure, and Safari deletes it after 7 days without a visit.
+
+- The sign-in screen asks in the click that starts a sign-in, once, and only when "remember" is on.
+  Safari and Firefox accept the request only in a user gesture.
+- A session that signed in on an earlier visit asks on the first click or key press of the page load.
+  It does not ask when the data is already persistent. A refusal changes nothing for the user.
+- New unit tests cover the request, a missing API, a refusal, the first input, and an already persistent site.
+- A new browser test counts the requests in four projects: one for the sign-in screen, none on load, one after the first click.
+- All 544 unit tests passed. 8 sign-in checks and 41 offline and connection checks passed.

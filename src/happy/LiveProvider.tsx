@@ -11,6 +11,8 @@ import type { Credentials } from './auth';
 import { Button, Mark, Spinner } from '../components/ui';
 import styles from './login.module.css';
 import { useUIState } from '../data/useUIState';
+import { CREDENTIALS_KEY } from './credentials';
+import { requestPersistentStorageOnFirstInput } from './persistentStorage';
 
 const emptyState = (): DemoState => ({
   version: 1,
@@ -82,6 +84,12 @@ function Connected({
   children,
 }: PropsWithChildren<{ client: HappyClient; logout: () => void; switchMode: () => void }>) {
   const snapshot = useSyncExternalStore(client.subscribe, client.getSnapshot);
+  // A remembered sign-in from an earlier visit: ask the browser to keep the offline data on the first click.
+  useEffect(() => {
+    let remembered = false;
+    try { remembered = !!localStorage.getItem(CREDENTIALS_KEY); } catch { /* Storage is unavailable. */ }
+    return remembered ? requestPersistentStorageOnFirstInput() : undefined;
+  }, []);
   const onlineIds = snapshot.machines.filter((machine) => machine.online).map((machine) => machine.id).join(',');
   useEffect(() => {
     if (!onlineIds || snapshot.connection !== 'connected') return;
