@@ -54,6 +54,7 @@ import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlin
 import { shallowEqual } from '../data/subscriptions';
 import { reuseEqual } from '../data/reuseEqual';
 import { markRecovery, timeStage, timeStageAsync } from './perf';
+import { mapLimit } from '../data/mapLimit';
 import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
 import type { GoalAction } from './agentGoal';
 import { imageMime, transferUrl, validateImages } from './attachments';
@@ -91,6 +92,8 @@ const SYNC_RETRY_MAX = 30000;
 const SYNC_WARNING_FAILURES = 3;
 // Session updates come in bursts while an agent works. One attention scan per session in this window reads the whole burst.
 const ATTENTION_SCAN_INTERVAL = 5000;
+// Images that the client reads or uploads at the same time (PERFORMANCE-PLAN.md 6.5). Uppy uses 5 or 6.
+const ATTACHMENT_CONCURRENCY = 4;
 // A hidden tab still updates its title count, but it scans less often. Pushes for done, permission, and question scan at once.
 const HIDDEN_ATTENTION_SCAN_INTERVAL = 30000;
 // Happy Web sync/persistence.ts keeps the last local send time of each session for older CLIs.
@@ -1587,7 +1590,9 @@ export class HappyClient implements DemoAdapter {
         else delete meta.effort;
       }
       if (attachments.length && isRig(metadata)) throw new Error('Images are available for Claude and Codex sessions.');
-      const imageHashes = await Promise.all(attachments.map(async file => base64(new Uint8Array(await crypto.subtle.digest('SHA-256', await file.file!.arrayBuffer())), true)));
+      // Read at most 4 images at the same time: 20 images of 10 MB would otherwise be in memory together.
+      const imageHashes = await mapLimit(attachments, ATTACHMENT_CONCURRENCY,
+        async file => base64(new Uint8Array(await crypto.subtle.digest('SHA-256', await file.file!.arrayBuffer())), true));
       const raw = { role: 'user', content: { type: 'text', text: content.trim() }, meta };
       const fingerprint = base64(
         new Uint8Array(
@@ -1622,16 +1627,16 @@ export class HappyClient implements DemoAdapter {
           'A previous send has no confirmation. Retry the original draft and model/effort/permission choices, or check the message in the Happy app.',
         );
       if (!packet) {
-        const files: { localId: string; content: string }[] = [];
-        for (const attachment of attachments) {
+        // Upload at most 4 images at the same time. The files keep the order of the attachments.
+        const files = await mapLimit(attachments, ATTACHMENT_CONCURRENCY, async (attachment) => {
           const ref = await this.uploadImage(id, attachment);
           const rawFile = { role: 'session', content: { type: 'session', data: {
             id: crypto.randomUUID(), time: Date.now(), role: 'user', ev: {
               t: 'file', ref, name: attachment.name, size: attachment.size,
             },
           } } };
-          files.push({ localId: crypto.randomUUID(), content: await this.encryption.encrypt(rawFile, source.key) });
-        }
+          return { localId: crypto.randomUUID(), content: await this.encryption.encrypt(rawFile, source.key) };
+        });
         packet = {
           fingerprint,
           localId: crypto.randomUUID(),

@@ -937,6 +937,40 @@ describe('Happy client protocol', () => {
     ]);
     expect(client.getSnapshot().sessions[0].messages[1].recapRequest).toBeUndefined();
   });
+  it('should upload at most 4 images at the same time and keep their order', async () => {
+    // Arrange
+    await start();
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+    const attachments = Array.from({ length: 6 }, (_, index) => {
+      const file = new File([png], `image-${index}.png`, { type: 'image/png' });
+      return { name: file.name, size: file.size, type: file.type, file };
+    });
+    let running = 0, peak = 0, uploads = 0;
+    const packets: Json[] = [];
+    fetchMock.mockImplementation(async (url: string | URL, init?: RequestInit) => {
+      const path = String(url);
+      if (path.endsWith('/attachments/request-upload')) {
+        const ref = `ref-${uploads++}`;
+        return response({ ref, uploadUrl: `https://storage.test/${ref}` });
+      }
+      if (path.startsWith('https://storage.test/')) {
+        peak = Math.max(peak, ++running);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        running--;
+        return new Response(null, { status: 200 });
+      }
+      const sent = JSON.parse(String(init?.body)).messages;
+      packets.push(...sent);
+      return response({ messages: sent.map((packet: Json, index: number) => ({ id: `sent-${index}`, seq: index + 1, localId: packet.localId, createdAt: 200 })) });
+    });
+    const key = (client as any).sessions.get('session').key;
+    // Act
+    await client.sendMessage('session', 'Compare these images', attachments, { permissionMode: 'plan' });
+    // Assert
+    expect(peak).toBe(4);
+    const names = await Promise.all(packets.map(async (packet) => (await client.encryption.decrypt<Json>(packet.content, key)).content?.data?.ev?.name));
+    expect(names.filter(Boolean)).toEqual(attachments.map((attachment) => attachment.name));
+  });
   it('should drop an unconfirmed recap request when the next send is a normal message', async () => {
     // Arrange
     await start();

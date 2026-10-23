@@ -813,3 +813,16 @@ An image from before the session id was in its key moves to the new key on its f
   It passed in four projects, and it fails when eviction is off.
 - Full browser suite: 1,242 passed, 66 skips, 0 failed. All 546 unit tests passed.
 - Not tested: the `QuotaExceededError` retry. A browser test cannot fill a real quota quickly.
+
+## Bounded image hashing and uploads (2026-10-24)
+
+A send with images now reads and hashes at most 4 images at the same time. Before, it read all images together:
+20 images of 10 MB could be in memory at once. Uploads now run at most 4 at the same time. Before, they ran one at a time.
+The file messages keep the order of the attachments. After a failed upload, no new upload starts.
+The limits stay at 20 images and 10 MB, the same as claude.ai.
+
+- New unit tests for `mapLimit`: the peak is the limit, the order stays, and a failure stops new calls.
+- A new client test sends 6 images: the peak is 4 uploads, and the file messages keep the order.
+  Before the change, the peak was 1.
+- All 550 unit tests passed. 162 browser checks passed with 6 existing skips: priority features, local images,
+  the image budget, composer input, and the working composer.
