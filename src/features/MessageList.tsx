@@ -4,7 +4,7 @@ import type { ReactNode, RefObject } from 'react';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
 import { Button, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
-import { formatToolValue, groupChatActivity, toolCount, type ToolActivityBlock } from '../data/chatBlocks';
+import { formatToolValue, groupChatActivity, toolCount, type ChatBlock, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
 import { isRejected, unansweredMessageIds } from '../data/replyTurns';
 import { recapView, type MessageRecap } from '../data/recapView';
@@ -58,15 +58,30 @@ function SubagentWork({ items }: { items: Message[] }) {
   </>;
 }
 
-const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes, questions, sessionId }: {
+// A closed tool row mounts its content on the first open. `reveal` mounts it while the row stays closed,
+// so a recap jump can find text in it.
+function ToolRowDetails({ summary, reveal, children }: { summary: ReactNode; reveal: boolean; children: () => ReactNode }) {
+  const [mounted, setMounted] = useState(reveal);
+  if (reveal && !mounted) setMounted(true);
+  // The click comes before the default toggle, so the content is there when the row opens.
+  return <details className={styles.toolDetails} onToggle={(event) => { if (event.currentTarget.open) setMounted(true); }}>
+    <summary onClick={() => setMounted(true)}>{summary}</summary>
+    {mounted && children()}
+  </details>;
+}
+
+const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes, questions, reveal = false, sessionId }: {
   block: ToolActivityBlock; compactTools: boolean; outcomes?: (ToolOutcome | undefined)[];
-  questions?: string[]; sessionId: string;
+  questions?: string[]; reveal?: boolean; sessionId: string;
 }) {
   const t = useText();
   const rowsId = useId();
   const [expanded, setExpanded] = useState(
     !compactTools && window.innerWidth >= 768,
   );
+  // A collapsed group mounts its rows on the first expand, then keeps them.
+  const [rowsMounted, setRowsMounted] = useState(expanded || reveal);
+  if ((expanded || reveal) && !rowsMounted) setRowsMounted(true);
   const count = toolCount(block);
   // Answered questions stay visible in a collapsed group.
   const answered = outcomes?.flatMap((outcome, index) => outcome?.answers?.length || outcome?.dismissed ? [{ index, outcome }] : []) || [];
@@ -92,7 +107,7 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
       {questions && block.details?.map(call => call && questions.includes(call.id)
         && <InlineToolQuestion key={call.id} sessionId={sessionId} call={call} />)}
       <ul className={styles.toolRows} id={rowsId} hidden={!expanded}>
-        {block.tools.map((tool, index) => {
+        {rowsMounted && block.tools.map((tool, index) => {
           const thinking = block.thinking?.[index], call = block.details?.[index];
           const decision = outcomes?.[index]?.permission, todos = call && todoRowList(call);
           // The answered questions group already shows the answers of this call.
@@ -101,20 +116,20 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
             <Icon name={thinking !== undefined ? "sparklesOutline" : call?.children?.length ? "gitNetworkOutline" : call && isTodoWrite(call) ? "listOutline" : "codeSlash"} size={14} />
             {thinking !== undefined ? <details className={`${styles.toolDetails} ${styles.thinkingRow}`}>
               <summary>{tool}</summary><p>{thinking}</p>
-            </details> : todos ? <TodoTool todos={todos} decision={decision} /> : call && (call.input !== undefined || call.result !== undefined || call.children?.length) ? <details className={styles.toolDetails}>
-              <summary><span>{tool}</span>{decision && <ToolDecision value={decision} />}</summary>
+            </details> : todos ? <TodoTool todos={todos} decision={decision} /> : call && (call.input !== undefined || call.result !== undefined || call.children?.length) ? <ToolRowDetails
+              reveal={reveal} summary={<><span>{tool}</span>{decision && <ToolDecision value={decision} />}</>}>{() => <>
               {decision && <div className={styles.toolNote} data-tone={decision.tone === 'denied' ? "error" : undefined}>{decision.detail}</div>}
               {(call.input !== undefined || call.result !== undefined) && <><h4>{t("Arguments")}</h4><pre>{formatToolValue(call.input)}</pre></>}
               {!!call.children?.length && <SubagentWork items={call.children} />}
               <ToolSections sections={sections} />
-            </details> : <span className={styles.toolLabel}><span>{tool}</span>{decision && <ToolDecision value={decision} />}</span>}
+            </>}</ToolRowDetails> : <span className={styles.toolLabel}><span>{tool}</span>{decision && <ToolDecision value={decision} />}</span>}
           </li>;
         })}
       </ul>
     </section>
   );
 }, (previous, next) => previous.sessionId === next.sessionId && previous.compactTools === next.compactTools
-  && previous.block.id === next.block.id && previous.block.duration === next.block.duration
+  && previous.reveal === next.reveal && previous.block.id === next.block.id && previous.block.duration === next.block.duration
   && previous.block.details === next.block.details
   && previous.block.tools.length === next.block.tools.length
   && previous.block.tools.every((tool, index) => tool === next.block.tools[index])
@@ -122,6 +137,19 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
   && (previous.block.thinking || []).every((text, index) => text === next.block.thinking![index])
   && previous.questions?.join() === next.questions?.join()
   && JSON.stringify(previous.outcomes) === JSON.stringify(next.outcomes));
+
+// The tool groups of the reply turn that ends with this message, back to the last user message.
+// `findRecapTarget` searches the same groups in the DOM.
+function turnToolGroups(blocks: ChatBlock[], messageId: string): string[] {
+  const end = blocks.findIndex((block) => block.kind === 'message' && block.message.id === messageId);
+  const groups: string[] = [];
+  for (let index = end - 1; index >= 0; index--) {
+    const block = blocks[index];
+    if (block.kind === 'message' && block.message.role === 'user') break;
+    if (block.kind === 'tools') groups.push(block.id);
+  }
+  return groups;
+}
 
 // The past permission reply and question answers of one tool call.
 function toolOutcome(call: ToolCall | undefined, permissions: Map<string, ToolPermission>, forms: Map<string, AnsweredForm>,
@@ -390,15 +418,35 @@ export const MessageList = memo(function MessageList({
     return { lastReply, latest };
   }, [visible, recaps]);
 
-  const jump = useEventCallback((messageId: string, index: number) => {
-    selectRecapPoint(messageId, index);
+  // Tool groups whose closed rows are mounted for a recap jump. A jump that finds no target in the DOM
+  // reveals the tool groups of its turn, then looks again after that render.
+  const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
+  const pendingJump = useRef<{ messageId: string; quote: string } | null>(null);
+  const jumpTo = useEventCallback((messageId: string, quote: string) => {
     const element = scroll?.current;
-    const point = recaps.get(messageId)?.recap.segments.find(isPoint(index));
-    const target = element && point ? findRecapTarget(element, messageId, point.quote) : null;
-    if (!element || !target) return;
+    const target = element ? findRecapTarget(element, messageId, quote) : null;
+    if (!element || !target) return false;
     onUnpin?.();
     jumpToRecapTarget(element, target);
+    return true;
   });
+  const jump = useEventCallback((messageId: string, index: number) => {
+    selectRecapPoint(messageId, index);
+    const point = recaps.get(messageId)?.recap.segments.find(isPoint(index));
+    if (!point || jumpTo(messageId, point.quote)) return;
+    const groups = turnToolGroups(blocks, messageId).filter((id) => !revealed.has(id));
+    if (!groups.length) return;
+    pendingJump.current = { messageId, quote: point.quote };
+    setRevealed((previous) => new Set([...previous, ...groups]));
+  });
+  useEffect(() => {
+    const pending = pendingJump.current;
+    pendingJump.current = null;
+    if (!pending) return;
+    // Jump after the revealed rows settle. A group toggle inside the commit does not scroll the list.
+    const frame = requestAnimationFrame(() => jumpTo(pending.messageId, pending.quote));
+    return () => cancelAnimationFrame(frame);
+  }, [revealed, jumpTo]);
 
   // Option+R reads the latest recap in this session, or pauses it.
   const readLatest = useEventCallback((event: KeyboardEvent) => {
@@ -443,7 +491,7 @@ export const MessageList = memo(function MessageList({
   return <>
     {blocks.map((block) => block.kind === 'tools'
       ? <ToolActivity key={block.id} block={block} sessionId={sessionId} compactTools={compactTools} outcomes={outcomes.get(block.id)}
-        questions={questions.get(block.id)} />
+        questions={questions.get(block.id)} reveal={revealed.has(block.id)} />
       : block.kind === 'thinking'
         ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} /></article>
         : block.kind === 'event'

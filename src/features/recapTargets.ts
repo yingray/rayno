@@ -64,8 +64,12 @@ function flash(element: HTMLElement) {
 export function jumpToRecapTarget(scroll: HTMLElement, element: HTMLElement) {
   const group = element.closest('[data-tool-activity]');
   const toggle = group?.querySelector<HTMLButtonElement>(':scope > button[aria-expanded="false"]');
-  if (toggle && !element.getClientRects().length) toggle.click();
-  requestAnimationFrame(() => {
+  const expand = !!toggle && !element.getClientRects().length;
+  if (expand) toggle.click();
+  // The chat follows the latest message on each resize while it is near the bottom (Chat.tsx).
+  // After an expand, let that resize pass first. Then the scroll moves away from the bottom and stays there.
+  const later = (run: () => void) => requestAnimationFrame(expand ? () => requestAnimationFrame(run) : run);
+  later(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     // The scroll padding keeps the target below the overlay header.
     const padding = parseFloat(getComputedStyle(scroll).scrollPaddingTop) || 0;

@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (step 3.3).
+Created: 2026-10-23. Updated: 2026-10-23 (step 3.4).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -100,7 +100,7 @@ Keep the full session list. Do not cut it to 150 rows. Make the list read progre
 | 3.2 | R01 | Keep a per-session cache from message id and tool result revision to the output object in `visibleMessages`. In `groupChatActivity`, reuse a block and its `details` when its inputs did not change | Append one text to 1,000 tool groups. 1,000 of 1,000 old groups pass the memo comparator | done |
 | S01 | S01 | Move the drag state for the resizable panels to an attribute on the root. Remove the `.shell:has(...)` rules | During 20 live replies on desktop, frames over 50 ms go from 40 to at most 1. The resize test checks the root attribute during and after a drag | done |
 | 3.3 | R06 | Build one `callId → question` map for each `agentState`. Mount `InlineToolQuestion` only for calls in that map. Hoist the selector out of the render | Subscriber count does not grow with the tool count | done |
-| 3.4 | R05 | Mount tool details only when the row expands. Change the recap jump: find the target in the data, expand it, then scroll | Existing recap jump tests pass. Add one for a collapsed tool target. Verify RWD at 320, 360, 390, 430 px, short keyboard viewport, and landscape, in Chromium and WebKit | todo |
+| 3.4 | R05 | Mount tool details only when the row expands. Change the recap jump: find the target in the data, expand it, then scroll | Existing recap jump tests pass. Add one for a collapsed tool target. Verify RWD at 320, 360, 390, 430 px, short keyboard viewport, and landscape, in Chromium and WebKit | done |
 | 3.5 | E01b, E03 | Save history in pages, or save only the new rows since the last save. Merge timestamp-only activity updates. Pause attention scans while the page is hidden; catch up on `visibilitychange` | Append 3 rows to a 1,000-row history. The save writes 3 rows, not 3,006. No attention fetch while hidden | todo |
 
 Do not remove encryption to make the cache faster.
@@ -195,4 +195,5 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `a7bcec9` | 3.1 | Vitest, 76 request and tool browser checks | An activity event keeps the same message array for a session with a denied request |
 | 2026-10-23 | `c417db4` | 3.2 | Vitest, 162 chat browser checks | After one new reply, 200 of 200 old tool messages and all old tool groups keep their identity; without the change, 0 of 200 |
 | 2026-10-23 | `c8820b5` | S01 | Vitest, 26 resize browser checks, diagnostic, baseline | Desktop Chromium frames over 50 ms during 20 replies: 40 (6,043 ms) before, 1 (55 ms) after. 20 replies shown after: desktop Chromium 215 ms, mobile Chromium 161 ms, desktop WebKit 1,722 ms, mobile WebKit 1,128 ms |
-| 2026-10-23 | after `c8820b5` | 3.3 | Vitest, 276 chat and request browser checks, baseline | With 200 tool calls and 2 open questions, the chat mounts 2 question components, not 200. 20 replies shown after, one run each: desktop Chromium 441 ms, mobile Chromium 333 ms (0 long tasks; the Chromium change from S01 is run noise), desktop WebKit 1,546 ms, mobile WebKit 897 ms |
+| 2026-10-23 | `a014cea` | 3.3 | Vitest, 276 chat and request browser checks, baseline | With 200 tool calls and 2 open questions, the chat mounts 2 question components, not 200. 20 replies shown after, one run each: desktop Chromium 441 ms, mobile Chromium 333 ms (0 long tasks; the Chromium change from S01 is run noise), desktop WebKit 1,546 ms, mobile WebKit 897 ms |
+| 2026-10-23 | after `a014cea` | 3.4 | Vitest, full browser suite, baseline | Load long tasks in Chromium: desktop 826 ms to 0, mobile 561 ms to 0. 20 replies shown after, one run each: desktop Chromium 168 ms, mobile Chromium 135 ms, desktop WebKit 1,373 ms, mobile WebKit 670 ms. Also fixed an older bug: on phones, a recap jump into a collapsed tool group did not scroll |

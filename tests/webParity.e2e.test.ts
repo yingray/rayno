@@ -132,7 +132,11 @@ test('a child option on a later page should stay inside subagent work after a fr
   await server.setMessages([...agentSubagentWork.slice(0,start+1),...fillers,...agentSubagentWork.slice(start+1,stop)]);
   const view=new ParityPage(page);await view.open('/session/real-session');await view.expectConnected();
   await expect(view.button('Child option')).toHaveCount(0);await page.reload();await view.expectConnected();
-  await expect(view.button('Child option')).toHaveCount(0);await expect(page.getByRole('region',{name:'Chat session'})).toContainText('Find config');
+  await expect(view.button('Child option')).toHaveCount(0);
+  // A collapsed group (phone layout) mounts its rows on the first expand.
+  const toggle=page.getByRole('region',{name:'Tool activity',exact:true}).getByRole('button').first();
+  if(await toggle.getAttribute('aria-expanded')==='false')await toggle.click();
+  await expect(page.getByRole('region',{name:'Chat session'})).toContainText('Find config');
 });
 
 test('the right rail should anchor formal replies without any recap',async({page},info)=>{

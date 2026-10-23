@@ -720,3 +720,24 @@ The selector is now stable for each session.
 - 276 browser checks passed with 4 existing skips: agent requests, chat actions, chat content, chat presentation,
   render isolation, tool results, web parity, and reply recap. The web parity test checks inline questions
   at phone, short, and landscape sizes in Chromium and WebKit.
+
+## Tool details mount on demand (2026-10-23)
+
+A collapsed tool group now mounts its rows on the first expand. A closed tool row mounts its arguments,
+subagent work, and result on the first open. Before, each row built all of this for every tool call.
+
+A recap jump searches the DOM first. When it finds no target, it mounts the tool groups of that reply turn,
+then searches again in the next frame. This keeps the old target rules.
+
+The jump also fixes an older bug on phones. The jump expanded the group and scrolled in the same frame.
+The resize then made the chat follow the latest message again, so the list went back to the bottom.
+Now the scroll waits one more frame after an expand.
+
+- A new browser test jumps to a quote that is only in the arguments of a closed tool row. It runs at the default size
+  in four projects, and at 320x568, 360x640, 390x844, 430x932, 390x360, and 844x390 in both phone projects.
+  16 runs passed. Against the previous code, the test fails: the row content is in the DOM before the jump,
+  and on phones the list does not scroll to the row.
+- Two tests read content inside a collapsed group. They now expand the group first.
+- Load long tasks in Chromium: desktop 826 ms to 0, mobile 561 ms to 0.
+- Trade-off: the browser page search no longer finds text inside a closed tool row until the row was opened once.
+- All 535 unit tests and the type check passed. Full browser suite: 1,234 passed, 66 skips (54 existing, 12 desktop runs of the new phone sizes), 0 failed.

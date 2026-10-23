@@ -96,6 +96,52 @@ test('recap jump should scroll the message list to the code block and flash it',
   expect(await recap.scrollIntoViewCalls()).toBe(0);
 });
 
+// Phone sizes: narrow widths, a keyboard-height viewport, and landscape. The default size runs in every project.
+for (const size of ['default', '320x568', '360x640', '390x844', '430x932', '390x360', '844x390'] as const)
+test(`recap jump should open a collapsed tool row that was never mounted and flash it at ${size}`, async ({ page }, testInfo) => {
+  test.skip(size !== 'default' && !testInfo.project.use.hasTouch, 'Phone sizes run in the phone projects.');
+  if (size !== 'default') {
+    const [width, height] = size.split('x').map(Number);
+    await page.setViewportSize({ width, height });
+  }
+  // Arrange: the quote is only in the arguments of a Bash call. Tool rows mount their content on the first open.
+  const server = new HappyServer();
+  await server.install(page);
+  let time = 1700000000000;
+  const meta = { sentFrom: 'cli' };
+  const agent = (ev: Record<string, unknown>) => ({ role: 'session', content: { id: `row-${++time}`, time, role: 'agent', turn: 'turn-1', ev }, meta });
+  await server.setMessages([
+    { role: 'session', content: { id: 'row-user', time: ++time, role: 'user', ev: { t: 'text', text: 'Fix the week bar' } }, meta },
+    agent({ t: 'turn-start' }),
+    agent({ t: 'tool-call-start', call: 'toolu_bash_1', name: 'Bash', title: 'Run tests', description: 'Run tests',
+      args: { command: 'pnpm vitest run usage-merge.test.ts', description: 'Run tests' } }),
+    agent({ t: 'tool-call-end', call: 'toolu_bash_1' }),
+    agent({ t: 'text', text: 'From the real protocol\n\n' + filler + '\n\n<rayno-recap>\n<point quote="pnpm vitest run usage-merge.test.ts">'
+      + 'The merge tests pass</point>.\n</rayno-recap>' }),
+    agent({ t: 'turn-end', status: 'completed' }),
+  ]);
+  const recap = new RecapPage(page);
+  const touch = !!testInfo.project.use.hasTouch;
+  await recap.openSession();
+  const group = page.getByRole('region', { name: 'Tool activity', exact: true });
+  await expect(group).toBeVisible();
+  await expect(group.getByText('pnpm vitest run usage-merge.test.ts')).toHaveCount(0);
+  await recap.expand(touch);
+  await recap.scrollToLatest();
+  // Act
+  await recap.activate(recap.phrase('The merge tests pass'), touch);
+  // Assert
+  const row = group.locator('li').filter({ hasText: 'Run tests' });
+  await expect(row).toHaveClass(/flash/);
+  await expect(group.getByRole('button', { name: /Tool activity|Worked for/ })).toHaveAttribute('aria-expanded', 'true');
+  await recap.expectInView(row);
+  await expect(row.locator('details')).toHaveJSProperty('open', false);
+  // Act: the row content shows on the first open.
+  await recap.activate(row.locator('summary'), touch);
+  // Assert
+  await expect(row.getByText('pnpm vitest run usage-merge.test.ts')).toBeVisible();
+});
+
 test('recap voice should follow boundary events, pause, resume, and stop when the user types', async ({ page }, testInfo) => {
   // Arrange
   const server = new HappyServer();

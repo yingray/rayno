@@ -26,7 +26,6 @@ test('subagent work and thinking should stay collapsed while the main answer and
   await expect(page.getByText(/Subagent found config\.json/)).toBeHidden();
   await expect(chat.toolGroups()).toHaveCount(1);
   await expect(chat.toolGroups().getByRole('button').first()).toContainText('· 1 tool');
-  await expect(chat.thinking()).toHaveCount(2);
   await expect(page.getByText('I should delegate the search.', { exact: true })).toBeHidden();
   const standalone = chat.thinking().first().locator('summary');
   const agent = chat.toolRow('Find config');
@@ -34,6 +33,9 @@ test('subagent work and thinking should stay collapsed while the main answer and
   // Act
   await chat.toggle(standalone, touch);
   await chat.expandToolGroup(0);
+  // Assert: a collapsed group mounts its rows on the first expand.
+  await expect(chat.thinking()).toHaveCount(2);
+  // Act
   await chat.toggle(agent, touch);
   await chat.toggle(row, touch);
   // Assert
