@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HISTORY_PAGE_ROWS, historyPages } from './offlineCache';
+import { HISTORY_PAGE_ROWS, historyPages, staleCacheKey } from './offlineCache';
 import type { MessageRecord } from './normalize';
 
 const rows = (from: number, count: number): MessageRecord[] =>
@@ -39,5 +39,29 @@ describe('historyPages', () => {
     // Assert
     expect(older.changed).toEqual([1]);
     expect(changedRow.changed).toEqual([2]);
+  });
+});
+describe('staleCacheKey', () => {
+  const scope = 'account.server.';
+  const sessions = new Set(['open', 'with.dot']);
+  const written = new Map([['open', new Map([[0, []], [1, []]])]]);
+  const stale = (key: string) => staleCacheKey(scope + key, scope, sessions, written);
+  it('should delete the history and images of a removed session and keep those of a listed session', () => {
+    // Act / Assert
+    expect(stale('history.gone')).toBe(true);
+    expect(stale('history.gone#3')).toBe(true);
+    expect(stale('image.gone.abc_-')).toBe(true);
+    expect(stale('history.open')).toBe(false);
+    expect(stale('image.open.abc_-')).toBe(false);
+    expect(stale('image.with.dot.abc_-')).toBe(false);
+  });
+  it('should delete a page that the new index does not list and keep other keys', () => {
+    // Act / Assert
+    expect(stale('history.open#1')).toBe(false);
+    expect(stale('history.open#2')).toBe(true);
+    expect(stale('history.with.dot#9')).toBe(false);
+    expect(stale('image.abc_-')).toBe(false);
+    expect(stale('workspace')).toBe(false);
+    expect(staleCacheKey('other.history.gone', scope, sessions, written)).toBe(false);
   });
 });

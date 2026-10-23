@@ -47,10 +47,29 @@ export function historyPages(messages: readonly MessageRecord[], saved?: Readonl
 const DATABASE = 'rayno-offline';
 const STORE = 'records';
 
+/**
+ * A key that a save deletes: the history or a page of a removed session, a page that the new index of its history
+ * does not list, or an image of a removed session. An image key from before the session id was in it stays.
+ */
+export function staleCacheKey(key: string, scope: string, sessions: ReadonlySet<string>,
+  written: ReadonlyMap<string, ReadonlyMap<number, unknown>>): boolean {
+  if (key.startsWith(scope + 'history.')) {
+    const [id, page] = key.slice((scope + 'history.').length).split('#');
+    return !sessions.has(id) || (page !== undefined && written.has(id) && !written.get(id)!.has(Number(page)));
+  }
+  if (key.startsWith(scope + 'image.')) {
+    const rest = key.slice((scope + 'image.').length), dot = rest.lastIndexOf('.');
+    return dot > 0 && !sessions.has(rest.slice(0, dot));
+  }
+  return false;
+}
+
 // Keep account data out of the public service-worker cache and v1 storage.
 export class OfflineCache {
   // The pages of each history in the last save that completed. A save writes only the pages that differ.
   private saved = new Map<string, Map<number, MessageRecord[]>>();
+  // The session ids at the last key scan. The scan for removed sessions runs only when this list changes.
+  private scanned: string | undefined;
   constructor(private readonly scope: string, private readonly encryption: HappyCrypto) {}
 
   private async transaction<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore, result: (value: T) => void) => void): Promise<T | null> {
@@ -131,23 +150,26 @@ export class OfflineCache {
       const entries = await timeStageAsync('cache-encrypt', () => Promise.all(values
         .map(async ([key, value]) => [this.scope + key, await this.encryption.encrypt(value, null)] as const)));
       const sessions = new Set(workspace.sessions.map((session) => session.wire.id));
+      const list = [...sessions].sort().join('\n'), scan = list !== this.scanned;
+      // A page that the last save wrote and the new index does not list. After a reload, the scan finds such pages.
+      const removed = [...written].flatMap(([id, pages]) => [...this.saved.get(id)?.keys() || []]
+        .filter((page) => !pages.has(page)).map((page) => this.scope + pageKey(id, page)));
       const saved = await this.transaction<boolean>('readwrite', (store, result) => {
         for (const [key, encrypted] of entries) store.put(encrypted, key);
-        const cursor = store.openKeyCursor();
-        cursor.onsuccess = () => {
-          const row = cursor.result;
-          if (!row) return;
-          const prefix = this.scope + 'history.';
-          if (typeof row.key === 'string' && row.key.startsWith(prefix)) {
-            const [id, page] = row.key.slice(prefix.length).split('#');
-            // Delete the history of a removed session, and a page that the new index of its history does not list.
-            if (!sessions.has(id) || (page !== undefined && written.has(id) && !written.get(id)!.has(Number(page)))) store.delete(row.key);
-          }
-          row.continue();
-        };
+        removed.forEach((key) => store.delete(key));
+        if (scan) {
+          const cursor = store.openKeyCursor();
+          cursor.onsuccess = () => {
+            const row = cursor.result;
+            if (!row) return;
+            if (typeof row.key === 'string' && staleCacheKey(row.key, this.scope, sessions, written)) store.delete(row.key);
+            row.continue();
+          };
+        }
         result(true);
       }) === true;
       if (saved) {
+        if (scan) this.scanned = list;
         written.forEach((pages, id) => this.saved.set(id, pages));
         [...this.saved.keys()].forEach((id) => { if (!sessions.has(id)) this.saved.delete(id); });
       }
@@ -158,14 +180,20 @@ export class OfflineCache {
     }
   }
 
-  private async imageKey(id: string, ref: string) {
+  // `image.<session id>.<hash>`. The session id lets a scan delete the images of a removed session.
+  // Before, the key was `image.<hash>`. A read still finds an image that an older version saved.
+  private async imageKey(id: string, ref: string, legacy = false) {
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${id}:${ref}`));
-    return 'image.' + base64(new Uint8Array(digest), true);
+    return 'image.' + (legacy ? '' : id + '.') + base64(new Uint8Array(digest), true);
   }
 
   async image(id: string, ref: string): Promise<string | null> {
-    const value = await this.read<{ version: number; id: string; ref: string; data: string }>(await this.imageKey(id, ref));
-    return value?.version === 1 && value.id === id && value.ref === ref && typeof value.data === 'string' ? value.data : null;
+    type Saved = { version: number; id: string; ref: string; data: string };
+    const valid = (value: Saved | null) => value?.version === 1 && value.id === id && value.ref === ref && typeof value.data === 'string';
+    const value = await this.read<Saved>(await this.imageKey(id, ref));
+    if (valid(value)) return value!.data;
+    const legacy = await this.read<Saved>(await this.imageKey(id, ref, true));
+    return valid(legacy) ? legacy!.data : null;
   }
 
   async saveImage(id: string, ref: string, data: Uint8Array): Promise<void> {
@@ -178,6 +206,7 @@ export class OfflineCache {
 
   async clear(): Promise<void> {
     this.saved.clear();
+    this.scanned = undefined;
     try {
       await this.transaction<void>('readwrite', (store) => {
         const cursor = store.openKeyCursor();

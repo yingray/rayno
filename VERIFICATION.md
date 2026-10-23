@@ -771,3 +771,17 @@ A scroll frame renders only the pin that becomes active and the pin that stops b
 - 152 browser checks passed with 16 existing skips: reply recap, response dots, and web parity, in four projects.
 - No new test. The change removes render work and keeps the same DOM.
 - E04 needs no change. The usage loop stops when the tab is hidden or loses focus. Live mode has no machine loop.
+
+## Image keys and fewer key scans (2026-10-23)
+
+A cached image is now in `image.<session id>.<hash>`. Before, the key was `image.<hash>`, so no cleanup could find
+the images of a removed session. A read tries the new key first, then the old key. So an image that an older version
+saved still opens offline. Old image keys stay until the account cache is cleared.
+
+Before, each save scanned all keys to find removed sessions. Now the scan runs only when the list of session ids changes.
+A page that the last save wrote and the new index does not list is deleted by its key, with no scan.
+
+- New unit tests for `staleCacheKey`: the history, pages, and images of a removed session go; the keys of listed sessions,
+  session ids with dots, old image keys, the workspace, and other accounts stay.
+- All 541 unit tests and the type check passed. Full browser suite: 1,234 passed, 66 skips, 0 failed.
+- Not tested: the number of key scans in a real browser. The scan condition is one string compare.
