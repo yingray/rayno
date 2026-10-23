@@ -635,3 +635,17 @@ A failure of the running read still reaches the callers that wait for it.
   A second test keeps the failure behavior; it passes before and after.
 - All 523 unit tests and the type check passed. 183 browser checks passed with 5 existing skips: chat presentation,
   handoff, connection, offline workspace, recap, transcript, response dots, and response headers across four projects.
+
+## Seq gaps in an open chat (2026-10-23)
+
+The history cursor now moves with a realtime message that directly follows it.
+A realtime message after a gap starts a quiet forward read at once for an open chat.
+Before, the chat waited for a reconnect, a focus change, or a control handoff to fill the gap.
+
+- A new gap test fails against the previous code: the missing message did not appear.
+  A second test shows that a forward read starts after the realtime messages, not before them.
+- One existing test now expects both forward reads after seq 5, because the realtime messages 4 and 5 move the cursor.
+- All 525 unit tests and the type check passed.
+- Full browser suite: 1,217 passed, 54 existing skips, 1 failed. The failure is
+  `newSessionControls.e2e.test.ts:6`, which measures the header right after a viewport resize. It also failed in
+  the phase 0 run, and passed 12 of 12 runs with four workers. This change does not touch layout.

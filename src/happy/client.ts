@@ -1029,6 +1029,7 @@ export class HappyClient implements DemoAdapter {
       if (this.sessions.has(body.sid)) {
         await this.mergeMessages(body.sid, [body.message]);
         this.publish(body.sid);
+        this.followSeq(body.sid, body.message?.seq);
       }
       return;
     }
@@ -1173,6 +1174,16 @@ export class HappyClient implements DemoAdapter {
     }
     this.saveAttention(id);
     this.scheduleCache(id);
+  }
+  // The history cursor is the highest seq up to which this client has every message.
+  // A realtime message right after it moves it on. A message after a gap reads the gap now for an open chat,
+  // so the chat does not wait for a reconnect or a focus change.
+  private followSeq(id: string, seq: unknown) {
+    const cursor = this.historyCursors.get(id);
+    if (cursor === undefined || !Number.isSafeInteger(seq) || !this.snapshot.histories[id]?.loaded) return;
+    if (seq === cursor + 1) this.historyCursors.set(id, seq);
+    else if ((seq as number) > cursor + 1 && this.activeSessions.has(id))
+      void this.loadHistory(id, 'forward', true).catch(() => { /* The background sync reads it again. */ });
   }
   watchSession(id: string) {
     this.activeSessions.add(id);

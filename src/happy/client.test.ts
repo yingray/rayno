@@ -1770,6 +1770,43 @@ describe('Happy client damaged records', () => {
     expect(await running).toBe('The relay is down.');
     expect(await later).toBe('The relay is down.');
   });
+  it('should read a seq gap at once for an open chat while the socket stays connected', async () => {
+    // Arrange
+    const page = [await wireMessage('a', 1, 'First'), await wireMessage('b', 2, 'Second')];
+    const missing = await wireMessage('c', 3, 'Missed while connected');
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([])
+        : response({ messages: url.includes('after_seq=2&') ? [missing] : url.includes('after_seq=') ? [] : page, hasMore: false }));
+    await start();
+    client.watchSession('session');
+    await vi.waitFor(() => expect(client.getSnapshot().histories.session?.loaded).toBe(true), { interval: 1 });
+    fetchMock.mockClear();
+    // Act
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: await wireMessage('d', 4, 'After the gap') } });
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages.map((message) => message.content))
+      .toEqual(['First', 'Second', 'Missed while connected', 'After the gap']), { interval: 1 });
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('after_seq=2&'))).toHaveLength(1);
+  });
+  it('should move the history cursor with a realtime message that follows it', async () => {
+    // Arrange
+    const page = [await wireMessage('a', 1, 'First'), await wireMessage('b', 2, 'Second')];
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([]) : response({ messages: url.includes('after_seq=') ? [] : page, hasMore: false }));
+    await start();
+    client.watchSession('session');
+    await vi.waitFor(() => expect(client.getSnapshot().histories.session?.loaded).toBe(true), { interval: 1 });
+    socket.handlers.get('update')!({ body: { t: 'new-message', sid: 'session', message: await wireMessage('c', 3, 'Third') } });
+    await vi.waitFor(() => expect(client.getSnapshot().sessions[0].messages).toHaveLength(3), { interval: 1 });
+    fetchMock.mockClear();
+    // Act
+    await client.loadHistory('session', 'forward');
+    // Assert
+    expect(fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/messages')))
+      .toEqual([expect.stringContaining('after_seq=3&')]);
+  });
   it('should load the readable messages around a damaged message and advance the cursor', async () => {
     // Arrange
     const page = [await wireMessage('a', 1, 'First'), damagedMessage('b', 2), await wireMessage('c', 3, 'Third')];
@@ -1789,9 +1826,9 @@ describe('Happy client damaged records', () => {
     fetchMock.mockClear();
     await client.loadHistory('session', 'forward');
     await client.loadHistory('session', 'forward');
-    // Assert
+    // Assert: the realtime messages 4 and 5 follow the cursor, so the forward reads start after them.
     expect(requests()).toEqual([
-      'GET /v3/sessions/session/messages?after_seq=3&limit=100',
+      'GET /v3/sessions/session/messages?after_seq=5&limit=100',
       'GET /v3/sessions/session/messages?after_seq=5&limit=100',
     ]);
     expect(client.getSnapshot().histories.session).toMatchObject({ loaded: true, error: '' });
