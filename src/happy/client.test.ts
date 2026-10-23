@@ -1785,3 +1785,91 @@ describe('Happy client damaged records', () => {
     });
   });
 });
+
+describe('private local images', () => {
+  const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  async function prepare(options: { size?: number; content?: Uint8Array; failMetadata?: boolean } = {}) {
+    await start();
+    socket.connected = true;
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ close: vi.fn() })));
+    const content = options.content || bytes;
+    let metadataFails = !!options.failMetadata;
+    socket.emitWithAck.mockImplementation(async (event, payload) => {
+      if (event === 'update-metadata') {
+        if (metadataFails) { metadataFails = false; throw new Error('Lost confirmation'); }
+        return { result: 'success', version: 2 };
+      }
+      const params = await client.encryption.decrypt<Json>(payload.params, null);
+      const result = payload.method.endsWith(':listDirectory')
+        ? { success: true, entries: [{ name: 'private.png', type: 'file', size: options.size ?? content.length }] }
+        : { success: true, content: base64(content) };
+      expect(params.path).toMatch(/^\/real\/project/);
+      expect(JSON.stringify(payload)).not.toContain('/real/project');
+      return { ok: true, result: await client.encryption.encrypt(result, null) };
+    });
+    fetchMock.mockImplementation(async (url: string | URL) => String(url).endsWith('/attachments/request-upload')
+      ? response({ ref: 'private-ref', uploadUrl: 'https://storage.test/blob' }) : new Response(null, { status: 200 }));
+    fetchMock.mockClear();
+  }
+  it('should encrypt the file, persist its private binding, and coalesce repeated imports without sending an agent message', async () => {
+    // Arrange
+    await prepare();
+    // Act
+    const first = client.importLocalImage('session', 'reply', './private.png');
+    const second = client.importLocalImage('session', 'reply', './private.png');
+    const file = await first;
+    // Assert
+    expect(first).toBe(second);
+    expect(file).toEqual({ ref: 'private-ref', name: 'private.png', size: bytes.length, type: 'image/png' });
+    const calls = socket.emitWithAck.mock.calls;
+    expect(calls.filter(([event]) => event === 'rpc-call')).toHaveLength(2);
+    const upload = fetchMock.mock.calls.find(([url]) => String(url).endsWith('request-upload'))!;
+    expect(JSON.parse(upload[1].body)).toEqual({ filename: 'image.png', size: bytes.length + 40 });
+    const transfer = fetchMock.mock.calls.find(([url]) => String(url).startsWith('https://storage.test'))!;
+    expect(transfer[1].headers.get('Authorization')).toBeNull();
+    expect(await client.encryption.decryptBlob(transfer[1].body, null)).toEqual(bytes);
+    const metadataCall = calls.find(([event]) => event === 'update-metadata')!;
+    const saved = await client.encryption.decrypt<Json>(metadataCall[1].metadata, null);
+    expect(saved.unknownExtension).toEqual({ keep: true });
+    expect(Object.values(saved.raynoLocalImages)).toEqual([file]);
+    expect(JSON.stringify(metadataCall[1])).not.toContain('private.png');
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/messages'))).toBe(false);
+    // Act / Assert: a saved binding needs neither a disk read nor another upload.
+    socket.emitWithAck.mockClear(); fetchMock.mockClear();
+    expect(await client.importLocalImage('session', 'reply', './private.png')).toEqual(file);
+    expect(socket.emitWithAck).not.toHaveBeenCalled(); expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('should retry metadata persistence without reading or uploading the same image twice', async () => {
+    // Arrange
+    await prepare({ failMetadata: true });
+    // Act
+    await expect(client.importLocalImage('session', 'reply', './private.png')).rejects.toThrow('confirm');
+    const reads = socket.emitWithAck.mock.calls.filter(([event]) => event === 'rpc-call').length;
+    fetchMock.mockClear();
+    await client.importLocalImage('session', 'reply', './private.png');
+    // Assert
+    expect(socket.emitWithAck.mock.calls.filter(([event]) => event === 'rpc-call')).toHaveLength(reads);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('should reject a file outside the workspace before asking the computer to read it', async () => {
+    await prepare();
+    await expect(client.importLocalImage('session', 'reply', '/real/private.png')).rejects.toThrow('outside');
+    expect(socket.emitWithAck).not.toHaveBeenCalled(); expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('should refuse an oversized file before reading it through the RPC', async () => {
+    await prepare({ size: 4 * 1024 * 1024 + 1 });
+    await expect(client.importLocalImage('session', 'reply', './private.png')).rejects.toThrow('4 MB');
+    expect(socket.emitWithAck).toHaveBeenCalledTimes(1); expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('should refuse a renamed text or SVG file before uploading it', async () => {
+    await prepare({ content: new TextEncoder().encode('<svg onload="alert(1)"/>') });
+    await expect(client.importLocalImage('session', 'reply', './private.png')).rejects.toThrow('supported image');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('should refuse an invalid raster image before uploading it', async () => {
+    await prepare();
+    vi.stubGlobal('createImageBitmap', vi.fn().mockRejectedValue(new Error('Bad image')));
+    await expect(client.importLocalImage('session', 'reply', './private.png')).rejects.toThrow('not a valid');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

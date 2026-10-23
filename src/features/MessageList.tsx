@@ -1,7 +1,7 @@
 import { useText } from "../i18n";
 import { Children, Fragment, isValidElement, memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import Markdown from 'react-markdown';
+import Markdown, { defaultUrlTransform } from 'react-markdown';
 import { Button, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
 import { formatToolValue, groupChatActivity, toolCount, type ToolActivityBlock } from '../data/chatBlocks';
@@ -26,6 +26,8 @@ import {
 } from './recapSpeech';
 import { MermaidDiagram } from './MermaidDiagram';
 import { AttachmentImage } from './AttachmentImage';
+import { LocalImage } from './LocalImage';
+import { isLocalImageLink, isLocalImageSource } from '../happy/localImages';
 import { CodeBlock } from './CodeBlock';
 import { TodoList } from './TodoList';
 import { InlineToolQuestion } from '../happy/Requests';
@@ -142,15 +144,23 @@ function TodoTool({ todos, decision }: { todos: Todo[]; decision?: PermissionSum
   </div>;
 }
 
-const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify }: {
+const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify, sessionId, messageId }: {
   content: string; codeFilename: string; notify: (message: string) => void;
+  sessionId: string; messageId: string;
 }) {
   const t = useText();
   return (
     <Markdown
       remarkPlugins={remarkPlugins}
+      urlTransform={(url, key) => (key === 'src' && isLocalImageSource(url)) || (key === 'href' && isLocalImageLink(url))
+        ? url : defaultUrlTransform(url)}
       components={{
-        a: (props) => <a {...props} target="_blank" rel="noreferrer noopener" />,
+        a: ({ node: _node, ...props }) => props.href && isLocalImageLink(props.href)
+          ? <LocalImage sessionId={sessionId} messageId={messageId} source={props.href} alt={typeof props.children === 'string' ? props.children : undefined} />
+          : <a {...props} target="_blank" rel="noreferrer noopener" />,
+        img: ({ node: _node, ...props }) => typeof props.src === 'string' && isLocalImageSource(props.src)
+          ? <LocalImage sessionId={sessionId} messageId={messageId} source={props.src} alt={props.alt} />
+          : props.src ? <img {...props} loading="lazy" /> : <span>{t('Image unavailable')}</span>,
         table: ({ children }) => (
           <div
             className={styles.tableScroll}
@@ -242,7 +252,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
         <div className={styles.markdown}>
           {message.thinking && <Thinking text={message.thinking} />}
           {message.unplaced ? <><p className={styles.toolNote}>{t("Earlier context is unavailable. Load earlier messages to place this work.")}</p>
-            <RenderedMarkdown content={message.content} codeFilename={codeFilename} notify={notify} /></> : parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
+            <RenderedMarkdown sessionId={sessionId} messageId={message.id} content={message.content} codeFilename={codeFilename} notify={notify} /></> : parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
             <div className={styles.replyOptions} role="group" aria-label={t("Reply options")} data-reply-options key={index}>
               {part.items.map((item, optionIndex) => (
                 <Button
@@ -256,7 +266,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, optionsDis
               ))}
             </div>
           ) : (
-            <RenderedMarkdown key={index} content={part.content} codeFilename={codeFilename} notify={notify} />
+            <RenderedMarkdown key={index} sessionId={sessionId} messageId={message.id} content={part.content} codeFilename={codeFilename} notify={notify} />
           )])}
           {message.attachments?.map((file) => (
             file.ref ? <AttachmentImage key={file.ref} sessionId={sessionId} file={file} /> : <span className={styles.messageAttachment} key={file.name}>

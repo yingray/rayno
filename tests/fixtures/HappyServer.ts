@@ -60,6 +60,9 @@ export class HappyServer {
   uploadRequests: Json[] = [];
   uploadHeaders: Record<string, string>[] = [];
   blobs = new Map<string, Buffer>();
+  localImages = new Map<string, Uint8Array>();
+  localImageReads: string[] = [];
+  localImageReadFailure = false;
   private storageUrl = '';
   private storageServer?: ReturnType<typeof createServer>;
   communicationReplies: Json[] = [];
@@ -381,13 +384,17 @@ export class HappyServer {
           }
           if (payload.method.endsWith(':ripgrep'))
             result = { success: true, exitCode: 0, stdout: this.ripgrepStdout, stderr: '' };
-          if (payload.method.endsWith(':listDirectory'))
-            result = { success: true, entries: [{ name: 'README.md', type: 'file', size: 17 }] };
-          if (payload.method.endsWith(':readFile'))
-            result = {
-              success: true,
-              content: base64(new TextEncoder().encode('Real file content')),
+          if (payload.method.endsWith(':listDirectory')) {
+            const images = [...this.localImages].filter(([path]) => path.slice(0, path.lastIndexOf('/')) === params.path);
+            result = { success: true, entries: images.length ? images.map(([path, data]) => ({ name: path.slice(path.lastIndexOf('/') + 1), type: 'file', size: data.length }))
+              : [{ name: 'README.md', type: 'file', size: 17 }] };
+          }
+          if (payload.method.endsWith(':readFile')) {
+            this.localImageReads.push(params.path);
+            result = this.localImageReadFailure ? { success: false, error: 'File unavailable' } : {
+              success: true, content: base64(this.localImages.get(params.path) || new TextEncoder().encode('Real file content')),
             };
+          }
           if (payload.method.endsWith(':bash'))
             result = {
               success: true,

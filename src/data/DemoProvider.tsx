@@ -7,6 +7,7 @@ import { modelChoiceKey } from '../happy/modelPreferences';
 import { StoreProvider } from './store';
 import { useUIState } from './useUIState';
 import { questionDemoId, createQuestionDemo } from './questionDemo';
+import { imageDemoId, createImageDemo } from './imageDemo';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 // The simulated recap answer comes before a normal reply, so the chat can show the waiting state.
@@ -35,6 +36,10 @@ export function DemoProvider({
     const fallback = createInitialState();
     try {
       const restored = restoreState(localStorage.getItem(STORAGE_KEY), fallback);
+      if (window.location.pathname === `/session/${imageDemoId}`
+        && !restored.sessions.some(session => session.id === imageDemoId)) {
+        return { ...restored, sessions: [...restored.sessions, createImageDemo()] };
+      }
       // An explicit demo link also works with data from an older visit.
       if (window.location.pathname === `/session/${questionDemoId}`
         && !restored.sessions.some(session => session.id === questionDemoId)) {

@@ -352,3 +352,47 @@ Seven known findings and five deferred features remain open in the tracker. Pass
 
 The existing previews on Tailscale ports 5178 and 5179 serve the tested build. The gap tracker links both URLs.
 The preview check used a working-tree build before this commit, so that build displays the base commit ID.
+
+## Private local image imports (2026-10-23)
+
+Markdown images and image links with local paths show **Load private image** instead of a broken browser image.
+Rendering a path performs no computer read or upload. The user action reads a workspace file through the CLI's encrypted
+`listDirectory` and `readFile` RPCs. Rayno validates the size, raster signature, and browser decoder, then encrypts the blob
+with the existing session blob key and uploads it through the authenticated attachment API.
+The upload policy uses a generic filename. Original names and message/source bindings stay in encrypted session metadata.
+No public URL, GitHub upload, user message, or new agent turn is created.
+
+Imports support PNG, JPEG, GIF, and WebP files up to 4 MB inside the session workspace.
+The limit leaves room for the nested base64 layers in the server's 8 MB socket frame.
+Outside paths retain an actionable error; the flow does not execute a shell command to bypass the CLI's path checks.
+A metadata failure can retry the uploaded ref within the same client. Saved images reopen after reload, and cached copies work offline.
+
+- Type check and production build: passed.
+- Unit tests: 482 passed across 42 files, including path resolution, invalid/outside paths, encrypted reads and uploads,
+  generic upload filenames, duplicate import coalescing, invalid images, size limits, and metadata retry without another upload.
+- Browser regression: 100 passed across desktop/mobile Chromium and WebKit. This includes 44 new private-image cases and
+  56 existing question, permission, image upload, recovery, and tool-detail cases.
+- Final private-image run: all 44 passed after adding actual download checks. Downloaded bytes match the source image.
+- Responsive interactions cover 320, 360, 390, and 430px widths, a 390x360 short viewport, and 844x390 landscape.
+  Touch contexts tap the changed controls. Checks include 44px targets, image dialogs, download and close reachability,
+  no path-based HTTP requests, explicit retries, encrypted persistence, and offline reloads.
+- The shared one-pixel PNG fixture had an invalid IDAT checksum. Its checksum was corrected so both browser decoders validate the test image.
+
+The tests use isolated encrypted server/CLI fixtures. No private file was read from a real daemon or uploaded during verification.
+Physical iOS keyboard behavior and Cloudflare production delivery were not tested. P10 is recorded as locally implemented in the gap tracker.
+The build is available through the existing Tailscale route on [port 5180](https://rays-macbook-pro.tailf62d7d.ts.net:5180).
+The preview's HTTP response was verified. No Tailscale route or existing service configuration was changed.
+
+### Interactive image demo follow-up
+
+The general preview entry had no image example. A direct demo now opens at
+[`/session/private-image-demo?demo=1`](https://rays-macbook-pro.tailf62d7d.ts.net:5180/session/private-image-demo?demo=1).
+It uses the already-public README screenshot and labels the operation as a demo.
+The button encrypts the bundled sample in memory, and the shared image component decrypts it for the thumbnail,
+dialog, and download. It performs no computer read, authenticated upload, or external request. Reload resets the example.
+The direct link adds the demo session when an older saved demo state does not contain it.
+
+All 28 demo browser cases passed across desktop/mobile Chromium and WebKit, including 320/360/390/430px,
+390x360 short height, 844x390 landscape, touch activation, 44px controls, real image dimensions, download, dialog scrolling,
+and the older saved state. The 482 unit tests and production build also passed.
+Direct Tailscale checks in Chromium and WebKit opened and decoded the 2880x2080 image through a blob URL without page errors.

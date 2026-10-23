@@ -55,6 +55,7 @@ import { shallowEqual } from '../data/subscriptions';
 import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
 import type { GoalAction } from './agentGoal';
 import { imageMime, transferUrl, validateImages } from './attachments';
+import { localImageKey, localImagePath, MAX_LOCAL_IMAGE_BYTES, savedLocalImage } from './localImages';
 import { resumeUnavailable } from './resume';
 import { RECAP_REQUEST } from './systemPrompt';
 import { parseUsageReport, usageQuery, type UsagePeriod } from './usageReport';
@@ -143,6 +144,8 @@ export class HappyClient implements DemoAdapter {
   private resuming = new Map<string, Promise<void>>();
   private controlRequests = new Map<string, Promise<void>>();
   private controlSent = new Map<string, { version: number; at: number }>();
+  private localImageImports = new Map<string, Promise<Attachment>>();
+  private uploadedLocalImages = new Map<string, Attachment>();
   private branching = new Map<string, Promise<string>>();
   private acknowledged = new Set<string>();
   private attention = new Map<string, SessionAttention>();
@@ -1505,6 +1508,57 @@ export class HappyClient implements DemoAdapter {
     await this.cacheWrite;
     this.assertAlive();
     return new Blob([bytes as BlobPart], { type });
+  }
+  importLocalImage(id: string, messageId: string, source: string): Promise<Attachment> {
+    const key = JSON.stringify([id, messageId, source]);
+    const pending = this.localImageImports.get(key);
+    if (pending) return pending;
+    const request = this.convertLocalImage(id, messageId, source, key)
+      .finally(() => this.localImageImports.delete(key));
+    this.localImageImports.set(key, request);
+    return request;
+  }
+  private async convertLocalImage(id: string, messageId: string, source: string, key: string): Promise<Attachment> {
+    const session = this.getSession(id);
+    const saved = savedLocalImage(session.metadata, messageId, source);
+    if (saved) return saved;
+    if (this.snapshot.offline) throw new Error('Connect to load this image from the computer.');
+    if (!session.wire.active || session.metadata.lifecycleState === 'archived')
+      throw new Error('Resume this session to load an image from its computer.');
+    const workspace = session.metadata.path;
+    const path = localImagePath(source, workspace, this.machines.get(session.metadata.machineId)?.metadata.homeDir);
+    let attachment = this.uploadedLocalImages.get(key);
+    if (!attachment) {
+      const slash = path.lastIndexOf('/'), name = path.slice(slash + 1);
+      const listing = await this.rpc(id, 'listDirectory', { path: path.slice(0, slash) || '/' });
+      const entry = Array.isArray(listing.entries) && listing.entries.find((entry: Json) => entry.name === name);
+      if (!listing.success || !entry || entry.type !== 'file') throw new Error('The computer cannot find this image file.');
+      if (!Number.isSafeInteger(entry.size) || entry.size <= 0 || entry.size > MAX_LOCAL_IMAGE_BYTES)
+        throw new Error('Local image previews support files up to 4 MB.');
+      const result = await this.rpc(id, 'readFile', { path });
+      if (!result.success || typeof result.content !== 'string') throw new Error('The computer cannot read this image file.');
+      if (result.content.length > Math.ceil(MAX_LOCAL_IMAGE_BYTES / 3) * 4)
+        throw new Error('Local image previews support files up to 4 MB.');
+      const bytes = unbase64(result.content);
+      if (!bytes.length || bytes.length > MAX_LOCAL_IMAGE_BYTES) throw new Error('Local image previews support files up to 4 MB.');
+      const type = imageMime(bytes);
+      try {
+        const image = await createImageBitmap(new Blob([bytes as BlobPart], { type }));
+        image.close();
+      } catch { throw new Error('This file is not a valid PNG, JPEG, GIF, or WebP image.'); }
+      this.assertAlive();
+      // Keep the original path and filename inside encrypted metadata, not the upload policy.
+      const file = new File([bytes as BlobPart], name, { type });
+      const ref = await this.uploadImage(id, { name: 'image.' + type.split('/')[1], size: bytes.length, type, file });
+      attachment = { ref, name, size: bytes.length, type };
+      this.uploadedLocalImages.set(key, attachment);
+    }
+    const imported = attachment;
+    await this.mutateMetadata(id, metadata => ({ ...metadata, raynoLocalImages: {
+      ...record(metadata.raynoLocalImages), [localImageKey(messageId, source)]: imported,
+    } }));
+    this.uploadedLocalImages.delete(key);
+    return imported;
   }
   branchUnavailable(id: string, kind: BranchKind = 'fork') {
     const metadata = this.getSession(id).metadata;

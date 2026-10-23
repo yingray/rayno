@@ -122,6 +122,7 @@ The [Happy Web gap tracker](docs/happy-web-gap-tracker.md) lists every audited i
 - Stop the current response, terminate an agent, and allow a tool once or for the session.
 - Answer agent question forms and Claude AskUserQuestion inside the matching tool activity, with a fallback for unloaded calls.
 - Upload encrypted PNG, JPEG, GIF, and WebP images in chat or a new session; open received images and download a decrypted copy. Each message accepts up to 20 images, smaller than 10 MB each.
+- Open local image paths in agent replies with **Load private image**. Rayno reads the image through the session's encrypted RPC and saves an encrypted attachment. It creates no public link. Local imports support PNG, JPEG, GIF, and WebP files up to 4 MB inside the session workspace. Saved imports remain available after reload and, once cached, offline.
 - Expand tool calls to read arguments and results, including original file source, verified raster images, and complete reported diffs.
 - Read denied or canceled command decisions even when the agent never emitted a tool call.
 - Keep subagent work under its parent across message pages and offline reloads. Unplaced work stays readable without main reply actions.
@@ -201,6 +202,11 @@ That key's `v1` is a data schema version, not the frontend version.
 Demo computers, files, usage, and attachment names stay separate from real account data.
 Use Settings > Account > Connect to Happy to return to the connected client.
 Reset demo affects only demo data.
+
+Open `/session/private-image-demo?demo=1` on your Rayno server to try the image preview.
+Select **Load private image**, then select the thumbnail to open or download it.
+This demo encrypts and decrypts the public README screenshot in this browser. It reads no computer file and uploads no attachment.
+Reload the page to repeat the demo.
 
 ## Local development
 

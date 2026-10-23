@@ -31,6 +31,18 @@ Paths under `rayno/` and `monitor/` below come from that overlay.
 Server contracts also reference `happy-server/sources/app/api/routes/sessionRoutes.ts` and `v3SessionRoutes.ts`.
 Copies update only through an explicit compatibility review.
 
+Local image imports follow `happy-cli/src/modules/common/registerCommonHandlers.ts` (`listDirectory`, `readFile`),
+`happy-server/sources/app/api/socketConfig.ts`, and `attachmentRoutes.ts` in local Happy snapshot `2dcac1ad`.
+The user selects **Load private image** on a Markdown image or image link. Rendering the path performs no disk read or upload.
+The session CLI returns base64 bytes over the existing encrypted RPC. Rayno validates the workspace path, file listing,
+4 MB limit, raster signature, and browser decoder before it encrypts and uploads the blob with the session blob key.
+The 4 MB import limit leaves room for both base64 layers in the server's 8 MB socket frame.
+The upload policy receives a generic filename. The original name and message/source binding stay in encrypted session metadata
+under `raynoLocalImages`. This is a Rayno extension, not a Happy file event. Import does not send a user message or start an agent turn.
+Metadata uses the existing version-conflict retry. A lost metadata acknowledgement can retry the same uploaded ref within the client.
+Saved refs use the normal authenticated download, decryption, and encrypted offline cache. No GitHub upload or public URL is involved.
+The existing CLI workspace path checks remain in force; imports do not run shell commands or bypass them for outside paths.
+
 Complete leading task-notification wrappers do not create visible messages or attention changes.
 Trailing user text and inline or incomplete examples remain visible. Stop accepts authenticated empty
 RPC replies from older CLIs; other reads still require JSON. Encrypted RPC errors reach the caller.
