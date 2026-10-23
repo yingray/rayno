@@ -1,5 +1,6 @@
 import { base64, type HappyCrypto } from './crypto';
 import type { History, Json, MessageRecord, SavedSubagent } from './normalize';
+import { timeStageAsync } from './perf';
 
 export type CachedWorkspace = {
   version: 1;
@@ -71,10 +72,10 @@ export class OfflineCache {
 
   async save(workspace: CachedWorkspace, histories: CachedHistory[]): Promise<boolean> {
     try {
-      const entries = await Promise.all([
+      const entries = await timeStageAsync('cache-encrypt', () => Promise.all([
         ['workspace', workspace] as const,
         ...histories.map((history) => ['history.' + history.id, history] as const),
-      ].map(async ([key, value]) => [this.scope + key, await this.encryption.encrypt(value, null)] as const));
+      ].map(async ([key, value]) => [this.scope + key, await this.encryption.encrypt(value, null)] as const)));
       const sessions = new Set(workspace.sessions.map((session) => session.wire.id));
       return await this.transaction<boolean>('readwrite', (store, result) => {
         for (const [key, encrypted] of entries) store.put(encrypted, key);

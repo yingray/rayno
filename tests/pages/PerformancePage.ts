@@ -1,6 +1,8 @@
 import { expect } from '@playwright/test';
 import { LiveWorkspacePage } from './LiveWorkspacePage';
 
+type Json = Record<string, any>;
+
 export class PerformancePage extends LiveWorkspacePage {
   input() { return this.page.getByRole('textbox', { name: 'Message', exact: true }); }
   sendButton() { return this.page.getByRole('button', { name: 'Send message', exact: true }); }
@@ -151,6 +153,57 @@ export class PerformancePage extends LiveWorkspacePage {
     await this.info();
     await this.page.getByRole('button', { name: /^View changes/ }).click();
     await expect(this.page.getByRole('region', { name: 'Real workspace files', exact: true })).toBeVisible();
+  }
+  // Stage timings need `rayno.perf` before the client module loads. WebKit has no long task entries.
+  async enableStageTiming() {
+    await this.page.addInitScript(() => {
+      localStorage.setItem('rayno.perf', '1');
+      const tasks = { count: 0, total: 0, max: 0, supported: false };
+      (window as any).__longTasks = tasks;
+      if (!PerformanceObserver.supportedEntryTypes?.includes('longtask')) return;
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            tasks.count++;
+            tasks.total += entry.duration;
+            tasks.max = Math.max(tasks.max, entry.duration);
+          }
+        }).observe({ type: 'longtask', buffered: true });
+        tasks.supported = true;
+      } catch { /* The sample reports no long task support. */ }
+    });
+  }
+  async loadAllHistory() {
+    const earlier = this.page.getByRole('button', { name: 'Load earlier messages' });
+    while (await earlier.isVisible()) {
+      await earlier.click();
+      // Each page normalizes the whole loaded history again, so a late page can take more than 5 s on a busy host.
+      await expect(earlier.or(this.page.getByText('Task 1: check the build', { exact: true }))).toBeVisible({ timeout: 30000 });
+      await expect(this.page.getByRole('status', { name: 'Load messages', exact: true })).toHaveCount(0, { timeout: 30000 });
+    }
+  }
+  async resetSample() {
+    await this.page.evaluate(() => {
+      (window as any).__raynoPerf.reset();
+      Object.assign((window as any).__longTasks, { count: 0, total: 0, max: 0 });
+    });
+  }
+  async sample(): Promise<{ stages: Record<string, { count: number; total: number; max: number; mean: number }>; longTasks: Json }> {
+    return this.page.evaluate(() => ({ stages: (window as any).__raynoPerf.stats(), longTasks: { ...(window as any).__longTasks } }));
+  }
+  // Milliseconds from the latest disconnect mark to each recovery mark, or null when a mark did not come after it.
+  async recoveryTimeline(): Promise<Record<string, number | null>> {
+    return this.page.evaluate(() => {
+      const at = (name: string) => performance.getEntriesByName('rayno:' + name, 'mark').at(-1)?.startTime;
+      const start = at('transport-disconnected');
+      return Object.fromEntries(['transport-connected', 'list-refreshed', 'active-chat-caught-up', 'first-rpc-ok'].map((name) => {
+        const time = at(name);
+        return [name, start === undefined || time === undefined || time < start ? null : Math.round(time - start)];
+      }));
+    });
+  }
+  async waitForRecovery() {
+    await expect.poll(async () => (await this.recoveryTimeline())['active-chat-caught-up'], { timeout: 20000 }).not.toBeNull();
   }
   async expectDraftAfterReload(text: string) {
     await this.page.reload();

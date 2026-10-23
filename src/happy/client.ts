@@ -52,6 +52,7 @@ import { canSearchFiles, parseRipgrepFiles, type FileItem } from './suggestions'
 import { attentionMessage, receiveAttention, restoreClassifiedAttention, mergeAttention, userTurn, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
 import { shallowEqual } from '../data/subscriptions';
+import { markRecovery, timeStage, timeStageAsync } from './perf';
 import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
 import type { GoalAction } from './agentGoal';
 import { imageMime, transferUrl, validateImages } from './attachments';
@@ -197,6 +198,8 @@ export class HappyClient implements DemoAdapter {
   // A cache restore is not a server read. This turns true after the first readable server read;
   // until then the cache keeps its restored copy and saved time.
   private serverRead = false;
+  // False until the first RPC succeeds after a socket connect. It sets the `first-rpc-ok` recovery mark.
+  private rpcSinceConnect = false;
   readonly storageKey: string;
   private constructor(
     readonly credentials: Credentials,
@@ -239,6 +242,9 @@ export class HappyClient implements DemoAdapter {
     this.listeners.forEach((listener) => listener());
   }
   private publish(changedSession?: string, changedMachine?: string) {
+    timeStage('publish', () => this.publishNow(changedSession, changedMachine));
+  }
+  private publishNow(changedSession?: string, changedMachine?: string) {
     const previousSessions = new Map(this.snapshot.sessions.map((session) => [session.id, session]));
     const previousMachines = new Map(this.snapshot.machines.map((machine) => [machine.id, machine]));
     const sessions = [...this.sessions.values()]
@@ -254,7 +260,7 @@ export class HappyClient implements DemoAdapter {
           const marked = `${boundCount(bounds)}:${read?.from}:${read?.to}`;
           if (!history || history.source !== rows || history.size !== (rows?.size || 0) || history.hold !== hold || history.marked !== marked) {
             const list = [...(rows?.values() || [])];
-            const messages = visibleMessages(list, hold, bounds, this.boundsFrom(id));
+            const messages = timeStage('visible-messages', () => visibleMessages(list, hold, bounds, this.boundsFrom(id)));
             history = { source: rows, size: rows?.size || 0, hold, messages, context: contextUsage(list, bounds, this.boundsFrom(id)),
               marked, todos: sameTodos(history?.todos, latestTodos(messages, list, bounds, this.boundsFrom(id))) };
             this.visibleHistory.set(id, history);
@@ -262,7 +268,7 @@ export class HappyClient implements DemoAdapter {
           const attention = this.sessionAttention(source.wire.id);
           const next = normalizeSession(
             source,
-            withRequestHistory(history.messages, source.agentState, rows?.values() || []),
+            timeStage('request-history', () => withRequestHistory(history.messages, source.agentState, rows?.values() || [])),
             attention.assistantSeq > attention.readSeq,
             this.machines.get(source.metadata.machineId),
             attention.optionsSeq > attention.userSeq,
@@ -328,6 +334,14 @@ export class HappyClient implements DemoAdapter {
     this.cacheTimer = undefined;
     if (!this.cacheDirty || this.cacheDisabled || !this.serverRead) return this.cacheWrite;
     this.cacheDirty = false;
+    const { workspace, histories } = timeStage('cache-snapshot', () => this.cacheSnapshot());
+    this.cacheWrite = this.cacheWrite.then(async () => {
+      if (!this.cacheDisabled && await timeStageAsync('cache-save', () => this.cache.save(workspace, histories)))
+        this.patch({ cachedAt: workspace.savedAt });
+    }).catch(() => { /* The live state remains usable when storage is unavailable. */ });
+    return this.cacheWrite;
+  }
+  private cacheSnapshot() {
     const workspace: CachedWorkspace = {
       version: 1, savedAt: Date.now(),
       sessions: [...this.sessions.values()].map(({ wire, metadata, agentState }) => ({ wire, metadata, agentState })),
@@ -347,10 +361,7 @@ export class HappyClient implements DemoAdapter {
       }] : [];
     });
     this.dirtyHistories.clear();
-    this.cacheWrite = this.cacheWrite.then(async () => {
-      if (!this.cacheDisabled && await this.cache.save(workspace, histories)) this.patch({ cachedAt: workspace.savedAt });
-    }).catch(() => { /* The live state remains usable when storage is unavailable. */ });
-    return this.cacheWrite;
+    return { workspace, histories };
   }
   private async restoreHistory(id: string) {
     if (this.restoredHistories.has(id)) return;
@@ -510,11 +521,14 @@ export class HappyClient implements DemoAdapter {
         }),
     });
     this.socket.on('connect', () => {
+      markRecovery('transport-connected');
+      this.rpcSinceConnect = false;
       this.patch({ connection: 'connected', connectionError: '' });
       this.socket?.emit('app-state', { state: activity() });
       this.syncInBackground(this.fullRefresh);
     });
     this.socket.on('disconnect', () => {
+      markRecovery('transport-disconnected');
       // The socket can miss a delete-session update while it is down.
       this.fullRefresh = true;
       this.patch({ connection: 'disconnected' });
@@ -660,6 +674,7 @@ export class HappyClient implements DemoAdapter {
       const results = await Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward', true)));
       const failed = results.find((result) => result.status === 'rejected');
       if (failed) throw failed.reason;
+      markRecovery('active-chat-caught-up');
     }
     this.syncFailures = 0;
   }
@@ -729,6 +744,7 @@ export class HappyClient implements DemoAdapter {
     this.sessionsChangedAt = changedAt;
     this.publish();
     this.patch({ loading: false, error: '' });
+    markRecovery('list-refreshed');
     await this.flushCache();
     if (!this.attentionInitialized) {
       this.attentionInitialized = true;
@@ -1246,6 +1262,10 @@ export class HappyClient implements DemoAdapter {
       allowEmpty: voidRpcMethods.has(method),
     });
     if (typeof response?.error === 'string') throw new Error(response.error);
+    if (!this.rpcSinceConnect) {
+      this.rpcSinceConnect = true;
+      markRecovery('first-rpc-ok');
+    }
     return response ?? {};
   }
   async mutateMetadata(id: string, change: (metadata: Json) => Json) {

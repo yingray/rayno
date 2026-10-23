@@ -573,3 +573,20 @@ Portrait phone layouts keep their existing no-rail behavior; the rail remains av
 - Phone interactions cover 320/360/390/430px, 390x360 short height, and 844x390 landscape, including sending, 16px inputs,
   and 44px-or-larger touch controls. The landscape rail runs in coarse-pointer contexts.
 - Physical device gestures and Cloudflare deployment were not verified.
+
+## Performance measurement baseline (2026-10-23)
+
+`PERFORMANCE-PLAN.md` tracks the work that follows the performance and sync audit. Phase 0 adds the measurement.
+Recovery marks record disconnect, connect, list refresh, open-chat catch-up, and the first RPC after a connect.
+Stage timings run only when `localStorage['rayno.perf']` is `1`; `__raynoPerf.table()` shows them.
+A new fixture has 3,600 session-protocol rows: 1,000 tool calls, 200 subagents, and 20 denied requests.
+
+- Type check, production build, and 515 unit tests passed, including three new tests for the timing module.
+- The baseline browser test passed in all four projects with one worker, and 12 of 12 runs passed with four workers.
+  It loads all 36 history pages, closes the socket, waits for recovery, and pushes 20 replies with activity events.
+- Results are in `PERFORMANCE-PLAN.md`, section 5.1. WebKit needs 2–3 s to show 20 replies in the long chat;
+  the client work for those events is about 110 ms. Encryption is about 2 ms for each cache save.
+- The full browser suite had 1,216 passed and 2 failed before the final test change. One failure was the new baseline
+  test under parallel load, now fixed. `newSessionControls.e2e.test.ts:6` failed once under load and passed 3 of 3
+  runs alone; this change does not touch that layout.
+- Emulated browsers only, with no CPU throttle. A physical phone and Cloudflare deployment were not verified.
