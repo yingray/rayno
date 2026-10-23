@@ -841,3 +841,19 @@ A job that nobody waits for leaves the queue. At most 8 jobs wait; a 9th drops t
   that job, removal of a stale job, a shared job that stays while one caller waits, and the queue limit.
   The first test fails against the previous code.
 - All 555 unit tests passed. Full browser suite: 1,242 passed, 66 skips, 0 failed. It includes the Mermaid tests.
+
+## Heap of visited chats (2026-10-24)
+
+A new browser test measures the heap in desktop Chromium. It forces garbage collection before each reading.
+It loads all pages of a chat with 1,000 tool calls, then opens 20 chats with 200 tool calls each from the list.
+The test only clicks, because a page load would clear the heap.
+
+| Reading | Run 1 | Run 2 |
+|---|---|---|
+| Large chat open, all pages loaded | +12.3 MB | +12.7 MB |
+| Large chat kept after the user leaves it | 4.0 MB | 4.5 MB |
+| Each small chat kept (first page only) | 63 KiB | 58 KiB |
+
+Decision: no LRU for closed chats now. 20 visited chats keep about 1.2 MB.
+The open large chat costs more, and most of that is its DOM. That is the case for list virtualization.
+- The test runs in desktop Chromium only, because the heap reading needs the DevTools protocol.
