@@ -857,3 +857,20 @@ The test only clicks, because a page load would clear the heap.
 Decision: no LRU for closed chats now. 20 visited chats keep about 1.2 MB.
 The open large chat costs more, and most of that is its DOM. That is the case for list virtualization.
 - The test runs in desktop Chromium only, because the heap reading needs the DevTools protocol.
+
+## Reply rail queries and older pages (2026-10-24)
+
+The reply rail ran one `querySelector` over the message list for each reply. A chat with 600 replies ran 600 queries
+over 36,000 elements on each older page and each live reply. Now one `querySelectorAll` finds all reply targets,
+and `contentOffsets` reads the scroll box once.
+
+| Measure, 600-turn chat | Chromium before | Chromium after | WebKit before | WebKit after |
+|---|---|---|---|---|
+| One of the last 5 older pages | 199 to 274 ms | 107 to 137 ms | 845 to 927 ms | 512 to 593 ms |
+| Live reply shown | 114 to 116 ms | 31 to 46 ms | 426 to 469 ms | 252 to 310 ms |
+
+- New browser test: a live reply in a chat with 18 replies adds its pin, and the pin jumps to the reply.
+  It also counts reply queries. The old build makes 19 and fails; the new build passes in all 4 projects.
+- 152 rail, recap, and parity browser checks passed. All 556 unit tests passed. Full browser suite: 1,247 passed, 69 skips, 0 failed.
+- The probe that measured these numbers is not in the repo.
+

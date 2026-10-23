@@ -85,6 +85,33 @@ test('dense dots should scroll independently and follow chat progress through th
   await view.expectNoPageOverflow();
 });
 
+test('a live reply should place its anchor without one list query for each loaded reply', async ({ page }, info) => {
+  // Arrange
+  const server = new HappyServer(); await server.install(page); await server.setWorking(false);
+  await server.setMessages([reply('Previously unloaded response.'), ...Array.from({ length: 18 }, (_, index) => reply(`Reply ${index + 1}.`))]);
+  await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 600 } : { width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    const counts = { replyQueries: 0 };
+    (window as unknown as { railCounts: typeof counts }).railCounts = counts;
+    const query = Element.prototype.querySelector;
+    Element.prototype.querySelector = function (this: Element, selector: string) {
+      if (selector.startsWith('[data-message-id=')) counts.replyQueries++;
+      return query.call(this, selector);
+    } as typeof query;
+  });
+  const view = new ResponseDotsPage(page); await page.goto('/session/real-session');
+  await expect(view.rail().getByRole('button')).toHaveCount(18);
+  await page.evaluate(() => { (window as unknown as { railCounts: { replyQueries: number } }).railCounts.replyQueries = 0; });
+  // Act
+  await server.pushReply('Reply 19.');
+  // Assert
+  await expect(view.rail().getByRole('button')).toHaveCount(19);
+  await expect(view.pin(19)).toBeAttached();
+  expect(await page.evaluate(() => (window as unknown as { railCounts: { replyQueries: number } }).railCounts.replyQueries)).toBeLessThan(18);
+  await view.activate(view.pin(19));
+  await expect(view.page.locator('article[data-message-id]').last()).toHaveClass(/flash/);
+});
+
 test('phone layouts should keep chat actions usable without the desktop reading rail', async ({ page }, info) => {
   const server = new HappyServer(); await server.install(page); await server.setWorking(false);
   const view = new ResponseDotsPage(page);

@@ -39,9 +39,14 @@ export function visibleTarget(element: HTMLElement): HTMLElement {
     : element.closest<HTMLElement>('[data-tool-activity]') || element;
 }
 
-// The top of an element in the scroll content, independent of the scroll position.
+// The tops of elements in the scroll content, independent of the scroll position. It reads the scroll box once.
+export function contentOffsets(scroll: HTMLElement, elements: readonly HTMLElement[]): number[] {
+  const origin = scroll.getBoundingClientRect().top - scroll.scrollTop;
+  return elements.map((element) => visibleTarget(element).getBoundingClientRect().top - origin);
+}
+
 export function contentOffset(scroll: HTMLElement, element: HTMLElement): number {
-  return visibleTarget(element).getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop;
+  return contentOffsets(scroll, [element])[0];
 }
 
 function flash(element: HTMLElement) {

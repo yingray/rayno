@@ -3,7 +3,7 @@ import { memo, useLayoutEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { ResponseAnchor } from '../data/responseAnchors';
 import { createPortal } from 'react-dom';
-import { contentOffset, jumpToRecapTarget } from './recapTargets';
+import { contentOffsets, jumpToRecapTarget } from './recapTargets';
 import { COARSE_QUERY, DESKTOP_QUERY, useMediaQuery } from './useMediaQuery';
 import styles from './recap.module.css';
 import { useEventCallback } from '../components/useEventCallback';
@@ -64,10 +64,18 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
       if (!element || !host) return;
       if (changed) {
         changed = false;
-        offsets = replies.flatMap((reply,index) => {
-          const target = element.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(reply.id)}"]`);
-          return target ? [{...reply,index:index+1,offset:contentOffset(element,target)}] : [];
+        // One query for all replies. A query for each reply reads the whole list again.
+        const targets = new Map<string, HTMLElement>();
+        for (const node of element.querySelectorAll<HTMLElement>('[data-message-id]')) {
+          const id = node.dataset.messageId;
+          if (id && !targets.has(id)) targets.set(id, node);
+        }
+        const found = replies.flatMap((reply,index) => {
+          const target = targets.get(reply.id);
+          return target ? [{reply,index,target}] : [];
         });
+        const positions = contentOffsets(element, found.map(item => item.target));
+        offsets = found.map(({reply,index},i) => ({...reply,index:index+1,offset:positions[i]}));
       }
       const height = host.clientHeight, total = Math.max(1,element.scrollHeight);
       const gap=coarse?TOUCH_GAP:PIN+2, inset=coarse?13:0;

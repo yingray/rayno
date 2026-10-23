@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-24 (Phase 4: M01 measurement, list virtualization evaluation).
+Created: 2026-10-23. Updated: 2026-10-24 (Phase 4: M01 measurement, list virtualization evaluation, L01 and L02).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -116,8 +116,8 @@ If the encryption is still a long task after 3.5, move it to a worker as a separ
 | M02 | Add a total size budget for attachments. Limit hash and upload concurrency | done: at most 4 at the same time. The limits stay at 20 images and 10 MB, the claude.ai limits (section 6.3). No resize |
 | O01 | Add a queue limit to the Mermaid worker. Cancel stale jobs. Separate queue time from run time | done |
 | O02, A01 | Measure first, then decide | todo |
-| L01 | Load older history pages without a new pass over all loaded rows | todo: 108 pages of a 600-turn chat took 88 s in Chromium and 192 s in WebKit (section 6.6) |
-| L02 | Make the per-reply message pipeline (`visibleMessages`, `markSubagents`, `reuseEqual`) work on the changed rows only | todo: about 57% of the script time for a live reply in a 600-turn chat (section 6.6) |
+| L01 | Load older history pages without a new pass over all loaded rows | done: the cause was the reply rail, not the data pass. It ran one list query for each reply. A late page in a 600-turn chat: Chromium 199 to 274 ms to 107 to 137 ms, WebKit 845 to 927 ms to 512 to 593 ms (section 6.7) |
+| L02 | Make the per-reply message pipeline (`visibleMessages`, `markSubagents`, `reuseEqual`) work on the changed rows only | measured, no change: the pipeline takes about 10 ms for 10,800 rows. The rail fix also cut a live reply: Chromium 114 to 116 ms to 31 to 46 ms, WebKit 426 to 469 ms to 252 to 310 ms (section 6.7) |
 | R03 rest | Keep the pins array stable. Update only `active` and `thumb` on scroll | done |
 
 ## 3. Verification for the full plan
@@ -208,6 +208,7 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-24 | `e80cc14` | O01 | Vitest, full browser suite | The Mermaid worker gets one job at a time. The timeout starts when a job runs, and a timeout ends only that job. A changed or unmounted diagram removes its waiting job. At most 8 jobs wait. Full suite: 1,242 passed, 0 failed |
 | 2026-10-24 | after `e80cc14` | M01 measurement | Memory browser test, desktop Chromium, two runs | A visited chat with only its first page keeps 58 to 117 KiB after the user leaves it. A chat with all 1,000 tool calls loaded uses about 12.3 MB while open and keeps about 4.0 to 4.5 MB after the user leaves it. Decision: no LRU now |
 | 2026-10-24 | `7878e91` | Virtualization evaluation | Temporary frame probe, desktop Chromium and WebKit, one worker | See section 6.6. Decision: no list virtualization now; no `content-visibility` |
+| 2026-10-24 | after `23aea8d` | L01, L02 | Vitest, temporary probe in an unminified build, rail and recap browser checks, full browser suite | See section 6.7. A new browser test fails on the old build (19 rail queries for one reply). Full suite: 1,247 passed, 0 failed |
 
 ## 6. Research for the Phase 4 limits (2026-10-23)
 
@@ -312,8 +313,35 @@ Where a live reply spends its script time (600 turns, Chromium, unminified build
 Decision:
 
 - No list virtualization now. Scrolling is smooth at 600 turns. Below 200 turns, a live reply costs 15 ms in Chromium.
-- Most of the cost that grows with the chat is in the message pipeline. Virtualization does not change it. L02 is the next step.
-- Loading old history is the slowest part. The 600-turn chat has 10,800 rows in 108 pages. Loading all pages took 88 s in Chromium and 192 s in WebKit, with two workers in parallel. Each page runs a pass over all loaded rows (L01).
+- Most of the cost that grows with the chat is in the message pipeline. Virtualization does not change it. L02 is the next step. Correction in section 6.7: this share counted only script time and left out DOM queries. The rail was the larger cost.
+- Loading old history is the slowest part. The 600-turn chat has 10,800 rows in 108 pages. Loading all pages took 88 s in Chromium and 192 s in WebKit, with two workers in parallel. Each page runs a pass over all loaded rows (L01). Correction in section 6.7: most of this time was the Playwright text search of the test.
 - Virtualization breaks features that read the DOM: the recap jump (`findRecapTarget`), the reply rail (`ResponseRail`), page search, copy across messages, and scroll restore. Each needs a new design.
 - No `content-visibility`, because it breaks the bottom pin in WebKit.
 - Do it again when a live reply in WebKit takes more than 200 ms after L02, at the chat size that real users load.
+
+### 6.7 L01 and L02 (2026-10-24)
+
+A new probe waits inside the page, so Playwright text queries do not add DOM work.
+It loads all 107 older pages of the 600-turn chat, then sends 3 live replies.
+Both builds are unminified. Each run uses one worker.
+
+| Measure | Chromium before | Chromium after | WebKit before | WebKit after |
+|---|---|---|---|---|
+| All 107 older pages | 10.6 s | 7.9 s | 42.6 s | 38.5 s |
+| One of the last 5 pages | 199 to 274 ms | 107 to 137 ms | 845 to 927 ms | 512 to 593 ms (one 1,119 ms) |
+| Live reply shown | 114 to 116 ms | 31 to 46 ms | 426 to 469 ms | 252 to 310 ms |
+
+Corrections to section 6.6:
+
+- The 88 s and 192 s came mostly from the test. Its `getByText` search read the whole DOM on each poll.
+- The 57% share counted only script time. A CPU profile of page 100 showed the real cost: the reply rail (`ResponseRail`) ran one `querySelector` over the list for each reply. That was about 120 of 230 ms.
+- In Node, the message pipeline takes about 10 ms for 10,800 rows: `visibleMessages` 6.8 ms, `markSubagents` 1.3 ms, `contextUsage` 1.1 ms, `latestTodos` 1.2 ms, `reuseEqual` 0.2 ms.
+
+Change: the rail reads all `[data-message-id]` elements with one query. `contentOffsets` reads the scroll box once for all replies.
+The rail pass on page 100 went from about 120 ms to about 26 ms.
+
+L02 has no code change. A pass over changed rows only would need new rules for receipts, subagent bounds, and joins of results.
+That saves at most about 10 ms for each reply at this size.
+
+What remains grows with the DOM: style and layout for 36,000 elements, and the React pass over 3,600 blocks.
+This is the case for virtualization in section 6.6. WebKit pays about 4 times more than Chromium for it.
