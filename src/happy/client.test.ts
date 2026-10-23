@@ -1931,3 +1931,96 @@ describe('private local images', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+describe('Happy client background sync', () => {
+  // A real fetch rejects with the abort reason of its signal.
+  const hang = (_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) =>
+    init?.signal?.addEventListener('abort', () => reject(init.signal!.reason)));
+  const failSessions = () => fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+    ? response({ error: 'Could not read the workspace. Try again.' }, 503)
+    : url.endsWith('/v1/machines') ? response([]) : response({ messages: [], hasMore: false }));
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    Object.assign(window, { setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout });
+    vi.spyOn(Math, 'random').mockReturnValue(1);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  it('should name the timeout instead of an abort without a reason', async () => {
+    // Arrange
+    await start();
+    fetchMock.mockImplementation(hang);
+    // Act
+    const read = client.refresh(true);
+    const result = expect(read).rejects.toThrow('Happy did not answer within 25 seconds.');
+    await vi.advanceTimersByTimeAsync(25000);
+    // Assert
+    await result;
+  });
+  it('should keep a loaded workspace quiet while background reads fail, warn after three failures, and recover', async () => {
+    // Arrange
+    await start();
+    failSessions();
+    // Act
+    socket.handlers.get('connect')!();
+    await vi.advanceTimersByTimeAsync(0);
+    const first = client.getSnapshot().error;
+    await vi.advanceTimersByTimeAsync(1000);
+    const second = client.getSnapshot().error;
+    await vi.advanceTimersByTimeAsync(2000);
+    const third = client.getSnapshot().error;
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([]) : response({ messages: [], hasMore: false }));
+    await vi.advanceTimersByTimeAsync(4000);
+    // Assert
+    expect([first, second]).toEqual(['', '']);
+    expect(third).toBe('Could not read the workspace. Try again.');
+    expect(client.getSnapshot()).toMatchObject({ error: '', loading: false });
+    expect(client.getSnapshot().sessions.map((row) => row.id)).toEqual(['session']);
+  });
+  it('should keep a loaded chat free of the failure notice while its background update fails', async () => {
+    // Arrange
+    await start();
+    client.watchSession('session');
+    await vi.waitFor(() => expect(client.getSnapshot().histories.session?.loaded).toBe(true));
+    fetchMock.mockImplementation(async (url: string) => url.includes('/messages')
+      ? response({ error: 'Internal Server Error' }, 500)
+      : url.includes('/v2/sessions') ? response({ sessions: [session], hasNext: false }) : response([]));
+    // Act
+    socket.handlers.get('connect')!();
+    await vi.advanceTimersByTimeAsync(0);
+    // Assert
+    expect(client.getSnapshot().histories.session).toMatchObject({ loading: false, loaded: true, error: '' });
+    expect(client.getSnapshot().error).toBe('');
+  });
+  it('should show a manual retry failure at once and keep retrying in the background', async () => {
+    // Arrange
+    await start();
+    failSessions();
+    // Act
+    await client.retry();
+    const shown = client.getSnapshot().error;
+    fetchMock.mockImplementation(async (url: string) => url.includes('/v2/sessions')
+      ? response({ sessions: [session], hasNext: false })
+      : url.endsWith('/v1/machines') ? response([]) : response({ messages: [], hasMore: false }));
+    await vi.advanceTimersByTimeAsync(1000);
+    // Assert
+    expect(shown).toBe('Could not read the workspace. Try again.');
+    expect(client.getSnapshot()).toMatchObject({ error: '', retrying: false });
+  });
+  it('should not warn about a request that going offline stopped', async () => {
+    // Arrange
+    const events = new Map<string, () => void>();
+    vi.mocked(window.addEventListener).mockImplementation((name: string, handler: any) => { events.set(name, handler); });
+    await start();
+    fetchMock.mockImplementation(hang);
+    // Act
+    socket.handlers.get('connect')!();
+    await vi.advanceTimersByTimeAsync(0);
+    events.get('offline')!();
+    await vi.advanceTimersByTimeAsync(60000);
+    // Assert
+    expect(client.getSnapshot()).toMatchObject({ offline: true, error: '' });
+  });
+});

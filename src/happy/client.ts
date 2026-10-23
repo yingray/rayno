@@ -169,6 +169,9 @@ export class HappyClient implements DemoAdapter {
   private readingSessions = new Set<string>();
   private attentionInitialized = false;
   private refreshRequest: Promise<void> | null = null;
+  private syncTimer: number | undefined;
+  private syncFailures = 0;
+  private lastSyncError: unknown;
   private sessionsChangedAt = 0;
   private fullRefresh = false;
   private presenceRevision = 0;
@@ -505,11 +508,7 @@ export class HappyClient implements DemoAdapter {
     this.socket.on('connect', () => {
       this.patch({ connection: 'connected', connectionError: '' });
       this.socket?.emit('app-state', { state: activity() });
-      void this.refresh(this.fullRefresh)
-        .then(() =>
-          Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward'))),
-        )
-        .catch((error) => this.patch({ error: messageError(error) }));
+      this.syncInBackground(this.fullRefresh);
     });
     this.socket.on('disconnect', () => {
       // The socket can miss a delete-session update while it is down.
@@ -534,9 +533,7 @@ export class HappyClient implements DemoAdapter {
       if (activity() !== 'active') void this.flushCache();
       if (activity() === 'active' && !this.snapshot.offline) {
         this.readingSessions.forEach((id) => this.setSessionReading(id, true));
-        void this.refresh()
-          .then(() => Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward'))))
-          .catch((error) => this.patch({ error: messageError(error) }));
+        this.syncInBackground();
       }
     };
     const storageChanged = (event: StorageEvent) => {
@@ -558,13 +555,16 @@ export class HappyClient implements DemoAdapter {
     const offline = () => {
       this.patch({ offline: true, connection: 'disconnected', loading: false, error: '', connectionError: '', retrying: false });
       this.socket?.disconnect();
+      window.clearTimeout(this.syncTimer);
+      this.syncTimer = undefined;
       this.controllers.forEach((controller) => controller.abort(REQUEST_CLOSED));
       void this.flushCache();
     };
     const online = () => {
       this.patch({ offline: false, connection: 'connecting', error: '', connectionError: '' });
       this.socket?.connect();
-      void this.refresh().catch((error) => this.patch({ error: messageError(error) }));
+      // The socket connect reads the open chats.
+      this.syncInBackground(false, false);
     };
     const save = () => { void this.flushCache(); };
     window.addEventListener('offline', offline);
@@ -581,15 +581,15 @@ export class HappyClient implements DemoAdapter {
     };
     if (!this.snapshot.offline) {
       this.socket.connect();
-      void this.refresh().catch((error) =>
-        this.patch({ loading: false, error: messageError(error) }),
-      );
+      // Each open chat reads its own history when it mounts.
+      this.syncInBackground(false, false);
     }
   }
   private cleanup = () => {};
   dispose() {
     void this.flushCache();
     this.disposed = true;
+    window.clearTimeout(this.syncTimer);
     this.cleanup();
     this.socket?.removeAllListeners();
     this.socket?.disconnect();
@@ -633,16 +633,52 @@ export class HappyClient implements DemoAdapter {
   async retry() {
     if (this.snapshot.offline || this.disposed) return;
     this.fullRefresh = true;
+    window.clearTimeout(this.syncTimer);
+    this.syncTimer = undefined;
     this.patch({ retrying: true, error: '', connectionError: '' });
     if (!this.socket?.connected) this.socket?.connect();
     try {
-      await this.refresh();
-      await Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward')));
+      await this.syncWorkspace();
     } catch (error) {
+      // A manual retry shows its failure at once. The background backoff continues after it.
       this.patch({ loading: false, error: messageError(error) });
+      this.syncFailed(error);
     } finally {
       this.patch({ retrying: false });
     }
+  }
+  // Read the session list, then the open chats. A chat that cannot update fails the sync, so the backoff reads it again.
+  private async syncWorkspace(force = false, histories = true) {
+    await this.refresh(force);
+    if (histories) {
+      const results = await Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward', true)));
+      const failed = results.find((result) => result.status === 'rejected');
+      if (failed) throw failed.reason;
+    }
+    this.syncFailures = 0;
+  }
+  // Happy Web retries its sync without a warning. Rayno also retries, and keeps the workspace on screen while it does.
+  private syncInBackground(force = false, histories = true) {
+    if (this.snapshot.offline || this.disposed) return;
+    window.clearTimeout(this.syncTimer);
+    this.syncTimer = undefined;
+    void this.syncWorkspace(force, histories).catch((error) => this.syncFailed(error));
+  }
+  // Before the first readable server read, the warning appears at once. A cached copy does not count as a read.
+  // After it, the warning waits for SYNC_WARNING_FAILURES failures in a row.
+  private syncFailed(error: unknown) {
+    if (this.snapshot.offline || this.disposed) return;
+    // Callers that shared one refresh get the same error. It counts once.
+    if (error === this.lastSyncError) return;
+    this.lastSyncError = error;
+    this.syncFailures++;
+    if (!this.serverRead || this.syncFailures >= SYNC_WARNING_FAILURES) this.patch({ loading: false, error: messageError(error) });
+    if (this.syncTimer !== undefined) return;
+    const limit = Math.min(SYNC_RETRY_MAX, SYNC_RETRY_MIN * 2 ** (this.syncFailures - 1));
+    this.syncTimer = window.setTimeout(() => {
+      this.syncTimer = undefined;
+      this.syncInBackground(this.fullRefresh);
+    }, limit / 2 + Math.random() * limit / 2);
   }
   private async refreshRecords(full: boolean) {
     const presenceRevision = this.presenceRevision;
@@ -926,7 +962,8 @@ export class HappyClient implements DemoAdapter {
   }
   private async update(body: Json) {
     if (body.t === 'new-message') {
-      if (!this.sessions.has(body.sid) && !this.deletedSessions.has(body.sid)) await this.refresh(true);
+      if (!this.sessions.has(body.sid) && !this.deletedSessions.has(body.sid))
+        await this.refresh(true).catch((error) => this.syncFailed(error));
       if (this.sessions.has(body.sid)) {
         await this.mergeMessages(body.sid, [body.message]);
         this.publish(body.sid);
@@ -973,7 +1010,8 @@ export class HappyClient implements DemoAdapter {
         body.t,
       )
     )
-      await this.refresh(true);
+      // A failed read here is a background failure. The backoff reads the list again.
+      await this.refresh(true).catch((error) => this.syncFailed(error));
   }
   private ephemeral(event: Json) {
     if (this.disposed) return;
@@ -1047,20 +1085,22 @@ export class HappyClient implements DemoAdapter {
       this.activeSessions.delete(id);
     };
   }
+  // A quiet read keeps a loaded chat free of the failure notice. The background sync reports and retries it.
   async loadHistory(
     id: string,
     direction: 'initial' | 'older' | 'forward' = 'initial',
+    quiet = false,
   ): Promise<void> {
     if (this.historyRequests.has(id)) {
       await this.historyRequests.get(id);
-      return this.loadHistory(id, direction);
+      return this.loadHistory(id, direction, quiet);
     }
     if (direction === 'initial' && this.snapshot.histories[id]?.loaded) direction = 'forward';
-    const promise = this.fetchHistory(id, direction).finally(() => this.historyRequests.delete(id));
+    const promise = this.fetchHistory(id, direction, quiet).finally(() => this.historyRequests.delete(id));
     this.historyRequests.set(id, promise);
     return promise;
   }
-  private async fetchHistory(id: string, direction: 'initial' | 'older' | 'forward') {
+  private async fetchHistory(id: string, direction: 'initial' | 'older' | 'forward', quiet: boolean) {
     await this.restoreHistory(id);
     if (this.snapshot.offline || this.disposed) return;
     if (direction === 'initial' && this.snapshot.histories[id]?.loaded) direction = 'forward';
@@ -1117,7 +1157,7 @@ export class HappyClient implements DemoAdapter {
       this.scheduleCache(id);
       await this.flushCache();
     } catch (error) {
-      history({ loading: false, error: this.snapshot.offline ? '' : messageError(error) });
+      history({ loading: false, error: this.snapshot.offline || (quiet && previous.loaded) ? '' : messageError(error) });
       if (this.snapshot.offline) return;
       throw error;
     }
