@@ -31,6 +31,10 @@ export function StoreProvider({ value, children }: PropsWithChildren<{ value: St
   // Publish after commit. An abandoned render must not change the shared snapshot.
   useLayoutEffect(() => store.set(value), [store, value]);
   useLayoutEffect(() => { document.documentElement.lang = value.state.preferences.language || 'en'; }, [value.state.preferences.language]);
+  useLayoutEffect(() => {
+    document.documentElement.dataset.glassStyle = value.state.preferences.glassStyle || 'standard';
+    return () => { delete document.documentElement.dataset.glassStyle; };
+  }, [value.state.preferences.glassStyle]);
   return <LanguageContext.Provider value={value.state.preferences.language || 'en'}><StoreContext.Provider value={store}>{children}</StoreContext.Provider></LanguageContext.Provider>;
 }
 

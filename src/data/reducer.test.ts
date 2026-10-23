@@ -153,6 +153,16 @@ describe('Browser state restoration', () => {
   );
 
   it.each([
+    ['standard', 'standard'], ['intense', 'intense'], ['unknown', 'standard'], [undefined, 'standard'],
+  ])('should restore glass style %s as %s', (stored, expected) => {
+    const state = createInitialState(1000000);
+    const raw = JSON.parse(JSON.stringify(state));
+    raw.preferences.glassStyle = stored;
+    const restored = restoreState(JSON.stringify(raw), createInitialState(2000000));
+    expect(restored.preferences.glassStyle).toBe(expected);
+  });
+
+  it.each([
     ['large', 'large'],
     ['small', 'small'],
     ['huge', 'medium'],

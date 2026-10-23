@@ -194,6 +194,8 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
           : parsed.preferences.recapStyle.slice(0, RECAP_STYLE_LIMIT);
       if (['small', 'medium', 'large'].includes(String(parsed.preferences.fontSize)))
         preferences.fontSize = parsed.preferences.fontSize as typeof preferences.fontSize;
+      if (['standard', 'intense'].includes(String(parsed.preferences.glassStyle)))
+        preferences.glassStyle = parsed.preferences.glassStyle as typeof preferences.glassStyle;
       if (['full', 'medium', 'standard'].includes(String(parsed.preferences.chatWidth)))
         preferences.chatWidth = parsed.preferences.chatWidth as typeof preferences.chatWidth;
     }

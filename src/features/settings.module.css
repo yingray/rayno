@@ -628,3 +628,5 @@
     margin-left: 38px;
   }
 }
+
+:global(html[data-glass-style='intense']) .groupCard { border-color: var(--glass-edge); box-shadow: var(--glass-shadow); }

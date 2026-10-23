@@ -120,6 +120,7 @@ export type UsageReading = ({ week: UsageWindow; fiveHour?: UsageWindow } | { we
 };
 export type BubbleColor = 'rayno' | 'gray' | 'blue' | 'green' | 'purple' | 'rose' | 'sand';
 export type FontSize = 'small' | 'medium' | 'large';
+export type GlassStyle = 'standard' | 'intense';
 export type ChatWidth = 'full' | 'medium' | 'standard';
 export type Preferences = {
   language: 'en' | 'zh-TW';
@@ -128,6 +129,7 @@ export type Preferences = {
   bubble: BubbleColor;
   fontSize: FontSize;
   chatWidth: ChatWidth;
+  glassStyle: GlassStyle;
   compactTools: boolean;
   enterToSend: boolean;
   avatar: 'provider' | 'initials';

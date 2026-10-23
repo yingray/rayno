@@ -555,3 +555,15 @@
     padding-top: calc(100px + env(safe-area-inset-top));
   }
 }
+
+:global(html[data-glass-style='intense']) :is(.rail, .infoPanel, .sidePanel, .mainPanel) {
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+:global(html[data-glass-style='intense']) :is(.tabBar, .updateNotice) {
+  background: var(--glass-floating);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}

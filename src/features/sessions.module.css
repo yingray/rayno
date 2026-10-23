@@ -364,3 +364,12 @@
   .header { flex: none; }
   .rows { flex: none; min-height: 100px; max-height: none; overflow: visible; }
 }
+
+:global(html[data-glass-style='intense']) .surface { border-color: var(--glass-edge); box-shadow: var(--glass-shadow); }
+:global(html[data-glass-style='intense']) .optionsPanel {
+  background: var(--glass-floating);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}

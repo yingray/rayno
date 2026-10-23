@@ -1474,3 +1474,11 @@
 .chat[data-keyboard-open='true'] .terminalControl small { display: none; }
 @media (max-height: 480px) { .terminalControl small { display: none; } }
 @media (hover: none) and (pointer: coarse) and (max-height: 500px) { .terminalControl { padding-block: 2px; } }
+
+:global(html[data-glass-style='intense']) :is(.header > button, .composer, .latestButton, .suggestions) {
+  background: var(--glass-floating);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}

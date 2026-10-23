@@ -8,7 +8,7 @@ import { checkForUpdate, currentBuild, forceUpdate, formatBuildTime } from '../a
 import type { UpdateCheck } from '../app/appUpdate';
 import type { IconName } from '../components/ui';
 import { useDemo } from '../data/store';
-import type { BubbleColor, ChatWidth, FontSize, RecapMode } from '../data/types';
+import type { BubbleColor, ChatWidth, FontSize, GlassStyle, RecapMode } from '../data/types';
 import { DEFAULT_RECAP_STYLE, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 import styles from './settings.module.css';
 import { UsageReport } from './UsageReport';
@@ -195,6 +195,13 @@ export function Settings() {
               <Row icon="colorPaletteOutline" title={t("Theme")}>
                 <span className={styles.value}>{t("Dark")}<Icon name="chevronForwardOutline" size={12} />
                 </span>
+              </Row>
+              <Row icon="sparklesOutline" title={t("Glass style")} subtitle={t("Transparency, blur, and highlights")} className={styles.chatWidthRow}>
+                <select aria-label={t("Glass style")} className={styles.widthSelect} value={preferences.glassStyle}
+                  onChange={event => dispatch({ type: 'preferences', value: { glassStyle: event.target.value as GlassStyle } })}>
+                  <option value="standard">{t("Standard")}</option>
+                  <option value="intense">{t("Intense")}</option>
+                </select>
               </Row>
               <Row
                 icon="textOutline"

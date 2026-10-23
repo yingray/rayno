@@ -497,3 +497,30 @@ use the same navigation. Folder approval and cancellation keep the unfinished fo
   They include touch activation, form scrolling, reachable Start controls, and the tablet session-list drawer.
 - The existing Tailscale preview passed the same Back/Forward flow in both engines at 390x844 using isolated demo data.
   No real agent started. Native edge-swipe animation on a physical phone and Cloudflare delivery were not tested.
+
+## Optional intense glass (2026-10-23)
+
+Settings > Appearance now offers Standard and Intense glass. Standard keeps the previous appearance and is the
+migration default. Intense adds static purple/blue light, translucent panels, brighter edges, and 28px backdrop blur
+on floating chat controls, navigation, usage surfaces, menus, autocomplete lists, and dialogs. It does not animate the background. The setting
+uses existing Rayno preference storage, including account isolation in live mode; it does not change Happy settings.
+Reduced-transparency CSS and an unsupported-filter fallback provide opaque floating surfaces.
+
+- Type check and production build passed. All 501 unit tests passed, including restoration of valid, missing,
+  and malformed glass preferences.
+- Browser verification covers 24 cases across desktop/mobile Chromium and WebKit: eight live/demo persistence
+  and restore cases and 12 existing appearance cases passed in the combined run. All four new responsive interaction
+  cases passed in the final focused run after correcting an assertion to check outline style rather than its hidden width.
+- Interactions cover 320/360/390/430px, 390x360 short height, 844x390 landscape, and desktop. They change the setting,
+  scroll the form, open/close Session Info and model dialogs, focus the composer, and send at every size. Changed phone
+  selects use 16px text and 44px targets. Intense dialogs have 44px close controls on phones/touch devices.
+- Checks confirm actual computed blur, one outer composer focus indicator, unchanged drafts, immediate restoration
+  of the original body background, and persistence after reload in live and demo modes.
+- Direct Tailscale checks in both engines rendered Standard and Intense, verified computed blur, and captured desktop
+  and phone screenshots without page errors. Images stay in ignored test-results/screenshots/.
+- Reduced-transparency hardware, unsupported browser engines, physical phone GPU performance, and Cloudflare delivery
+  were not tested. A native platform preference was not changed during verification.
+
+The final menu/modal refinement uses the same glass surface tokens for Session actions and dialogs. Intense modal
+backdrops use a lighter dim layer to retain the surrounding light. Responsive checks compare the computed menu and
+dialog backgrounds and open/close both by touch or pointer. Standard retains the original menu and backdrop styles.

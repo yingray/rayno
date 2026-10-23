@@ -19,6 +19,7 @@ export const defaultPreferences: Preferences = {
   bubble: 'rayno',
   fontSize: 'medium',
   chatWidth: 'medium',
+  glassStyle: 'standard',
   compactTools: false,
   enterToSend: true,
   avatar: 'provider',

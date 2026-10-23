@@ -113,3 +113,11 @@
 
 .agentIcon { width: 20px; height: 20px; object-fit: contain; flex: none; }
 .agentIcon[alt="Codex"] { filter: brightness(0) invert(1); }
+
+:global(html[data-glass-style='intense']) :is(.capsule, .details) {
+  background: var(--glass-floating);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}
