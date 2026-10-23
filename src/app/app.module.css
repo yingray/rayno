@@ -255,8 +255,6 @@
 .panelSeparator:focus-visible::after,
 .resizablePanel[data-resizing] > .panelSeparator::after { background: var(--accent-soft); }
 .resizablePanel > .panelSeparator:focus { outline: none; }
-.shell:has(.resizablePanel[data-resizing]) { user-select: none; cursor: col-resize; }
-.shell:has(.resizablePanel[data-resizing]) * { cursor: col-resize !important; }
 @media (pointer: coarse) {
   .resizablePanel { margin-left: 34px; }
   .panelSeparator { left: -44px; width: 44px; }

@@ -39,7 +39,11 @@ export class ResizablePanelsPage extends SideChatsPage {
       await session.detach();
     } else {
       await this.page.mouse.move(x, y); await this.page.mouse.down();
-      await this.page.mouse.move(x + distance, y, { steps: 6 }); await this.page.mouse.up();
+      await this.page.mouse.move(x + distance, y, { steps: 6 });
+      // The drag state lives on the root, not in a `:has()` rule that restyles the tree on each chat update.
+      await expect(this.page.locator('html')).toHaveAttribute('data-panel-resizing', '');
+      await this.page.mouse.up();
+      await expect(this.page.locator('html')).not.toHaveAttribute('data-panel-resizing');
     }
   }
 }

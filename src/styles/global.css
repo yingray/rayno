@@ -267,3 +267,6 @@ h3 {
     --glass-filter: none;
   }
 }
+/* ResizablePanel sets this attribute during a drag. A `:has()` rule here would restyle the tree on each chat update. */
+:root[data-panel-resizing] { user-select: none; cursor: col-resize; }
+:root[data-panel-resizing] * { cursor: col-resize !important; }

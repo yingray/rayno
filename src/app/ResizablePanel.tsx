@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent, PropsWithChildren } from 'react';
 import { useDemo } from '../data/store';
 import { useText } from '../i18n';
@@ -16,6 +16,14 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
   });
   const [space, setSpace] = useState({ available: Infinity, viewport: window.innerWidth });
   const [resizing, setResizing] = useState(false);
+  // A resize marks the root for its cursor and text selection rules (global.css).
+  // Do not use a `:has()` rule on the shell for this: then each DOM change in the chat restyles the whole tree.
+  useEffect(() => {
+    if (!resizing) return;
+    const root = document.documentElement;
+    root.dataset.panelResizing = '';
+    return () => { delete root.dataset.panelResizing; };
+  }, [resizing]);
   const frame = useRef<HTMLDivElement>(null);
   const separator = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ pointer: number; x: number; width: number; preferred: number | null } | null>(null);

@@ -694,3 +694,16 @@ Before, every pass built new tool messages and new `details` lists, so the ToolA
   The same check without the reuse keeps 0 of 200.
 - All 533 unit tests and the type check passed. 162 browser checks passed with 2 existing skips: chat content,
   tool results, transcript, recap, response dots, chat presentation, render isolation, and agent events.
+
+## Panel resize state on the root (2026-10-23)
+
+A drag on a resizable panel now sets `data-panel-resizing` on the root element.
+Before, two `.shell:has(.resizablePanel[data-resizing])` rules set the drag cursor.
+With those rules, each DOM change in the chat made the browser restyle the whole tree.
+On desktop, each live reply blocked the main thread for about 200 ms.
+
+- A diagnostic run pushed 20 replies on desktop Chromium. Frames over 50 ms went from 40 (6,043 ms in total) to 1 (55 ms).
+- The resize browser test now checks that the root has the attribute during a drag and loses it after the drag.
+  26 resize checks passed across four projects.
+- Baseline, 20 replies shown after: desktop Chromium 215 ms (before 699 ms), desktop WebKit 1,722 ms (before 3,053 ms).
+- All 533 unit tests, the type check, and the build passed.
