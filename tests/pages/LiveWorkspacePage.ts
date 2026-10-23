@@ -199,6 +199,7 @@ export class LiveWorkspacePage extends WorkspacePage {
   }
   handoffAction() { return this.page.getByRole('button', { name: /^Hand Off/ }); }
   taskDescription() { return this.page.getByRole('textbox', { name: 'Task description', exact: true }); }
+  handoffContext() { return this.page.getByText(/^Continues with the context of “.+”$/); }
   async handOff() {
     await this.info();
     await this.handoffAction().click();

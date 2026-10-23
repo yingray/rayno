@@ -20,7 +20,7 @@ export function draftInWorkspace(source: WorkspaceSource, agent: Agent): NewSess
     type: index < 0 ? 'Simple' : 'Worktree',
     worktree: index < 0 ? '' : checkout,
     agent, model: '', effort: null,
-    permissionMode: resolveNewSessionPermission({ flavor: agent.toLowerCase() }, []), prompt: '',
+    permissionMode: resolveNewSessionPermission({ flavor: agent.toLowerCase() }, []), prompt: '', handoff: null,
   };
 }
 

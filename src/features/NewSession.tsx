@@ -17,6 +17,7 @@ import type { ModelChoice } from '../data/types';
 import { selectedImages } from '../happy/attachments';
 import { DirectoryApprovalError } from '../happy/errors';
 import { FolderApprovalDialog } from './SessionPrompts';
+import { handoffRequestPrompt } from '../happy/handoff';
 
 const NewModelPicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.NewModelPicker })));
 const WorkspacePicker = lazy(() => import('./NewSessionPickers').then((module) => ({ default: module.WorkspacePicker })));
@@ -60,7 +61,7 @@ export function NewSession() {
   useEffect(() => {
     mounted.current = true;
     const input = taskInput.current;
-    if (input?.value) {
+    if (input && (input.value || draft.handoff)) {
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
       input.scrollTop = input.scrollHeight;
@@ -83,7 +84,8 @@ export function NewSession() {
       setError(validation);
       return;
     }
-    await launch({ ...draft, agent, model, effort, permissionMode },
+    const { handoff, ...request } = draft;
+    await launch({ ...request, prompt: handoffRequestPrompt(draft.prompt, handoff), agent, model, effort, permissionMode },
       attachments.map(file => ({ name: file.name, size: file.size, type: file.type, ...(mode === 'live' ? { file } : {}) })));
   }
   // An approved folder retry resends the same draft, so the client keeps its pending request.
@@ -289,10 +291,20 @@ export function NewSession() {
               />
             </div>
             <div className={styles.inputWell} data-focus-frame>
+              {draft.handoff && (
+                <div className={styles.handoff}>
+                  <Icon name="swapHorizontalOutline" size={14} />
+                  <span className={styles.handoffText}>{t("Continues with the context of “{title}”", { title: draft.handoff.title })}</span>
+                  <button type="button" aria-label={t("Remove handoff context")} title={t("Remove handoff context")}
+                    onClick={() => dispatch({ type: 'newDraft', value: { handoff: null } })}>
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+              )}
               <textarea
                 ref={taskInput}
                 aria-label={t("Task description")}
-                placeholder={t("What should the agent do?")}
+                placeholder={draft.handoff ? t("Add instructions, or start to continue the work") : t("What should the agent do?")}
                 value={draft.prompt}
                 onChange={(event) =>
                   dispatch({ type: 'newDraft', value: { prompt: event.target.value } })

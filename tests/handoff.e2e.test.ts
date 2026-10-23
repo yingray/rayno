@@ -3,7 +3,7 @@ import { HappyServer } from './fixtures/HappyServer';
 import { LiveWorkspacePage } from './pages/LiveWorkspacePage';
 import type { Json } from '../src/happy/normalize';
 
-test('Hand Off should prepare an editable Codex draft and send it only after Start', async ({ page }, testInfo) => {
+test('Hand Off should keep the context out of the task field and send it first only after Start', async ({ page }, testInfo) => {
   // Arrange
   const server = new HappyServer();
   await server.install(page);
@@ -19,9 +19,9 @@ test('Hand Off should prepare an editable Codex draft and send it only after Sta
   await expect(page.getByLabel('Folder', { exact: true })).toHaveValue('~/project');
   await expect(page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Codex', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('group', { name: 'Session type', exact: true }).getByRole('button', { name: 'Simple', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(workspace.taskDescription()).toHaveValue(/Happy session `real-session` \(Claude Code, in `~\/project`\)/);
-  await expect(workspace.taskDescription()).toHaveValue(/~\/\.claude\/projects\/\*\/claude-original\.jsonl/);
-  await workspace.expectTaskCaretAtEnd();
+  await expect(workspace.taskDescription()).toHaveValue('');
+  await expect(workspace.handoffContext()).toBeVisible();
+  await expect(workspace.taskDescription()).toHaveAttribute('placeholder', 'Add instructions, or start to continue the work');
   await workspace.expectTaskFocusFrame();
   expect(server.spawns).toEqual([]);
   expect(server.sends).toEqual([]);
@@ -30,10 +30,10 @@ test('Hand Off should prepare an editable Codex draft and send it only after Sta
   await workspace.capture(`${testInfo.project.name}-handoff-draft`);
   // Act
   await page.keyboard.insertText('Continue by checking the pending change.');
-  const prompt = await workspace.taskDescription().inputValue();
   await page.reload();
   // Assert
-  await expect(workspace.taskDescription()).toHaveValue(prompt);
+  await expect(workspace.taskDescription()).toHaveValue('Continue by checking the pending change.');
+  await expect(workspace.handoffContext()).toBeVisible();
   await workspace.expectTaskCaretAtEnd();
   // Act
   await workspace.startDraft();
@@ -43,7 +43,11 @@ test('Hand Off should prepare an editable Codex draft and send it only after Sta
   expect(server.spawns[0]).toMatchObject({ directory: '/real/project', agent: 'codex' });
   expect(server.sends).toHaveLength(1);
   const raw = await server.encryption.decrypt<Json>(server.sends[0].content, server.dataKey);
-  expect(raw.content.text).toBe(prompt.trim());
+  expect(raw.content.text).toBe([
+    'Continue the work from Happy session `real-session` (Claude Code, in `~/project`).', '',
+    'Read the transcript of that session first:', '`~/.claude/projects/*/claude-original.jsonl`', '',
+    'Continue by checking the pending change.',
+  ].join('\n'));
   expect(JSON.stringify(server.sends)).not.toContain('claude-original');
   expect(JSON.stringify(server.sessions.find((session) => session.id === 'real-session'))).toBe(original);
   expect(server.mutations.some((method) => method.endsWith(':abort') || method.endsWith(':killSession'))).toBe(false);
@@ -64,7 +68,8 @@ test('Hand Off from Codex should reuse the exact registered worktree with Claude
   await expect(page.getByLabel('Folder', { exact: true })).toHaveValue('~/project');
   await expect(page.getByLabel('Worktree', { exact: true })).toHaveValue(checkout);
   await expect(page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Claude', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(workspace.taskDescription()).toHaveValue(/~\/\.codex\/sessions\/\*\/\*\/\*\/rollout-\*-thread-original\.jsonl/);
+  await expect(workspace.taskDescription()).toHaveValue('');
+  await expect(workspace.handoffContext()).toBeVisible();
   expect(server.spawns).toEqual([]);
   // Act
   await workspace.startDraft();
@@ -74,6 +79,8 @@ test('Hand Off from Codex should reuse the exact registered worktree with Claude
   expect(server.bashCommands).toEqual([expect.objectContaining({ command: 'git worktree list --porcelain', cwd: '/real/project' })]);
   expect(server.spawns).toHaveLength(1);
   expect(server.sends).toHaveLength(1);
+  const raw = await server.encryption.decrypt<Json>(server.sends[0].content, server.dataKey);
+  expect(raw.content.text).toContain('~/.codex/sessions/*/*/*/rollout-*-thread-original.jsonl');
 });
 
 test('an unregistered checkout should stop before a new worktree or agent is created', async ({ page }) => {
@@ -115,7 +122,7 @@ test('the worktree picker should still create a new checkout from a branch name'
   ]);
 });
 
-test('the demo should prepare a local handoff and explain a missing transcript', async ({ page }) => {
+test('the demo should prepare a local handoff, explain a missing transcript, and let the user remove the context', async ({ page }) => {
   // Arrange
   await page.addInitScript(() => localStorage.setItem('rayno.mode', 'demo'));
   const workspace = new LiveWorkspacePage(page);
@@ -123,9 +130,23 @@ test('the demo should prepare a local handoff and explain a missing transcript',
   // Act
   await workspace.handOff();
   // Assert
-  await expect(workspace.taskDescription()).toHaveValue(/Happy session `floating-panels`/);
-  await expect(workspace.taskDescription()).toHaveValue(/Ask me for the context that you need\./);
+  await expect(workspace.taskDescription()).toHaveValue('');
+  await expect(page.getByText('Continues with the context of “Build the floating panels layout”', { exact: true })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Codex', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await workspace.expectTaskCaretAtEnd();
   await workspace.expectNoPageOverflow();
+  // Act
+  await workspace.startDraft();
+  // Assert
+  await expect(page).toHaveURL(/\/session\/[^/]+$/);
+  await expect(page.getByText(/Happy session `floating-panels`/).first()).toBeVisible();
+  await expect(page.getByText(/Ask me for the context that you need\./).first()).toBeVisible();
+  // Act
+  await page.goto('/session/floating-panels');
+  await workspace.handOff();
+  await page.getByRole('button', { name: 'Remove handoff context', exact: true }).click();
+  await workspace.startDraft();
+  // Assert
+  await expect(workspace.handoffContext()).toHaveCount(0);
+  await expect(workspace.taskDescription()).toHaveAttribute('placeholder', 'What should the agent do?');
+  await expect(page.getByRole('alert').filter({ hasText: 'Describe what the agent should do.' })).toBeVisible();
 });

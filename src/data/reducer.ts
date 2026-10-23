@@ -12,7 +12,7 @@ export function validateDraft(draft: NewSessionDraft, online: boolean): string |
   if (!online) return 'Choose an online computer to start a session.';
   if (!draft.path.trim()) return 'Choose a folder for this session.';
   if (!draft.permissionMode?.trim()) return 'Choose a permission mode before you start a session.';
-  if (!draft.prompt.trim()) return 'Describe what the agent should do.';
+  if (!draft.prompt.trim() && !draft.handoff) return 'Describe what the agent should do.';
   if (draft.type === 'Worktree' && !draft.worktree.trim())
     return 'Choose a worktree or enter a new branch name.';
   return null;
@@ -46,7 +46,7 @@ export function demoReducer(state: DemoState, action: Action): DemoState {
     return {
       ...state,
       sessions: [action.session, ...state.sessions],
-      newDraft: { ...state.newDraft, prompt: '' },
+      newDraft: { ...state.newDraft, prompt: '', handoff: null },
       recentWorkspaces: rememberWorkspace(state.recentWorkspaces, {
         machineId: action.session.machineId, path: action.session.path, usedAt: action.session.createdAt,
       }),
@@ -214,6 +214,9 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         draft.agent = parsed.newDraft.agent as typeof draft.agent;
       if (parsed.newDraft.type === 'Simple' || parsed.newDraft.type === 'Worktree')
         draft.type = parsed.newDraft.type;
+      const handoff = parsed.newDraft.handoff;
+      if (record(handoff) && typeof handoff.sessionId === 'string' && typeof handoff.title === 'string' && typeof handoff.prompt === 'string')
+        draft.handoff = { sessionId: handoff.sessionId, title: handoff.title, prompt: handoff.prompt };
     }
     draft.permissionMode = resolveNewSessionPermission({ flavor: draft.agent.toLowerCase() }, [draft.permissionMode]);
     return {

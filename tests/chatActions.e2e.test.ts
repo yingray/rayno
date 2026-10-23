@@ -75,7 +75,8 @@ for (const action of ['Hand Off', 'New session in same workspace']) {
     const agent = action === 'Hand Off' ? 'Codex' : 'Claude';
     await expect(page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: agent, exact: true }))
       .toHaveAttribute('aria-pressed', 'true');
-    await expect(workspace.taskDescription()).toHaveValue(action === 'Hand Off' ? /original-provider-id\.jsonl/ : '');
+    await expect(workspace.taskDescription()).toHaveValue('');
+    await expect(workspace.handoffContext()).toHaveCount(action === 'Hand Off' ? 1 : 0);
     await workspace.expectTaskCaretAtEnd();
     expect(server.spawns).toHaveLength(0);
     expect(server.sends).toHaveLength(0);

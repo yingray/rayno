@@ -157,7 +157,7 @@ function Connected({
         dispatch({ type: 'rememberWorkspace', value: {
           machineId: draft.machineId, path: client.getMetadata(id).path || draft.path, usedAt: Date.now(),
         } });
-        dispatch({ type: 'newDraft', value: { prompt: '' } });
+        dispatch({ type: 'newDraft', value: { prompt: '', handoff: null } });
         return id;
       },
       async sendMessage(id, content, attachments, options) {

@@ -47,7 +47,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
   const ended = mode === 'live' && needsSessionResume(session);
   const recoveryReason = ended ? live?.resumeUnavailable(session.id) : '';
   const archiveLabel = archiveAction(session, ended);
-  const source = { sessionId: session.id, machineId: session.machineId, path: session.path,
+  const source = { sessionId: session.id, title: titleOf(session), machineId: session.machineId, path: session.path,
     homeDir: metadata?.homeDir || machine?.homeDir,
     flavor: metadata?.flavor || (session.agent === 'Happy Agent' ? 'rig' : session.agent.toLowerCase()),
     claudeSessionId: metadata?.claudeSessionId, codexThreadId: metadata?.codexThreadId,

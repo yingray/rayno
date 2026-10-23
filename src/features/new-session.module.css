@@ -230,6 +230,37 @@
   gap: 6px;
   align-items: center;
 }
+.handoff {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid #43334d;
+  border-radius: 12px;
+  background: #28212f;
+  color: var(--accent-soft);
+  font-size: 13px;
+  line-height: 18px;
+}
+.handoffText {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.handoff > button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
 .attached {
   display: flex;
   gap: 5px;
@@ -379,6 +410,10 @@
   .attach {
     min-width: 44px;
     min-height: 44px;
+  }
+  .handoff > button {
+    width: 44px;
+    height: 44px;
   }
   .inputActions {
     margin-top: 8px;

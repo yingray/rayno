@@ -1,9 +1,10 @@
 // Adapted from the v1 Rayno overlay (MIT). See PROTOCOL-SOURCES.md.
-import type { Agent, NewSessionDraft } from '../data/types';
+import type { Agent, HandoffContext, NewSessionDraft } from '../data/types';
 import { displayWorkspacePath, draftInWorkspace } from '../data/workspaces';
 
 export type HandoffSource = {
   sessionId: string;
+  title?: string;
   flavor?: string | null;
   machineId?: string | null;
   path?: string | null;
@@ -30,7 +31,13 @@ export function buildHandoffPrompt(source: HandoffSource): string {
   const lines = [`Continue the work from Happy session \`${source.sessionId}\` (${agent}${where}).`, ''];
   if (transcript) lines.push('Read the transcript of that session first:', `\`${transcript}\``);
   else lines.push('I cannot give you its transcript. Ask me for the context that you need.');
-  return [...lines, '', ''].join('\n');
+  return lines.join('\n');
+}
+
+// The context goes first and the user's task follows it in the same first message.
+export function handoffRequestPrompt(prompt: string, handoff?: HandoffContext | null): string {
+  if (!handoff) return prompt;
+  return prompt.trim() ? `${handoff.prompt}\n\n${prompt}` : handoff.prompt;
 }
 
 export function defaultHandoffAgent(flavor?: string | null): Agent | null {
@@ -42,6 +49,10 @@ export function buildHandoffDraft(source: HandoffSource, current: NewSessionDraf
   if (!draft) return null;
   return {
     ...draft,
-    prompt: buildHandoffPrompt({ ...source, path: displayWorkspacePath(source.path!.trim(), source.homeDir) }),
+    handoff: {
+      sessionId: source.sessionId,
+      title: source.title?.trim() || source.sessionId,
+      prompt: buildHandoffPrompt({ ...source, path: displayWorkspacePath(source.path!.trim(), source.homeDir) }),
+    },
   };
 }

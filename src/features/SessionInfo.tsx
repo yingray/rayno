@@ -55,6 +55,7 @@ export function SessionInfo({
   const leave = leaveRoute(session, parentKnown);
   const handoff = buildHandoffDraft({
     sessionId: session.id,
+    title: titleOf(session),
     machineId: session.machineId,
     path: session.path,
     flavor: metadata?.flavor || (session.agent === 'Happy Agent' ? 'rig' : session.agent.toLowerCase()),

@@ -148,7 +148,10 @@ export type NewSessionDraft = {
   agent: Agent;
   type: 'Simple' | 'Worktree';
   prompt: string;
+  // A handoff sends its context before the task text, so the task field stays free for the user.
+  handoff?: HandoffContext | null;
 };
+export type HandoffContext = { sessionId: string; title: string; prompt: string };
 export type RecentWorkspace = { machineId: string; path: string; usedAt: number };
 export type ModelChoice = { model: string; effort: string | null };
 export type DemoState = {
