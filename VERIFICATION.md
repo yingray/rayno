@@ -649,3 +649,15 @@ Before, the chat waited for a reconnect, a focus change, or a control handoff to
 - Full browser suite: 1,217 passed, 54 existing skips, 1 failed. The failure is
   `newSessionControls.e2e.test.ts:6`, which measures the header right after a viewport resize. It also failed in
   the phase 0 run, and passed 12 of 12 runs with four workers. This change does not touch layout.
+
+## Open chat first after a reconnect (2026-10-23)
+
+After a reconnect, an open chat that the client already knows reads its new messages at the same time as the list.
+Before, it waited for the full list read, the cache save, and the attention scans of all other sessions.
+An open chat that is not known yet still waits for the list. The sync still fails when any open chat fails.
+
+- A new test keeps the attention scan of another session from answering, then reconnects.
+  It fails against the previous code: the open chat never got its new reply. It passes after the change.
+- All 526 unit tests and the type check passed. 157 browser checks passed with 3 existing skips: connection,
+  offline workspace, navigation status, chat presentation, handoff, and agent requests across four projects.
+- The baseline recovery marks are in `PERFORMANCE-PLAN.md`. That fixture has two sessions, so the change shows only in the unit test.

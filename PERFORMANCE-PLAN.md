@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-23 (phase 1 done).
+Created: 2026-10-23. Updated: 2026-10-23 (step 2.1).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -86,7 +86,7 @@ Four parallel workers made the cache timings two to three times higher.
 
 | Step | ID | Change | Test | Status |
 |---|---|---|---|---|
-| 2.1 | N03 | Split `syncWorkspace()`. On reconnect, start the `forward` read for active sessions at the same time as the list read. Run `flushCache()` and the attention scans after both, without `await` in the recovery path | Make the attention fetch take 10 s. `active-chat-caught-up` still arrives in less than 2 s | todo |
+| 2.1 | N03 | Split `syncWorkspace()`. On reconnect, start the `forward` read for active sessions at the same time as the list read. Run `flushCache()` and the attention scans after both, without `await` in the recovery path | Make the attention fetch take 10 s. `active-chat-caught-up` still arrives in less than 2 s | done |
 | 2.2 | N04 | Queue updates per session. Replace `refresh(true)` inside the queue with a coalesced, scheduled refresh. Events for known sessions do not wait for it | An unknown-session event with a slow refresh does not delay a `new-message` for the open chat | todo |
 
 Keep the full session list. Do not cut it to 150 rows. Make the list read progressive instead.
@@ -187,4 +187,5 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-23 | `9a8df11` | 1.2 | Vitest, 165 sync browser checks | Two race tests fail before the change and pass after it |
 | 2026-10-23 | `8088e84` | 1.3 | Vitest, 81 offline and presence browser checks, baseline | 100 activity events now cause no cache save. The baseline live phase still saves 0–2 times, because the replies change history |
 | 2026-10-23 | `796d091` | 1.4 | Vitest, 183 history browser checks | 11 forward calls during one read now make 2 reads, not 11 |
-| 2026-10-23 | after `796d091` | 1.5 | Vitest, full browser suite | A seq gap now reads at once. Full suite: 1,217 passed, 1 failed (`newSessionControls.e2e.test.ts:6`, a layout check right after a resize; it passed 12 of 12 runs alone with four workers) |
+| 2026-10-23 | `281aaef` | 1.5 | Vitest, full browser suite | A seq gap now reads at once. Full suite: 1,217 passed, 1 failed (`newSessionControls.e2e.test.ts:6`, a layout check right after a resize; it passed 12 of 12 runs alone with four workers) |
+| 2026-10-23 | after `281aaef` | 2.1 | Vitest, 157 recovery browser checks, baseline | A never-ending attention scan no longer blocks the open chat. Baseline connect to caught-up: 55–160 ms, before 57–266 ms; the two-session fixture has no slow scan |

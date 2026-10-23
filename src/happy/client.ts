@@ -673,15 +673,24 @@ export class HappyClient implements DemoAdapter {
       this.patch({ retrying: false });
     }
   }
-  // Read the session list, then the open chats. A chat that cannot update fails the sync, so the backoff reads it again.
+  // Read the session list and the open chats. A chat that cannot update fails the sync, so the backoff reads it again.
+  // An open chat that this client already knows reads at the same time as the list. So a slow list read, a cache save,
+  // or the attention scans of other sessions do not delay it. An open chat that is not known yet waits for the list.
   private async syncWorkspace(force = false, histories = true) {
-    await this.refresh(force);
+    const list = this.refresh(force);
     if (histories) {
-      const results = await Promise.allSettled([...this.activeSessions].map((id) => this.loadHistory(id, 'forward', true)));
+      list.catch(() => { /* The await below reports the failure. */ });
+      const known = [...this.activeSessions].filter((id) => this.sessions.has(id));
+      const open = await Promise.allSettled(known.map((id) => this.loadHistory(id, 'forward', true)));
+      const caughtUp = known.length === this.activeSessions.size && open.every((result) => result.status === 'fulfilled');
+      if (caughtUp) markRecovery('active-chat-caught-up');
+      await list;
+      const later = [...this.activeSessions].filter((id) => !known.includes(id));
+      const results = [...open, ...await Promise.allSettled(later.map((id) => this.loadHistory(id, 'forward', true)))];
       const failed = results.find((result) => result.status === 'rejected');
       if (failed) throw failed.reason;
-      markRecovery('active-chat-caught-up');
-    }
+      if (!caughtUp) markRecovery('active-chat-caught-up');
+    } else await list;
     this.syncFailures = 0;
   }
   // Happy Web retries its sync without a warning. Rayno also retries, and keeps the workspace on screen while it does.

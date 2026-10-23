@@ -1807,6 +1807,33 @@ describe('Happy client damaged records', () => {
     expect(fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/messages')))
       .toEqual([expect.stringContaining('after_seq=3&')]);
   });
+  it('should read the open chat after a reconnect while the attention scan of another session is slow', async () => {
+    // Arrange
+    const other = { ...session, id: 'other', seq: 1, updatedAt: 150 };
+    const reply = await wireMessage('b', 2, 'Reply after the reconnect');
+    let slow = false, otherMessages = [await wireMessage('o1', 1, 'Other')];
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/v2/sessions')) return Promise.resolve(response({ sessions: [session, other], hasNext: false }));
+      if (url.endsWith('/v1/machines')) return Promise.resolve(response([]));
+      if (url.includes('/sessions/other/')) return slow ? new Promise<Response>(() => {}) : Promise.resolve(response({ messages: otherMessages, hasMore: false }));
+      return Promise.resolve(response({ messages: url.includes('after_seq=1&') ? [reply] : url.includes('after_seq=') ? [] : [first], hasMore: false }));
+    });
+    const first = await wireMessage('a', 1, 'First');
+    await start();
+    client.watchSession('session');
+    await vi.waitFor(() => expect(client.getSnapshot().histories.session?.loaded).toBe(true), { interval: 1 });
+    // The other session has a new message, so the next full read scans it again. That scan does not answer.
+    other.seq = 2;
+    otherMessages = [...otherMessages, await wireMessage('o2', 2, 'Other again')];
+    slow = true;
+    // Act
+    socket.handlers.get('disconnect')!();
+    socket.handlers.get('connect')!();
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().sessions.find((row) => row.id === 'session')!.messages.map((row) => row.content))
+      .toEqual(['First', 'Reply after the reconnect']), { interval: 1 });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/sessions/other/messages?before_seq='))).toBe(true);
+  });
   it('should load the readable messages around a damaged message and advance the cursor', async () => {
     // Arrange
     const page = [await wireMessage('a', 1, 'First'), damagedMessage('b', 2), await wireMessage('c', 3, 'Third')];
