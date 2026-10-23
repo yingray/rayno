@@ -4,23 +4,43 @@ export * from './credentials';
 import { CLIENT_ID, serverOrigin } from './credentials';
 import type { Credentials } from './credentials';
 
+const AUTH_TIMEOUT = 25000;
+// Each request has its own deadline, so a stalled server cannot keep the sign-in screen waiting.
+// The caller's signal still cancels the request, with the caller's reason.
 export async function authRequest(
   server: string,
   path: string,
   body: unknown,
   signal?: AbortSignal,
 ) {
-  const response = await fetch(`${serverOrigin(server)}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Happy-Client': CLIENT_ID },
-    body: JSON.stringify(body),
-    signal,
-  });
-  if (!response.ok)
-    throw new Error(
-      `Happy authentication failed (${response.status}). Check the server and try again.`,
-    );
-  return response.json();
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, AUTH_TIMEOUT);
+  const cancel = () => controller.abort(signal!.reason);
+  if (signal?.aborted) cancel();
+  else signal?.addEventListener('abort', cancel, { once: true });
+  try {
+    const response = await fetch(`${serverOrigin(server)}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Happy-Client': CLIENT_ID },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!response.ok)
+      throw new Error(
+        `Happy authentication failed (${response.status}). Check the server and try again.`,
+      );
+    return await response.json();
+  } catch (error) {
+    if (timedOut) throw new Error('Happy did not answer within 25 seconds. Check the server and try again.');
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
+  }
 }
 export async function loginWithKey(server: string, value: string): Promise<Credentials> {
   const secret = recoverySecret(value);

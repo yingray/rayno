@@ -599,4 +599,6 @@ Before this change, a body that stalled after the headers had no timeout, and cl
 - Three new unit tests cover a stalled request body, a stalled body when the client closes, and a stalled image download.
   All three fail against the previous code and pass after the change. All 515 unit tests and the type check passed.
 - The image download keeps its 45-second deadline over the full body. Uploads do not read a body.
-- `loginWithKey()` still has no deadline; `PERFORMANCE-PLAN.md` tracks it as step 1.1b.
+- Follow-up: each sign-in request now has a 25-second deadline. A caller cancel keeps its reason.
+  Three new auth tests passed; the stalled sign-in test fails against the previous code. All 518 unit tests passed.
+  32 login and connection browser checks passed across the four projects.
