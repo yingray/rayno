@@ -108,13 +108,14 @@ Their presence is why passing the current test suite does not mean that all know
 | P13 | Divide agent responses and show date/time | Done | Each formal response begins with a 1px divider and the original server timestamp, formatted in the interface language and local time zone. Tools, thinking, and recap-only rows do not create extra headers. Missing legacy timestamps show as unavailable. Demo replies carry simulated creation times. | [rendering](../src/features/MessageList.tsx), [normalization](../src/happy/normalize.ts), [browser tests](../tests/responseHeaders.e2e.test.ts), [verification](../VERIFICATION.md#response-dividers-and-timestamps-2026-10-23) |
 | P14 | Remove completed new-session forms from history | Done | Successful creation replaces the current form entry with the created chat. Browser Back returns to the previous page; Forward returns to the chat. Unfinished forms and folder-approval cancellation retain their drafts. Applies to live and demo creation. | [navigation](../src/features/NewSession.tsx), [history tests](../tests/newSessionHistory.e2e.test.ts), [folder tests](../tests/newSessionFolder.e2e.test.ts), [verification](../VERIFICATION.md#new-session-history-2026-10-23) |
 | P15 | Stronger optional glass appearance | Done | Appearance offers Standard and Intense. Standard preserves the existing look; Intense adds translucent tinted surfaces, stronger highlights, and frosted chat controls, navigation, usage cards, menus, autocomplete lists, and dialogs. The device/account-scoped Rayno preference survives reloads; reduced-transparency and unsupported-filter fallbacks retain readable surfaces. | [settings](../src/features/Settings.tsx), [tokens](../src/styles/global.css), [browser tests](../tests/glassStyle.e2e.test.ts), [verification](../VERIFICATION.md#optional-intense-glass-2026-10-23) |
+| P16 | DiceBear Planets session avatars | Done | Avatar style offers DiceBear Planets. A local, pinned Planets renderer uses only the session ID as its deterministic seed. List, header, and Session Info remain consistent across renames, reloads, and cached offline reads. Agent choices without a session keep provider marks. Existing agent mark and initials options remain available. | [renderer](../src/components/planetsAvatar.ts), [avatar component](../src/components/ui.tsx), [browser tests](../tests/planetsAvatar.e2e.test.ts), [verification](../VERIFICATION.md#dicebear-planets-avatars-2026-10-23) |
 
 ## Delivery evidence
 
 The baseline `32a06f9` reached the local previews before this continuation.
 The checks below cover the implementation and local previews. Cloudflare production verification is separate.
 
-Current counts: **43 Done, 7 Open, 5 Deferred, 3 Corrected, 2 Intentional**. Total: 60, including the later P10–P15 requests.
+Current counts: **44 Done, 7 Open, 5 Deferred, 3 Corrected, 2 Intentional**. Total: 61, including the later P10–P16 requests.
 
 P10 verification is recorded in [VERIFICATION.md](../VERIFICATION.md#private-local-image-imports-2026-10-23).
 The following counts describe the earlier parity delivery, before P10.

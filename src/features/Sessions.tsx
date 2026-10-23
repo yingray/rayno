@@ -60,7 +60,7 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
           onSelect(session.id);
         }}
       >
-        <Avatar agent={session.agent} />
+        <Avatar sessionId={session.id} agent={session.agent} />
         <span className={styles.rowBody}>
           <span className={styles.rowHeading}>
             <WorkspaceTag name={session.workspace} />

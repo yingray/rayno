@@ -8,7 +8,7 @@ import { checkForUpdate, currentBuild, forceUpdate, formatBuildTime } from '../a
 import type { UpdateCheck } from '../app/appUpdate';
 import type { IconName } from '../components/ui';
 import { useDemo } from '../data/store';
-import type { BubbleColor, ChatWidth, FontSize, GlassStyle, RecapMode } from '../data/types';
+import type { AvatarStyle, BubbleColor, ChatWidth, FontSize, GlassStyle, RecapMode } from '../data/types';
 import { DEFAULT_RECAP_STYLE, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 import styles from './settings.module.css';
 import { UsageReport } from './UsageReport';
@@ -245,20 +245,22 @@ export function Settings() {
                   ))}
                 </div>
               </Row>
-              <Row icon="personOutline" title={t("Avatar style")}>
+              <Row icon="personOutline" title={t("Avatar style")} className={styles.chatWidthRow}
+                subtitle={preferences.avatar === 'planets' ? t("A fixed planet for each session") : undefined}>
                 <select
                   aria-label={t("Avatar style")}
-                  className={styles.inlineSelect}
+                  className={styles.widthSelect}
                   value={preferences.avatar}
                   onChange={(event) =>
                     dispatch({
                       type: 'preferences',
-                      value: { avatar: event.target.value as 'provider' | 'initials' },
+                      value: { avatar: event.target.value as AvatarStyle },
                     })
                   }
                 >
                   <option value="provider">{t("Agent mark")}</option>
                   <option value="initials">{t("Initials")}</option>
+                  <option value="planets">DiceBear Planets</option>
                 </select>
               </Row>
               <Row

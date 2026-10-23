@@ -1,0 +1,8 @@
+Planets by DiceBear
+https://www.dicebear.com/styles/planets/
+
+The Planets artwork is dedicated to the public domain under CC0 1.0.
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Source: @dicebear/styles 10.6.0, planets.json
+Only this style definition is bundled in Rayno.

@@ -1,5 +1,5 @@
 import { useText } from "../i18n";
-import { memo, useEffect, useId, useRef } from 'react';
+import { lazy, memo, Suspense, useEffect, useId, useRef } from 'react';
 import type { ButtonHTMLAttributes, CSSProperties, PropsWithChildren, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { formatSessionTimestamp } from '../data/sessionList';
@@ -181,19 +181,21 @@ export function Button({
     </button>
   );
 }
-export const Avatar = memo(function Avatar({ agent, size = 38 }: { agent: Agent; size?: number }) {
+const PlanetAvatar = lazy(() => import('./PlanetAvatar'));
+
+export const Avatar = memo(function Avatar({ agent, size = 38, sessionId }: { agent: Agent; size?: number; sessionId?: string }) {
   const t = useText();
   const avatar = useDemo((store) => store.state.preferences.avatar);
+  const planet = avatar === 'planets' && !!sessionId;
+  const mark = <img className={agent !== 'Claude' ? styles.whiteIcon : ''}
+    src={`/icons/${agent === 'Claude' ? 'claude' : agent === 'Codex' ? 'codex' : 'happy'}.png`} alt="" />;
   return (
-    <span className={styles.avatar} style={{ width: size, height: size }} aria-label={agent}>
-      {avatar === 'initials' ? (
+    <span className={styles.avatar} style={{ width: size, height: size }} aria-label={agent}
+      data-avatar-style={planet ? 'planets' : avatar === 'initials' ? 'initials' : 'provider'}>
+      {planet ? <Suspense fallback={mark}><PlanetAvatar sessionId={sessionId!} /></Suspense> : avatar === 'initials' ? (
         <span>{agent === 'Happy Agent' ? t("H") : agent[0]}</span>
       ) : (
-        <img
-          className={agent !== 'Claude' ? styles.whiteIcon : ''}
-          src={`/icons/${agent === 'Claude' ? 'claude' : agent === 'Codex' ? 'codex' : 'happy'}.png`}
-          alt=""
-        />
+        mark
       )}
     </span>
   );

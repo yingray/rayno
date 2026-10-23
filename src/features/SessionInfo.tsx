@@ -176,7 +176,7 @@ export function SessionInfo({
         )}
         <div className={styles.identity}>
           <div className={styles.identityTop}>
-            <Avatar agent={session.agent} size={44} />
+            <Avatar sessionId={session.id} agent={session.agent} size={44} />
             <div>
               <strong>{titleOf(session)}</strong>
               <span style={{ color: machine?.online ? 'var(--green)' : 'var(--muted)' }}>

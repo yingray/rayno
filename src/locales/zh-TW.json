@@ -642,6 +642,7 @@
   "{width} pixels": "{width} 像素",
   "Drag to resize. Use arrow keys to adjust. Double-click or press Enter to reset.": "拖曳或使用方向鍵調整寬度，雙擊或按 Enter 恢復預設。",
   "Standard": "標準",
+  "A fixed planet for each session": "每個 session 都有固定的星球頭像",
   "Glass style": "玻璃風格",
   "Transparency, blur, and highlights": "透明、模糊與高光效果",
   "Intense": "強烈",

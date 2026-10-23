@@ -184,7 +184,7 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
           preferences[key] = parsed.preferences[key];
       if (parsed.preferences.language === 'en' || parsed.preferences.language === 'zh-TW') preferences.language = parsed.preferences.language;
       if (typeof parsed.preferences.customCodexModel === 'string') preferences.customCodexModel = parsed.preferences.customCodexModel.trim().slice(0, 200);
-      if (parsed.preferences.avatar === 'provider' || parsed.preferences.avatar === 'initials')
+      if (parsed.preferences.avatar === 'provider' || parsed.preferences.avatar === 'initials' || parsed.preferences.avatar === 'planets')
         preferences.avatar = parsed.preferences.avatar;
       if (parsed.preferences.recap === 'auto' || parsed.preferences.recap === 'manual')
         preferences.recap = parsed.preferences.recap;

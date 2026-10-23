@@ -41,3 +41,10 @@ The complete notices appear in `public/licenses/lowlight.txt` and `public/licens
 
 The package manifest and lockfile identify exact direct versions and resolved dependency versions.
 The respective packages retain their source licenses.
+
+## DiceBear Planets
+
+Session avatars use [DiceBear Planets](https://www.dicebear.com/styles/planets/) by DiceBear under CC0 1.0.
+Only the Planets definition from @dicebear/styles 10.6.0 loads, with @dicebear/core 10.7.0 under the MIT license.
+The renderer runs locally with the session ID as its seed. It does not use the DiceBear HTTP API.
+Notices appear in `public/licenses/dicebear-core.txt` and `public/licenses/dicebear-planets.txt`.

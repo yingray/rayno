@@ -440,7 +440,7 @@ export const Chat = memo(function Chat({
           onClick={onList}
         />
         <button className={styles.titleCapsule} onClick={onInfo} aria-label={t("Open session info")}>
-          <Avatar agent={session.agent} size={36} />
+          <Avatar sessionId={session.id} agent={session.agent} size={36} />
           <span className={styles.titleText}>
             <strong>{sideTitle || titleOf(session)}</strong>
             <span className={styles.subtitle}>

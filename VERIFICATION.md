@@ -527,3 +527,26 @@ dialog backgrounds and open/close both by touch or pointer. Standard retains the
 
 The modal refinement also increases the minimum tint opacity of floating surfaces. This keeps underlying text
 secondary even when a browser reports backdrop-filter support but omits the visual blur in its screenshot renderer.
+
+## DiceBear Planets avatars (2026-10-23)
+
+Appearance > Avatar style now includes DiceBear Planets. The session ID is the only seed, so session list rows,
+chat headers, and Session Info share the same SVG across renames and reloads. Non-session agent choices keep provider
+marks. Existing provider and initials styles remain available, with provider marks as the migration default.
+
+The renderer uses pinned @dicebear/core 10.7.0 and only the Planets definition from @dicebear/styles 10.6.0.
+It generates image data URIs locally and never calls the DiceBear API. The lazy avatar chunk is about 182 kB
+(29 kB gzip), and the production service-worker precache includes it. Notices cover the MIT core and CC0 artwork.
+
+- Type check and production build passed. All 508 unit tests passed across 44 files, including deterministic
+  generation, different session seeds, and restoration of valid, missing, and invalid avatar settings.
+- All 12 browser cases passed across desktop/mobile Chromium and WebKit, covering live/demo preference persistence,
+  matching list/header/info sources, different sessions, rename/reload stability, encrypted-cache offline reads,
+  loaded image dimensions, and restoration of provider and initials styles. No DiceBear network requests occurred.
+- Responsive interactions cover 320/360/390/430px, 390x360 short height, 844x390 landscape, and desktop.
+  They select the 16px/44px avatar control, open and close Session Info, send messages, and verify provider marks in
+  new-session controls. Avatar images keep their existing bounds and do not add touch controls.
+- Direct Tailscale checks in both engines loaded the local avatar and verified header/info consistency at phone size.
+  Screenshots remain in ignored test-results/screenshots/. No real agent started or external account changed.
+- Offline browser checks use the existing offline-workspace fixture and encrypted history cache. A physical phone,
+  fully disconnected production service-worker reload, and Cloudflare deployment were not verified in this change.

@@ -128,6 +128,7 @@ The [Happy Web gap tracker](docs/happy-web-gap-tracker.md) lists every audited i
 - Keep subagent work under its parent across message pages and offline reloads. Unplaced work stays readable without main reply actions.
 - Spawn a real agent on an online machine, including optional Git worktree creation.
 - Hand Off from Session info or the chat menu to an editable new-session draft on the same computer and checkout.
+- Choose DiceBear Planets in Settings > Appearance > Avatar style for a fixed planet per session ID. The list, chat header, and Session Info share the same locally generated SVG; no session ID goes to an avatar service. Agent choices without a session keep provider marks.
 - Choose Standard or Intense glass in Settings > Appearance. Intense adds translucent panels, frosted floating controls, menus and dialogs, stronger edge highlights, and static colored light behind the workspace. It preserves the standard layout and saves the choice in Rayno on this device.
 - A conversation and composer with full, moderate, and standard width choices in Settings > Appearance. Moderate width is the default.
 - Resize the boundary beside Side Chat or Session Info on screens at least 1280px wide. Side Chat supports 360–720px and Session Info supports 320–560px, while the main conversation retains at least 520px. Drag the divider or use arrow keys; double-click or press Enter to reset. Each panel remembers its width in Rayno on this device.
