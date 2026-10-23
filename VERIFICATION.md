@@ -429,3 +429,25 @@ or the [Side Chat demo](https://rays-macbook-pro.tailf62d7d.ts.net:5180/session/
 The existing preview route serves this working-tree build. No Tailscale route or existing service configuration changed.
 Provider operations use isolated fixtures; no real agent was started or mutated during verification.
 Cloudflare production delivery and a physical iOS keyboard remain outside these checks.
+
+
+## Navigation updates and unread dots (2026-10-23)
+
+The desktop rail and mobile tabs include an Updates icon. A new version opens a nonmodal prompt without
+stealing draft focus. Users can dismiss a version for the current browser session, or explicitly reload and update.
+The icon retains its available-update dot after dismissal and installs directly on click. Background failures stay
+quiet; a failed explicit update preserves the page and allows retry. Online, visible pages check every five minutes
+and on entry, focus, reconnect, or visibility return. The Sessions icon displays an empty dot for unread main
+sessions; archived sessions, hidden side chats, and read permission requests do not create that dot.
+
+- Type check and production build: passed.
+- Unit tests: 486 passed across 43 files.
+- Browser checks: 51 passed, five existing project-specific skips, across desktop/mobile Chromium and WebKit.
+  All 28 new navigation-status cases passed. Existing Settings update, actual service-worker replacement,
+  background unread delivery, reconnect catch-up, tab-title counts, and attention favicon cases also passed.
+- Interactions cover 320/360/390/430px phones, 390x360 keyboard-height viewport, 844x390 landscape, and expanded
+  desktop navigation. Tests activate controls by click or touch, verify 44px targets and hit testing, preserve drafts
+  across explicit reload, dismiss and rediscover releases, and clear the unread dot after viewing a reply.
+- The existing Tailscale preview also showed and dismissed the prompt in Chromium and WebKit at desktop and phone widths, with no page errors. Synthetic-release visual checks block service workers so page routing can intercept the version response.
+- Release detection uses controlled version responses in browser tests; no production release was published.
+  Physical iOS keyboard and Cloudflare delivery were not verified.

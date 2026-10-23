@@ -11,6 +11,7 @@ import type { MessageSettings } from '../data/types';
 import { sideChatTitle } from '../data/sideChats';
 import { applyFavicon, attentionTitle, tabAttention } from './tabAttention';
 import { ResizablePanel } from './ResizablePanel';
+import { UpdateIcon, UpdateNotice, useNavigationUpdate } from './NavigationUpdate';
 const Chat = lazy(() => import('../features/Chat').then((module) => ({ default: module.Chat })));
 const NewSession = lazy(() => import('../features/NewSession').then((module) => ({ default: module.NewSession })));
 const SessionInfo = lazy(() => import('../features/SessionInfo').then((module) => ({ default: module.SessionInfo })));
@@ -39,6 +40,7 @@ export function App() {
   const navigate = useNavigate();
   const width = useViewport();
   const mobile = width < 768;
+  const update = useNavigationUpdate();
   const path = location.pathname;
   const [expanded, setExpanded] = useState(() => {
     try {
@@ -120,6 +122,7 @@ export function App() {
     };
   }, []);
   const attention = useDemo((store) => tabAttention(store.state.sessions));
+  const hasUnread = useDemo(store => store.state.sessions.some(item => !item.archived && !item.isSideChat && item.unread));
   useEffect(() => {
     document.title = attentionTitle(`Rayno · ${infoOpen ? 'Session info' : sideOpen && mobile ? 'Side chats' : path === '/new' ? 'New session' : sessionRoute && session ? sideTitle || session.customTitle || session.title : navigation.find((item) => item.key === active)?.name || 'Floating Panels'}`, attention.count);
   }, [path, active, session, sideTitle, infoOpen, sideOpen, mobile, attention.count]);
@@ -195,12 +198,15 @@ export function App() {
                 aria-current={active === item.key ? "page" : undefined}
                 title={t(item.name)}
                 onClick={() => goNav(item)}
+                aria-description={item.key === 'sessions' && hasUnread ? t('Unread messages') : undefined}
               >
                 <Icon name={item.icon} size={21} />
                 <span>{t(item.name)}</span>
+                {item.key === 'sessions' && hasUnread && <span className={styles.navBadge} role="img" aria-label={t('Unread messages')} />}
               </button>
             ))}
             <div className={styles.railBottom}>
+              <div className={styles.updateSlot}><UpdateIcon update={update} /></div>
               <Button
                 variant="ghost"
                 icon={expanded ? "chevronBackOutline" : "chevronForwardOutline"}
@@ -323,14 +329,18 @@ export function App() {
                 aria-current={active === item.key ? "page" : undefined}
                 className={active === item.key ? styles.tabActive : ''}
                 onClick={() => navigate(item.route)}
+                aria-description={item.key === 'sessions' && hasUnread ? t('Unread messages') : undefined}
               >
                 <Icon name={item.icon} size={20} />
                 <span>{t(item.name)}</span>
+                {item.key === 'sessions' && hasUnread && <span className={styles.navBadge} role="img" aria-label={t('Unread messages')} />}
               </button>
             ))}
+            <UpdateIcon update={update} mobile />
           </nav>
         )}
       </div>
+      <UpdateNotice update={update} expanded={expanded} />
       {toast && (
         <div className={styles.toast} role="status">
           <Icon name="checkmarkCircleOutline" size={17} />

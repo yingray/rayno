@@ -640,5 +640,16 @@
   "Resize session info": "調整 session 資訊寬度",
   "Resize side chat": "調整子對話寬度",
   "{width} pixels": "{width} 像素",
-  "Drag to resize. Use arrow keys to adjust. Double-click or press Enter to reset.": "拖曳或使用方向鍵調整寬度，雙擊或按 Enter 恢復預設。"
+  "Drag to resize. Use arrow keys to adjust. Double-click or press Enter to reset.": "拖曳或使用方向鍵調整寬度，雙擊或按 Enter 恢復預設。",
+  "Update Rayno": "更新 Rayno",
+  "Check for updates": "檢查更新",
+  "Update available": "有可用更新",
+  "Could not update Rayno. Try again.": "無法更新 Rayno，請重試。",
+  "Rayno update": "Rayno 更新",
+  "A Rayno update is ready.": "Rayno 有新版本可更新。",
+  "Dismiss update notification": "關閉更新提示",
+  "Reload and update": "更新並重新載入",
+  "Installing the latest version…": "正在安裝最新版本…",
+  "This is the latest version": "目前已是最新版本",
+  "Cannot check for updates. Check your connection.": "無法檢查更新，請確認網路連線。"
 }
