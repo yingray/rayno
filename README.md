@@ -129,6 +129,7 @@ The [Happy Web gap tracker](docs/happy-web-gap-tracker.md) lists every audited i
 - Spawn a real agent on an online machine, including optional Git worktree creation.
 - Hand Off from Session info or the chat menu to an editable new-session draft on the same computer and checkout.
 - A conversation and composer with full, moderate, and standard width choices in Settings > Appearance. Moderate width is the default.
+- Resize the boundary beside Side Chat or Session Info on screens at least 1280px wide. Side Chat supports 360–720px and Session Info supports 320–560px, while the main conversation retains at least 520px. Drag the divider or use arrow keys; double-click or press Enter to reset. Each panel remembers its width in Rayno on this device.
 - The floating chat header includes session actions, Hand Off, and a new session in the same workspace.
 - Soft dark gradients at the message viewport's top and bottom, below the floating controls.
 - Mermaid code fences render with `beautiful-mermaid`, with source copying, scrollable diagrams, and readable source when a preview is unavailable.

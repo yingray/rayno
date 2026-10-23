@@ -10,6 +10,7 @@ import { LazyBoundary } from '../components/LazyBoundary';
 import type { MessageSettings } from '../data/types';
 import { sideChatTitle } from '../data/sideChats';
 import { applyFavicon, attentionTitle, tabAttention } from './tabAttention';
+import { ResizablePanel } from './ResizablePanel';
 const Chat = lazy(() => import('../features/Chat').then((module) => ({ default: module.Chat })));
 const NewSession = lazy(() => import('../features/NewSession').then((module) => ({ default: module.NewSession })));
 const SessionInfo = lazy(() => import('../features/SessionInfo').then((module) => ({ default: module.SessionInfo })));
@@ -288,14 +289,14 @@ export function App() {
           </main>
         )}
         {!mobile && infoOpen && width >= 1280 && (
-          <aside className={styles.infoPanel}>
+          <ResizablePanel kind="info" key="info">
             <LazyBoundary><SessionInfo session={session!} onClose={closeInfo} /></LazyBoundary>
-          </aside>
+          </ResizablePanel>
         )}
         {sidePanel && (
-          <aside className={styles.sidePanel}>
+          <ResizablePanel kind="side" key="side">
             <LazyBoundary><SideChats key={session!.id} parent={session!} layout="panel" settings={readSettings} onClose={closeSide} /></LazyBoundary>
-          </aside>
+          </ResizablePanel>
         )}
         {!mobile && sideOpen && width < 1280 && (
           <Dialog title={t("Side chats")} onClose={closeSide} className={`${styles.infoDrawer} ${styles.sideDrawer}`}>

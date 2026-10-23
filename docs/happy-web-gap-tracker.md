@@ -103,13 +103,14 @@ Their presence is why passing the current test suite does not mean that all know
 | P08 | Match header menu background | Done | Menu and title capsule share the same surface and border. | [chat.module.css](../src/features/chat.module.css), [ParityPage.ts](../tests/pages/ParityPage.ts) |
 | P09 | Rail anchors at formal response starts | Done | One desktop anchor per formal agent response. No recap is required. Dense rails scroll without overlapping touch targets. Recap phrase links keep their existing targets. | [responseAnchors tests](../src/data/responseAnchors.test.ts), [replyRecap](../tests/replyRecap.e2e.test.ts), [webParity](../tests/webParity.e2e.test.ts) |
 | P10 | Private local image paths | Done | Explicitly load a Markdown image or image link from the owning session CLI through encrypted RPC, validate it, and save an encrypted session attachment. Preserve the source binding in encrypted metadata and support offline cached reads. No public upload or agent turn. Workspace files only; PNG/JPEG/GIF/WebP up to 4 MB. | [path tests](../src/happy/localImages.test.ts), [client tests](../src/happy/client.test.ts), [browser tests](../tests/localImages.e2e.test.ts), [verification](../VERIFICATION.md#private-local-image-imports-2026-10-23) |
+| P11 | Resize Side Chat and Session Info | Done | Drag or use the keyboard on the divider at desktop widths. Side Chat is 360–720px; Session Info is 320–560px. Both retain at least 520px of usable main conversation width and adapt to navigation/viewport changes. Each panel stores its own Rayno account-scoped width. Narrow screens retain the existing drawer/page flows. | [width tests](../src/app/panelWidths.test.ts), [browser tests](../tests/resizablePanels.e2e.test.ts), [verification](../VERIFICATION.md#resizable-session-panels-2026-10-23) |
 
 ## Delivery evidence
 
 The baseline `32a06f9` reached the local previews before this continuation.
 The checks below cover the implementation and local previews. Cloudflare production verification is separate.
 
-Current counts: **38 Done, 7 Open, 5 Deferred, 3 Corrected, 2 Intentional**. Total: 55, including the later P10 request.
+Current counts: **39 Done, 7 Open, 5 Deferred, 3 Corrected, 2 Intentional**. Total: 56, including the later P10 and P11 requests.
 
 P10 verification is recorded in [VERIFICATION.md](../VERIFICATION.md#private-local-image-imports-2026-10-23).
 The following counts describe the earlier parity delivery, before P10.

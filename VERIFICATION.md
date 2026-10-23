@@ -396,3 +396,36 @@ All 28 demo browser cases passed across desktop/mobile Chromium and WebKit, incl
 390x360 short height, 844x390 landscape, touch activation, 44px controls, real image dimensions, download, dialog scrolling,
 and the older saved state. The 482 unit tests and production build also passed.
 Direct Tailscale checks in Chromium and WebKit opened and decoded the 2880x2080 image through a blob URL without page errors.
+
+## Resizable session panels (2026-10-23)
+
+Screens at least 1280px wide now have a draggable separator between the main conversation and Side Chat or Session Info.
+Session Info supports 320–560px; Side Chat supports 360–720px. The maximum also adapts to the available space so that
+at least 520px of usable main chat width remains, excluding its border. Navigation expansion and viewport changes update this limit.
+Automatic clamping does not overwrite the user's preferred width, so a wider viewport restores that preference.
+Each panel keeps its own width in Rayno account-scoped browser storage; demo widths use separate demo storage.
+
+Pointer capture keeps a drag active outside the divider. Coarse pointer devices receive a separate 44px-wide target
+without overlap over chat controls. Keyboard arrows adjust by 10px, Shift+arrows by 50px, and Home/End select the bounds.
+Double-click or Enter restores the default. Escape cancels an active drag without closing the panel or saving its partial width.
+The separator exposes its orientation, bounds, current width, and controlled panel to assistive technology.
+The divider uses its line color for keyboard focus. It has no outline around the drag target.
+Phone pages and tablet drawers retain their existing layouts without a resize control.
+
+- Type check and production build: passed.
+- Unit tests: 486 passed across 43 files.
+- Browser tests: all 92 passed across desktop/mobile Chromium and WebKit, including 24 new resize cases and 68 existing
+  Side Chat and chat appearance cases. Checks cover drag, keyboard limits and reset, cancellation, persistence, viewport and
+  navigation changes, unchanged drafts, and reachable composers at minimum width.
+- Chromium touch contexts exercise native touch drags through the browser input protocol. WebKit exercises pointer drag,
+  keyboard operation, and the existing touch/page flows. A physical tablet gesture was not tested.
+- Narrow-screen interactions cover 320, 360, 390, and 430px widths, 390x360 short height, and 844x390 landscape.
+  Checks include rename forms, field focus, 16px phone text, Side Chat navigation, scrolling, and send action reachability.
+- Direct Tailscale checks in Chromium and WebKit dragged both panels by 100px and verified the resulting widths without page errors.
+  Screenshots remain in the ignored `test-results/screenshots/` directory.
+
+Open the [Session Info demo](https://rays-macbook-pro.tailf62d7d.ts.net:5180/session/floating-panels/info?demo=1)
+or the [Side Chat demo](https://rays-macbook-pro.tailf62d7d.ts.net:5180/session/floating-panels/side?demo=1) on a desktop viewport.
+The existing preview route serves this working-tree build. No Tailscale route or existing service configuration changed.
+Provider operations use isolated fixtures; no real agent was started or mutated during verification.
+Cloudflare production delivery and a physical iOS keyboard remain outside these checks.
