@@ -470,3 +470,14 @@ thinking, events, and recap-only records keep their existing presentation. Missi
 - The existing Tailscale preview displayed dated demo replies in both engines at desktop and 320px phone widths,
   accepted draft input, and reported no page errors. Screenshots remain in ignored test-results/screenshots/.
   Cloudflare production and a physical phone keyboard were not verified.
+
+### Hide update navigation when current (2026-10-23)
+
+The rail and phone tabs now render the update action only after detecting a newer release. Initial checks and
+unknown/offline status create no placeholder or navigation gap. A later current-version response removes the action;
+a confirmed update remains accessible after dismissing the prompt or a failed install. Settings retains manual checks.
+
+- Type check and production build passed.
+- All 47 applicable browser checks passed across desktop/mobile Chromium and WebKit; five existing project skips.
+  Checks cover current-to-available-to-current transitions at 320/360/390/430px, short keyboard height, landscape,
+  and desktop, plus update retries, dismissal, explicit reloads, unread indicators, and Settings updates.

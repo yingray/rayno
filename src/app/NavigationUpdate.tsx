@@ -89,14 +89,15 @@ export type NavigationUpdateState = ReturnType<typeof useNavigationUpdate>;
 
 export function UpdateIcon({ update, mobile = false }: { update: NavigationUpdateState; mobile?: boolean }) {
   const t = useText();
+  if (!update.latest) return null;
   return <button ref={update.button} type="button" className={mobile ? styles.tabUpdate : styles.navItem}
     aria-label={t('Update Rayno')} aria-busy={update.checking || update.installing}
-    title={t(update.latest ? 'Update Rayno' : 'Check for updates')}
-    disabled={update.checking || update.installing} data-update-available={!!update.latest || undefined}
-    onClick={() => void (update.latest ? update.install() : update.check(true))}>
+    title={t('Update Rayno')}
+    disabled={update.checking || update.installing} data-update-available
+    onClick={() => void update.install()}>
     <Icon name="refreshOutline" size={mobile ? 20 : 21} />
     <span>{t('Updates')}</span>
-    {update.latest && <span className={styles.navBadge} role="img" aria-label={t('Update available')} />}
+    <span className={styles.navBadge} role="img" aria-label={t('Update available')} />
   </button>;
 }
 

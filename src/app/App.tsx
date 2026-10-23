@@ -206,7 +206,7 @@ export function App() {
               </button>
             ))}
             <div className={styles.railBottom}>
-              <div className={styles.updateSlot}><UpdateIcon update={update} /></div>
+              {update.latest && <div className={styles.updateSlot}><UpdateIcon update={update} /></div>}
               <Button
                 variant="ghost"
                 icon={expanded ? "chevronBackOutline" : "chevronForwardOutline"}

@@ -51,11 +51,12 @@ test('a dismissed update should stay dismissed for that version while the icon c
 test('background checks should discover a new release without a click', async ({ page }) => {
   await page.clock.install();
   const current = await (await page.request.get('/version.json')).json();
-  let version = current;
-  await page.route('**/version.json', route => route.fulfill({ json: version }));
+  let version = current, requests = 0;
+  await page.route('**/version.json', route => { requests++; return route.fulfill({ json: version }); });
   const workspace = new NavigationStatusPage(page);
   await page.goto('/sessions?demo=1');
-  await expect(workspace.updateIcon()).toBeEnabled();
+  await expect.poll(() => requests).toBeGreaterThan(0);
+  await expect(workspace.updateIcon()).toHaveCount(0);
   await expect(workspace.updateNotice()).toHaveCount(0);
   version = newer;
   await page.clock.fastForward(5 * 60 * 1000 + 1);
@@ -63,15 +64,16 @@ test('background checks should discover a new release without a click', async ({
 });
 
 test('failed background checks should stay quiet and a failed install should keep the page and allow retry', async ({ page }) => {
-  let online = false;
-  await page.route('**/version.json', route => online ? route.fulfill({ json: newer }) : route.abort('internetdisconnected'));
+  let online = false, requests = 0;
+  await page.route('**/version.json', route => { requests++; return online ? route.fulfill({ json: newer }) : route.abort('internetdisconnected'); });
   const workspace = new NavigationStatusPage(page);
   await page.goto('/sessions?demo=1');
-  await expect(workspace.updateIcon()).toBeEnabled();
+  await expect.poll(() => requests).toBeGreaterThan(0);
+  await expect(workspace.updateIcon()).toHaveCount(0);
   await expect(workspace.updateNotice()).toHaveCount(0);
   await expect(page.getByText('Cannot check for updates. Check your connection.', { exact: true })).toHaveCount(0);
   online = true;
-  await workspace.activate(workspace.updateIcon());
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
   await expect(workspace.updateNotice()).toBeVisible();
   online = false;
   await workspace.markPage();
@@ -138,4 +140,32 @@ test('read permission requests and hidden side chats should not create an unread
   await server.updateAgentState({ requests: { request: { tool: 'Read', arguments: { file: 'README.md' } } } });
   await server.pushEvent({ role: 'agent', content: { type: 'codex', data: { type: 'message', message: 'Hidden side reply' } } }, 'side-nav');
   await expect(workspace.unreadBadge()).toHaveCount(0);
+});
+
+
+test('the update action should only occupy navigation space while a newer release is available', async ({ page }) => {
+  const current = await (await page.request.get('/version.json')).json();
+  let version = current, requests = 0;
+  await page.route('**/version.json', route => { requests++; return route.fulfill({ json: version }); });
+  const workspace = new NavigationStatusPage(page);
+  for (const [width, height] of [[1440, 900], [320, 640], [360, 740], [390, 844], [430, 900], [390, 360], [844, 390]]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/sessions?demo=1');
+    const before = requests;
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect.poll(() => requests).toBeGreaterThan(before);
+    await expect(workspace.updateIcon()).toHaveCount(0);
+    await workspace.expectNoPageOverflow();
+    version = newer;
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(workspace.updateIcon()).toBeVisible();
+    await workspace.expectUpdateUsable();
+    await workspace.dismissUpdate();
+    version = current;
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(workspace.updateIcon()).toHaveCount(0);
+    await expect(workspace.updateNotice()).toHaveCount(0);
+    await workspace.expectNoPageOverflow();
+    await page.evaluate(() => sessionStorage.removeItem('rayno.dismissedUpdate'));
+  }
 });
