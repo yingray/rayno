@@ -22,3 +22,8 @@
   -webkit-backdrop-filter: var(--glass-filter);
   backdrop-filter: var(--glass-filter);
 }
+
+.sideUnread { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--accent-soft); }
+
+.trigger { position: relative; }
+.triggerUnread { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-soft); }

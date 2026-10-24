@@ -337,3 +337,89 @@ for (const from of ['the session menu', 'Session info', 'the side chat list'] as
     expect(server.bashCommands).toEqual([]);
   });
 }
+
+
+test('side chats should restore the open panel and selected chat after a session switch until explicitly closed', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page); await withSideChats(server);
+  const workspace = new SideChatsPage(page);
+  const phone = page.viewportSize()!.width < 768;
+  await workspace.openSession();
+  if (phone) await workspace.openFromMenu();
+  else await workspace.headerButton().click();
+  await expect(workspace.panel()).toBeVisible();
+  if (!phone) await workspace.tab('Side chat 1').click();
+  // Act
+  await workspace.switchSession('Forked workspace');
+  await expect(page).toHaveURL(/\/session\/fork-1$/);
+  await expect(workspace.panel()).toHaveCount(0);
+  await workspace.switchSession('Connected workspace');
+  // Assert
+  await expect(page).toHaveURL(/\/session\/real-session\/side$/);
+  await expect(workspace.panel()).toBeVisible();
+  if (!phone) await expect(workspace.tab('Side chat 1')).toHaveAttribute('aria-pressed', 'true');
+  // Act: a deliberate close must survive the next switch.
+  await workspace.closePanel();
+  await workspace.switchSession('Forked workspace');
+  await workspace.switchSession('Connected workspace');
+  // Assert
+  await expect(page).toHaveURL(/\/session\/real-session$/);
+  await expect(workspace.panel()).toHaveCount(0);
+});
+
+test('side chat unread dots should remain on the entry and list until the reply is viewed at every phone size', async ({ page }, testInfo) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page); await withSideChats(server);
+  const workspace = new SideChatsPage(page);
+  await workspace.openSession();
+  test.setTimeout(90000);
+  // Act / Assert
+  for (const [width, height] of [[320, 640], [360, 740], [390, 844], [430, 932], [360, 350], [844, 390]]) {
+    await page.setViewportSize({ width, height });
+    const reply = `Unread side reply at ${width}x${height}`;
+    await server.pushEvent({ role: 'session', content: { role: 'agent', turn: reply, ev: { t: 'text', text: reply } } }, 'side-1');
+    await expect(page.getByRole('button', { name: 'Session actions', exact: true }).getByRole('img', { name: 'New reply' })).toBeVisible();
+    await workspace.openActions();
+    await expect(workspace.menu().getByRole('menuitem', { name: /^Side chats/ }).getByRole('img', { name: 'New reply' })).toBeVisible();
+    await workspace.menu().getByRole('menuitem', { name: /^Side chats/ }).click();
+    await expect(workspace.row('Side chat 1').getByRole('img', { name: 'New reply' })).toBeVisible();
+    await workspace.expectUsableList();
+    if (width === 320) await workspace.capture(`${testInfo.project.name}-side-unread-320`);
+    await workspace.press(workspace.panel(), 'Open Side chat 1', !!testInfo.project.use.hasTouch);
+    await expect(page.getByText(reply, { exact: true })).toBeAttached();
+    if (await workspace.latestShortcut().isVisible()) await workspace.returnToLatest();
+    await expect(page.getByText(reply, { exact: true })).toBeInViewport();
+    const message = page.getByRole('textbox', { name: 'Message', exact: true });
+    await message.click();
+    await workspace.expectInViewport(page.getByRole('button', { name: 'Send message', exact: true }));
+    await workspace.parentBack().click();
+    await expect(workspace.row('Side chat 1').getByRole('img', { name: 'New reply' })).toHaveCount(0);
+    await workspace.closePanel();
+    await expect(page.getByRole('button', { name: 'Session actions', exact: true }).getByRole('img', { name: 'New reply' })).toHaveCount(0);
+  }
+});
+
+test('side chat unread dots should mark the desktop entry and inactive tab then clear after reading', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page); await withSideChats(server);
+  const workspace = new SideChatsPage(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await workspace.openSession();
+  // Act
+  await server.pushEvent({ role: 'session', content: { role: 'agent', turn: 'unread', ev: { t: 'text', text: 'Desktop side reply' } } }, 'side-1');
+  // Assert
+  await expect(workspace.headerButton().getByRole('img', { name: 'New reply' })).toBeVisible();
+  await workspace.headerButton().click();
+  await expect(workspace.tab('Side chat 1').getByRole('img', { name: 'New reply' })).toBeVisible();
+  // Act
+  await workspace.tab('Side chat 1').click();
+  await expect(workspace.sideChat().getByText('Desktop side reply', { exact: true })).toBeInViewport();
+  await workspace.sideChat().getByRole('textbox', { name: 'Message', exact: true }).click();
+  // Assert
+  await expect(workspace.tab('Side chat 1').getByRole('img', { name: 'New reply' })).toHaveCount(0);
+  await workspace.closePanel();
+  await expect(workspace.headerButton().getByRole('img', { name: 'New reply' })).toHaveCount(0);
+});

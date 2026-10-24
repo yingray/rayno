@@ -3,6 +3,27 @@ import type { Locator } from '@playwright/test';
 import { SessionOperationsPage } from './SessionOperationsPage';
 
 export class SideChatsPage extends SessionOperationsPage {
+  async switchSession(title: string) {
+    if (this.page.viewportSize()!.width < 768) {
+      const back = this.page.getByRole('button', { name: 'Back to sessions', exact: true });
+      if (!new URL(this.page.url()).pathname.endsWith('/side')) await back.click();
+      else {
+        await expect(this.panel()).toBeVisible();
+        await this.page.keyboard.press('ControlOrMeta+k');
+        await this.closeListOptions();
+      }
+    } else {
+      await this.page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('button', { name: 'Sessions', exact: true }).click();
+    }
+    const previous = this.page.url();
+    await this.sessionRow(title).click();
+    await expect.poll(() => this.page.url()).not.toBe(previous);
+  }
+  async closePanel() {
+    const width = this.page.viewportSize()!.width;
+    await this.page.getByRole('button', { name: width < 768 ? 'Back to chat' : width < 1280 ? 'Close Side chats' : 'Close side chats', exact: true }).click();
+    await expect(this.page).toHaveURL(/\/session\/[^/]+$/);
+  }
   panel() { return this.page.getByRole('region', { name: 'Side chats', exact: true }); }
   tabs() { return this.panel().getByRole('group', { name: 'Open side chats', exact: true }); }
   tab(name: string) { return this.tabs().getByRole('button', { name, exact: true }); }

@@ -10,6 +10,7 @@ import { LazyBoundary } from '../components/LazyBoundary';
 import type { MessageSettings } from '../data/types';
 import { sideChatTitle } from '../data/sideChats';
 import { applyFavicon, attentionTitle, tabAttention } from './tabAttention';
+import { useSideChatNavigation } from './useSideChatNavigation';
 import { ResizablePanel } from './ResizablePanel';
 import { UpdateIcon, UpdateNotice, useNavigationUpdate } from './NavigationUpdate';
 const Chat = lazy(() => import('../features/Chat').then((module) => ({ default: module.Chat })));
@@ -73,6 +74,7 @@ export function App() {
   // Side chats open from their parent: a panel at 1280px and wider, a drawer on tablets, and a page on phones.
   const sideOpen = sessionRoute && path.endsWith('/side') && !!session && !session.isSideChat;
   const sidePanel = sideOpen && width >= 1280;
+  const sideNavigation = useSideChatNavigation(sessionRoute && session && !session.isSideChat ? session.id : undefined, sideOpen);
   const composerSettings = useRef(new Map<string, MessageSettings>());
   const keepSettings = useCallback((id: string, value: MessageSettings) => { composerSettings.current.set(id, value); }, []);
   const readSettings = useCallback(() => composerSettings.current.get(session?.id || '') || {}, [session?.id]);
@@ -266,7 +268,7 @@ export function App() {
             ) : mobile && infoOpen ? (
               <LazyBoundary><SessionInfo session={session!} onClose={closeInfo} /></LazyBoundary>
             ) : mobile && sideOpen ? (
-              <LazyBoundary><SideChats parent={session!} layout="page" settings={readSettings} onClose={closeSide} /></LazyBoundary>
+              <LazyBoundary><SideChats parent={session!} selected={sideNavigation.selected} onSelect={sideNavigation.select} layout="page" settings={readSettings} onClose={closeSide} /></LazyBoundary>
             ) : session ? (
               <Chat
                 key={session.id}
@@ -301,12 +303,12 @@ export function App() {
         )}
         {sidePanel && (
           <ResizablePanel kind="side" key="side">
-            <LazyBoundary><SideChats key={session!.id} parent={session!} layout="panel" settings={readSettings} onClose={closeSide} /></LazyBoundary>
+            <LazyBoundary><SideChats key={session!.id} parent={session!} selected={sideNavigation.selected} onSelect={sideNavigation.select} layout="panel" settings={readSettings} onClose={closeSide} /></LazyBoundary>
           </ResizablePanel>
         )}
         {!mobile && sideOpen && width < 1280 && (
           <Dialog title={t("Side chats")} onClose={closeSide} className={`${styles.infoDrawer} ${styles.sideDrawer}`}>
-            <LazyBoundary><SideChats parent={session!} layout="drawer" settings={readSettings} onClose={closeSide} /></LazyBoundary>
+            <LazyBoundary><SideChats parent={session!} selected={sideNavigation.selected} onSelect={sideNavigation.select} layout="drawer" settings={readSettings} onClose={closeSide} /></LazyBoundary>
           </Dialog>
         )}
         {!mobile && infoOpen && width < 1280 && (

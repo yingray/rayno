@@ -12,7 +12,7 @@ import { titleOf } from '../data/reducer';
 import { latestAgentMode, latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, type SentModes, type SessionModes } from '../happy/modelPreferences';
 import { OfflineStatus } from '../components/OfflineStatus';
 import type { Attachment, MessageSettings, Session } from '../data/types';
-import { countOpenSideChats, showSideChatEntry, SIDE_CHAT_TITLE, sideChatTitle } from '../data/sideChats';
+import { countOpenSideChats, hasUnreadSideChats, showSideChatEntry, SIDE_CHAT_TITLE, sideChatTitle } from '../data/sideChats';
 import styles from './chat.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { useEventCallback } from '../components/useEventCallback';
@@ -72,10 +72,11 @@ export const Chat = memo(function Chat({
   onSettings?: (sessionId: string, settings: MessageSettings) => void;
 }) {
   const t = useText();
-  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline, sideChats, parentKnown, sideEntry, sideTitle } = useDemo((store) => ({
+  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline, sideChats, sideUnread, parentKnown, sideEntry, sideTitle } = useDemo((store) => ({
     // A side chat whose parent is gone returns to the session list.
     parentKnown: !!session.parentSessionId && store.state.sessions.some((item) => item.id === session.parentSessionId),
     sideChats: session.isSideChat || embedded ? 0 : countOpenSideChats(store.state.sessions, session.id),
+    sideUnread: !session.isSideChat && hasUnreadSideChats(store.state.sessions, session.id),
     sideEntry: !embedded && showSideChatEntry(store.state.sessions, session, store.live),
     sideTitle: embedded || !session.isSideChat ? undefined : sideChatTitle(store.state.sessions, session.id),
     preferences: store.state.preferences,
@@ -467,7 +468,7 @@ export const Chat = memo(function Chat({
             aria-expanded={sideOpen}
             title={t("Side chats")}
             onClick={() => navigate(sideOpen ? `/session/${session.id}` : `/session/${session.id}/side`)}
-          >{sideChats ? <span className={styles.sideChatsCount}>{sideChats}</span> : null}</Button>
+          >{sideUnread && <i className={styles.sideUnread} role="img" aria-label={t("New reply")} />}{sideChats ? <span className={styles.sideChatsCount}>{sideChats}</span> : null}</Button>
         )}
         <ChatSessionMenu session={session} settings={messageSettings} />
       </header>}

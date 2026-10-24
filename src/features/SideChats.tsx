@@ -21,8 +21,10 @@ const statusOf = (chat: Session) => isSideChatClosed(chat) ? 'Closed' : chat.arc
  * The side chats of one parent (Happy Web SideChatPanel.tsx). The wide panel shows the open ones as
  * switchable chats next to the parent; the drawer and the phone page list them and open each one full size.
  */
-export function SideChats({ parent, layout, settings, onClose }: {
+export function SideChats({ parent, layout, settings, onClose, selected, onSelect }: {
   parent: Session;
+  selected?: string;
+  onSelect: (id: string) => void;
   layout: 'panel' | 'drawer' | 'page';
   /** The parent's composer choices, so that a new side chat starts with a concrete model. */
   settings: () => MessageSettings;
@@ -42,7 +44,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
   const open = useMemo(() => chats.filter((chat) => !isSideChatClosed(chat)), [chats]);
   const closed = useMemo(() => chats.filter(isSideChatClosed), [chats]);
   const labels = useMemo(() => sideChatLabels(chats), [chats]);
-  const [requested, setRequested] = useState<string | null>(() => (location.state as { sideChat?: string } | null)?.sideChat ?? null);
+  const [requested, setRequested] = useState<string | null>(() => (location.state as { sideChat?: string } | null)?.sideChat ?? selected ?? null);
   const active = layout === 'panel' ? activeSideChat(open, requested) : undefined;
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -57,9 +59,10 @@ export function SideChats({ parent, layout, settings, onClose }: {
   else if (!unavailable && machineOnline === false) unavailable = 'Bring the original computer online first.';
   useEffect(() => {
     if (!active) return;
+    onSelect(active.id);
     if (live) return live.watchSession(active.id);
     if (active.unread) dispatch({ type: 'read', id: active.id });
-  }, [live, active?.id, active?.unread, dispatch]);
+  }, [live, active?.id, active?.unread, dispatch, onSelect]);
 
   async function run(key: string, action: () => Promise<void>) {
     if (pending.current) return;
@@ -98,7 +101,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
     await adapter.archiveSession(chat.id);
     if (chat.id === active?.id) setRequested((open[index - 1] || open[index + 1])?.id ?? null);
   });
-  const openFull = (chat: Session) => navigate(`/session/${chat.id}`);
+  const openFull = (chat: Session) => { onSelect(chat.id); navigate(`/session/${chat.id}`); };
 
   const newButton = layout === 'panel'
     ? <Button className={styles.iconButton} icon="add" aria-label={t("New side chat")} title={unavailable || 'New side chat'}
@@ -121,6 +124,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
           <strong>{label}</strong>
           <small>{statusOf(chat)} · {formatSessionTimestamp(chat.createdAt, now)}</small>
         </span>
+        {chat.unread && <i className={styles.unread} aria-label={t("New reply")} role="img" />}
         <Icon name="chevronForwardOutline" size={13} />
       </button>
       {!chatClosed && <Button className={styles.iconButton} variant="ghost" icon="close" aria-label={`Close ${label}`}
@@ -165,7 +169,7 @@ export function SideChats({ parent, layout, settings, onClose }: {
         {open.map((chat) => {
           const label = labels.get(chat.id) || SIDE_CHAT_TITLE;
           return <span key={chat.id} className={styles.tab} data-active={chat.id === active?.id || undefined}>
-            <button aria-pressed={chat.id === active?.id} onClick={() => setRequested(chat.id)}>
+            <button aria-label={label} aria-pressed={chat.id === active?.id} onClick={() => setRequested(chat.id)}>
               {chat.unread && <i className={styles.unread} aria-label={t("New reply")} role="img" />}{label}
             </button>
             <button className={styles.tabClose} aria-label={`Close ${label}`} disabled={!!busy || disconnected}

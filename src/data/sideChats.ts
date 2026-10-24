@@ -65,3 +65,7 @@ export function archiveAction(session: Session, ended: boolean) {
   if (ended) return null;
   return session.archived ? 'Restore session' : 'Archive session';
 }
+
+/** Unread replies in open side chats keep the parent's entry marked. */
+export const hasUnreadSideChats = (sessions: Session[], parentId: string) =>
+  sessions.some((session) => session.isSideChat && !isSideChatClosed(session) && session.parentSessionId === parentId && session.unread);

@@ -13,15 +13,16 @@ import chatStyles from './chat.module.css';
 import { needsSessionResume } from '../happy/resume';
 import { buildHandoffDraft } from '../happy/handoff';
 import { draftInWorkspace } from '../data/workspaces';
-import { archiveAction, countOpenSideChats, leaveRoute, showSideChatEntry } from '../data/sideChats';
+import { archiveAction, countOpenSideChats, hasUnreadSideChats, leaveRoute, showSideChatEntry } from '../data/sideChats';
 
 type Point = { id: string; text: string; timestamp: number };
 
 export function ChatSessionMenu({ session, settings }: { session: Session; settings: MessageSettings }) {
   const t = useText();
-  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, parentKnown, sideEntry } = useDemo(store => ({
+  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, sideUnread, parentKnown, sideEntry } = useDemo(store => ({
     parentKnown: !!session.parentSessionId && store.state.sessions.some(item => item.id === session.parentSessionId),
     sideChats: session.isSideChat ? 0 : countOpenSideChats(store.state.sessions, session.id),
+    sideUnread: !session.isSideChat && hasUnreadSideChats(store.state.sessions, session.id),
     sideEntry: showSideChatEntry(store.state.sessions, session, store.live),
     live: store.live, adapter: store.adapter, mode: store.mode, dispatch: store.dispatch,
     connection: store.snapshot?.connection, offline: store.snapshot?.offline,
@@ -135,6 +136,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
       aria-label={t("Session actions")} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined}
       onClick={() => { setError(''); setOpen(value => !value); }}>
       <Icon name="menuOutline" />
+      {sideUnread && <i className={styles.triggerUnread} role="img" aria-label={t("New reply")} />}
     </button>
     {open && createPortal(<div ref={panel} id={id} role="menu" aria-label={t("Session actions")} className={styles.menu} style={position}>
       <p className={styles.title}>{titleOf(session)}</p>
@@ -150,7 +152,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
         dispatch({ type: 'newDraft', value: workspaceDraft }); close(false); navigate('/new');
       }}><Icon name="add" />{t("New session in same workspace")}</button>
       {sideEntry && <button role="menuitem" disabled={busy} onClick={() => { close(false); navigate(`/session/${session.id}/side`); }}>
-        <Icon name="chatbubblesOutline" />{t("Side chats")}{sideChats ? <small className={styles.count}>{sideChats}{' '}{t("open")}</small> : null}</button>}
+        <Icon name="chatbubblesOutline" />{t("Side chats")}{sideUnread && <i className={styles.sideUnread} role="img" aria-label={t("New reply")} />}{sideChats ? <small className={styles.count}>{sideChats}{' '}{t("open")}</small> : null}</button>}
       <button role="menuitem" disabled={busy || !handoff} onClick={() => {
         if (!handoff) return;
         dispatch({ type: 'newDraft', value: handoff }); close(false); navigate('/new');
