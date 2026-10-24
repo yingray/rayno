@@ -1,5 +1,4 @@
 .chat {
-  --transcript-space: 0px;
   height: 100%;
   min-height: 0;
   display: flex;
@@ -139,16 +138,12 @@
   overscroll-behavior: contain;
   scroll-padding-top: 80px;
 }
-.chat[data-transcript-tools] { --transcript-space: 60px; }
-.transcriptHost { container-type: inline-size; position: absolute; top: 80px; left: 0; right: 0; z-index: 4; }
-.messageScroll[data-transcript-tools='true'] { scroll-padding-top: 140px; overflow-anchor: none; }
-.chat[data-view='chat']:has(> [data-offline-status]) .transcriptHost { top: 112px; }
-.chat[data-view='chat']:has(> [data-offline-status]) .messageScroll[data-transcript-tools='true'] { scroll-padding-top: 172px; }
+.messageScroll[data-transcript-managed] { overflow-anchor: none; }
 .messages {
   --font-scale: 1;
   max-width: 1008px;
   margin: auto;
-  padding: calc(94px + var(--transcript-space, 0px)) 64px 42px;
+  padding: 94px 64px 42px;
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -160,7 +155,7 @@
   --font-scale: 1.15;
 }
 .chat[data-view='chat']:has(> [data-offline-status]) .messages {
-  padding-top: calc(126px + var(--transcript-space, 0px));
+  padding-top: 126px;
 }
 .chat[data-view='chat']:has(> [data-offline-status]) .messageScroll {
   scroll-padding-top: 112px;
@@ -1019,11 +1014,11 @@
   .messages {
     --message-gap: calc(var(--mobile-bottom) + 12px);
     --message-gap-with-keyboard: 20px;
-    padding: calc(68px + var(--transcript-space, 0px)) 16px 42px;
+    padding: 68px 16px 42px;
     gap: 18px;
   }
   .chat[data-view='chat']:has(> [data-offline-status]) .messages {
-    padding-top: calc(100px + var(--transcript-space, 0px));
+    padding-top: 100px;
   }
   .chat[data-view='chat']:has(> [data-offline-status]) .messageScroll {
     scroll-padding-top: 96px;
@@ -1414,7 +1409,7 @@
   .sideChatsButton { display: none; }
 }
 .chat[data-embedded]::before { display: none; }
-.chat[data-embedded] .messages { padding-top: calc(24px + var(--transcript-space, 0px)); }
+.chat[data-embedded] .messages { padding-top: 24px; }
 .chat[data-embedded] .messageScroll { scroll-padding-top: 16px; }
 .chat[data-embedded] > [data-offline-status] {
   position: absolute;
@@ -1529,27 +1524,3 @@
   cursor: pointer;
 }
 .copyResponse:hover { color: var(--text); background: var(--well); }
-
-@media (max-width: 767px) {
-  .transcriptHost { top: 64px; }
-  .messageScroll[data-transcript-tools='true'] { scroll-padding-top: 124px; }
-  .chat[data-view='chat']:has(> [data-offline-status]) .transcriptHost { top: 96px; }
-  .chat[data-view='chat']:has(> [data-offline-status]) .messageScroll[data-transcript-tools='true'] { scroll-padding-top: 156px; }
-}
-.chat[data-embedded] .transcriptHost { top: 16px; }
-.chat[data-embedded] .messageScroll[data-transcript-tools='true'] { scroll-padding-top: 76px; }
-
-.chat[data-transcript-tools] .recapRail { top: 152px; }
-.chat[data-transcript-tools]:has(> [data-offline-status]) .recapRail { top: 184px; }
-@media (min-width: 768px) and (max-height: 480px) {
-  .transcriptHost { top: 64px; }
-  .messageScroll[data-transcript-tools='true'] { scroll-padding-top: 124px; }
-  .chat[data-view='chat']:has(> [data-offline-status]) .transcriptHost { top: 96px; }
-  .chat[data-view='chat']:has(> [data-offline-status]) .messageScroll[data-transcript-tools='true'] { scroll-padding-top: 156px; }
-  .chat[data-transcript-tools] .recapRail { top: 136px; }
-  .chat[data-transcript-tools]:has(> [data-offline-status]) .recapRail { top: 168px; }
-}
-
-.chat[data-embedded][data-transcript-tools]:has(> [data-offline-status]) .transcriptHost { top: 48px; }
-.chat[data-embedded][data-transcript-tools]:has(> [data-offline-status]) .messageScroll { scroll-padding-top: 108px; }
-.chat[data-embedded][data-transcript-tools]:has(> [data-offline-status]) .messages { padding-top: 116px; }

@@ -281,8 +281,8 @@ export function Settings() {
               </Row>
             </Group>
             <Group label={t("Reading")}>
-              <Row icon="speedometerOutline" title={t("Faster long chats (preview)")}
-                subtitle={t("Render a smaller part of long chats. Use Full transcript for browser search and selection across messages.")}>
+              <Row icon="speedometerOutline" title={t("Faster long chats (preview)")} className={styles.readingRow}
+                subtitle={t("Render a smaller part of long chats. Turn this off to show the full transcript.")}>
                 <Toggle label={t("Faster long chats (preview)")} checked={preferences.fasterTranscript}
                   onChange={() => dispatch({ type: 'preferences', value: { fasterTranscript: !preferences.fasterTranscript } })} />
               </Row>

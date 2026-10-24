@@ -630,3 +630,11 @@
 }
 
 :global(html[data-glass-style='intense']) .groupCard { border-color: var(--glass-edge); box-shadow: var(--glass-shadow); }
+
+/* Keep the reading switch reachable on touch screens without changing its track size. */
+.readingRow > [role='switch'] {
+  box-sizing: border-box;
+  height: 44px;
+  border-block: 8px solid transparent;
+  background-clip: padding-box;
+}

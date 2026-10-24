@@ -11,7 +11,6 @@ export class VirtualTranscriptPage extends PerformancePage {
   latestShortcut() { return this.chat().getByRole('button', { name: 'Scroll to latest messages', exact: true }); }
   transcript() { return this.messages().locator('[data-transcript-mode]'); }
   tools() { return this.chat().getByRole('toolbar', { name: 'Transcript tools', exact: true }); }
-  searchDialog() { return this.page.getByRole('dialog', { name: 'Find in loaded messages', exact: true }); }
   async openSession() {
     await this.page.goto('/session/real-session');
     await expect(this.input()).toBeVisible();
@@ -35,30 +34,20 @@ export class VirtualTranscriptPage extends PerformancePage {
     await pin.scrollIntoViewIfNeeded();
     await pin.click();
   }
-  async find(query: string) {
-    await this.tools().getByRole('button', { name: 'Find in loaded messages', exact: true }).click();
-    await this.searchDialog().getByRole('textbox', { name: 'Find text', exact: true }).fill(query);
-    const region = this.searchDialog().getByRole('region', { name: 'Search results', exact: true });
-    await expect(region).toHaveAttribute('aria-busy', 'false');
-    const result = region.getByRole('button').first();
-    await expect(result).toBeVisible();
-    await expect(result).toBeEnabled();
-    return result;
+  async readingMode(faster: boolean) {
+    await this.page.goto('/settings/appearance');
+    const toggle = this.page.getByRole('switch', { name: 'Faster long chats (preview)', exact: true });
+    await toggle.scrollIntoViewIfNeeded();
+    if (await toggle.getAttribute('aria-checked') !== String(faster)) await toggle.click();
+    await this.openSession();
+    await expect(this.transcript()).toHaveAttribute('data-transcript-mode', faster ? 'virtual' : 'full');
   }
-  async chooseResult(query: string) {
-    const result = await this.find(query);
-    const id = await result.getAttribute('data-transcript-result');
-    await result.click();
-    await expect(this.searchDialog()).toHaveCount(0);
-    await expect(this.transcript().locator(`[data-transcript-block="${id}"] [class*="flash"]`).first()).toBeAttached();
-  }
-  async showFull() {
-    await this.tools().getByRole('button', { name: 'Show full transcript', exact: true }).click();
-    await expect(this.transcript()).toHaveAttribute('data-transcript-mode', 'full');
-  }
-  async faster() {
-    await this.tools().getByRole('button', { name: 'Use faster scrolling', exact: true }).click();
-    await expect(this.transcript()).toHaveAttribute('data-transcript-mode', 'virtual');
+  async showFull() { await this.readingMode(false); }
+  async faster() { await this.readingMode(true); }
+  async firstMessage() {
+    await this.messages().dispatchEvent('touchmove');
+    await this.messages().evaluate(element => { element.scrollTop = 0; });
+    await expect(this.chat().getByText('Task 1: check the build', { exact: true })).toBeInViewport();
   }
   async readingAnchor() {
     await this.page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
@@ -79,23 +68,10 @@ export class VirtualTranscriptPage extends PerformancePage {
       return row ? Math.abs(row.getBoundingClientRect().top - top - anchor.inset) : Infinity;
     }, anchor)).toBeLessThan(4);
   }
-  async expectToolbarFits() {
-    const bounds = (await this.chat().boundingBox())!;
-    for (const button of await this.tools().getByRole('button').all()) {
-      await expect(button).toBeVisible();
-      const box = (await button.boundingBox())!;
-      expect(box.x).toBeGreaterThanOrEqual(bounds.x);
-      expect(box.x + box.width).toBeLessThanOrEqual(bounds.x + bounds.width);
-      expect(box.height).toBeGreaterThanOrEqual(44);
-    }
-  }
-  async expectTextClearOfTools(text: string) {
-    const content = this.chat().getByText(text, { exact: true });
-    await expect.poll(async () => {
-      const box = await content.boundingBox(), toolbar = await this.tools().boundingBox();
-      return box && toolbar ? box.y - toolbar.y - toolbar.height : -1;
-    }).toBeGreaterThanOrEqual(0);
-    await expect(content).toBeInViewport();
+  async expectNoTranscriptTools() {
+    await expect(this.tools()).toHaveCount(0);
+    await expect(this.chat().getByRole('button', { name: 'Find in loaded messages', exact: true })).toHaveCount(0);
+    await expect(this.chat().getByRole('button', { name: 'Show full transcript', exact: true })).toHaveCount(0);
   }
   async tapControl(control: Locator) {
     await control.evaluate(element => {

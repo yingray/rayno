@@ -81,7 +81,7 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
       });
     },
   });
-  // The visible fold starts below the overlay header and transcript tools.
+  // The visible fold starts below the overlay header.
   // The library's default predicate uses the scroll box top instead.
   virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) => {
     if (jumping.current) return false;

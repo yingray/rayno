@@ -427,9 +427,9 @@ It applies when a chat has at least 300 loaded blocks. Shorter chats retain the 
   A tool group remains one row. Its internal tool list is not a second virtual list.
 - The reply rail uses every loaded reply and virtual measurements. A rail jump mounts its target before the DOM jump.
   A recap searches reply and tool data within its user turn, then mounts and reveals its target.
-- **Find in loaded messages** searches loaded reply text, tool input and results, and attachment names.
-  It shows at most 50 matches and asks the user to refine a broad query. It does not fetch older pages.
-- **Show full transcript** mounts all loaded blocks for native browser find and selection across messages.
+- Chat has no transcript toolbar or loaded-message search dialog.
+- Turn off **Settings → Appearance → Faster long chats (preview)** to show the full transcript.
+  The account preference controls the mode. Saved session positions do not override it.
   Mode changes preserve the reading row and its offset below the overlay header.
 - The chat viewport owns virtual scrolling, resize correction, and follow-to-latest behavior.
   The original resize follower stops while the prototype owns the conversation, including full-transcript mode.
@@ -440,8 +440,8 @@ It applies when a chat has at least 300 loaded blocks. Shorter chats retain the 
   Saved live reading anchors use the account encryption key and storage scope for its account and server.
   Scrolling does not publish a workspace update or rewrite the message history cache.
 - Tool group toggles now have a 44px minimum height, including landscape.
-  The prototype toolbar and rail leave space for each other. The first loaded message stays below the toolbar.
-  The toolbar also fits a narrow embedded side chat, with its offline banner. Short landscape viewports use a lower toolbar offset.
+  Chat reserves no space for transcript tools. The first loaded message stays below the header.
+  Embedded side chats retain their offline banner and composer spacing.
 - The normal full list also handles a queued scroll event after a tall reply increases the scroll height.
   That event keeps the existing tail pin unless the user scrolls upward. A manual history position still stays fixed.
 

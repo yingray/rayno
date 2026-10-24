@@ -38,11 +38,12 @@ test('virtual transcript should keep every rail target while mounting a bounded 
   await expect.poll(() => view.transcript().locator('[data-transcript-block]').count()).toBeLessThan(80);
 });
 
-test('virtual transcript should search offscreen data and restore its position across reading modes', async ({ page }) => {
+test('virtual transcript should restore its position after a reading mode change in Settings', async ({ page }, info) => {
+  await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 600 } : { width: 1440, height: 900 });
   // Arrange
   const { view } = await arrange(page);
   // Act / Assert
-  await view.chooseResult('Result 40');
+  await view.jumpReply(40);
   await expect(page.getByRole('heading', { name: 'Result 40', exact: true })).toBeInViewport();
   const anchor = await view.readingAnchor();
   await view.showFull();
@@ -59,10 +60,11 @@ test('virtual transcript should search offscreen data and restore its position a
   await expect(page.getByText('Task 1: check the build', { exact: true })).toHaveCount(0);
 });
 
-test('virtual transcript should keep an encrypted reading anchor through navigation and reload', async ({ page }) => {
+test('virtual transcript should keep an encrypted reading anchor through navigation and reload', async ({ page }, info) => {
+  await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 600 } : { width: 1440, height: 900 });
   // Arrange
   const { server, view } = await arrange(page);
-  await view.chooseResult('Result 30');
+  await view.jumpReply(30);
   const anchor = await view.readingAnchor();
   // Act / Assert
   await expect.poll(async () => {
@@ -108,10 +110,11 @@ test('virtual transcript should preserve the visible row when older history is p
   await expect(page.getByRole('heading', { name: 'Result 1', exact: true })).toBeInViewport();
 });
 
-test('virtual transcript should retain its reading row after viewport and font changes', async ({ page }) => {
+test('virtual transcript should retain its reading row after viewport and font changes', async ({ page }, info) => {
+  await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 600 } : { width: 1440, height: 900 });
   // Arrange
   const { view } = await arrange(page);
-  await view.chooseResult('Result 55');
+  await view.jumpReply(55);
   const anchor = await view.readingAnchor();
   // Act / Assert
   for (const width of [430, 844, 1440]) {
@@ -147,7 +150,7 @@ test('virtual recap should mount an old tool target and retain tool state after 
   await expect(group.locator('details').first()).toHaveAttribute('open');
   await view.returnToLatest();
   await expect(group).toHaveCount(0);
-  await view.chooseResult('virtual-target-0');
+  await recap.activate(recap.phrase('Read the first check'), !!await page.evaluate(() => navigator.maxTouchPoints));
   await expect(group.locator('details').first()).toHaveAttribute('open');
 });
 
@@ -161,35 +164,36 @@ test('virtual transcript should keep new diagram growth pinned to the latest mes
   await expect.poll(async () => (await view.conversationPosition()).remaining).toBeLessThan(4);
 });
 
-test('virtual transcript should keep phone search, tools, and send reachable across viewports', async ({ page }, info) => {
+test('virtual transcript should keep Settings, tools, and send reachable across phone viewports', async ({ page }, info) => {
   test.skip(!info.project.use.isMobile, 'Phone interaction matrix.');
+  test.setTimeout(90000);
   // Arrange
   const { server, view } = await arrange(page);
-  const recap = new RecapPage(page);
-  // Act / Assert: reach and tap the final item of a scrollable search dialog on a short phone screen.
-  await page.setViewportSize({ width: 320, height: 360 });
-  await view.find('build passed');
-  const matches = view.searchDialog().getByRole('region', { name: 'Search results', exact: true }).getByRole('button');
-  await expect(matches).toHaveCount(50);
-  const last = matches.last();
-  await last.scrollIntoViewIfNeeded();
-  expect((await last.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-  expect(await last.evaluate(button => button.parentElement!.scrollTop)).toBeGreaterThan(0);
-  await last.tap();
-  await expect(page.getByRole('heading', { name: 'Result 50', exact: true })).toBeInViewport();
-  await view.returnToLatest();
+  // Act / Assert
   for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 360], [844, 390]]) {
     await page.setViewportSize({ width, height });
-    const result = await view.find('shard 40');
-    const resultId = await result.getAttribute('data-transcript-result');
-    const field = view.searchDialog().getByRole('textbox', { name: 'Find text', exact: true });
-    expect(await field.evaluate(input => parseFloat(getComputedStyle(input).fontSize))).toBeGreaterThanOrEqual(16);
-    const target = (await result.boundingBox())!; expect(target.height).toBeGreaterThanOrEqual(44);
-    await result.tap();
-    await expect(view.searchDialog()).toHaveCount(0);
-    await expect(view.transcript().locator(`[data-transcript-block="${resultId}"] [class*="flash"]`).first()).toBeAttached();
-    const toggle = view.transcript().locator(`[data-transcript-block="${resultId}"] [data-tool-activity] > button`);
-    await view.tapControl(toggle);
+    await page.goto('/settings/appearance');
+    const toggle = page.getByRole('switch', { name: 'Faster long chats (preview)', exact: true });
+    await toggle.scrollIntoViewIfNeeded();
+    const box = (await toggle.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    await toggle.tap();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await view.openSession();
+    await expect(view.transcript()).toHaveAttribute('data-transcript-mode', 'full');
+    await view.expectNoTranscriptTools();
+    await page.goto('/settings/appearance');
+    await toggle.scrollIntoViewIfNeeded(); await toggle.tap();
+    await view.openSession();
+    await expect(view.transcript()).toHaveAttribute('data-transcript-mode', 'virtual');
+    await view.expectNoTranscriptTools();
+    await view.firstMessage();
+    const block = await view.transcript().locator('[data-transcript-block]:has([data-tool-activity])').first().getAttribute('data-transcript-block');
+    const tool = view.transcript().locator(`[data-transcript-block="${block}"] [data-tool-activity] > button`);
+    const expanded = await tool.getAttribute('aria-expanded');
+    await view.tapControl(tool);
+    await expect(tool).toHaveAttribute('aria-expanded', expanded === 'true' ? 'false' : 'true');
     await view.returnToLatest();
     await view.input().fill(`Phone draft ${width}x${height}`);
     await view.expectSendReachable(); await view.expectNoPageOverflow();
@@ -202,7 +206,9 @@ test('virtual transcript should retain a focused tool control when scrolling it 
   test.skip(!!info.project.use.isMobile, 'Desktop keyboard focus and wheel interaction.');
   // Arrange
   const { view } = await arrange(page);
-  await view.chooseResult('shard 30');
+  await view.jumpReply(30);
+  const group = view.transcript().locator('[data-tool-activity]').filter({ hasText: 'Bash 30' });
+  if (await group.locator(':scope > button').getAttribute('aria-expanded') !== 'true') await group.locator(':scope > button').click();
   const summary = view.transcript().locator('[data-tool-activity]').filter({ hasText: 'Bash 30' }).locator('summary').first();
   await summary.focus();
   // Act
@@ -214,16 +220,16 @@ test('virtual transcript should retain a focused tool control when scrolling it 
 });
 
 
-test('virtual transcript should keep the first loaded message clear of the toolbar', async ({ page }) => {
+test('virtual transcript should show the first loaded message without a transcript toolbar', async ({ page }) => {
   // Arrange
   const { view } = await arrange(page);
   // Act / Assert
-  await view.chooseResult('Task 1:');
-  await view.expectTextClearOfTools('Task 1: check the build');
-  await view.expectToolbarFits();
+  await view.firstMessage();
+  await expect(view.chat().getByText('Task 1: check the build', { exact: true })).toBeInViewport();
+  await view.expectNoTranscriptTools();
 });
 
-test('virtual transcript should fit an embedded side chat and keep its offline search usable', async ({ page }) => {
+test('virtual transcript should fit an embedded side chat and keep its offline history usable', async ({ page }) => {
   // Arrange
   await page.setViewportSize({ width: 1440, height: 900 });
   const server = new HappyServer();
@@ -241,13 +247,13 @@ test('virtual transcript should fit an embedded side chat and keep its offline s
   view.embedded = true;
   await view.expectVirtual();
   // Act / Assert
-  await view.expectToolbarFits();
-  await view.chooseResult('Task 1:'); await view.expectTextClearOfTools('Task 1: check the build');
+  await view.expectNoTranscriptTools();
+  await view.firstMessage(); await expect(view.chat().getByText('Task 1: check the build', { exact: true })).toBeInViewport();
   await expect.poll(async () => (await side.offlineRecords()).some(row => row.key.endsWith('history.' + id))).toBe(true);
   await side.setNetwork(false);
   await expect(view.chat().getByRole('status', { name: 'Side chat availability', exact: true })).toBeVisible();
-  await view.chooseResult('Task 1:'); await view.expectTextClearOfTools('Task 1: check the build');
-  await view.expectToolbarFits(); await side.expectComposerFits();
+  await view.firstMessage(); await expect(view.chat().getByText('Task 1: check the build', { exact: true })).toBeInViewport();
+  await view.expectNoTranscriptTools(); await side.expectComposerFits();
 });
 
 

@@ -175,8 +175,7 @@ export const Chat = memo(function Chat({
   const previousScrollTop = useRef(0);
   const viewport = useRef<TranscriptController | null>(null);
   const [virtualMode, setVirtualMode] = useState(false);
-  const [transcriptTools, setTranscriptTools] = useState<HTMLElement | null>(null);
-  const [hasTranscriptTools, setHasTranscriptTools] = useState(false);
+  const [managedTranscript, setManagedTranscript] = useState(false);
   const onTranscriptPinned = useCallback((value: boolean) => setAwayFromLatest(!value), []);
   const sideOpen = location.pathname === `/session/${session.id}/side`;
   const parentId = session.isSideChat && parentKnown ? session.parentSessionId : undefined;
@@ -237,7 +236,7 @@ export const Chat = memo(function Chat({
   function updateScrollPosition(element: HTMLDivElement, scrollEvent = false) {
     const nearEnd = element.scrollHeight - element.scrollTop - element.clientHeight < 90;
     // A queued scroll event can arrive after a taller reply changes the scroll height.
-    if (!hasTranscriptTools && !virtualMode && (!scrollEvent || !pinned.current
+    if (!managedTranscript && !virtualMode && (!scrollEvent || !pinned.current
       || element.scrollTop < previousScrollTop.current - 1 || nearEnd)) pinned.current = nearEnd;
     previousScrollTop.current = element.scrollTop;
     setAwayFromLatest(!pinned.current);
@@ -246,7 +245,7 @@ export const Chat = memo(function Chat({
   }
 
   function scrollToLatest() {
-    if (hasTranscriptTools && viewport.current) { viewport.current.latest(); setAwayFromLatest(false); live?.setSessionReading(session.id, true); return; }
+    if (managedTranscript && viewport.current) { viewport.current.latest(); setAwayFromLatest(false); live?.setSessionReading(session.id, true); return; }
     const element = scroll.current;
     if (!element) return;
     element.scrollTop = element.scrollHeight;
@@ -254,7 +253,7 @@ export const Chat = memo(function Chat({
   }
 
   useLayoutEffect(() => {
-    if (!scroll.current || !scrollContent.current || view !== 'chat' || hasTranscriptTools || virtualMode) return;
+    if (!scroll.current || !scrollContent.current || view !== 'chat' || managedTranscript || virtualMode) return;
     const element = scroll.current;
     element.scrollTop = scrollPositions.get(session.id) ?? element.scrollHeight;
     updateScrollPosition(element);
@@ -275,12 +274,12 @@ export const Chat = memo(function Chat({
       live?.setSessionReading(session.id, false);
       scrollPositions.set(session.id, element.scrollTop);
     };
-  }, [session.id, view, live, virtualMode, hasTranscriptTools]);
+  }, [session.id, view, live, virtualMode, managedTranscript]);
   useLayoutEffect(() => {
-    if (!scroll.current || hasTranscriptTools || virtualMode) return;
+    if (!scroll.current || managedTranscript || virtualMode) return;
     if (pinned.current) scroll.current.scrollTop = scroll.current.scrollHeight;
     updateScrollPosition(scroll.current);
-  }, [session.messages.length, composerHeight, keyboardInset, keyboardOpen, running, virtualMode, hasTranscriptTools]);
+  }, [session.messages.length, composerHeight, keyboardInset, keyboardOpen, running, virtualMode, managedTranscript]);
   useEffect(() => {
     if (!composer.current) return;
     let frame: number | undefined;
@@ -432,7 +431,6 @@ export const Chat = memo(function Chat({
       data-view={view}
       data-chat-width={preferences.chatWidth}
       data-chat-session
-      data-transcript-tools={hasTranscriptTools || undefined}
       data-connection={mode === 'live' ? connection : undefined}
       data-keyboard-open={keyboardOpen}
       data-embedded={embedded || undefined}
@@ -488,19 +486,18 @@ export const Chat = memo(function Chat({
       <OfflineStatus label={embedded ? t("Side chat availability") : t("Conversation availability")} />
       {view === 'chat' ? (
         <>
-          <div className={styles.transcriptHost} ref={setTranscriptTools} />
           <div
             id={conversationId}
             role="region"
             aria-label={t("Conversation messages")}
             className={styles.messageScroll}
-            data-transcript-tools={hasTranscriptTools || undefined}
+            data-transcript-managed={managedTranscript || undefined}
             // Focus and scrollIntoView keep a control above the composer that overlays the bottom of the list.
             style={{ scrollPaddingBottom: `${composerHeight + keyboardInset}px` }}
             ref={scroll}
             onScroll={(event) => updateScrollPosition(event.currentTarget, true)}
             onFocusCapture={event => {
-              if (hasTranscriptTools && event.target instanceof HTMLElement && event.target.classList.contains(styles.historyEarlier)) unpin();
+              if (managedTranscript && event.target instanceof HTMLElement && event.target.classList.contains(styles.historyEarlier)) unpin();
             }}
             onPointerDownCapture={(event) => {
               if (event.target instanceof Element && event.target.closest('[data-tool-activity]'))
@@ -526,7 +523,7 @@ export const Chat = memo(function Chat({
               {session.messages.length ? (
                 <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending} answered={answeredIds}
                   running={running} recapBusy={recapBusy} scroll={scroll} railHost={railHost}
-                  pinned={pinned} viewport={viewport} toolsHost={transcriptTools} onVirtualMode={setVirtualMode} onTools={setHasTranscriptTools} onPinned={onTranscriptPinned}
+                  pinned={pinned} viewport={viewport} onVirtualMode={setVirtualMode} onManaged={setManagedTranscript} onPinned={onTranscriptPinned}
                   onOption={chooseReply} onRecap={requestRecap} onUnpin={unpin} /></LazyBoundary>
               ) : !history?.loading && (!history?.error || offline) ? (
                 <Empty title={offline ? t("No saved messages") : t("The start of something good")}>

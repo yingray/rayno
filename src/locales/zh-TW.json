@@ -667,7 +667,7 @@
   "This is the latest version": "目前已是最新版本",
   "Cannot check for updates. Check your connection.": "無法檢查更新，請確認網路連線。",
   "Faster long chats (preview)": "加快長對話捲動（預覽）",
-  "Render a smaller part of long chats. Use Full transcript for browser search and selection across messages.": "長對話僅顯示目前閱讀的部分。瀏覽器搜尋或跨訊息選取時，請切換完整逐字稿。",
+  "Render a smaller part of long chats. Turn this off to show the full transcript.": "長對話僅顯示目前閱讀的部分。關閉此設定即可顯示完整逐字稿。",
   "Reading": "閱讀",
   "Full transcript": "完整逐字稿",
   "Faster scrolling · Preview": "加速捲動 · 預覽",

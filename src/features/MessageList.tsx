@@ -1,9 +1,8 @@
 import { LanguageContext, useText } from "../i18n";
-import { Children, Fragment, isValidElement, memo, useContext, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Children, Fragment, isValidElement, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
-import { Button, copyText, Dialog, Icon } from '../components/ui';
-import { createPortal } from 'react-dom';
+import { Button, copyText, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
 import { formatToolValue, groupChatActivity, toolCount, type ChatBlock, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
@@ -36,9 +35,8 @@ import { InlineToolQuestion, questionCallIds } from '../happy/Requests';
 import { timeStage } from '../happy/perf';
 import { reuseEqual } from '../data/reuseEqual';
 import { isTodoWrite, todoProgress, todoRowList, type Todo } from '../data/todos';
-import { createTranscriptMemory, parseTranscriptAnchor, recapTargetBlock, recapTurnGroups, searchTranscript, type TranscriptAnchor, type TranscriptMemory } from '../data/transcript';
+import { createTranscriptMemory, parseTranscriptAnchor, recapTargetBlock, recapTurnGroups, type TranscriptAnchor, type TranscriptMemory } from '../data/transcript';
 import { TranscriptViewport, type TranscriptController } from './TranscriptViewport';
-import transcriptStyles from './transcript.module.css';
 
 // Thinking is secondary. It stays closed until the user opens it.
 function Thinking({ text, memory, stateKey }: { text: string; memory?: TranscriptMemory; stateKey?: string }) {
@@ -380,7 +378,7 @@ const isPoint = (index: number) => (segment: RecapSegment): segment is Extract<R
 
 export const MessageList = memo(function MessageList({
   sessionId = '', messages, disabled, pending, answered, running = false, recapBusy = false, scroll, railHost = null,
-  onOption, onRecap, onUnpin, pinned, viewport, toolsHost, onVirtualMode, onTools, onPinned,
+  onOption, onRecap, onUnpin, pinned, viewport, onVirtualMode, onManaged, onPinned,
 }: {
   sessionId?: string; messages: Message[]; disabled: boolean; pending: boolean;
   // Options that the user chose in this chat. A held answer does not answer them yet.
@@ -396,12 +394,10 @@ export const MessageList = memo(function MessageList({
   onUnpin?: () => void;
   pinned: RefObject<boolean>;
   viewport: RefObject<TranscriptController | null>;
-  toolsHost: HTMLElement | null;
   onVirtualMode: (enabled: boolean) => void;
-  onTools: (visible: boolean) => void;
+  onManaged: (enabled: boolean) => void;
   onPinned: (pinned: boolean) => void;
 }) {
-  const t = useText();
   const { bubble, compactTools, faster, font, notify, autoplay, agentState, metadata, ui, live, language, historyReady } = useDemo((store) => ({
     bubble: store.state.preferences.bubble, compactTools: store.state.preferences.compactTools,
     faster: store.state.preferences.fasterTranscript, font: store.state.preferences.fontSize, language: store.state.preferences.language,
@@ -420,7 +416,7 @@ export const MessageList = memo(function MessageList({
     }
     return value;
   }, [ui, live, sessionId]);
-  const [full, setFull] = useState(() => !!memory.anchor?.full);
+  const full = !faster;
   const [positionReady, setPositionReady] = useState(!live || !!memory.loaded);
   useEffect(() => {
     if (!live || memory.loaded) { setPositionReady(true); return; }
@@ -429,13 +425,10 @@ export const MessageList = memo(function MessageList({
       if (!active) return;
       if (!memory.anchor) memory.anchor = parseTranscriptAnchor(raw);
       memory.loaded = true;
-      setFull(!!memory.anchor?.full); setPositionReady(true);
+      setPositionReady(true);
     });
     return () => { active = false; };
   }, [live, memory, sessionId]);
-  const [searching, setSearching] = useState(false), [query, setQuery] = useState('');
-  const deferredQuery = useDeferredValue(query);
-  const searchPending = query !== deferredQuery;
   const persist = useEventCallback((anchor: TranscriptAnchor) => {
     try {
       if (live) live.saveTranscriptPosition(sessionId, JSON.stringify(anchor));
@@ -453,15 +446,9 @@ export const MessageList = memo(function MessageList({
     previousBlocks.current = next;
     return next;
   }), [visible]);
-  const available = !!faster && blocks.length >= 300;
-  const virtual = available && !full;
-  const results = useMemo(() => searching ? searchTranscript(blocks, deferredQuery) : [], [blocks, searching, deferredQuery]);
-  useLayoutEffect(() => { onTools(available); if (!available) onVirtualMode(false); return () => onTools(false); }, [available, onTools, onVirtualMode]);
-  const switchReading = () => {
-    const anchor = viewport.current?.capture();
-    if (anchor) { memory.anchor = { ...anchor, full: !full }; persist(memory.anchor); }
-    setFull(!full);
-  };
+  const available = blocks.length >= 300;
+  const virtual = available && faster;
+  useLayoutEffect(() => { onManaged(available); if (!available) onVirtualMode(false); return () => onManaged(false); }, [available, onManaged, onVirtualMode]);
   const outcomes = useMemo(() => {
     const permissions = completedPermissions(agentState), forms = completedForms(agentState);
     const modeLabel = (mode: string) => permissionLabel(metadata || {}, mode);
@@ -574,42 +561,6 @@ export const MessageList = memo(function MessageList({
             && <RecapButton disabled={disabled || pending} onClick={() => void onRecap!()} />}
         </Fragment>;
   return <>
-    {available && toolsHost && createPortal(<div className={transcriptStyles.tools} role="toolbar" aria-label={t('Transcript tools')}>
-      <span className={transcriptStyles.status}>{t(full ? 'Full transcript' : 'Faster scrolling · Preview')}</span>
-      <Button icon="searchOutline" onClick={() => setSearching(true)}>{t('Find in loaded messages')}</Button>
-      <Button onClick={switchReading}>{t(full ? 'Use faster scrolling' : 'Show full transcript')}</Button>
-    </div>, toolsHost)}
-    {searching && <Dialog title={t('Find in loaded messages')} onClose={() => setSearching(false)}>
-      <label className={transcriptStyles.searchField} data-focus-frame>
-        <input aria-label={t('Find text')} value={query} onChange={event => setQuery(event.target.value)} />
-      </label>
-      <p className={transcriptStyles.hint}>{t('Searches loaded history. Load earlier messages to search more.')}</p>
-      <div className={transcriptStyles.results} role="region" aria-label={t('Search results')} aria-busy={searchPending}>
-        {results.map(result => <button key={result.id} disabled={searchPending} data-transcript-result={result.id} onClick={async () => {
-          setSearching(false); onUnpin?.();
-          if (result.tools) setRevealed(previous => new Set([...previous, result.id]));
-          let row = await viewport.current?.mount(result.id);
-          const element = scroll?.current;
-          if (row && element) {
-            if (result.tools) {
-              row.querySelector<HTMLButtonElement>('[data-tool-activity] > button[aria-expanded="false"]')?.click();
-              await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-              for (const detail of row.querySelectorAll<HTMLDetailsElement>('details')) {
-                if (!detail.textContent?.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) continue;
-                if (detail.dataset.toolCall) memory.details.set(detail.dataset.toolCall, true);
-                detail.open = true;
-              }
-              row = await viewport.current?.mount(result.id);
-              if (!row) return;
-            }
-            const target = result.tools ? findRecapTarget(element, '', query, [result.id]) : null;
-            jumpToRecapTarget(element, target || row.querySelector<HTMLElement>('article, [data-tool-activity]') || row, 'auto', () => viewport.current?.capture());
-          }
-        }}>{result.text}</button>)}
-        {results.length === 50 && <p>{t('Showing the first 50 matches. Refine your search for more.')}</p>}
-        {!searchPending && deferredQuery.trim() && !results.length && <p>{t('No matching messages')}</p>}
-      </div>
-    </Dialog>}
     {available ? <TranscriptViewport blocks={blocks} enabled={virtual} full={full} scroll={scroll} pinned={pinned}
       controller={viewport} memory={memory} ready={positionReady && historyReady} layoutKey={`${font}:${compactTools}:${language}`}
       render={renderBlock} onMode={onVirtualMode} onPinned={onPinned} persist={persist} /> : blocks.map(renderBlock)}
