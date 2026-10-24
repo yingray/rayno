@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { useDemo } from '../data/store';
 import { formatToolValue, groupChatActivity, toolCount, type ChatBlock, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
+import { commandInvocation, skillInvocation } from '../data/invocations';
 import { isRejected, unansweredMessageIds } from '../data/replyTurns';
 import { recapView, type MessageRecap } from '../data/recapView';
 import type { RecapSegment } from '../data/messageRecap';
@@ -110,6 +111,14 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
           · {count} {count === 1 ? t("tool") : t("tools")}
         </span>
       </button>
+      {block.details?.some(call => skillInvocation(call)) && <div className={styles.skillInvocations}>
+        {block.details.map((call, index) => {
+          const skill = skillInvocation(call);
+          return skill && <span className={styles.invocation} data-invocation="skill" key={call?.id || index}>
+            <Icon name="sparklesOutline" size={14} /><strong>Skill</strong><code>{skill}</code>
+          </span>;
+        })}
+      </div>}
       {answered.length > 0 && <div className={styles.toolAnswered} role="group" aria-label={t("Answered questions")}>
         {answered.map(({ index, outcome }) => outcome.answers?.length
           ? <ToolAnswers key={index} items={outcome.answers} />
@@ -121,6 +130,7 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
         {rowsMounted && block.tools.map((tool, index) => {
           const thinking = block.thinking?.[index], call = block.details?.[index];
           const decision = outcomes?.[index]?.permission, todos = call && todoRowList(call);
+          const skill = skillInvocation(call), label = skill ? `Skill · ${skill}` : tool;
           // The answered questions group already shows the answers of this call.
           const sections = !call ? [] : toolSections(call).filter((section) => section.kind !== 'answers' || !outcomes?.[index]?.answers?.length);
           return <li key={index}>
@@ -130,7 +140,7 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
               onToggle={event => memory.details.set(`${block.id}:thinking:${index}`, event.currentTarget.open)}>
               <summary>{tool}</summary><p>{thinking}</p>
             </details> : todos ? <TodoTool todos={todos} decision={decision} /> : call && (call.input !== undefined || call.result !== undefined || call.children?.length) ? <ToolRowDetails
-              memory={memory} stateKey={call.id} reveal={reveal} summary={<><span>{tool}</span>{decision && <ToolDecision value={decision} />}</>}>{() => <>
+              memory={memory} stateKey={call.id} reveal={reveal} summary={<><span>{label}</span>{decision && <ToolDecision value={decision} />}</>}>{() => <>
               {decision && <div className={styles.toolNote} data-tone={decision.tone === 'denied' ? "error" : undefined}>{decision.detail}</div>}
               {(call.input !== undefined || call.result !== undefined) && <><h4>{t("Arguments")}</h4><pre>{formatToolValue(call.input)}</pre></>}
               {!!call.children?.length && <SubagentWork items={call.children} />}
@@ -269,6 +279,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
 }) {
   const t = useText();
   const pendingShown = usePendingShown(message.delivery);
+  const command = message.role === 'user' ? commandInvocation(message.content) : null;
   const parts = partsForMessage(message);
   const codeFilename = message.content.match(/\/\* ([\w./-]+) \*\//)?.[1] || 'Code';
   // The recap card closes the reply. Options stay last.
@@ -292,8 +303,10 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
     >
       {response && <ResponseHeader sentAt={message.sentAt} />}
       {message.role === 'user' ? (<>
-        <div className={styles.bubble} data-pending={pendingShown || undefined}>
-          {message.content}
+        <div className={command ? styles.commandMessage : styles.bubble} data-pending={pendingShown || undefined}>
+          {command ? <><span className={styles.invocation} data-invocation="command">
+            <Icon name="codeSlash" size={14} /><strong>Command</strong><code>{command.name}</code>
+          </span>{command.args && <div>{command.args}</div>}{command.remainder && <div>{command.remainder}</div>}</> : message.content}
           {message.attachments?.map((file) => (
             file.ref ? <AttachmentImage key={file.ref} sessionId={sessionId} file={file} /> : <span className={styles.messageAttachment} key={file.name}>
               <Icon name="documentTextOutline" size={15} />

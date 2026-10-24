@@ -251,14 +251,34 @@
   font-size: calc(15px * var(--font-scale));
   line-height: calc(23px * var(--font-scale));
 }
+.bubble, .commandMessage {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .bubble {
   background: #1d1028;
   border: 1px solid #ad46ff;
   border-radius: 20px 20px 6px 20px;
   padding: 12px 16px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
+.invocation {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--accent-soft);
+  border-radius: 10px;
+  background: var(--well);
+  color: var(--accent-soft);
+  font-size: calc(13px * var(--font-scale));
+  line-height: 1.6;
+  white-space: normal;
+}
+.invocation > svg { flex: none; }
+.invocation > code { min-width: 0; overflow-wrap: anywhere; color: var(--body); }
+.skillInvocations { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 12px; }
 .userMessage[data-bubble='gray'] .bubble {
   background: #29292d;
   border-color: #55555e;
@@ -1361,7 +1381,7 @@
 }
 
 /* Happy Agent send receipts: a pending bubble dims, and the state line sits under it. */
-.bubble[data-pending] {
+.bubble[data-pending], .commandMessage[data-pending] {
   opacity: 0.45;
 }
 .sendState {
