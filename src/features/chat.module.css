@@ -329,6 +329,7 @@
   cursor: pointer;
 }
 .toolRows {
+  --tool-row-height: 28px;
   padding: 4px 10px 10px;
   margin: 0;
   border-top: 1px solid var(--border);
@@ -337,9 +338,9 @@
 .toolRows > li {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 4px;
-  min-height: 30px;
+  gap: 6px;
+  padding: 2px 4px;
+  min-height: var(--tool-row-height);
   font: calc(13px * var(--font-scale)) 'Geist Mono';
   color: var(--muted);
   line-height: 1.7;
@@ -347,7 +348,7 @@
 }
 .toolRows > li > :first-child {
   opacity: 0.6;
-  margin-top: 4px;
+  margin-top: calc((var(--tool-row-height) - 14px) / 2);
   flex: none;
 }
 .markdown {
@@ -1181,7 +1182,7 @@
 .toolDetails { min-width: 0; width: 100%; overflow-wrap: anywhere; }
 .toolDetails summary {
   cursor: pointer;
-  min-height: 28px;
+  min-height: var(--tool-row-height);
   padding: 2px 0;
   display: block;
   align-content: center;
@@ -1190,7 +1191,7 @@
 .toolDetails summary::marker { content: ''; }
 .toolDetails summary::-webkit-details-marker { display: none; }
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
-  .toolDetails summary { min-height: 44px; }
+  .toolRows { --tool-row-height: 44px; }
 }
 .toolDetails h4 { margin: 12px 0 4px; }
 .toolDetails pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; font-size: 12px; }
@@ -1245,7 +1246,7 @@
 .diffHunk { color: var(--muted); }
 .toolDetails pre[data-tone='error'] { color: #fca5a5; }
 .toolDetails summary > span:first-child, .toolLabel > span:first-child { margin-right: 8px; }
-.toolLabel { min-width: 0; }
+.toolLabel { min-width: 0; min-height: var(--tool-row-height); display: flex; align-items: center; flex-wrap: wrap; }
 /* Past permission replies, as in Happy Web PermissionFooter. */
 .toolDecision {
   display: inline-block;
