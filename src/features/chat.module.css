@@ -1485,3 +1485,20 @@
 }
 
 .sideUnread { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--accent-soft); }
+
+.responseActions { display: flex; margin-top: 4px; }
+.copyResponse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.copyResponse:hover { color: var(--text); background: var(--well); }

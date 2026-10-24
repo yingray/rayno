@@ -2,7 +2,7 @@ import { LanguageContext, useText } from "../i18n";
 import { Children, Fragment, isValidElement, memo, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
-import { Button, Icon } from '../components/ui';
+import { Button, copyText, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
 import { formatToolValue, groupChatActivity, toolCount, type ChatBlock, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
@@ -275,6 +275,13 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
     ? <RecapCard key="recap" messageId={message.id} value={recap} writing={recapWriting} onJump={onJump} notify={notify} />
     : null;
   const optionsAt = card ? parts.findIndex((part) => part.kind === 'options') : -1;
+  const canCopy = message.role === 'assistant' && parts.some((part) =>
+    part.kind === 'options' || part.kind === 'markdown' && !!part.content.trim());
+  function copyResponse() {
+    const text = parts.flatMap((part) => part.kind === 'markdown' && part.content.trim() ? [part.content.trim()]
+      : part.kind === 'options' ? [part.items.map((item) => `- ${item}`).join('\n')] : []).join('\n\n');
+    void copyText(text, notify);
+  }
   return (
     <article
       className={message.role === 'user' ? styles.userMessage : styles.agentMessage}
@@ -327,6 +334,11 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
           {optionsAt === -1 && card}
         </div>
       )}
+      {canCopy && <div className={styles.responseActions}>
+        <button type="button" className={styles.copyResponse} aria-label={t("Copy response")} title={t("Copy response")} onClick={copyResponse}>
+          <Icon name="copyOutline" size={15} />
+        </button>
+      </div>}
     </article>
   );
 });
