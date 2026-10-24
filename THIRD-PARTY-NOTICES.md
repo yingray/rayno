@@ -39,6 +39,9 @@ Code blocks use [lowlight](https://github.com/wooorm/lowlight) 3.3.0 and highlig
 The grammars load locally when code enters the viewport. React renders the token tree without executable HTML.
 The complete notices appear in `public/licenses/lowlight.txt` and `public/licenses/highlight.js.txt`.
 
+Long chats use [TanStack Virtual](https://github.com/TanStack/virtual) 3.14.22 under the MIT license.
+The complete notice appears in `public/licenses/tanstack-virtual.txt`.
+
 The package manifest and lockfile identify exact direct versions and resolved dependency versions.
 The respective packages retain their source licenses.
 

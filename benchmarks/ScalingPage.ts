@@ -48,13 +48,22 @@ export class ScalingPage {
       return { ms: performance.now() - now, pages };
     });
   }
+  async latest() {
+    const button = this.page.getByRole('button', { name: 'Scroll to latest messages', exact: true });
+    if (await button.isVisible()) await button.click();
+    await this.page.waitForFunction(() => {
+      const root = document.querySelector<HTMLElement>('[aria-label="Conversation messages"]')!;
+      return root.scrollHeight - root.clientHeight - root.scrollTop < 4;
+    }, undefined, { timeout: 5000 });
+    await this.settle();
+  }
   async armReply(text: string) {
     await this.page.evaluate(text => {
       const root = document.querySelector('[aria-label="Conversation messages"]')!;
       const start = performance.now();
       (window as any).__replyPaint = null;
       const observer = new MutationObserver(() => {
-        const tail = root.querySelector('article[data-message-id]:last-of-type');
+        const tail = [...root.querySelectorAll('article[data-message-id]')].at(-1);
         if (!tail?.textContent?.includes(text)) return;
         observer.disconnect();
         // Two rAF callbacks bracket a rendering opportunity; this is not a physical display timestamp.

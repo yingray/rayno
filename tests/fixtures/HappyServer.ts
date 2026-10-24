@@ -574,6 +574,7 @@ export class HappyServer {
     ));
     if (sessionId === 'real-session') this.messages = messages;
     else this.otherMessages.set(sessionId, messages);
+    return messages;
   }
   /** A Happy Agent send receipt for a stored message, as `pendingUserMessages.spec.ts` in happy-app shows it. */
   async pushReceipt(ref: string, reason?: string) {

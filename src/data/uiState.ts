@@ -1,15 +1,19 @@
 import { demoReducer } from './reducer';
 import type { Action, DemoState } from './types';
+import type { TranscriptMemory } from './transcript';
 
 // Draft notifications stay local to one session. The full workspace must not
 // receive an external-store notification for each character in the composer.
 export function createUIState(initial: DemoState) {
+  // This map belongs to the account provider. No transcript content enters a module-global cache.
+  const transcripts = new Map<string, TranscriptMemory>();
   let state = initial;
   let snapshot = initial;
   const listeners = new Set<() => void>();
   const changes = new Set<() => void>();
   const drafts = new Map<string, Set<() => void>>();
   return {
+    transcripts,
     getState: () => state,
     getSnapshot: () => snapshot,
     getDraft: (id: string) => state.drafts[id] || '',
@@ -31,6 +35,7 @@ export function createUIState(initial: DemoState) {
       };
     },
     dispatch(action: Action) {
+      if (action.type === 'delete') transcripts.delete(action.id);
       const previous = state;
       const next = demoReducer(state, action);
       if (next === previous) return;

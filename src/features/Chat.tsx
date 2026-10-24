@@ -32,6 +32,7 @@ import { visibleGoal, type GoalAction } from '../happy/agentGoal';
 import { latestTodos } from '../data/todos';
 import { parseRipgrepFiles, searchCommands, searchFiles, sessionCommands, type FileItem } from '../happy/suggestions';
 import type { Suggestion } from './ComposerSuggestions';
+import type { TranscriptController } from './TranscriptViewport';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
@@ -171,6 +172,12 @@ export const Chat = memo(function Chat({
   const input = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const pinned = useRef(true);
+  const previousScrollTop = useRef(0);
+  const viewport = useRef<TranscriptController | null>(null);
+  const [virtualMode, setVirtualMode] = useState(false);
+  const [transcriptTools, setTranscriptTools] = useState<HTMLElement | null>(null);
+  const [hasTranscriptTools, setHasTranscriptTools] = useState(false);
+  const onTranscriptPinned = useCallback((value: boolean) => setAwayFromLatest(!value), []);
   const sideOpen = location.pathname === `/session/${session.id}/side`;
   const parentId = session.isSideChat && parentKnown ? session.parentSessionId : undefined;
   const view = embedded ? 'chat' : location.pathname.endsWith('/changes')
@@ -227,14 +234,19 @@ export const Chat = memo(function Chat({
     rememberChoice(resolveModelChoice(metadata, [{ model, effort: value }]));
   }
 
-  function updateScrollPosition(element: HTMLDivElement) {
-    pinned.current = element.scrollHeight - element.scrollTop - element.clientHeight < 90;
+  function updateScrollPosition(element: HTMLDivElement, scrollEvent = false) {
+    const nearEnd = element.scrollHeight - element.scrollTop - element.clientHeight < 90;
+    // A queued scroll event can arrive after a taller reply changes the scroll height.
+    if (!hasTranscriptTools && !virtualMode && (!scrollEvent || !pinned.current
+      || element.scrollTop < previousScrollTop.current - 1 || nearEnd)) pinned.current = nearEnd;
+    previousScrollTop.current = element.scrollTop;
     setAwayFromLatest(!pinned.current);
     scrollPositions.set(session.id, element.scrollTop);
     live?.setSessionReading(session.id, pinned.current);
   }
 
   function scrollToLatest() {
+    if (hasTranscriptTools && viewport.current) { viewport.current.latest(); setAwayFromLatest(false); live?.setSessionReading(session.id, true); return; }
     const element = scroll.current;
     if (!element) return;
     element.scrollTop = element.scrollHeight;
@@ -242,7 +254,7 @@ export const Chat = memo(function Chat({
   }
 
   useLayoutEffect(() => {
-    if (!scroll.current || !scrollContent.current || view !== 'chat') return;
+    if (!scroll.current || !scrollContent.current || view !== 'chat' || hasTranscriptTools || virtualMode) return;
     const element = scroll.current;
     element.scrollTop = scrollPositions.get(session.id) ?? element.scrollHeight;
     updateScrollPosition(element);
@@ -263,12 +275,12 @@ export const Chat = memo(function Chat({
       live?.setSessionReading(session.id, false);
       scrollPositions.set(session.id, element.scrollTop);
     };
-  }, [session.id, view, live]);
+  }, [session.id, view, live, virtualMode, hasTranscriptTools]);
   useLayoutEffect(() => {
-    if (!scroll.current) return;
+    if (!scroll.current || hasTranscriptTools || virtualMode) return;
     if (pinned.current) scroll.current.scrollTop = scroll.current.scrollHeight;
     updateScrollPosition(scroll.current);
-  }, [session.messages.length, composerHeight, keyboardInset, keyboardOpen, running]);
+  }, [session.messages.length, composerHeight, keyboardInset, keyboardOpen, running, virtualMode, hasTranscriptTools]);
   useEffect(() => {
     if (!composer.current) return;
     let frame: number | undefined;
@@ -404,7 +416,7 @@ export const Chat = memo(function Chat({
       setPending(false);
     }
   });
-  const unpin = useCallback(() => { pinned.current = false; }, []);
+  const unpin = useCallback(() => { pinned.current = false; viewport.current?.unpin(); }, []);
   const goal = useMemo(() => mode === 'live' ? visibleGoal(agentState, liveMetadata, session.status !== 'offline') : null,
     [mode, agentState, liveMetadata, session.status]);
   const todos = useMemo(() => session.archived ? [] : session.todos ?? latestTodos(session.messages),
@@ -420,6 +432,7 @@ export const Chat = memo(function Chat({
       data-view={view}
       data-chat-width={preferences.chatWidth}
       data-chat-session
+      data-transcript-tools={hasTranscriptTools || undefined}
       data-connection={mode === 'live' ? connection : undefined}
       data-keyboard-open={keyboardOpen}
       data-embedded={embedded || undefined}
@@ -475,22 +488,27 @@ export const Chat = memo(function Chat({
       <OfflineStatus label={embedded ? t("Side chat availability") : t("Conversation availability")} />
       {view === 'chat' ? (
         <>
+          <div className={styles.transcriptHost} ref={setTranscriptTools} />
           <div
             id={conversationId}
             role="region"
             aria-label={t("Conversation messages")}
             className={styles.messageScroll}
+            data-transcript-tools={hasTranscriptTools || undefined}
             // Focus and scrollIntoView keep a control above the composer that overlays the bottom of the list.
             style={{ scrollPaddingBottom: `${composerHeight + keyboardInset}px` }}
             ref={scroll}
-            onScroll={(event) => updateScrollPosition(event.currentTarget)}
+            onScroll={(event) => updateScrollPosition(event.currentTarget, true)}
+            onFocusCapture={event => {
+              if (hasTranscriptTools && event.target instanceof HTMLElement && event.target.classList.contains(styles.historyEarlier)) unpin();
+            }}
             onPointerDownCapture={(event) => {
               if (event.target instanceof Element && event.target.closest('[data-tool-activity]'))
-                pinned.current = false;
+                unpin();
             }}
             onKeyDownCapture={(event) => {
               if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof Element
-                && event.target.closest('[data-tool-activity]')) pinned.current = false;
+                && event.target.closest('[data-tool-activity]')) unpin();
             }}
           >
             <div className={styles.messages} ref={scrollContent} data-font-size={preferences.fontSize} style={{
@@ -504,10 +522,11 @@ export const Chat = memo(function Chat({
               </div>
               <ChatHistoryStatus history={history} offline={offline}
                 retry={() => void live?.loadHistory(session.id, history?.direction).catch(() => {})}
-                loadEarlier={() => void live?.loadHistory(session.id, 'older').catch(() => {})} />
+                loadEarlier={() => { viewport.current?.unpin(); viewport.current?.capture(); void live?.loadHistory(session.id, 'older').catch(() => {}); }} />
               {session.messages.length ? (
                 <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending} answered={answeredIds}
                   running={running} recapBusy={recapBusy} scroll={scroll} railHost={railHost}
+                  pinned={pinned} viewport={viewport} toolsHost={transcriptTools} onVirtualMode={setVirtualMode} onTools={setHasTranscriptTools} onPinned={onTranscriptPinned}
                   onOption={chooseReply} onRecap={requestRecap} onUnpin={unpin} /></LazyBoundary>
               ) : !history?.loading && (!history?.error || offline) ? (
                 <Empty title={offline ? t("No saved messages") : t("The start of something good")}>

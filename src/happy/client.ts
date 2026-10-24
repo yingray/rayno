@@ -166,6 +166,7 @@ export class HappyClient implements DemoAdapter {
   private historyCursors = new Map<string, number>();
   private deletedSessions = new Set<string>();
   private historyRequests = new Map<string, Promise<void>>();
+  private transcriptWrites = new Map<string, Promise<void>>();
   // One follow-up read for each session and direction, shared by the callers that came during a running read.
   private queuedHistory = new Map<string, { promise: Promise<void>; quiet: boolean }>();
   private activeSessions = new Set<string>();
@@ -478,6 +479,22 @@ export class HappyClient implements DemoAdapter {
   writeLocal(key: string, value: string) {
     this.assertAlive();
     this.storage.setItem(this.storageKey + key, value);
+  }
+  async readTranscriptPosition(id: string): Promise<string | null> {
+    const saved = this.readLocal(`transcript.${id}`);
+    if (!saved) return null;
+    try { return await this.encryption.decrypt<string>(saved, null); } catch { return null; }
+  }
+  saveTranscriptPosition(id: string, value: string): void {
+    if (this.disposed || this.cacheDisabled) return;
+    const previous = this.transcriptWrites.get(id) || Promise.resolve();
+    const pending = previous.then(async () => {
+      const encrypted = await this.encryption.encrypt(value, null);
+      if (!this.disposed && !this.cacheDisabled) this.writeLocal(`transcript.${id}`, encrypted);
+    }).catch(() => { /* A position write never blocks the conversation. */ }).finally(() => {
+      if (this.transcriptWrites.get(id) === pending) this.transcriptWrites.delete(id);
+    });
+    this.transcriptWrites.set(id, pending);
   }
   async clearLocal() {
     this.cacheDisabled = true;

@@ -179,7 +179,7 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         )
       )
         preferences.bubble = parsed.preferences.bubble as typeof preferences.bubble;
-      for (const key of ['compactTools', 'enterToSend', 'recapAutoplay', 'alwaysShowContextSize'] as const)
+      for (const key of ['compactTools', 'fasterTranscript', 'enterToSend', 'recapAutoplay', 'alwaysShowContextSize'] as const)
         if (typeof parsed.preferences[key] === 'boolean')
           preferences[key] = parsed.preferences[key];
       if (parsed.preferences.language === 'en' || parsed.preferences.language === 'zh-TW') preferences.language = parsed.preferences.language;

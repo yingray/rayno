@@ -665,5 +665,19 @@
   "Reload and update": "更新並重新載入",
   "Installing the latest version…": "正在安裝最新版本…",
   "This is the latest version": "目前已是最新版本",
-  "Cannot check for updates. Check your connection.": "無法檢查更新，請確認網路連線。"
+  "Cannot check for updates. Check your connection.": "無法檢查更新，請確認網路連線。",
+  "Faster long chats (preview)": "加快長對話捲動（預覽）",
+  "Render a smaller part of long chats. Use Full transcript for browser search and selection across messages.": "長對話僅顯示目前閱讀的部分。瀏覽器搜尋或跨訊息選取時，請切換完整逐字稿。",
+  "Reading": "閱讀",
+  "Full transcript": "完整逐字稿",
+  "Faster scrolling · Preview": "加速捲動 · 預覽",
+  "Transcript tools": "對話閱讀工具",
+  "Find in loaded messages": "搜尋已載入的訊息",
+  "Use faster scrolling": "使用加速捲動",
+  "Show full transcript": "顯示完整逐字稿",
+  "Find text": "搜尋文字",
+  "Searches loaded history. Load earlier messages to search more.": "搜尋範圍為已載入的對話，載入較早訊息可擴大搜尋範圍。",
+  "Search results": "搜尋結果",
+  "No matching messages": "找不到相符訊息",
+  "Showing the first 50 matches. Refine your search for more.": "顯示前 50 筆結果，請縮小搜尋範圍以查看其他相符訊息。"
 }

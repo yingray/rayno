@@ -940,3 +940,59 @@ node benchmarks/pwa-transfer.mjs
 This run used an isolated build under `.performance/pwa-slim` and a temporary config on port 5196,
 because existing user preview services own the default ports. It did not overwrite `dist/` or stop those services.
 
+
+## V01: opt-in virtual transcript prototype (2026-10-24)
+
+The final isolated build uses `d9b8f64` plus the prototype changes. The production preference stays off by default.
+The fixture enables it through Settings. The timing build changes only its default value.
+The source manifest and hash appear in `benchmarks/results/2026-10-24-virtual-prototype.json`.
+
+- Application and benchmark typechecks pass. All 570 unit tests pass in 55 files.
+- An earlier full browser run recorded 1,308 passes, 4 failures, and 72 skips.
+  Its non-virtualization checks all passed: 1,280 passes and 68 skips.
+  The four virtual scroll failures led to anchor fixes and corrections to the pagination fixture.
+  The fixture now keeps forward catch-up requests separate from older-page requests.
+  It captures the loaded row that is visible after focus, rather than assuming that focus also exposes the first message.
+- The final selected run passes 170 browser checks, with 18 intentional skips and no failures.
+  It covers the virtual transcript, legacy recap jumps and speech, reply rails, chat presentation, and full-list tail pinning.
+  This run uses the final production build and all four browser projects.
+  It excludes the old stage-timing baseline, which already passed in the full run.
+- The four browsers repeat pagination, font/viewport changes, and keyboard pause three times each: 36 passes, no failures.
+- The prototype file has 44 passing cases and 4 intentional skips.
+  It checks bounded DOM, every loaded rail target, distant recap tool quotes, loaded-data search, and full-transcript selection.
+  It also checks tool state after unmount, encrypted position reloads, older-page prepends, diagram growth, and retained focus.
+- Both phone engines cover 320x568, 360x640, 390x844, 430x932, 390x360, and 844x390.
+  They tap search results, expand tools, return to latest, edit drafts, and send an encrypted instruction.
+  The tests check 44px pointer targets, 16px search input, action reachability, and page overflow.
+  A 320x360 check scrolls the search dialog to its 50th result and taps that result.
+  Stale results stay disabled while the deferred query catches up.
+- All four projects check that the first loaded message stays below the toolbar.
+  They also exercise a narrow embedded side chat and search with its offline banner visible.
+- The normal full list has a regression for a queued scroll event after a tall reply changes the scroll height.
+  It follows new replies at the tail and preserves a manual history position.
+
+The full suite was not repeated after the final prototype corrections. The final selected run covers the changed behavior.
+The phone checks use browser emulation and a short viewport for the keyboard. They do not measure a physical iPhone keyboard.
+Physical Safari, assistive technology, and production tail latency remain rollout checks.
+A tool group remains one row. Large internal groups and exact inner-call restoration across group merges need separate probes.
+
+The paired probes run one browser worker in sequence, without other test runs from this session.
+They cover 200 and 600 turns in Chromium and WebKit, with seven replies in each case.
+Each sample validates a zero bottom gap and retains every loaded reply rail target.
+The timing brackets a rendering opportunity. It is not a physical display timestamp or a production latency guarantee.
+See `PERFORMANCE-PLAN.md`, section 6.12, for the complete ranges and history load times.
+
+The final preview uses the normal production build on the verified Tailscale route at port 5198.
+The temporary check/probe route at port 5200 is removed after the run.
+The previous PWA preview at port 5196 and all other user services stay in place.
+
+Re-run the selected checks with a production build and a free preview port:
+
+```sh
+pnpm typecheck
+pnpm test
+pnpm exec tsc --noEmit -p benchmarks/tsconfig.json
+pnpm exec playwright test tests/virtualTranscript.e2e.test.ts tests/replyRecap.e2e.test.ts tests/responseDots.e2e.test.ts tests/chatPresentation.e2e.test.ts tests/performanceBaseline.e2e.test.ts --grep-invert 'tool-heavy chat should report stage' --workers=4
+```
+
+This session used an isolated source archive and a temporary Playwright config to preserve the existing preview services.

@@ -42,3 +42,27 @@ test('a tool-heavy chat should report stage timings for load, reconnect, and liv
   await testInfo.attach('perf-baseline', { body: JSON.stringify(result, null, 2), contentType: 'application/json' });
   console.log('PERF_BASELINE ' + JSON.stringify(result));
 });
+
+test('a full chat should follow tall replies and preserve a manual history position', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page); await server.setWorking(false); await server.setMessages(toolHeavyHistory(120));
+  await page.route('https://api.cluster-fluster.com/v3/sessions/real-session/messages?**', route => route.fulfill({
+    contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
+    body: JSON.stringify({ messages: server.messages, hasMore: false }),
+  }));
+  const workspace = new PerformancePage(page);
+  await workspace.openSession();
+  // Act / Assert
+  for (let index = 0; index < 4; index++) {
+    await server.pushReply(`### Tall reply ${index}\n\n${'A line of context.\n\n'.repeat(8)}`);
+    await expect(page.getByRole('heading', { name: `Tall reply ${index}`, exact: true })).toBeAttached();
+    await expect.poll(async () => (await workspace.conversationPosition()).remaining).toBeLessThan(2);
+  }
+  await workspace.readHistory();
+  const position = await workspace.conversationPosition();
+  await server.pushReply('### Another tall reply\n\n' + 'A line of context.\n\n'.repeat(8));
+  await expect(page.getByRole('heading', { name: 'Another tall reply', exact: true })).toBeAttached();
+  expect((await workspace.conversationPosition()).top).toBe(position.top);
+  await workspace.returnToLatest();
+});

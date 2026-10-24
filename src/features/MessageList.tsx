@@ -1,8 +1,9 @@
 import { LanguageContext, useText } from "../i18n";
-import { Children, Fragment, isValidElement, memo, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Children, Fragment, isValidElement, memo, useContext, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
-import { Button, copyText, Icon } from '../components/ui';
+import { Button, copyText, Dialog, Icon } from '../components/ui';
+import { createPortal } from 'react-dom';
 import { useDemo } from '../data/store';
 import { formatToolValue, groupChatActivity, toolCount, type ChatBlock, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
@@ -34,11 +35,15 @@ import { InlineToolQuestion, questionCallIds } from '../happy/Requests';
 import { timeStage } from '../happy/perf';
 import { reuseEqual } from '../data/reuseEqual';
 import { isTodoWrite, todoProgress, todoRowList, type Todo } from '../data/todos';
+import { createTranscriptMemory, parseTranscriptAnchor, recapTargetBlock, recapTurnGroups, searchTranscript, type TranscriptAnchor, type TranscriptMemory } from '../data/transcript';
+import { TranscriptViewport, type TranscriptController } from './TranscriptViewport';
+import transcriptStyles from './transcript.module.css';
 
 // Thinking is secondary. It stays closed until the user opens it.
-function Thinking({ text }: { text: string }) {
+function Thinking({ text, memory, stateKey }: { text: string; memory?: TranscriptMemory; stateKey?: string }) {
   const t = useText();
-  return <details className={styles.thinking}>
+  return <details className={styles.thinking} open={memory && stateKey ? !!memory.details.get(stateKey) : undefined}
+    onToggle={event => { if (memory && stateKey) memory.details.set(stateKey, event.currentTarget.open); }}>
     <summary><Icon name="chevronForwardOutline" size={13} />{t("Thinking")}</summary>
     <p>{text}</p>
   </details>;
@@ -60,24 +65,30 @@ function SubagentWork({ items }: { items: Message[] }) {
 
 // A closed tool row mounts its content on the first open. `reveal` mounts it while the row stays closed,
 // so a recap jump can find text in it.
-function ToolRowDetails({ summary, reveal, children }: { summary: ReactNode; reveal: boolean; children: () => ReactNode }) {
-  const [mounted, setMounted] = useState(reveal);
+function ToolRowDetails({ summary, reveal, children, memory, stateKey }: {
+  summary: ReactNode; reveal: boolean; children: () => ReactNode; memory: TranscriptMemory; stateKey: string;
+}) {
+  const open = !!memory.details.get(stateKey);
+  const [mounted, setMounted] = useState(reveal || open);
   if (reveal && !mounted) setMounted(true);
   // The click comes before the default toggle, so the content is there when the row opens.
-  return <details className={styles.toolDetails} onToggle={(event) => { if (event.currentTarget.open) setMounted(true); }}>
+  return <details className={styles.toolDetails} data-tool-call={stateKey} open={open} onToggle={(event) => {
+    memory.details.set(stateKey, event.currentTarget.open);
+    if (event.currentTarget.open) setMounted(true);
+  }}>
     <summary onClick={() => setMounted(true)}>{summary}</summary>
     {mounted && children()}
   </details>;
 }
 
-const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes, questions, reveal = false, sessionId }: {
+const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes, questions, reveal = false, sessionId, memory }: {
   block: ToolActivityBlock; compactTools: boolean; outcomes?: (ToolOutcome | undefined)[];
-  questions?: string[]; reveal?: boolean; sessionId: string;
+  questions?: string[]; reveal?: boolean; sessionId: string; memory: TranscriptMemory;
 }) {
   const t = useText();
   const rowsId = useId();
   const [expanded, setExpanded] = useState(
-    !compactTools && window.innerWidth >= 768,
+    memory.groups.get(block.id) ?? (!compactTools && window.innerWidth >= 768),
   );
   // A collapsed group mounts its rows on the first expand, then keeps them.
   const [rowsMounted, setRowsMounted] = useState(expanded || reveal);
@@ -86,12 +97,12 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
   // Answered questions stay visible in a collapsed group.
   const answered = outcomes?.flatMap((outcome, index) => outcome?.answers?.length || outcome?.dismissed ? [{ index, outcome }] : []) || [];
   return (
-    <section className={styles.toolGroup} aria-label={t("Tool activity")} data-tool-activity>
+    <section className={styles.toolGroup} aria-label={t("Tool activity")} data-tool-activity data-tool-block={block.id}>
       <button
         type="button"
         aria-expanded={expanded}
         aria-controls={rowsId}
-        onClick={() => setExpanded((value) => !value)}
+        onClick={() => setExpanded((value) => { memory.groups.set(block.id, !value); return !value; })}
       >
         <Icon name={expanded ? "chevronDown" : "chevronForwardOutline"} size={13} />
         {block.duration ? `Worked for ${block.duration}` : t("Tool activity")}
@@ -114,10 +125,12 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
           const sections = !call ? [] : toolSections(call).filter((section) => section.kind !== 'answers' || !outcomes?.[index]?.answers?.length);
           return <li key={index}>
             <Icon name={thinking !== undefined ? "sparklesOutline" : call?.children?.length ? "gitNetworkOutline" : call && isTodoWrite(call) ? "listOutline" : "codeSlash"} size={14} />
-            {thinking !== undefined ? <details className={`${styles.toolDetails} ${styles.thinkingRow}`}>
+            {thinking !== undefined ? <details className={`${styles.toolDetails} ${styles.thinkingRow}`}
+              open={!!memory.details.get(`${block.id}:thinking:${index}`)}
+              onToggle={event => memory.details.set(`${block.id}:thinking:${index}`, event.currentTarget.open)}>
               <summary>{tool}</summary><p>{thinking}</p>
             </details> : todos ? <TodoTool todos={todos} decision={decision} /> : call && (call.input !== undefined || call.result !== undefined || call.children?.length) ? <ToolRowDetails
-              reveal={reveal} summary={<><span>{tool}</span>{decision && <ToolDecision value={decision} />}</>}>{() => <>
+              memory={memory} stateKey={call.id} reveal={reveal} summary={<><span>{tool}</span>{decision && <ToolDecision value={decision} />}</>}>{() => <>
               {decision && <div className={styles.toolNote} data-tone={decision.tone === 'denied' ? "error" : undefined}>{decision.detail}</div>}
               {(call.input !== undefined || call.result !== undefined) && <><h4>{t("Arguments")}</h4><pre>{formatToolValue(call.input)}</pre></>}
               {!!call.children?.length && <SubagentWork items={call.children} />}
@@ -137,19 +150,6 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
   && (previous.block.thinking || []).every((text, index) => text === next.block.thinking![index])
   && previous.questions?.join() === next.questions?.join()
   && JSON.stringify(previous.outcomes) === JSON.stringify(next.outcomes));
-
-// The tool groups of the reply turn that ends with this message, back to the last user message.
-// `findRecapTarget` searches the same groups in the DOM.
-function turnToolGroups(blocks: ChatBlock[], messageId: string): string[] {
-  const end = blocks.findIndex((block) => block.kind === 'message' && block.message.id === messageId);
-  const groups: string[] = [];
-  for (let index = end - 1; index >= 0; index--) {
-    const block = blocks[index];
-    if (block.kind === 'message' && block.message.role === 'user') break;
-    if (block.kind === 'tools') groups.push(block.id);
-  }
-  return groups;
-}
 
 // The past permission reply and question answers of one tool call.
 function toolOutcome(call: ToolCall | undefined, permissions: Map<string, ToolPermission>, forms: Map<string, AnsweredForm>,
@@ -254,8 +254,9 @@ function ResponseHeader({ sentAt }: { sentAt?: number }) {
   </div>;
 }
 
-const MessageBlock = memo(function MessageBlock({ sessionId, message, response, optionsDisabled, onOption, bubble, notify, recap, recapWriting, onJump }: {
+const MessageBlock = memo(function MessageBlock({ sessionId, message, response, optionsDisabled, onOption, bubble, notify, recap, recapWriting, onJump, memory }: {
   sessionId: string;
+  memory: TranscriptMemory;
   message: Message;
   response: boolean;
   optionsDisabled: boolean;
@@ -307,7 +308,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
         </p>}
       </>) : (
         <div className={styles.markdown}>
-          {message.thinking && <Thinking text={message.thinking} />}
+          {message.thinking && <Thinking text={message.thinking} memory={memory} stateKey={`thinking:${message.id}`} />}
           {message.unplaced ? <><p className={styles.toolNote}>{t("Earlier context is unavailable. Load earlier messages to place this work.")}</p>
             <RenderedMarkdown sessionId={sessionId} messageId={message.id} content={message.content} codeFilename={codeFilename} notify={notify} /></> : parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
             <div className={styles.replyOptions} role="group" aria-label={t("Reply options")} data-reply-options key={index}>
@@ -366,7 +367,7 @@ const isPoint = (index: number) => (segment: RecapSegment): segment is Extract<R
 
 export const MessageList = memo(function MessageList({
   sessionId = '', messages, disabled, pending, answered, running = false, recapBusy = false, scroll, railHost = null,
-  onOption, onRecap, onUnpin,
+  onOption, onRecap, onUnpin, pinned, viewport, toolsHost, onVirtualMode, onTools, onPinned,
 }: {
   sessionId?: string; messages: Message[]; disabled: boolean; pending: boolean;
   // Options that the user chose in this chat. A held answer does not answer them yet.
@@ -380,12 +381,54 @@ export const MessageList = memo(function MessageList({
   onOption: (messageId: string, text: string) => void;
   onRecap?: () => unknown;
   onUnpin?: () => void;
+  pinned: RefObject<boolean>;
+  viewport: RefObject<TranscriptController | null>;
+  toolsHost: HTMLElement | null;
+  onVirtualMode: (enabled: boolean) => void;
+  onTools: (visible: boolean) => void;
+  onPinned: (pinned: boolean) => void;
 }) {
-  const { bubble, compactTools, notify, autoplay, agentState, metadata } = useDemo((store) => ({
+  const t = useText();
+  const { bubble, compactTools, faster, font, notify, autoplay, agentState, metadata, ui, live, language, historyReady } = useDemo((store) => ({
     bubble: store.state.preferences.bubble, compactTools: store.state.preferences.compactTools,
+    faster: store.state.preferences.fasterTranscript, font: store.state.preferences.fontSize, language: store.state.preferences.language,
+    ui: store.ui, live: store.live,
+    historyReady: !store.live || !!store.snapshot?.histories[sessionId]?.loaded,
     notify: store.notify, autoplay: store.state.preferences.recapAutoplay,
     agentState: store.snapshot?.sessionData[sessionId]?.agentState, metadata: store.snapshot?.sessionData[sessionId]?.metadata,
   }));
+  const memory = useMemo(() => {
+    let value = ui.transcripts.get(sessionId);
+    if (!value) {
+      value = createTranscriptMemory();
+      try { if (!live) value.anchor = parseTranscriptAnchor(localStorage.getItem(`rayno.demo.transcript.${sessionId}`)); }
+      catch { /* Reading position stays in memory when storage is unavailable. */ }
+      ui.transcripts.set(sessionId, value);
+    }
+    return value;
+  }, [ui, live, sessionId]);
+  const [full, setFull] = useState(() => !!memory.anchor?.full);
+  const [positionReady, setPositionReady] = useState(!live || !!memory.loaded);
+  useEffect(() => {
+    if (!live || memory.loaded) { setPositionReady(true); return; }
+    let active = true;
+    void live.readTranscriptPosition(sessionId).then(raw => {
+      if (!active) return;
+      if (!memory.anchor) memory.anchor = parseTranscriptAnchor(raw);
+      memory.loaded = true;
+      setFull(!!memory.anchor?.full); setPositionReady(true);
+    });
+    return () => { active = false; };
+  }, [live, memory, sessionId]);
+  const [searching, setSearching] = useState(false), [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
+  const searchPending = query !== deferredQuery;
+  const persist = useEventCallback((anchor: TranscriptAnchor) => {
+    try {
+      if (live) live.saveTranscriptPosition(sessionId, JSON.stringify(anchor));
+      else localStorage.setItem(`rayno.demo.transcript.${sessionId}`, JSON.stringify(anchor));
+    } catch { /* Keep the position for this account visit. */ }
+  });
   const view = useMemo(() => recapView(messages), [messages]);
   const recaps = useStableRecaps(view.recaps);
   const visible = useMemo(() => view.hidden.size ? messages.filter((message) => !view.hidden.has(message.id)) : messages,
@@ -397,6 +440,15 @@ export const MessageList = memo(function MessageList({
     previousBlocks.current = next;
     return next;
   }), [visible]);
+  const available = !!faster && blocks.length >= 300;
+  const virtual = available && !full;
+  const results = useMemo(() => searching ? searchTranscript(blocks, deferredQuery) : [], [blocks, searching, deferredQuery]);
+  useLayoutEffect(() => { onTools(available); if (!available) onVirtualMode(false); return () => onTools(false); }, [available, onTools, onVirtualMode]);
+  const switchReading = () => {
+    const anchor = viewport.current?.capture();
+    if (anchor) { memory.anchor = { ...anchor, full: !full }; persist(memory.anchor); }
+    setFull(!full);
+  };
   const outcomes = useMemo(() => {
     const permissions = completedPermissions(agentState), forms = completedForms(agentState);
     const modeLabel = (mode: string) => permissionLabel(metadata || {}, mode);
@@ -433,32 +485,25 @@ export const MessageList = memo(function MessageList({
   // Tool groups whose closed rows are mounted for a recap jump. A jump that finds no target in the DOM
   // reveals the tool groups of its turn, then looks again after that render.
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
-  const pendingJump = useRef<{ messageId: string; quote: string } | null>(null);
-  const jumpTo = useEventCallback((messageId: string, quote: string) => {
-    const element = scroll?.current;
-    const target = element ? findRecapTarget(element, messageId, quote) : null;
-    if (!element || !target) return false;
-    onUnpin?.();
-    jumpToRecapTarget(element, target);
-    return true;
-  });
-  const jump = useEventCallback((messageId: string, index: number) => {
+  const jump = useEventCallback(async (messageId: string, index: number) => {
     selectRecapPoint(messageId, index);
     const point = recaps.get(messageId)?.recap.segments.find(isPoint(index));
-    if (!point || jumpTo(messageId, point.quote)) return;
-    const groups = turnToolGroups(blocks, messageId).filter((id) => !revealed.has(id));
-    if (!groups.length) return;
-    pendingJump.current = { messageId, quote: point.quote };
-    setRevealed((previous) => new Set([...previous, ...groups]));
+    if (!point) return;
+    const groups = recapTurnGroups(blocks, messageId);
+    const existing = scroll?.current && findRecapTarget(scroll.current, messageId, point.quote, groups);
+    if (!virtual && existing && scroll?.current) {
+      onUnpin?.(); jumpToRecapTarget(scroll.current, existing, available ? 'auto' : undefined, () => viewport.current?.capture()); return;
+    }
+    const id = recapTargetBlock(blocks, messageId, point.quote);
+    if (virtual && !id) return;
+    setRevealed(previous => new Set([...previous, ...groups]));
+    onUnpin?.();
+    if (id && viewport.current) await viewport.current.mount(id);
+    else await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    const element = scroll?.current;
+    const target = element ? findRecapTarget(element, messageId, point.quote, groups) : null;
+    if (element && target) jumpToRecapTarget(element, target, available ? 'auto' : undefined, () => viewport.current?.capture());
   });
-  useEffect(() => {
-    const pending = pendingJump.current;
-    pendingJump.current = null;
-    if (!pending) return;
-    // Jump after the revealed rows settle. A group toggle inside the commit does not scroll the list.
-    const frame = requestAnimationFrame(() => jumpTo(pending.messageId, pending.quote));
-    return () => cancelAnimationFrame(frame);
-  }, [revealed, jumpTo]);
 
   // Option+R reads the latest recap in this session, or pauses it.
   const readLatest = useEventCallback((event: KeyboardEvent) => {
@@ -500,22 +545,61 @@ export const MessageList = memo(function MessageList({
 
   const placeholder = writingTarget === null || (writingTarget && !visible.some((message) => message.id === writingTarget));
   const showButton = !!onRecap && !!lastReply && !recaps.has(lastReply) && !writing && !running;
-  return <>
-    {blocks.map((block) => block.kind === 'tools'
-      ? <ToolActivity key={block.id} block={block} sessionId={sessionId} compactTools={compactTools} outcomes={outcomes.get(block.id)}
+  const renderBlock = (block: ChatBlock) => block.kind === 'tools'
+      ? <ToolActivity key={block.id} block={block} sessionId={sessionId} compactTools={compactTools} outcomes={outcomes.get(block.id)} memory={memory}
         questions={questions.get(block.id)} reveal={revealed.has(block.id)} />
       : block.kind === 'thinking'
-        ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} /></article>
+        ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} memory={memory} stateKey={block.id} /></article>
         : block.kind === 'event'
         ? <p key={block.id} className={styles.agentEvent} data-role="event">{block.text}</p>
         : <Fragment key={block.id}>
-          <MessageBlock sessionId={sessionId} message={block.message} response={responseIds.has(block.message.id)}
+          <MessageBlock sessionId={sessionId} memory={memory} message={block.message} response={responseIds.has(block.message.id)}
             bubble={bubble} notify={notify}
             recap={recaps.get(block.message.id)} recapWriting={writingTarget === block.message.id} onJump={jump}
             optionsDisabled={disabled || pending || !unanswered.has(block.message.id) || !!answered?.has(block.message.id)} onOption={onOption} />
           {showButton && block.message.id === lastReply
             && <RecapButton disabled={disabled || pending} onClick={() => void onRecap!()} />}
-        </Fragment>)}
+        </Fragment>;
+  return <>
+    {available && toolsHost && createPortal(<div className={transcriptStyles.tools} role="toolbar" aria-label={t('Transcript tools')}>
+      <span className={transcriptStyles.status}>{t(full ? 'Full transcript' : 'Faster scrolling · Preview')}</span>
+      <Button icon="searchOutline" onClick={() => setSearching(true)}>{t('Find in loaded messages')}</Button>
+      <Button onClick={switchReading}>{t(full ? 'Use faster scrolling' : 'Show full transcript')}</Button>
+    </div>, toolsHost)}
+    {searching && <Dialog title={t('Find in loaded messages')} onClose={() => setSearching(false)}>
+      <label className={transcriptStyles.searchField} data-focus-frame>
+        <input aria-label={t('Find text')} value={query} onChange={event => setQuery(event.target.value)} />
+      </label>
+      <p className={transcriptStyles.hint}>{t('Searches loaded history. Load earlier messages to search more.')}</p>
+      <div className={transcriptStyles.results} role="region" aria-label={t('Search results')} aria-busy={searchPending}>
+        {results.map(result => <button key={result.id} disabled={searchPending} data-transcript-result={result.id} onClick={async () => {
+          setSearching(false); onUnpin?.();
+          if (result.tools) setRevealed(previous => new Set([...previous, result.id]));
+          let row = await viewport.current?.mount(result.id);
+          const element = scroll?.current;
+          if (row && element) {
+            if (result.tools) {
+              row.querySelector<HTMLButtonElement>('[data-tool-activity] > button[aria-expanded="false"]')?.click();
+              await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+              for (const detail of row.querySelectorAll<HTMLDetailsElement>('details')) {
+                if (!detail.textContent?.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) continue;
+                if (detail.dataset.toolCall) memory.details.set(detail.dataset.toolCall, true);
+                detail.open = true;
+              }
+              row = await viewport.current?.mount(result.id);
+              if (!row) return;
+            }
+            const target = result.tools ? findRecapTarget(element, '', query, [result.id]) : null;
+            jumpToRecapTarget(element, target || row.querySelector<HTMLElement>('article, [data-tool-activity]') || row, 'auto', () => viewport.current?.capture());
+          }
+        }}>{result.text}</button>)}
+        {results.length === 50 && <p>{t('Showing the first 50 matches. Refine your search for more.')}</p>}
+        {!searchPending && deferredQuery.trim() && !results.length && <p>{t('No matching messages')}</p>}
+      </div>
+    </Dialog>}
+    {available ? <TranscriptViewport blocks={blocks} enabled={virtual} full={full} scroll={scroll} pinned={pinned}
+      controller={viewport} memory={memory} ready={positionReady && historyReady} layoutKey={`${font}:${compactTools}:${language}`}
+      render={renderBlock} onMode={onVirtualMode} onPinned={onPinned} persist={persist} /> : blocks.map(renderBlock)}
     {placeholder && (
       <article className={styles.agentMessage}>
         <div className={styles.markdown}>
@@ -523,6 +607,6 @@ export const MessageList = memo(function MessageList({
         </div>
       </article>
     )}
-    {scroll && railHost && <ResponseRail host={railHost} scroll={scroll} replies={anchors} onJump={() => onUnpin?.()} />}
+    {scroll && railHost && <ResponseRail host={railHost} scroll={scroll} replies={anchors} onJump={() => onUnpin?.()} viewport={viewport} virtual={virtual} />}
   </>;
 });

@@ -117,7 +117,7 @@ If the encryption is still a long task after 3.5, move it to a worker as a separ
 | O01 | Add a queue limit to the Mermaid worker. Cancel stale jobs. Separate queue time from run time | done |
 | O02 | Measure grouping, new-session input, and file suggestions | done, measured: group filters take at most about 2 ms of a 125–291 ms large-list switch. Typing does not render the session list. A 50,000-file search takes about 6–21 ms by query median. Defer implementation (section 6.9) |
 | A01 | Measure cold install, warm cache, and updates; remove the demo image from unconditional precache | done: cache the demo image on first use, with at most 2 versions for 60 days. Cold gzip bodies fall from 1.89 to 1.10 MB in Chromium and 2.41 to 1.63 MB in WebKit. Warm shell reload remains 0 network bytes. Font and chunk changes remain optional follow-ups (section 6.11) |
-| V01 | Build a complete virtualizer with data-based recap/rail navigation, scroll restoration, and a full-transcript mode | todo, recommended: prefer a TanStack Virtual prototype. The tail experiment is a performance bound, not a deployable virtualizer. Fix the existing 41px landscape tool target before rollout |
+| V01 | Build a complete virtualizer with data-based recap/rail navigation, scroll restoration, and a full-transcript mode | prototype complete, off by default: TanStack Virtual with data navigation, encrypted reading anchors, and full-transcript mode. The tool toggle minimum is 44px. Physical-device validation and production latency checks remain before default rollout (section 6.12) |
 | L01 | Load older history pages without a new pass over all loaded rows | done: the cause was the reply rail, not the data pass. It ran one list query for each reply. A late page in a 600-turn chat: Chromium 199 to 274 ms to 107 to 137 ms, WebKit 845 to 927 ms to 512 to 593 ms (section 6.7) |
 | L02 | Make the per-reply message pipeline (`visibleMessages`, `markSubagents`, `reuseEqual`) work on the changed rows only | measured, no change: the pipeline takes about 10 ms for 10,800 rows. The rail fix also cut a live reply: Chromium 114 to 116 ms to 31 to 46 ms, WebKit 426 to 469 ms to 252 to 310 ms (section 6.7) |
 | R03 rest | Keep the pins array stable. Update only `active` and `thumb` on scroll | done |
@@ -416,3 +416,57 @@ Existing account-history and image encryption remain unchanged.
 The installed-account test now covers desktop WebKit as well as Chromium.
 It delays worker registration until the mocked account data is saved, because a controlling WebKit worker bypasses page-route API mocks.
 It then loads the real diagram worker through the installed service worker and reopens the account fully offline.
+
+### 6.12 V01: complete virtual transcript prototype (2026-10-24)
+
+The prototype uses TanStack Virtual 3.14.22 with stable `ChatBlock` keys and measured, variable row heights.
+It is off by default. Enable **Settings → Appearance → Faster long chats (preview)** for one Rayno account.
+It applies when a chat has at least 300 loaded blocks. Shorter chats retain the normal full list.
+
+- The viewport mounts the visible range, eight extra rows on each side, and any focused or selected target row.
+  A tool group remains one row. Its internal tool list is not a second virtual list.
+- The reply rail uses every loaded reply and virtual measurements. A rail jump mounts its target before the DOM jump.
+  A recap searches reply and tool data within its user turn, then mounts and reveals its target.
+- **Find in loaded messages** searches loaded reply text, tool input and results, and attachment names.
+  It shows at most 50 matches and asks the user to refine a broad query. It does not fetch older pages.
+- **Show full transcript** mounts all loaded blocks for native browser find and selection across messages.
+  Mode changes preserve the reading row and its offset below the overlay header.
+- The chat viewport owns virtual scrolling, resize correction, and follow-to-latest behavior.
+  The original resize follower stops while the prototype owns the conversation, including full-transcript mode.
+  Explicit user input can stop a pending jump. Focused controls remain mounted during a scroll.
+- Width, font, compact-tool, and language changes clear stale height estimates.
+  Position restoration waits for history and encrypted position reads. It also accounts for loading banners and overlay padding.
+- Tool and thinking expansion state stays in the account-owned UI store through virtual unmounts.
+  Saved live reading anchors use the account encryption key and storage scope for its account and server.
+  Scrolling does not publish a workspace update or rewrite the message history cache.
+- Tool group toggles now have a 44px minimum height, including landscape.
+  The prototype toolbar and rail leave space for each other. The first loaded message stays below the toolbar.
+  The toolbar also fits a narrow embedded side chat, with its offline banner. Short landscape viewports use a lower toolbar offset.
+- The normal full list also handles a queued scroll event after a tall reply increases the scroll height.
+  That event keeps the existing tail pin unless the user scrolls upward. A manual history position still stays fixed.
+
+The isolated source uses base `d9b8f64` plus this change. It excludes changes from other active work sessions.
+Both timing variants include the same code and the tail-pin fix; the virtual build changes only the preference default.
+These are paired rendering measurements, not a comparison with the previous release.
+One browser worker runs each case in sequence. Each case sends seven replies after all history loads and the view returns to latest.
+The timer starts before fixture encryption and send, then ends at the second animation frame after the tail article mutation.
+It does not measure a physical display timestamp. Full raw samples and source hashes are in
+[`2026-10-24-virtual-prototype.json`](benchmarks/results/2026-10-24-virtual-prototype.json).
+
+| Engine | Turns | Full reply median (range), ms | Virtual reply median (range), ms | Full → virtual history load, s |
+|---|---:|---:|---:|---:|
+| Chromium | 200 | 30.9 (30.8–32.5) | 30.1 (29.3–34.1) | 1.25 → 1.22 |
+| Chromium | 600 | 41.8 (39.4–45) | 29.3 (28.5–48) | 5.77 → 3.62 |
+| WebKit | 200 | 84 (80–89) | 30 (27–32) | 3.76 → 2.23 |
+| WebKit | 600 | 229 (225–246) | 46 (43–49) | 29.51 → 8.00 |
+
+The 600-turn fixture has 10,800 protocol records and 3,000 tool calls.
+The conversation DOM median falls from 39,645 descendants to 280, while all loaded replies retain rail targets.
+Every reply sample has a zero bottom gap. The WebKit median falls by 79.9% at 600 turns.
+The final WebKit ranges are 27–32ms at 200 turns and 43–49ms at 600 turns.
+These seven-reply samples do not establish a production tail-latency bound. Keep the preference off by default.
+
+The full pipeline, loaded history, and search data remain in memory. A very large single tool group can still mount many controls.
+Anchors identify blocks, not inner tool calls. Exact restoration when older records merge into the first tool group needs a separate probe.
+Physical iPhone Safari, real keyboard transitions, assistive technology, and production latency need validation before a default rollout.
+Automated phone checks use Chromium and WebKit emulation, including a short keyboard viewport and landscape.

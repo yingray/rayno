@@ -21,6 +21,7 @@ export const defaultPreferences: Preferences = {
   chatWidth: 'medium',
   glassStyle: 'standard',
   compactTools: false,
+  fasterTranscript: false,
   enterToSend: true,
   avatar: 'provider',
   recap: 'auto',

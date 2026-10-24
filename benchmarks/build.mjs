@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 // These transforms exist only in the isolated benchmark builds.
 const variant = process.env.RAYNO_BENCH_VARIANT || 'full';
-if (!['full', 'tail'].includes(variant)) throw new Error('Use full or tail.');
+if (!['full', 'tail', 'virtual'].includes(variant)) throw new Error('Use full, tail, or virtual.');
 await build({
   build: { outDir: resolve('.performance', variant), emptyOutDir: true },
   plugins: [{
@@ -11,10 +11,11 @@ await build({
     enforce: 'pre',
     transform(code, id) {
       if (id.endsWith('/src/features/MessageList.tsx') && variant === 'tail') {
-        const target = '{blocks.map((block) =>';
+        const target = 'blocks.map(renderBlock)';
         if (!code.includes(target)) throw new Error('MessageList changed. Update the tail probe.');
-        code = code.replace(target, '{blocks.slice(-60).map((block) =>');
+        code = code.replace(target, 'blocks.slice(-60).map(renderBlock)');
       }
+      if (id.endsWith('/src/data/defaults.ts') && variant === 'virtual') code = code.replace('fasterTranscript: false', 'fasterTranscript: true');
       if (id.endsWith('/src/data/subscriptions.ts')) {
         code = code.replace('const selected = selector(snapshot);',
           'globalThis.__raynoScale && globalThis.__raynoScale.selectors++; const selected = selector(snapshot);');

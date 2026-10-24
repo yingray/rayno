@@ -23,7 +23,7 @@ The workspace probe uses the production file parser and matcher at 1,000, 10,000
 It adds folders through the production parser. The largest index has 100,101 entries.
 
 The full build adds counters and a history promise for the probe.
-The tail build also replaces `blocks.map` with `blocks.slice(-60).map` in `MessageList`.
+The tail build also replaces `blocks.map(renderBlock)` with `blocks.slice(-60).map(renderBlock)` in `MessageList`.
 The full message pipeline and block preparation still run in both builds.
 The tail is a lower-bound experiment for bounded rendering. It is not a complete virtualizer.
 It has no spacers, height cache, offscreen navigation, search, or selection support.
@@ -35,6 +35,7 @@ It stops at the second animation frame after the matching DOM mutation.
 This brackets a rendering opportunity. It does not measure the physical display or full input-to-display latency.
 Seven replies produce a range and median. No host-dependent timing assertion runs in CI.
 History loading waits for each client promise, including its cache flush, before the next click.
+The paired prototype probe then uses the latest-message control before it sends replies.
 Phone interaction checks cover 320, 360, 390, and 430px, a 390x360 keyboard viewport, and 844x390 landscape.
 They exercise touch, tool expansion, detail expansion, scroll-to-latest, drafts, and send.
 Touch sizes are recorded separately from interaction checks. A passing probe does not certify every target as 44px.
@@ -65,3 +66,18 @@ Raw samples go to `.performance/samples/`. The summary goes to `.performance/rep
 The checked record for this evaluation is `results/2026-10-24.json`.
 The first-use demo cache follow-up is `results/2026-10-24-pwa-slim.json`.
 It keeps the before/after totals and the new HTTP request and Cache Storage records.
+
+The `virtual` variant enables the production opt-in prototype by default in an isolated build.
+It uses the same pipeline, reply timer, and history loader as `full`.
+Use a free port when an existing preview owns 5196:
+
+```sh
+RAYNO_BENCH_VARIANT=virtual node benchmarks/build.mjs
+RAYNO_BENCH_PORT=5198 RAYNO_BENCH_VARIANT=virtual pnpm exec playwright test -c benchmarks/playwright.config.ts benchmarks/scaling.e2e.test.ts -g 'chat rendering' --project=desktop-webkit
+```
+
+Functional checks for the real prototype are in `tests/virtualTranscript.e2e.test.ts`.
+They enable the preference through Settings and also run against a normal production build.
+
+The paired real-virtualizer record is `results/2026-10-24-virtual-prototype.json`.
+It includes one seven-reply run per case and retains every reply sample.

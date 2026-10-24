@@ -7,6 +7,7 @@ import { contentOffsets, jumpToRecapTarget } from './recapTargets';
 import { COARSE_QUERY, DESKTOP_QUERY, useMediaQuery } from './useMediaQuery';
 import styles from './recap.module.css';
 import { useEventCallback } from '../components/useEventCallback';
+import type { TranscriptController } from './TranscriptViewport';
 
 const PIN = 20;
 // A pin on a touch screen has a 46px hit area: the CSS extends it 13px on each side.
@@ -44,11 +45,13 @@ export function railPinTops(positions: readonly number[], height: number, gap: n
 }
 
 // Each pin marks the start of one formal agent reply, independent of any recap.
-export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, onJump }: {
+export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, onJump, viewport, virtual = false }: {
   host: HTMLElement | null;
   scroll: RefObject<HTMLDivElement | null>;
   replies: ResponseAnchor[];
   onJump: () => void;
+  viewport?: RefObject<TranscriptController | null>;
+  virtual?: boolean;
 }) {
   const t = useText();
   const desktop = useMediaQuery(DESKTOP_QUERY), coarse = useMediaQuery(COARSE_QUERY);
@@ -64,6 +67,12 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
       if (!element || !host) return;
       if (changed) {
         changed = false;
+        if (virtual && viewport?.current) {
+          offsets = replies.flatMap((reply, index) => {
+            const offset = viewport.current?.offset(`message:${reply.id}`);
+            return offset === undefined ? [] : [{ ...reply, index: index + 1, offset }];
+          });
+        } else {
         // One query for all replies. A query for each reply reads the whole list again.
         const targets = new Map<string, HTMLElement>();
         for (const node of element.querySelectorAll<HTMLElement>('[data-message-id]')) {
@@ -76,6 +85,7 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
         });
         const positions = contentOffsets(element, found.map(item => item.target));
         offsets = found.map(({reply,index},i) => ({...reply,index:index+1,offset:positions[i]}));
+        }
       }
       const height = host.clientHeight, total = Math.max(1,element.scrollHeight);
       const gap=coarse?TOUCH_GAP:PIN+2, inset=coarse?13:0;
@@ -95,17 +105,26 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
     measure();
     const onScroll = () => schedule(false);
     element.addEventListener('scroll',onScroll,{passive:true});
+    const onLayout = () => schedule(true);
+    element.addEventListener('rayno:transcript-layout', onLayout);
     const observer=new ResizeObserver(()=>schedule(true));observer.observe(element);observer.observe(host);
     if(element.firstElementChild)observer.observe(element.firstElementChild);
-    return()=>{element.removeEventListener('scroll',onScroll);observer.disconnect();if(frame!==undefined)cancelAnimationFrame(frame);};
-  },[host,scroll,replies,desktop,coarse]);
+    return()=>{element.removeEventListener('scroll',onScroll);element.removeEventListener('rayno:transcript-layout',onLayout);observer.disconnect();if(frame!==undefined)cancelAnimationFrame(frame);};
+  },[host,scroll,replies,desktop,coarse,virtual,viewport]);
   useLayoutEffect(() => {
     const rail = scroller.current;
     if (rail && layout && Math.abs(rail.scrollTop - layout.scrollTop) > 0.5) {
       rail.scrollTop = layout.scrollTop;
     }
   }, [layout]);
-  const select = useEventCallback((id: string) => {
+  const select = useEventCallback(async (id: string) => {
+    if (viewport?.current) {
+      onJump();
+      const row = await viewport.current.mount(`message:${id}`);
+      const element = scroll.current, target = row?.querySelector<HTMLElement>('article');
+      if (element && target) jumpToRecapTarget(element, target, 'auto', () => viewport.current?.capture());
+      return;
+    }
     const element=scroll.current;const target=element?.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(id)}"]`);
     if(element&&target){onJump();jumpToRecapTarget(element,target);}
   });

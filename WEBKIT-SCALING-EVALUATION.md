@@ -196,8 +196,8 @@ No production service-worker policy changed in this evaluation.
 | Order | Work | State |
 |---|---|---|
 | 1 | Remove the demo screenshot from unconditional precache, with an offline demo decision | Implemented: bounded first-use cache; see follow-up below |
-| 2 | Build a complete TanStack Virtual prototype with the viewport adapter and full-transcript mode | Recommended; not implemented |
-| 3 | Fix the existing 41px landscape tool target before virtual-mode rollout | Recorded; not implemented |
+| 2 | Build a complete TanStack Virtual prototype with the viewport adapter and full-transcript mode | Implemented as an opt-in prototype; see section 6.12 of PERFORMANCE-PLAN.md |
+| 3 | Fix the existing 41px landscape tool target before virtual-mode rollout | Implemented: 44px minimum and phone pointer checks |
 | 4 | Optimize O02 only if real-device evidence justifies it | Measured; defer |
 
 The original evaluation at `ca75206` added benchmark tools and records only.
@@ -220,3 +220,20 @@ and offline image view and download after a cold reload.
 
 The before/after request record is [2026-10-24-pwa-slim.json](benchmarks/results/2026-10-24-pwa-slim.json).
 The earlier virtualization and O02 recommendations remain unchanged.
+
+## Complete prototype follow-up (2026-10-24)
+
+The production prototype now uses TanStack Virtual 3.14.22. Its account preference remains off by default.
+It adds data-based rail and recap navigation, loaded-history search, encrypted reading anchors, and a full-transcript mode.
+The full-transcript mode supports native find and selection across loaded messages.
+The earlier bounded tail remains a separate experiment.
+
+In the paired 600-turn run, the WebKit reply median falls from 229ms to 46ms.
+The conversation DOM median falls from 39,645 descendants to 280.
+All loaded replies keep rail targets, and all reply samples have a zero bottom gap.
+The virtual WebKit range is 43–49ms in this seven-reply sample. It does not establish a production latency bound.
+The prototype still retains loaded protocol records and can mount a large internal tool group.
+
+See [PERFORMANCE-PLAN.md, section 6.12](PERFORMANCE-PLAN.md#612-v01-complete-virtual-transcript-prototype-2026-10-24)
+and the [raw paired record](benchmarks/results/2026-10-24-virtual-prototype.json).
+Physical iPhone Safari and production latency remain follow-up checks.

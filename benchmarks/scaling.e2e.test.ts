@@ -20,6 +20,7 @@ test('chat rendering should report the cost of a full list and a bounded tail', 
   await view.openSession();
   // Act
   const load = await view.loadHistory();
+  await view.latest();
   const replies = [];
   for (let i = 0; i < 7; i++) {
     const text = `Benchmark reply ${i}`;

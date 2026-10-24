@@ -132,6 +132,7 @@ export type Preferences = {
   chatWidth: ChatWidth;
   glassStyle: GlassStyle;
   compactTools: boolean;
+  fasterTranscript: boolean;
   enterToSend: boolean;
   avatar: AvatarStyle;
   recap: RecapMode;

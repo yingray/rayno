@@ -10,12 +10,17 @@ const flashTimers = new WeakMap<HTMLElement, number>();
  * Find the smallest block of a reply turn that holds the quote.
  * The turn is the agent message and the tool groups before it, back to the last user message.
  */
-export function findRecapTarget(root: ParentNode, messageId: string, quote: string): HTMLElement | null {
+export function findRecapTarget(root: ParentNode, messageId: string, quote: string, toolGroups?: readonly string[]): HTMLElement | null {
   const needles = recapNeedles(quote);
   const article = root.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
-  if (!needles.length || !article) return null;
-  const scopes: Element[] = [article];
-  for (let node = article.previousElementSibling; node && !node.matches('[data-role="user"]'); node = node.previousElementSibling) {
+  if (!needles.length) return null;
+  const scopes: Element[] = article ? [article] : [];
+  if (toolGroups) {
+    for (const id of toolGroups) {
+      const group = root.querySelector(`[data-tool-block="${CSS.escape(id)}"]`);
+      if (group) scopes.push(group);
+    }
+  } else for (let node = article?.previousElementSibling; node && !node.matches('[data-role="user"]'); node = node.previousElementSibling) {
     if (node.matches('[data-tool-activity]')) scopes.push(node);
   }
   let best: HTMLElement | null = null;
@@ -66,7 +71,7 @@ function flash(element: HTMLElement) {
  * Scroll the message list to a target and flash it.
  * A target in a collapsed tool group opens the group first.
  */
-export function jumpToRecapTarget(scroll: HTMLElement, element: HTMLElement) {
+export function jumpToRecapTarget(scroll: HTMLElement, element: HTMLElement, behavior?: ScrollBehavior, onJump?: () => void) {
   const group = element.closest('[data-tool-activity]');
   const toggle = group?.querySelector<HTMLButtonElement>(':scope > button[aria-expanded="false"]');
   const expand = !!toggle && !element.getClientRects().length;
@@ -79,7 +84,8 @@ export function jumpToRecapTarget(scroll: HTMLElement, element: HTMLElement) {
     // The scroll padding keeps the target below the overlay header.
     const padding = parseFloat(getComputedStyle(scroll).scrollPaddingTop) || 0;
     const top = Math.max(0, contentOffset(scroll, element) - padding);
-    scroll.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
+    scroll.scrollTo({ top, behavior: behavior || (reduce ? 'auto' : 'smooth') });
     flash(element);
+    onJump?.();
   });
 }

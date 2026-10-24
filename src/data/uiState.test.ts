@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createInitialState } from './fixtures';
 import { createUIState } from './uiState';
 import { createDebouncedSave } from './debouncedSave';
+import { createTranscriptMemory } from './transcript';
 
 describe('workspace state notifications', () => {
   it('should notify only the edited session without invalidating the workspace snapshot', () => {
@@ -58,6 +59,19 @@ describe('workspace state notifications', () => {
     // Assert
     expect(drafts).toEqual(['First instruction', '', 'Another draft', '']);
     expect(store.getState().sessions.some((session) => session.id === 'floating-panels')).toBe(false);
+  });
+
+  it('should isolate transcript state by account and remove deleted sessions', () => {
+    // Arrange
+    const account = createUIState(createInitialState(0));
+    const other = createUIState(createInitialState(0));
+    const memory = createTranscriptMemory();
+    memory.groups.set('tool', true);
+    account.transcripts.set('floating-panels', memory);
+    // Act / Assert
+    expect(other.transcripts.has('floating-panels')).toBe(false);
+    account.dispatch({ type: 'delete', id: 'floating-panels' });
+    expect(account.transcripts.has('floating-panels')).toBe(false);
   });
 
   it('should persist the latest edits without a workspace render and stop removed subscriptions', () => {

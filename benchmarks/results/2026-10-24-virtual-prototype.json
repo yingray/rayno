@@ -1,0 +1,562 @@
+{
+  "date": "2026-10-24",
+  "sourceBase": "d9b8f64b69695a4067266eed136826770438fa04",
+  "sourceFilesSha256": "010dfa7451a56fcc5ed4096b277aafdca4df3b917535751988e75004cf20c157",
+  "sourceFiles": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "benchmarks/README.md",
+    "benchmarks/ScalingPage.ts",
+    "benchmarks/scaling.e2e.test.ts",
+    "benchmarks/build.mjs",
+    "benchmarks/playwright.config.ts",
+    "src/data/defaults.ts",
+    "src/data/reducer.ts",
+    "src/data/types.ts",
+    "src/data/uiState.ts",
+    "src/data/uiState.test.ts",
+    "src/data/transcript.ts",
+    "src/data/transcript.test.ts",
+    "src/features/Settings.tsx",
+    "src/features/Chat.tsx",
+    "src/features/MessageList.tsx",
+    "src/features/RecapRail.tsx",
+    "src/features/recapTargets.ts",
+    "src/features/chat.module.css",
+    "src/features/TranscriptViewport.tsx",
+    "src/features/transcript.module.css",
+    "src/happy/client.ts",
+    "tests/fixtures/HappyServer.ts",
+    "tests/performanceBaseline.e2e.test.ts",
+    "tests/pages/VirtualTranscriptPage.ts",
+    "tests/virtualTranscript.e2e.test.ts",
+    "public/licenses/tanstack-virtual.txt",
+    "src/locales/zh-TW.json",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "method": {
+    "build": "isolated source archive plus prototype files",
+    "browserWorkers": 1,
+    "order": "full 200, virtual 200, full 600, virtual 600; Chromium then WebKit in each pair",
+    "repliesPerCase": 7,
+    "protocolRowsPerTurn": 18,
+    "toolCallsPerTurn": 5,
+    "replyTimer": "before fixture encryption and send through the second animation frame after the tail article mutation",
+    "historyTimer": "load older pages through each client cache flush; excludes return to latest",
+    "selection": "full is the normal default; virtual changes only the preference default in the benchmark build",
+    "limitations": [
+      "one local run per case",
+      "no physical display timestamp or physical iPhone Safari measurement",
+      "use the complete timing ranges and raw samples",
+      "not a before/after comparison against the prior release"
+    ]
+  },
+  "summary": [
+    {
+      "browser": "desktop-chromium",
+      "variant": "full",
+      "turns": 200,
+      "median": 30.899999618530273,
+      "min": 30.799999237060547,
+      "max": 32.5,
+      "nodes": 13245,
+      "loadMs": 1248.0999994277954
+    },
+    {
+      "browser": "desktop-chromium",
+      "variant": "full",
+      "turns": 600,
+      "median": 41.79999923706055,
+      "min": 39.39999961853027,
+      "max": 45,
+      "nodes": 39645,
+      "loadMs": 5765.800000190735
+    },
+    {
+      "browser": "desktop-webkit",
+      "variant": "full",
+      "turns": 200,
+      "median": 84,
+      "min": 80,
+      "max": 89,
+      "nodes": 13245,
+      "loadMs": 3762
+    },
+    {
+      "browser": "desktop-webkit",
+      "variant": "full",
+      "turns": 600,
+      "median": 229,
+      "min": 225,
+      "max": 246,
+      "nodes": 39645,
+      "loadMs": 29513
+    },
+    {
+      "browser": "desktop-chromium",
+      "variant": "virtual",
+      "turns": 200,
+      "median": 30.100000381469727,
+      "min": 29.299999237060547,
+      "max": 34.10000038146973,
+      "nodes": 280,
+      "loadMs": 1215.6000003814697
+    },
+    {
+      "browser": "desktop-chromium",
+      "variant": "virtual",
+      "turns": 600,
+      "median": 29.299999237060547,
+      "min": 28.5,
+      "max": 48,
+      "nodes": 280,
+      "loadMs": 3615.300000190735
+    },
+    {
+      "browser": "desktop-webkit",
+      "variant": "virtual",
+      "turns": 200,
+      "median": 30,
+      "min": 27,
+      "max": 32,
+      "nodes": 280,
+      "loadMs": 2231
+    },
+    {
+      "browser": "desktop-webkit",
+      "variant": "virtual",
+      "turns": 600,
+      "median": 46,
+      "min": 43,
+      "max": 49,
+      "nodes": 280,
+      "loadMs": 7999
+    }
+  ],
+  "samples": [
+    {
+      "browser": "desktop-chromium",
+      "variant": "full",
+      "turns": 200,
+      "load": {
+        "ms": 1248.0999994277954,
+        "pages": 35
+      },
+      "replies": [
+        {
+          "ms": 32.5,
+          "nodes": 13209,
+          "bottomGap": 0,
+          "replyPins": 201
+        },
+        {
+          "ms": 30.800000190734863,
+          "nodes": 13221,
+          "bottomGap": 0,
+          "replyPins": 202
+        },
+        {
+          "ms": 30.899999618530273,
+          "nodes": 13233,
+          "bottomGap": 0,
+          "replyPins": 203
+        },
+        {
+          "ms": 30.899999618530273,
+          "nodes": 13245,
+          "bottomGap": 0,
+          "replyPins": 204
+        },
+        {
+          "ms": 30.799999237060547,
+          "nodes": 13257,
+          "bottomGap": 0,
+          "replyPins": 205
+        },
+        {
+          "ms": 31,
+          "nodes": 13269,
+          "bottomGap": 0,
+          "replyPins": 206
+        },
+        {
+          "ms": 31.09999942779541,
+          "nodes": 13281,
+          "bottomGap": 0,
+          "replyPins": 207
+        }
+      ]
+    },
+    {
+      "browser": "desktop-chromium",
+      "variant": "full",
+      "turns": 600,
+      "load": {
+        "ms": 5765.800000190735,
+        "pages": 107
+      },
+      "replies": [
+        {
+          "ms": 45,
+          "nodes": 39609,
+          "bottomGap": 0,
+          "replyPins": 601
+        },
+        {
+          "ms": 41.80000019073486,
+          "nodes": 39621,
+          "bottomGap": 0,
+          "replyPins": 602
+        },
+        {
+          "ms": 41.79999923706055,
+          "nodes": 39633,
+          "bottomGap": 0,
+          "replyPins": 603
+        },
+        {
+          "ms": 40.30000019073486,
+          "nodes": 39645,
+          "bottomGap": 0,
+          "replyPins": 604
+        },
+        {
+          "ms": 42.10000038146973,
+          "nodes": 39657,
+          "bottomGap": 0,
+          "replyPins": 605
+        },
+        {
+          "ms": 39.39999961853027,
+          "nodes": 39669,
+          "bottomGap": 0,
+          "replyPins": 606
+        },
+        {
+          "ms": 40.39999961853027,
+          "nodes": 39681,
+          "bottomGap": 0,
+          "replyPins": 607
+        }
+      ]
+    },
+    {
+      "browser": "desktop-webkit",
+      "variant": "full",
+      "turns": 200,
+      "load": {
+        "ms": 3762,
+        "pages": 35
+      },
+      "replies": [
+        {
+          "ms": 86,
+          "nodes": 13209,
+          "bottomGap": 0,
+          "replyPins": 201
+        },
+        {
+          "ms": 84,
+          "nodes": 13221,
+          "bottomGap": 0,
+          "replyPins": 202
+        },
+        {
+          "ms": 89,
+          "nodes": 13233,
+          "bottomGap": 0,
+          "replyPins": 203
+        },
+        {
+          "ms": 85,
+          "nodes": 13245,
+          "bottomGap": 0,
+          "replyPins": 204
+        },
+        {
+          "ms": 80,
+          "nodes": 13257,
+          "bottomGap": 0,
+          "replyPins": 205
+        },
+        {
+          "ms": 84,
+          "nodes": 13269,
+          "bottomGap": 0,
+          "replyPins": 206
+        },
+        {
+          "ms": 83,
+          "nodes": 13281,
+          "bottomGap": 0,
+          "replyPins": 207
+        }
+      ]
+    },
+    {
+      "browser": "desktop-webkit",
+      "variant": "full",
+      "turns": 600,
+      "load": {
+        "ms": 29513,
+        "pages": 107
+      },
+      "replies": [
+        {
+          "ms": 237,
+          "nodes": 39609,
+          "bottomGap": 0,
+          "replyPins": 601
+        },
+        {
+          "ms": 229,
+          "nodes": 39621,
+          "bottomGap": 0,
+          "replyPins": 602
+        },
+        {
+          "ms": 229,
+          "nodes": 39633,
+          "bottomGap": 0,
+          "replyPins": 603
+        },
+        {
+          "ms": 225,
+          "nodes": 39645,
+          "bottomGap": 0,
+          "replyPins": 604
+        },
+        {
+          "ms": 227,
+          "nodes": 39657,
+          "bottomGap": 0,
+          "replyPins": 605
+        },
+        {
+          "ms": 246,
+          "nodes": 39669,
+          "bottomGap": 0,
+          "replyPins": 606
+        },
+        {
+          "ms": 235,
+          "nodes": 39681,
+          "bottomGap": 0,
+          "replyPins": 607
+        }
+      ]
+    },
+    {
+      "browser": "desktop-chromium",
+      "variant": "virtual",
+      "turns": 200,
+      "load": {
+        "ms": 1215.6000003814697,
+        "pages": 35
+      },
+      "replies": [
+        {
+          "ms": 34.10000038146973,
+          "nodes": 287,
+          "bottomGap": 0,
+          "replyPins": 201
+        },
+        {
+          "ms": 29.299999237060547,
+          "nodes": 297,
+          "bottomGap": 0,
+          "replyPins": 202
+        },
+        {
+          "ms": 30.100000381469727,
+          "nodes": 270,
+          "bottomGap": 0,
+          "replyPins": 203
+        },
+        {
+          "ms": 29.59999942779541,
+          "nodes": 283,
+          "bottomGap": 0,
+          "replyPins": 204
+        },
+        {
+          "ms": 30.5,
+          "nodes": 270,
+          "bottomGap": 0,
+          "replyPins": 205
+        },
+        {
+          "ms": 29.800000190734863,
+          "nodes": 280,
+          "bottomGap": 0,
+          "replyPins": 206
+        },
+        {
+          "ms": 30.199999809265137,
+          "nodes": 253,
+          "bottomGap": 0,
+          "replyPins": 207
+        }
+      ]
+    },
+    {
+      "browser": "desktop-chromium",
+      "variant": "virtual",
+      "turns": 600,
+      "load": {
+        "ms": 3615.300000190735,
+        "pages": 107
+      },
+      "replies": [
+        {
+          "ms": 36.69999980926514,
+          "nodes": 287,
+          "bottomGap": 0,
+          "replyPins": 601
+        },
+        {
+          "ms": 48,
+          "nodes": 297,
+          "bottomGap": 0,
+          "replyPins": 602
+        },
+        {
+          "ms": 31.5,
+          "nodes": 270,
+          "bottomGap": 0,
+          "replyPins": 603
+        },
+        {
+          "ms": 28.899999618530273,
+          "nodes": 283,
+          "bottomGap": 0,
+          "replyPins": 604
+        },
+        {
+          "ms": 29.299999237060547,
+          "nodes": 270,
+          "bottomGap": 0,
+          "replyPins": 605
+        },
+        {
+          "ms": 28.5,
+          "nodes": 280,
+          "bottomGap": 0,
+          "replyPins": 606
+        },
+        {
+          "ms": 28.699999809265137,
+          "nodes": 253,
+          "bottomGap": 0,
+          "replyPins": 607
+        }
+      ]
+    },
+    {
+      "browser": "desktop-webkit",
+      "variant": "virtual",
+      "turns": 200,
+      "load": {
+        "ms": 2231,
+        "pages": 35
+      },
+      "replies": [
+        {
+          "ms": 32,
+          "nodes": 287,
+          "bottomGap": 0,
+          "replyPins": 201
+        },
+        {
+          "ms": 30,
+          "nodes": 297,
+          "bottomGap": 0,
+          "replyPins": 202
+        },
+        {
+          "ms": 30,
+          "nodes": 270,
+          "bottomGap": 0,
+          "replyPins": 203
+        },
+        {
+          "ms": 29,
+          "nodes": 283,
+          "bottomGap": 0,
+          "replyPins": 204
+        },
+        {
+          "ms": 30,
+          "nodes": 270,
+          "bottomGap": 0,
+          "replyPins": 205
+        },
+        {
+          "ms": 27,
+          "nodes": 280,
+          "bottomGap": 0,
+          "replyPins": 206
+        },
+        {
+          "ms": 30,
+          "nodes": 253,
+          "bottomGap": 0,
+          "replyPins": 207
+        }
+      ]
+    },
+    {
+      "browser": "desktop-webkit",
+      "variant": "virtual",
+      "turns": 600,
+      "load": {
+        "ms": 7999,
+        "pages": 107
+      },
+      "replies": [
+        {
+          "ms": 49,
+          "nodes": 287,
+          "bottomGap": 0,
+          "replyPins": 601
+        },
+        {
+          "ms": 49,
+          "nodes": 297,
+          "bottomGap": 0,
+          "replyPins": 602
+        },
+        {
+          "ms": 46,
+          "nodes": 270,
+          "bottomGap": 0,
+          "replyPins": 603
+        },
+        {
+          "ms": 46,
+          "nodes": 283,
+          "bottomGap": 0,
+          "replyPins": 604
+        },
+        {
+          "ms": 48,
+          "nodes": 270,
+          "bottomGap": 0,
+          "replyPins": 605
+        },
+        {
+          "ms": 43,
+          "nodes": 280,
+          "bottomGap": 0,
+          "replyPins": 606
+        },
+        {
+          "ms": 46,
+          "nodes": 253,
+          "bottomGap": 0,
+          "replyPins": 607
+        }
+      ]
+    }
+  ]
+}
