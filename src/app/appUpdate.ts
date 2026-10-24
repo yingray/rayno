@@ -61,7 +61,7 @@ async function clearShell(registration: ServiceWorkerRegistration | undefined) {
   await registration?.unregister();
   if (typeof caches === 'undefined') return;
   const names = await caches.keys();
-  await Promise.all(names.filter((name) => name.startsWith('rayno') || name.startsWith('workbox'))
+  await Promise.all(names.filter((name) => !name.startsWith('rayno-recap-audio-') && (name.startsWith('rayno') || name.startsWith('workbox')))
     .map((name) => caches.delete(name)));
 }
 

@@ -91,7 +91,7 @@ describe('App update', () => {
 
   it('should clear the shell caches and reload when the page is online', async () => {
     // Arrange
-    const names = ['rayno-precache-v2', 'rayno-diagrams', 'workbox-runtime', 'account-data'];
+    const names = ['rayno-precache-v2', 'rayno-diagrams', 'workbox-runtime', 'account-data', 'rayno-recap-audio-v1'];
     const remove = vi.fn(async (_name: string) => true);
     vi.stubGlobal('caches', { keys: async () => names, delete: remove });
     vi.stubGlobal('navigator', { onLine: true });

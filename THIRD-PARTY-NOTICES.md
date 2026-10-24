@@ -48,3 +48,11 @@ Session avatars use [DiceBear Planets](https://www.dicebear.com/styles/planets/)
 Only the Planets definition from @dicebear/styles 10.6.0 loads, with @dicebear/core 10.7.0 under the MIT license.
 The renderer runs locally with the session ID as its seed. It does not use the DiceBear HTTP API.
 Notices appear in `public/licenses/dicebear-core.txt` and `public/licenses/dicebear-planets.txt`.
+
+## Edge read-aloud token helper
+
+`server/tts/edgeToken.ts` is a TypeScript port of the Sec-MS-GEC v2 algorithm in
+[rany2/edge-tts](https://github.com/rany2/edge-tts), `src/edge_tts/drm.py`, version 7.3.
+The helper retains LGPL-3.0-only. Its source remains separate and can be replaced before a Pages build.
+The notices appear in `server/licenses/edge-tts.txt` and `server/licenses/GPL-3.0.txt`.
+The helper runs only in the Pages Function and never enters the browser bundle.

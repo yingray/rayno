@@ -64,6 +64,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           cacheId: 'rayno',
+          importScripts: ['/recap-audio-cache-store.js', '/recap-audio-cache-worker.js'],
           // Activate the new shell cache without a reload or a missing update prompt.
           // The open page stays intact; its next navigation uses the current release.
           skipWaiting: true,

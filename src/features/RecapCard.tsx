@@ -55,7 +55,7 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
   const supported = speechSupported();
   const activePoint = own && speech.point !== null ? speech.point
     : speech.selected?.key === messageId ? speech.selected.index : null;
-  const total = recap ? estimateSeconds(recap.text, speech.rate) : 0;
+  const total = recap ? own && speech.duration ? speech.duration / speech.rate : estimateSeconds(recap.text, speech.rate) : 0;
   const elapsed = own ? Math.min(total, recapElapsed()) : 0;
   const expanded = open && !!recap;
   const long = !!recap && recap.text.length > RECAP_TEXT_LIMIT;
@@ -92,10 +92,14 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
           <button
             type="button"
             className={styles.play}
-            aria-label={status === 'playing' ? t("Pause recap") : t("Play recap")}
+            data-loading={status === 'loading' || undefined}
+            aria-label={status === 'loading' ? t("Cancel recap playback") : status === 'playing' ? t("Pause recap") : t("Play recap")}
+            aria-busy={status === 'loading' || undefined}
+            aria-description={status === 'loading' ? t("Preparing recap audio…") : undefined}
             onClick={() => toggleRecapSpeech(messageId, recap)}
           >
-            <Icon name={status === 'playing' ? "pause" : "play"} size={15} />
+            <Icon name={status === 'loading' ? "close" : status === 'playing' ? "pause" : "play"} size={status === 'loading' ? 12 : 15} />
+            {status === 'loading' && <span className={styles.loadingRing} aria-hidden="true" />}
           </button>
         )}
         <span className={styles.label}>
@@ -127,6 +131,7 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
           </button>
         )}
       </div>
+      {own && speech.notice && <p className={styles.speechNotice} role="status">{t(speech.notice)}</p>}
       {expanded && !writing && (
         <div className={styles.body} id={bodyId}>
           <div ref={textRef} className={`${styles.text} ${long && !more ? styles.clamped : ''}`} onFocus={revealFocused}>

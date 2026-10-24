@@ -1,4 +1,6 @@
 import { useEffect, useReducer, useSyncExternalStore } from 'react';
+import { currentRecapAudioCache, onRecapAudioCacheChange } from '../happy/recapAudioCache';
+import { CloudRecapPlayer, unlockCloudSpeech } from './recapCloudSpeech';
 
 // Keep this module free of the Markdown parser. The chat shell imports it to stop playback.
 
@@ -8,7 +10,10 @@ export type RecapSpeechState = {
   // The recap that speaks or pauses. Null when nothing plays.
   key: string | null;
   text: string;
-  status: 'idle' | 'playing' | 'paused';
+  status: 'idle' | 'loading' | 'playing' | 'paused';
+  source?: 'cloud' | 'browser';
+  duration?: number;
+  notice?: string;
   // The point that the voice reads now, from boundary events.
   point: number | null;
   // The last tapped point. It stays active until another tap or playback.
@@ -44,6 +49,8 @@ let rateChanged = false;
 let playedSeconds = 0;
 let startedAt = 0;
 let gesture = false;
+let relayAvailable = false;
+let cloud: CloudRecapPlayer | null = null;
 
 function set(next: Partial<RecapSpeechState>) {
   state = { ...state, ...next };
@@ -56,7 +63,7 @@ function synth(): SpeechSynthesis | undefined {
 }
 
 export function speechSupported(): boolean {
-  return !!synth();
+  return !!synth() || (relayAvailable || !!currentRecapAudioCache()?.available) && typeof Audio === 'function';
 }
 
 // CJK text reads as Traditional Chinese unless Simplified characters are clearly more frequent.
@@ -106,7 +113,7 @@ function clearBoundaryTimer() {
   boundaryTimer = undefined;
 }
 
-function speak(key: string, recap: RecapSpeechText, from: number) {
+function speakBrowser(key: string, recap: RecapSpeechText, from: number) {
   const speech = synth();
   if (!speech) return;
   clearBoundaryTimer();
@@ -140,7 +147,7 @@ function speak(key: string, recap: RecapSpeechText, from: number) {
   playedSeconds = estimateSeconds(recap.text.slice(0, from), state.rate);
   startedAt = Date.now();
   // Playback clears the last tapped point, so the highlight follows the voice.
-  set({ key, text: recap.text, status: 'playing', point: pointAt(segments, from), selected: null });
+  set({ key, text: recap.text, status: 'playing', source: 'browser', duration: undefined, point: pointAt(segments, from), selected: null });
   speech.speak(current);
   watchBoundaries();
 }
@@ -159,33 +166,78 @@ function watchBoundaries() {
 function reset() {
   clearBoundaryTimer();
   utterance = null;
+  segments = [];
   charIndex = 0;
   playedSeconds = 0;
-  set({ key: null, text: '', status: 'idle', point: null });
+  cloud?.stop(); cloud = null;
+  set({ key: null, text: '', status: 'idle', point: null, source: undefined, duration: undefined, notice: undefined, unreliable: false });
+}
+
+function speak(key: string, recap: RecapSpeechText, from = 0) {
+  stopRecapSpeech();
+  const cached = currentRecapAudioCache()?.available;
+  if ((!relayAvailable && !cached) || typeof Audio !== 'function' || (!navigator.onLine && !cached) || recap.text.length > 1000 || from) {
+    if (synth()) speakBrowser(key, recap, from);
+    else set({ key, text: recap.text, status: 'idle', notice: 'Speech is unavailable. Try again later.' });
+    return;
+  }
+  segments = recap.segments;
+  set({ key, text: recap.text, status: 'loading', source: 'cloud', point: null, selected: null, notice: undefined, unreliable: false });
+  const current = new CloudRecapPlayer({
+    ready(duration) {
+      if (cloud !== current) return;
+      set({ duration, status: state.status === 'paused' ? 'paused' : 'playing' });
+    },
+    progress(_seconds, duration, offset) {
+      if (cloud !== current) return;
+      const point = offset === null ? null : pointAt(segments, offset);
+      if (point !== state.point || duration !== state.duration) set({ point, duration });
+    },
+    ended() { if (cloud === current) set({ status: 'idle', point: null }); },
+    failed() {
+      if (cloud !== current) return;
+      const paused = state.status === 'paused';
+      current.stop(); cloud = null;
+      if (synth()) {
+        set({ notice: 'Cloud voice is unavailable. Using the browser voice.' });
+        speakBrowser(key, recap, 0);
+        if (paused) { synth()?.pause(); clearBoundaryTimer(); set({ status: 'paused' }); }
+      } else set({ status: 'idle', source: undefined, notice: 'Speech is unavailable. Try again later.' });
+    },
+  }, state.rate);
+  cloud = current;
+  void current.load(recap.text, recapLanguage(recap.text));
 }
 
 /** Play, pause, or resume one recap. Only one recap speaks at a time. */
 export function toggleRecapSpeech(key: string, recap: RecapSpeechText) {
-  const speech = synth();
-  if (!speech) return;
-  if (state.key !== key || state.text !== recap.text || state.status === 'idle') speak(key, recap, 0);
-  else if (state.status === 'playing') {
-    speech.pause();
-    clearBoundaryTimer();
-    playedSeconds += (Date.now() - startedAt) / 1000;
-    set({ status: 'paused' });
-  } else if (rateChanged) speak(key, recap, charIndex);
-  else {
-    speech.resume();
-    startedAt = Date.now();
-    set({ status: 'playing' });
-    watchBoundaries();
+  if (!speechSupported()) return;
+  if (state.key === key && state.text === recap.text && state.status === 'idle' && cloud?.canReplay) {
+    cloud.replay(); set({ status: 'playing', point: null, selected: null }); return;
+  }
+  if (state.key !== key || state.text !== recap.text || state.status === 'idle') speak(key, recap);
+  else if (state.status === 'loading') stopRecapSpeech();
+  else if (cloud && !cloud.canReplay) speak(key, recap);
+  else if (cloud) {
+    if (state.status === 'playing') { cloud.pause(); set({ status: 'paused' }); }
+    else { cloud.resume(); set({ status: 'playing' }); }
+  } else {
+    const speech = synth();
+    if (!speech) return;
+    if (state.status === 'playing') {
+      speech.pause(); clearBoundaryTimer();
+      playedSeconds += (Date.now() - startedAt) / 1000;
+      set({ status: 'paused' });
+    } else if (rateChanged) speakBrowser(key, recap, charIndex);
+    else {
+      speech.resume(); startedAt = Date.now(); set({ status: 'playing' }); watchBoundaries();
+    }
   }
 }
 
 // Start one recap from the beginning. Autoplay uses it.
 export function playRecapSpeech(key: string, recap: RecapSpeechText) {
-  speak(key, recap, 0);
+  speak(key, recap);
 }
 
 export function recapSpeechState(): RecapSpeechState {
@@ -193,7 +245,7 @@ export function recapSpeechState(): RecapSpeechState {
 }
 
 export function stopRecapSpeech() {
-  if (state.status === 'idle') return;
+  if (state.status === 'idle' && !state.key && !cloud) return;
   utterance = null;
   synth()?.cancel();
   reset();
@@ -205,7 +257,8 @@ export function cycleRecapRate() {
   const rate = RECAP_RATES[(RECAP_RATES.indexOf(state.rate as typeof RECAP_RATES[number]) + 1) % RECAP_RATES.length];
   const { key, text, status } = state;
   set({ rate });
-  if (key && status === 'playing') speak(key, { text, segments }, charIndex);
+  if (cloud) cloud.rate = rate;
+  else if (key && status === 'playing') speakBrowser(key, { text, segments }, charIndex);
   else if (status === 'paused') rateChanged = true;
 }
 
@@ -215,7 +268,8 @@ export function selectRecapPoint(key: string, index: number) {
 
 // Elapsed seconds of the current playback, from the boundary position or from wall time.
 export function recapElapsed(): number {
-  if (state.status === 'idle') return 0;
+  if (state.status === 'idle' || state.status === 'loading') return 0;
+  if (cloud) return cloud.elapsed / state.rate;
   if (boundaries) return estimateSeconds(state.text.slice(0, charIndex), state.rate);
   return playedSeconds + (state.status === 'playing' ? (Date.now() - startedAt) / 1000 : 0);
 }
@@ -226,7 +280,16 @@ export function hasUserGesture() {
 }
 
 if (typeof window !== 'undefined') {
-  const mark = () => { gesture = true; };
+  onRecapAudioCacheChange(() => set({}));
+  // A static host without the Pages Function returns HTML here and keeps browser speech.
+  void fetch('/api/tts', { cache: 'no-store', signal: AbortSignal.timeout(3000) }).then(async response => {
+    if (response.ok && response.headers.get('content-type')?.includes('application/json')) {
+      const config = await response.json();
+      relayAvailable = config.recapTts === true;
+      if (relayAvailable) set({});
+    }
+  }).catch(() => { /* Browser speech remains available offline and on static preview hosts. */ });
+  const mark = () => { gesture = true; if (relayAvailable) unlockCloudSpeech(); };
   window.addEventListener('pointerdown', mark, { capture: true, once: true });
   window.addEventListener('keydown', mark, { capture: true, once: true });
   window.addEventListener('pagehide', stopRecapSpeech);

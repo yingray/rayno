@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { PropsWithChildren } from 'react';
 import { StoreProvider } from '../data/store';
 import { defaultNewDraft, defaultPreferences } from '../data/defaults';
@@ -12,6 +12,7 @@ import { Button, Mark, Spinner } from '../components/ui';
 import styles from './login.module.css';
 import { useUIState } from '../data/useUIState';
 import { CREDENTIALS_KEY } from './credentials';
+import { RecapAudioCache, activateRecapAudioCache } from './recapAudioCache';
 import { requestPersistentStorageOnFirstInput } from './persistentStorage';
 
 const emptyState = (): DemoState => ({
@@ -84,6 +85,8 @@ function Connected({
   children,
 }: PropsWithChildren<{ client: HappyClient; logout: () => void; switchMode: () => void }>) {
   const snapshot = useSyncExternalStore(client.subscribe, client.getSnapshot);
+  const recapCache = useMemo(() => new RecapAudioCache(client.storageKey, client.encryption), [client]);
+  useLayoutEffect(() => activateRecapAudioCache(recapCache), [recapCache]);
   // A remembered sign-in from an earlier visit: ask the browser to keep the offline data on the first click.
   useEffect(() => {
     let remembered = false;
@@ -179,9 +182,10 @@ function Connected({
   );
   const signOut = useCallback(async () => {
     client.dispose();
+    await recapCache.clear();
     await client.clearLocal();
     logout();
-  }, [client, logout]);
+  }, [client, logout, recapCache]);
   const reset = useCallback(() => dispatch({ type: 'reset', state: emptyState() }), []);
   return (
     <StoreProvider

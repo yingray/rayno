@@ -67,7 +67,8 @@ Rayno began as a personal patch of the Happy web app. It is now a separate produ
 Rayno is a static web client for [Happy](https://github.com/slopus/happy).
 It is written in React, TypeScript, and Vite.
 Rayno owns its UI, dependencies, authentication, encryption, realtime client, build, and browser storage.
-It talks only to the Happy server. The Happy CLI daemon on your computer connects to the same server.
+Session traffic goes to the Happy server. The Happy CLI daemon on your computer connects to the same server.
+Recap cloud speech sends only the selected summary to the same-origin Pages Function and Microsoft Edge read-aloud service.
 The server relays end-to-end encrypted session data and RPC calls between them.
 
 ## How it connects
@@ -241,9 +242,52 @@ RAYNO_ALLOWED_HOSTS=your-machine.your-tailnet.ts.net
 `.env.local` stays out of git. `.env.example` lists the supported variables.
 Each origin has its own login and browser storage.
 
+## Recap cloud speech
+
+On Cloudflare Pages, Recap uses the same-origin `/api/tts` Function for cloud speech.
+Traditional Chinese uses `zh-TW-HsiaoChenNeural`, Simplified Chinese uses `zh-CN-XiaoxiaoNeural`,
+and English uses `en-US-AriaNeural`. No model loads in the browser.
+The Function uses the current Edge read-aloud protocol, including the v2 handshake token.
+This community protocol can change; it is not a paid Microsoft speech API with a service guarantee.
+
+Only Recap text leaves the browser for speech. The Function does not receive the full reply, tool logs,
+Happy credentials, or account keys. It does not log text or save text or audio in Cloudflare storage.
+The response contains short MP3 audio and word timings so the existing highlight can follow playback.
+The current player keeps its audio after playback ends, so Play restarts it immediately without another request.
+Pause and speed changes also reuse that audio. Stop, navigation, and backgrounding release the player's URL.
+
+For signed-in accounts, the Service Worker keeps a separate encrypted audio cache for 24 hours from synthesis.
+Replaying does not extend the expiry. Reloads and offline playback can use the same cached MP3 and word timings.
+The cache separates accounts and Happy servers; keyed content hashes also separate text, language, and voice versions.
+The worker receives ciphertext only, without recap text, account keys, or raw audio. Sign-out removes that account's entries.
+Expired entries are never used and are removed on access or worker activation. The cache holds at most 64 entries or 32 MiB,
+with the oldest entries removed when the budget is full. Storage denial does not block online playback.
+
+Cloud failure or offline use falls back to the browser voice when available.
+A static host without the Function keeps browser speech. If neither voice works, Recap shows a retryable notice.
+
+The relay uses the Workers Free plan without paid bindings, R2, D1, or KV. Keep the account on the Free plan.
+Cloudflare's free request and CPU limits still apply, shared with other Workers in the account.
+`public/_routes.json` invokes the Function only for `/api/tts`; static assets and chat routes bypass it.
+The endpoint accepts same-origin JSON POSTs, limits text to 1,000 UTF-16 code units and bodies to 8 KiB,
+and rejects synthesis responses over 1 MiB. Burst control allows 12 POSTs per minute per IP per isolate;
+it is best effort, not an account-wide quota. HTTP responses use `Cache-Control: no-store`.
+Text never enters query strings. The initial GET only discovers speech availability.
+
+To test the actual Function locally after a build:
+
+```sh
+pnpm dlx wrangler@4 pages dev dist --compatibility-date=2026-10-12 --ip 127.0.0.1 --port 5186
+```
+
+Use the existing Tailscale route for the selected local port. A Vite preview serves only static files,
+so it uses browser speech. Cloudflare authentication is needed for a production deploy, not local testing.
+Git-integrated Pages builds detect `functions/` automatically. For a direct upload, run
+`wrangler pages deploy dist` from the repository root so Wrangler also bundles the Function.
+
 ## Deploy to Cloudflare Pages
 
-Rayno is a static site. Cloudflare Pages serves it without a server runtime.
+Rayno serves its UI as static files. The optional Recap speech endpoint uses one Pages Function.
 
 | Setting | Value |
 | --- | --- |
@@ -280,8 +324,9 @@ pnpm dlx wrangler@4 pages dev dist --ip 127.0.0.1 --port 8788
 ## PWA
 
 The generated manifest identifies Rayno. Its service worker uses a `rayno` cache prefix.
-Only static assets and the app shell enter the service worker cache.
-Live API calls and credentials do not enter that cache.
+Public service-worker caches contain static assets and the app shell.
+Recap audio uses a separate encrypted account cache with a 24-hour expiry.
+Raw live API responses and credentials do not enter either cache. Shell updates retain the encrypted Recap cache.
 Demo interactions work offline after the shell is cached. Real operations require the Happy server and daemon.
 Adapted protocol copies have pinned provenance in `src/happy/PROTOCOL-SOURCES.md` and retain `HAPPY-LICENSE.txt`.
 

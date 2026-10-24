@@ -368,3 +368,28 @@
     animation: none;
   }
 }
+
+.speechNotice { margin: 8px 10px; color: var(--secondary); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+
+/* Keep preparation feedback inside the playback control without moving the card. */
+.play[data-loading] {
+  background: linear-gradient(160deg, #a78bfa52, #6d4cac70);
+  border-color: #d8c9ff80;
+  box-shadow: inset 0 1px 0 #ffffff4d, inset 0 -1px 6px #c4b5fd1a, 0 4px 14px -8px #a78bfa80;
+}
+.loadingRing {
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid #ede9fe26;
+  border-top-color: #f5f3ff;
+  border-right-color: #ddd6fe9c;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation: recapAudioOrbit 1.4s linear .16s infinite, recapAudioReveal .18s ease-out .16s both;
+}
+@keyframes recapAudioOrbit { to { transform: rotate(360deg); } }
+@keyframes recapAudioReveal { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .loadingRing { animation: none; opacity: 1; }
+}
