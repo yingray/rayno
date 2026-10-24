@@ -63,3 +63,5 @@ The browser tests use loopback for the controlled sample and require no personal
 
 Raw samples go to `.performance/samples/`. The summary goes to `.performance/report.json`.
 The checked record for this evaluation is `results/2026-10-24.json`.
+The first-use demo cache follow-up is `results/2026-10-24-pwa-slim.json`.
+It keeps the before/after totals and the new HTTP request and Cache Storage records.

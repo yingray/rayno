@@ -903,3 +903,40 @@ The evaluation is in `WEBKIT-SCALING-EVALUATION.md`; raw samples are in `benchma
   deployed Cloudflare transfer sizes, and account-history offline behavior under a changed cache policy.
   The simple tail intentionally drops early text and rail pins, so it must not ship.
 
+## Demo image cache on first use (2026-10-24)
+
+`vite.config.ts` removes the bundled demo screenshot from precache.
+The `rayno-demo-images` CacheFirst route keeps successful responses on first use, with at most two versions for 60 days.
+The account shell, encrypted history, and Mermaid cache keep their previous policies.
+
+- Application and benchmark typechecks pass. All 556 unit tests pass.
+- Targeted browser checks: 47 passed, 5 existing skips, 0 failures in the final run.
+  They cover demo UI, account offline flows, the generated worker, and the existing multi-tab update check.
+- The new generated-worker test passes in all four projects. On the old build it fails because installation precaches the screenshot.
+  It checks no screenshot cache at install or demo navigation, an uncached offline miss, online retry,
+  a PNG response in the runtime cache, and image view and download after an offline reload.
+- Existing demo UI checks cover 320, 360, 390, and 430px, a short keyboard viewport, and landscape in both engines.
+- The installed live PWA now reopens its session list, encrypted chat history, and diagram offline in desktop Chromium and WebKit.
+  The fixture delays worker registration until account data is saved, then loads the diagram through the controlling worker.
+  This avoids WebKit's worker bypass of page-route API mocks; it does not stub the worker or the offline navigation.
+- The HTTP probe counts no demo screenshot request during install in either engine.
+  Cold gzip response bodies: Chromium 1,886,032 to 1,104,845 B (41.4% less);
+  WebKit 2,413,637 to 1,632,450 B (32.4% less).
+  Warm reload remains 0 network bytes; the changed-release transfer is 446,742 B in both engines.
+  Both engines reopen the updated shell offline and retain the updated CSS marker.
+- Raw requests and the before/after totals are in `benchmarks/results/2026-10-24-pwa-slim.json`.
+  Both policy builds use source base `00c9fa7`. A clean Git archive supplies the previous configuration.
+  The local preview and HTTP probe used separate verified Tailscale routes on ports 5196 and 5197.
+- An unused demo screenshot needs an online first load. The cache can expire or evict it under its stated limits.
+- The full browser suite and physical iPhone Safari were not run for this cache-policy change.
+
+Re-run with a production build and:
+
+```sh
+pnpm exec playwright test tests/pwaPrecache.e2e.test.ts tests/pwaUpdate.e2e.test.ts tests/offlineWorkspace.e2e.test.ts tests/demoImages.e2e.test.ts --workers=2
+node benchmarks/pwa-transfer.mjs
+```
+
+This run used an isolated build under `.performance/pwa-slim` and a temporary config on port 5196,
+because existing user preview services own the default ports. It did not overwrite `dist/` or stop those services.
+

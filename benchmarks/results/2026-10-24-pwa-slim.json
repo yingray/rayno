@@ -1,0 +1,5613 @@
+{
+  "measuredAt": "2026-10-24T02:14:21.780Z",
+  "sourceBaseCommit": "00c9fa78a5f385231dc3457b89f98e5f9b77bb65",
+  "change": "Exclude demo-chat PNG from precache; use bounded CacheFirst on first use",
+  "method": "Both builds use the same source base. The before build comes from git archive HEAD; timestamps differ as on normal builds.",
+  "priorEvaluationRecord": "benchmarks/results/2026-10-24.json",
+  "comparison": {
+    "chromium": {
+      "before": 1886032,
+      "after": 1104845,
+      "saved": 781187,
+      "percent": 41.41960475750146
+    },
+    "webkit": {
+      "before": 2413637,
+      "after": 1632450,
+      "saved": 781187,
+      "percent": 32.365554555221024
+    }
+  },
+  "before": {
+    "totals": {
+      "chromium-cold": {
+        "requests": 92,
+        "encoded": 1886032,
+        "decoded": 3737697
+      },
+      "chromium-warm": {
+        "requests": 0,
+        "encoded": 0,
+        "decoded": 0
+      },
+      "chromium-unchanged-update": {
+        "requests": 2,
+        "encoded": 0,
+        "decoded": 0
+      },
+      "chromium-changed-update": {
+        "requests": 33,
+        "encoded": 446661,
+        "decoded": 1416789
+      },
+      "chromium-offline": {
+        "requests": 0,
+        "encoded": 0,
+        "decoded": 0
+      },
+      "webkit-cold": {
+        "requests": 106,
+        "encoded": 2413637,
+        "decoded": 5085450
+      },
+      "webkit-warm": {
+        "requests": 0,
+        "encoded": 0,
+        "decoded": 0
+      },
+      "webkit-unchanged-update": {
+        "requests": 2,
+        "encoded": 9702,
+        "decoded": 28482
+      },
+      "webkit-changed-update": {
+        "requests": 33,
+        "encoded": 446661,
+        "decoded": 1416789
+      },
+      "webkit-offline": {
+        "requests": 0,
+        "encoded": 0,
+        "decoded": 0
+      }
+    },
+    "results": [
+      {
+        "browser": "chromium",
+        "cache": [
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/registerSW.js",
+            "bytes": 134
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/index.html",
+            "bytes": 1003
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/rayno.svg",
+            "bytes": 6373
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/rayno-attention.svg",
+            "bytes": 6459
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-512.png",
+            "bytes": 25522
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-192.png",
+            "bytes": 8936
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-180.png",
+            "bytes": 8170
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/happy.png",
+            "bytes": 8062
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/codex.png",
+            "bytes": 7042
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/claude.png",
+            "bytes": 9533
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/GeistMono-Regular.ttf",
+            "bytes": 148516
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-SemiBold.ttf",
+            "bytes": 127872
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Regular.ttf",
+            "bytes": 126048
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Medium.ttf",
+            "bytes": 127660
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Italic.ttf",
+            "bytes": 128288
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Bold.ttf",
+            "bytes": 128868
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/useUIState-BgtYY5T0.js",
+            "bytes": 1551
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/usageReport-D-LZBF0N.js",
+            "bytes": 1250
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/todos-Cynd4COI.js",
+            "bytes": 1702
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/syntaxHighlight-Q1Im7WcE.js",
+            "bytes": 162517
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/suggestions-Dh1h7jV6.js",
+            "bytes": 3664
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/sideChats-ByL0S8GO.js",
+            "bytes": 1334
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/settings.module-C4-BK3zc.js",
+            "bytes": 1111
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/settings-DL3CKDm2.css",
+            "bytes": 9580
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+            "bytes": 726
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/reuseEqual-CgPhKnrQ.js",
+            "bytes": 3315
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/resume-CzSNJMDv.js",
+            "bytes": 582
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/replyTurns-DiEEzTZd.js",
+            "bytes": 463
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/reducer-BV5Yoq9p.js",
+            "bytes": 8343
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/recapView-_iJ2ajBi.js",
+            "bytes": 66342
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/recapDemo-C62sR3k9.js",
+            "bytes": 1056
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/questionDemo-V5tRSb3D.js",
+            "bytes": 609
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/persistentStorage-CHOeZ0FW.js",
+            "bytes": 2784
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/persistentStorage-B-SvzWCN.css",
+            "bytes": 4392
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/permissionOptions-BDIfRmtD.js",
+            "bytes": 27332
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/modelPreferences-05iGrrRY.js",
+            "bytes": 2641
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/modelOptions-BExY3LzT.js",
+            "bytes": 2499
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/messageOptions--xdCA9lJ.js",
+            "bytes": 59709
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/management.module-DqNuXLWC.js",
+            "bytes": 231
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/management-CiAYNnh9.css",
+            "bytes": 2612
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/jsx-runtime-C3cWAN_r.js",
+            "bytes": 8243
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/index-Dd_YuY4S.css",
+            "bytes": 11286
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/index-CIqaXE92.js",
+            "bytes": 328114
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/imageDemo-Dtz41JET.js",
+            "bytes": 1866
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/handoff-TthqOaVB.js",
+            "bytes": 1014
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/errors-kAhAN8po.js",
+            "bytes": 247
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/demo-chat-DcVIH29t.png",
+            "bytes": 822180
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/crypto-B-7Fx-4E.js",
+            "bytes": 436128
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/attachments-Ci7tJtIU.js",
+            "bytes": 1144
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceTag-DfUqfprk.js",
+            "bytes": 2845
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceTag-B8Y398g7.css",
+            "bytes": 6940
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceFiles-DKPLc3l0.js",
+            "bytes": 3433
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceFiles-BXrpiX0W.css",
+            "bytes": 1080
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SideChats-DTx1Nezd.js",
+            "bytes": 7588
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SideChats-CkSIJ3LT.css",
+            "bytes": 4086
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Settings-BH2Ib1Vi.js",
+            "bytes": 19442
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Sessions-DUJpTTsP.css",
+            "bytes": 3510
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Sessions-BKWx2kSu.js",
+            "bytes": 14098
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionPrompts-D9e2mPmV.css",
+            "bytes": 418
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionPrompts-Cy0lzF07.js",
+            "bytes": 2039
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionInfo-DnyjXBYC.js",
+            "bytes": 7591
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionInfo-BuL_uVFd.css",
+            "bytes": 4744
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionActions-DmywIqSO.js",
+            "bytes": 1557
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/ResumeSession-Dl6tw4K3.js",
+            "bytes": 1081
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Requests-ay5nO5JM.css",
+            "bytes": 2910
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Requests-CfsXEe56.js",
+            "bytes": 6539
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/PlanetAvatar-BZMQtId-.js",
+            "bytes": 181653
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSessionPickers-DCpPMPNE.js",
+            "bytes": 3994
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSession-BxgvUH36.js",
+            "bytes": 14429
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSession-BHfazIzE.css",
+            "bytes": 13994
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Monitor-Rw7PqTlC.js",
+            "bytes": 14041
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Monitor-CQNHFFEy.css",
+            "bytes": 11931
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/MessageList-gSOGEH17.js",
+            "bytes": 97165
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/MessageList-DeHULkCP.css",
+            "bytes": 8581
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Login-GSk25lor.js",
+            "bytes": 22493
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/LiveProvider-0mlsDXXP.js",
+            "bytes": 125714
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Inbox-DcCY5McN.js",
+            "bytes": 1932
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/DemoQuestions-DKEraArP.js",
+            "bytes": 1852
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/DemoProvider-C9E66ZEZ.js",
+            "bytes": 9617
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Chat-CSDgCqhu.js",
+            "bytes": 57346
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Chat-BqrmgTlK.css",
+            "bytes": 38541
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/App-Ctb_evFM.js",
+            "bytes": 21511
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/App-CgCyw_hR.css",
+            "bytes": 10838
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/OFL-Geist.txt",
+            "bytes": 4368
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/README.md",
+            "bytes": 279
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/manifest.webmanifest",
+            "bytes": 424
+          }
+        ],
+        "offlineShell": true,
+        "updatedCss": "1"
+      },
+      {
+        "browser": "webkit",
+        "cache": [
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/registerSW.js",
+            "bytes": 134
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/index.html",
+            "bytes": 1003
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/rayno.svg",
+            "bytes": 6373
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/rayno-attention.svg",
+            "bytes": 6459
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-512.png",
+            "bytes": 25522
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-192.png",
+            "bytes": 8936
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-180.png",
+            "bytes": 8170
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/happy.png",
+            "bytes": 8062
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/codex.png",
+            "bytes": 7042
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/claude.png",
+            "bytes": 9533
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/GeistMono-Regular.ttf",
+            "bytes": 148516
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-SemiBold.ttf",
+            "bytes": 127872
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Regular.ttf",
+            "bytes": 126048
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Medium.ttf",
+            "bytes": 127660
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Italic.ttf",
+            "bytes": 128288
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Bold.ttf",
+            "bytes": 128868
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/useUIState-BgtYY5T0.js",
+            "bytes": 1551
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/usageReport-D-LZBF0N.js",
+            "bytes": 1250
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/todos-Cynd4COI.js",
+            "bytes": 1702
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/syntaxHighlight-Q1Im7WcE.js",
+            "bytes": 162517
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/suggestions-Dh1h7jV6.js",
+            "bytes": 3664
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/sideChats-ByL0S8GO.js",
+            "bytes": 1334
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/settings.module-C4-BK3zc.js",
+            "bytes": 1111
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/settings-DL3CKDm2.css",
+            "bytes": 9580
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+            "bytes": 726
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/reuseEqual-CgPhKnrQ.js",
+            "bytes": 3315
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/resume-CzSNJMDv.js",
+            "bytes": 582
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/replyTurns-DiEEzTZd.js",
+            "bytes": 463
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/reducer-BV5Yoq9p.js",
+            "bytes": 8343
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/recapView-_iJ2ajBi.js",
+            "bytes": 66342
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/recapDemo-C62sR3k9.js",
+            "bytes": 1056
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/questionDemo-V5tRSb3D.js",
+            "bytes": 609
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/persistentStorage-CHOeZ0FW.js",
+            "bytes": 2784
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/persistentStorage-B-SvzWCN.css",
+            "bytes": 4392
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/permissionOptions-BDIfRmtD.js",
+            "bytes": 27332
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/modelPreferences-05iGrrRY.js",
+            "bytes": 2641
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/modelOptions-BExY3LzT.js",
+            "bytes": 2499
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/messageOptions--xdCA9lJ.js",
+            "bytes": 59709
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/management.module-DqNuXLWC.js",
+            "bytes": 231
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/management-CiAYNnh9.css",
+            "bytes": 2612
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/jsx-runtime-C3cWAN_r.js",
+            "bytes": 8243
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/index-Dd_YuY4S.css",
+            "bytes": 11286
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/index-CIqaXE92.js",
+            "bytes": 328114
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/imageDemo-Dtz41JET.js",
+            "bytes": 1866
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/handoff-TthqOaVB.js",
+            "bytes": 1014
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/errors-kAhAN8po.js",
+            "bytes": 247
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/demo-chat-DcVIH29t.png",
+            "bytes": 822180
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/crypto-B-7Fx-4E.js",
+            "bytes": 436128
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/attachments-Ci7tJtIU.js",
+            "bytes": 1144
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceTag-DfUqfprk.js",
+            "bytes": 2845
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceTag-B8Y398g7.css",
+            "bytes": 6940
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceFiles-DKPLc3l0.js",
+            "bytes": 3433
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceFiles-BXrpiX0W.css",
+            "bytes": 1080
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SideChats-DTx1Nezd.js",
+            "bytes": 7588
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SideChats-CkSIJ3LT.css",
+            "bytes": 4086
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Settings-BH2Ib1Vi.js",
+            "bytes": 19442
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Sessions-DUJpTTsP.css",
+            "bytes": 3510
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Sessions-BKWx2kSu.js",
+            "bytes": 14098
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionPrompts-D9e2mPmV.css",
+            "bytes": 418
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionPrompts-Cy0lzF07.js",
+            "bytes": 2039
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionInfo-DnyjXBYC.js",
+            "bytes": 7591
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionInfo-BuL_uVFd.css",
+            "bytes": 4744
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionActions-DmywIqSO.js",
+            "bytes": 1557
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/ResumeSession-Dl6tw4K3.js",
+            "bytes": 1081
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Requests-ay5nO5JM.css",
+            "bytes": 2910
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Requests-CfsXEe56.js",
+            "bytes": 6539
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/PlanetAvatar-BZMQtId-.js",
+            "bytes": 181653
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSessionPickers-DCpPMPNE.js",
+            "bytes": 3994
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSession-BxgvUH36.js",
+            "bytes": 14429
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSession-BHfazIzE.css",
+            "bytes": 13994
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Monitor-Rw7PqTlC.js",
+            "bytes": 14041
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Monitor-CQNHFFEy.css",
+            "bytes": 11931
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/MessageList-gSOGEH17.js",
+            "bytes": 97165
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/MessageList-DeHULkCP.css",
+            "bytes": 8581
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Login-GSk25lor.js",
+            "bytes": 22493
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/LiveProvider-0mlsDXXP.js",
+            "bytes": 125714
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Inbox-DcCY5McN.js",
+            "bytes": 1932
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/DemoQuestions-DKEraArP.js",
+            "bytes": 1852
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/DemoProvider-C9E66ZEZ.js",
+            "bytes": 9617
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Chat-CSDgCqhu.js",
+            "bytes": 57346
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Chat-BqrmgTlK.css",
+            "bytes": 38541
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/App-Ctb_evFM.js",
+            "bytes": 21511
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/App-CgCyw_hR.css",
+            "bytes": 10838
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/OFL-Geist.txt",
+            "bytes": 4368
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/README.md",
+            "bytes": 279
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/manifest.webmanifest",
+            "bytes": 424
+          }
+        ],
+        "offlineShell": true,
+        "updatedCss": "1"
+      }
+    ],
+    "records": [
+      {
+        "phase": "chromium-cold",
+        "path": "/sessions",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 504
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/index-CIqaXE92.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104250
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/index-Dd_YuY4S.css",
+        "status": 200,
+        "decoded": 11286,
+        "encoded": 3477
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+        "status": 200,
+        "decoded": 726,
+        "encoded": 429
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/jsx-runtime-C3cWAN_r.js",
+        "status": 200,
+        "decoded": 8243,
+        "encoded": 3114
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/registerSW.js",
+        "status": 200,
+        "decoded": 134,
+        "encoded": 125
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/errors-kAhAN8po.js",
+        "status": 200,
+        "decoded": 247,
+        "encoded": 196
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/persistentStorage-CHOeZ0FW.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1302
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/persistentStorage-B-SvzWCN.css",
+        "status": 200,
+        "decoded": 4392,
+        "encoded": 1390
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Login-GSk25lor.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8178
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/crypto-B-7Fx-4E.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152767
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 6916,
+        "encoded": 2344
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/workbox-1b66a1dc.js",
+        "status": 200,
+        "decoded": 21566,
+        "encoded": 7358
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Regular.ttf",
+        "status": 200,
+        "decoded": 126048,
+        "encoded": 59509
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/registerSW.js",
+        "status": 200,
+        "decoded": 134,
+        "encoded": 125
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/rayno.svg",
+        "status": 200,
+        "decoded": 6373,
+        "encoded": 2880
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/index.html",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 504
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/rayno.svg",
+        "status": 200,
+        "decoded": 6373,
+        "encoded": 2880
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/rayno-attention.svg",
+        "status": 200,
+        "decoded": 6459,
+        "encoded": 2954
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/icon-512.png",
+        "status": 200,
+        "decoded": 25522,
+        "encoded": 24436
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/icon-192.png",
+        "status": 200,
+        "decoded": 8936,
+        "encoded": 8765
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/icon-180.png",
+        "status": 200,
+        "decoded": 8170,
+        "encoded": 8049
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/happy.png",
+        "status": 200,
+        "decoded": 8062,
+        "encoded": 2443
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/codex.png",
+        "status": 200,
+        "decoded": 7042,
+        "encoded": 7010
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/claude.png",
+        "status": 200,
+        "decoded": 9533,
+        "encoded": 9382
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/GeistMono-Regular.ttf",
+        "status": 200,
+        "decoded": 148516,
+        "encoded": 67524
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-SemiBold.ttf",
+        "status": 200,
+        "decoded": 127872,
+        "encoded": 61470
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Regular.ttf",
+        "status": 200,
+        "decoded": 126048,
+        "encoded": 59509
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Medium.ttf",
+        "status": 200,
+        "decoded": 127660,
+        "encoded": 61481
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Italic.ttf",
+        "status": 200,
+        "decoded": 128288,
+        "encoded": 62208
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Bold.ttf",
+        "status": 200,
+        "decoded": 128868,
+        "encoded": 61769
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/useUIState-BgtYY5T0.js",
+        "status": 200,
+        "decoded": 1551,
+        "encoded": 725
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/usageReport-D-LZBF0N.js",
+        "status": 200,
+        "decoded": 1250,
+        "encoded": 608
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/todos-Cynd4COI.js",
+        "status": 200,
+        "decoded": 1702,
+        "encoded": 874
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/syntaxHighlight-Q1Im7WcE.js",
+        "status": 200,
+        "decoded": 162517,
+        "encoded": 51114
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/suggestions-Dh1h7jV6.js",
+        "status": 200,
+        "decoded": 3664,
+        "encoded": 1637
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/sideChats-ByL0S8GO.js",
+        "status": 200,
+        "decoded": 1334,
+        "encoded": 619
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/settings.module-C4-BK3zc.js",
+        "status": 200,
+        "decoded": 1111,
+        "encoded": 465
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/settings-DL3CKDm2.css",
+        "status": 200,
+        "decoded": 9580,
+        "encoded": 2436
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/reuseEqual-CgPhKnrQ.js",
+        "status": 200,
+        "decoded": 3315,
+        "encoded": 1575
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/resume-CzSNJMDv.js",
+        "status": 200,
+        "decoded": 582,
+        "encoded": 338
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/replyTurns-DiEEzTZd.js",
+        "status": 200,
+        "decoded": 463,
+        "encoded": 298
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/reducer-BV5Yoq9p.js",
+        "status": 200,
+        "decoded": 8343,
+        "encoded": 2899
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/recapView-_iJ2ajBi.js",
+        "status": 200,
+        "decoded": 66342,
+        "encoded": 21578
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/recapDemo-C62sR3k9.js",
+        "status": 200,
+        "decoded": 1056,
+        "encoded": 637
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/questionDemo-V5tRSb3D.js",
+        "status": 200,
+        "decoded": 609,
+        "encoded": 405
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/permissionOptions-BDIfRmtD.js",
+        "status": 200,
+        "decoded": 27332,
+        "encoded": 10236
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/modelPreferences-05iGrrRY.js",
+        "status": 200,
+        "decoded": 2641,
+        "encoded": 1186
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/modelOptions-BExY3LzT.js",
+        "status": 200,
+        "decoded": 2499,
+        "encoded": 1060
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/messageOptions--xdCA9lJ.js",
+        "status": 200,
+        "decoded": 59709,
+        "encoded": 16688
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/management.module-DqNuXLWC.js",
+        "status": 200,
+        "decoded": 231,
+        "encoded": 157
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/management-CiAYNnh9.css",
+        "status": 200,
+        "decoded": 2612,
+        "encoded": 861
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/imageDemo-Dtz41JET.js",
+        "status": 200,
+        "decoded": 1866,
+        "encoded": 991
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/handoff-TthqOaVB.js",
+        "status": 200,
+        "decoded": 1014,
+        "encoded": 585
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/demo-chat-DcVIH29t.png",
+        "status": 200,
+        "decoded": 822180,
+        "encoded": 781318
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/attachments-Ci7tJtIU.js",
+        "status": 200,
+        "decoded": 1144,
+        "encoded": 625
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/WorkspaceTag-DfUqfprk.js",
+        "status": 200,
+        "decoded": 2845,
+        "encoded": 1343
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/WorkspaceTag-B8Y398g7.css",
+        "status": 200,
+        "decoded": 6940,
+        "encoded": 2050
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/WorkspaceFiles-DKPLc3l0.js",
+        "status": 200,
+        "decoded": 3433,
+        "encoded": 1615
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/WorkspaceFiles-BXrpiX0W.css",
+        "status": 200,
+        "decoded": 1080,
+        "encoded": 483
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SideChats-DTx1Nezd.js",
+        "status": 200,
+        "decoded": 7588,
+        "encoded": 2859
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SideChats-CkSIJ3LT.css",
+        "status": 200,
+        "decoded": 4086,
+        "encoded": 1307
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Settings-BH2Ib1Vi.js",
+        "status": 200,
+        "decoded": 19442,
+        "encoded": 5737
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Sessions-DUJpTTsP.css",
+        "status": 200,
+        "decoded": 3510,
+        "encoded": 1230
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Sessions-BKWx2kSu.js",
+        "status": 200,
+        "decoded": 14098,
+        "encoded": 5034
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionPrompts-D9e2mPmV.css",
+        "status": 200,
+        "decoded": 418,
+        "encoded": 266
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionPrompts-Cy0lzF07.js",
+        "status": 200,
+        "decoded": 2039,
+        "encoded": 976
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionInfo-DnyjXBYC.js",
+        "status": 200,
+        "decoded": 7591,
+        "encoded": 2991
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionInfo-BuL_uVFd.css",
+        "status": 200,
+        "decoded": 4744,
+        "encoded": 1339
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionActions-DmywIqSO.js",
+        "status": 200,
+        "decoded": 1557,
+        "encoded": 792
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/ResumeSession-Dl6tw4K3.js",
+        "status": 200,
+        "decoded": 1081,
+        "encoded": 644
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Requests-ay5nO5JM.css",
+        "status": 200,
+        "decoded": 2910,
+        "encoded": 1072
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Requests-CfsXEe56.js",
+        "status": 200,
+        "decoded": 6539,
+        "encoded": 2379
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/PlanetAvatar-BZMQtId-.js",
+        "status": 200,
+        "decoded": 181653,
+        "encoded": 28926
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/NewSessionPickers-DCpPMPNE.js",
+        "status": 200,
+        "decoded": 3994,
+        "encoded": 1434
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/NewSession-BxgvUH36.js",
+        "status": 200,
+        "decoded": 14429,
+        "encoded": 4707
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/NewSession-BHfazIzE.css",
+        "status": 200,
+        "decoded": 13994,
+        "encoded": 3058
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Monitor-Rw7PqTlC.js",
+        "status": 200,
+        "decoded": 14041,
+        "encoded": 4611
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Monitor-CQNHFFEy.css",
+        "status": 200,
+        "decoded": 11931,
+        "encoded": 2568
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/MessageList-gSOGEH17.js",
+        "status": 200,
+        "decoded": 97165,
+        "encoded": 32179
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/MessageList-DeHULkCP.css",
+        "status": 200,
+        "decoded": 8581,
+        "encoded": 2410
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/LiveProvider-0mlsDXXP.js",
+        "status": 200,
+        "decoded": 125714,
+        "encoded": 38306
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Inbox-DcCY5McN.js",
+        "status": 200,
+        "decoded": 1932,
+        "encoded": 861
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/DemoQuestions-DKEraArP.js",
+        "status": 200,
+        "decoded": 1852,
+        "encoded": 897
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/DemoProvider-C9E66ZEZ.js",
+        "status": 200,
+        "decoded": 9617,
+        "encoded": 3924
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Chat-CSDgCqhu.js",
+        "status": 200,
+        "decoded": 57346,
+        "encoded": 21191
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Chat-BqrmgTlK.css",
+        "status": 200,
+        "decoded": 38541,
+        "encoded": 7894
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/App-Ctb_evFM.js",
+        "status": 200,
+        "decoded": 21511,
+        "encoded": 7433
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/App-CgCyw_hR.css",
+        "status": 200,
+        "decoded": 10838,
+        "encoded": 2845
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/OFL-Geist.txt",
+        "status": 200,
+        "decoded": 4368,
+        "encoded": 1953
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/README.md",
+        "status": 200,
+        "decoded": 279,
+        "encoded": 213
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/manifest.webmanifest",
+        "status": 200,
+        "decoded": 424,
+        "encoded": 258
+      },
+      {
+        "phase": "chromium-unchanged-update",
+        "path": "/sw.js",
+        "status": 304,
+        "decoded": 0,
+        "encoded": 0
+      },
+      {
+        "phase": "chromium-unchanged-update",
+        "path": "/workbox-1b66a1dc.js",
+        "status": 304,
+        "decoded": 0,
+        "encoded": 0
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 6916,
+        "encoded": 2338
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/workbox-1b66a1dc.js",
+        "status": 304,
+        "decoded": 0,
+        "encoded": 0
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/index.html",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 501
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/useUIState-D4zrUDnR.js",
+        "status": 200,
+        "decoded": 1551,
+        "encoded": 724
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/reducer-CC507ldI.js",
+        "status": 200,
+        "decoded": 8343,
+        "encoded": 2896
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/persistentStorage-U31rxefX.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1301
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/modelPreferences-CmHAOkND.js",
+        "status": 200,
+        "decoded": 2641,
+        "encoded": 1184
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/index-bdG4niUL.css",
+        "status": 200,
+        "decoded": 11314,
+        "encoded": 3493
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/index-COemURae.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104251
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/imageDemo-Cof3Ubxj.js",
+        "status": 200,
+        "decoded": 1866,
+        "encoded": 988
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/handoff-DMTIGMZH.js",
+        "status": 200,
+        "decoded": 1014,
+        "encoded": 583
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/crypto-BmRCfDg_.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152766
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/WorkspaceFiles-C9YedGpi.js",
+        "status": 200,
+        "decoded": 3433,
+        "encoded": 1613
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/SideChats-DgqHnNgH.js",
+        "status": 200,
+        "decoded": 7588,
+        "encoded": 2857
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Settings-CIfiqqak.js",
+        "status": 200,
+        "decoded": 19442,
+        "encoded": 5734
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Sessions-lGwxwKuQ.js",
+        "status": 200,
+        "decoded": 14098,
+        "encoded": 5034
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/SessionPrompts-CwrpCh65.js",
+        "status": 200,
+        "decoded": 2039,
+        "encoded": 973
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/SessionInfo-Cq8eJN5_.js",
+        "status": 200,
+        "decoded": 7591,
+        "encoded": 2989
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/SessionActions-CFtwKTvz.js",
+        "status": 200,
+        "decoded": 1557,
+        "encoded": 787
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/ResumeSession-Cbi4bMPH.js",
+        "status": 200,
+        "decoded": 1081,
+        "encoded": 642
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Requests-9_xsgpZd.js",
+        "status": 200,
+        "decoded": 6539,
+        "encoded": 2377
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/PlanetAvatar-CkGkXDQQ.js",
+        "status": 200,
+        "decoded": 181653,
+        "encoded": 28925
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/NewSessionPickers-CxVaeYR1.js",
+        "status": 200,
+        "decoded": 3994,
+        "encoded": 1432
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/NewSession-CFXqo98a.js",
+        "status": 200,
+        "decoded": 14429,
+        "encoded": 4704
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Monitor-BEo7Ezol.js",
+        "status": 200,
+        "decoded": 14041,
+        "encoded": 4610
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/MessageList-ooIFQtF0.js",
+        "status": 200,
+        "decoded": 97165,
+        "encoded": 32177
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Login-HPQv9ySD.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8176
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/LiveProvider-HN7a7AAs.js",
+        "status": 200,
+        "decoded": 125714,
+        "encoded": 38302
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Inbox-wgVYIG4m.js",
+        "status": 200,
+        "decoded": 1932,
+        "encoded": 860
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/DemoQuestions-B9S1A_uO.js",
+        "status": 200,
+        "decoded": 1852,
+        "encoded": 894
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/DemoProvider-Ctg8C_vt.js",
+        "status": 200,
+        "decoded": 9617,
+        "encoded": 3923
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Chat-BF34bv8A.js",
+        "status": 200,
+        "decoded": 57346,
+        "encoded": 21194
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/App-CXZ38eUM.js",
+        "status": 200,
+        "decoded": 21511,
+        "encoded": 7433
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/sessions",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 504
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/index-CIqaXE92.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104250
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+        "status": 200,
+        "decoded": 726,
+        "encoded": 429
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/jsx-runtime-C3cWAN_r.js",
+        "status": 200,
+        "decoded": 8243,
+        "encoded": 3114
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/index-Dd_YuY4S.css",
+        "status": 200,
+        "decoded": 11286,
+        "encoded": 3477
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/registerSW.js",
+        "status": 200,
+        "decoded": 134,
+        "encoded": 125
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/manifest.webmanifest",
+        "status": 200,
+        "decoded": 424,
+        "encoded": 258
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Regular.ttf",
+        "status": 200,
+        "decoded": 126048,
+        "encoded": 59509
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Login-GSk25lor.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8178
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/errors-kAhAN8po.js",
+        "status": 200,
+        "decoded": 247,
+        "encoded": 196
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/persistentStorage-CHOeZ0FW.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1302
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/crypto-B-7Fx-4E.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152767
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/persistentStorage-B-SvzWCN.css",
+        "status": 200,
+        "decoded": 4392,
+        "encoded": 1390
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 6916,
+        "encoded": 2344
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/rayno.svg",
+        "status": 200,
+        "decoded": 6373,
+        "encoded": 2880
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/workbox-1b66a1dc.js",
+        "status": 200,
+        "decoded": 21566,
+        "encoded": 7358
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/registerSW.js",
+        "status": 200,
+        "decoded": 134,
+        "encoded": 125
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/index.html",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 504
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/rayno.svg",
+        "status": 200,
+        "decoded": 6373,
+        "encoded": 2880
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/rayno-attention.svg",
+        "status": 200,
+        "decoded": 6459,
+        "encoded": 2954
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/icon-512.png",
+        "status": 200,
+        "decoded": 25522,
+        "encoded": 24436
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/icon-192.png",
+        "status": 200,
+        "decoded": 8936,
+        "encoded": 8765
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/icon-180.png",
+        "status": 200,
+        "decoded": 8170,
+        "encoded": 8049
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/happy.png",
+        "status": 200,
+        "decoded": 8062,
+        "encoded": 2443
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/codex.png",
+        "status": 200,
+        "decoded": 7042,
+        "encoded": 7010
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/claude.png",
+        "status": 200,
+        "decoded": 9533,
+        "encoded": 9382
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/GeistMono-Regular.ttf",
+        "status": 200,
+        "decoded": 148516,
+        "encoded": 67524
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-SemiBold.ttf",
+        "status": 200,
+        "decoded": 127872,
+        "encoded": 61470
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Regular.ttf",
+        "status": 200,
+        "decoded": 126048,
+        "encoded": 59509
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Medium.ttf",
+        "status": 200,
+        "decoded": 127660,
+        "encoded": 61481
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Italic.ttf",
+        "status": 200,
+        "decoded": 128288,
+        "encoded": 62208
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Bold.ttf",
+        "status": 200,
+        "decoded": 128868,
+        "encoded": 61769
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/useUIState-BgtYY5T0.js",
+        "status": 200,
+        "decoded": 1551,
+        "encoded": 725
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/usageReport-D-LZBF0N.js",
+        "status": 200,
+        "decoded": 1250,
+        "encoded": 608
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/todos-Cynd4COI.js",
+        "status": 200,
+        "decoded": 1702,
+        "encoded": 874
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/syntaxHighlight-Q1Im7WcE.js",
+        "status": 200,
+        "decoded": 162517,
+        "encoded": 51114
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/suggestions-Dh1h7jV6.js",
+        "status": 200,
+        "decoded": 3664,
+        "encoded": 1637
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/sideChats-ByL0S8GO.js",
+        "status": 200,
+        "decoded": 1334,
+        "encoded": 619
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/settings.module-C4-BK3zc.js",
+        "status": 200,
+        "decoded": 1111,
+        "encoded": 465
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/settings-DL3CKDm2.css",
+        "status": 200,
+        "decoded": 9580,
+        "encoded": 2436
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+        "status": 200,
+        "decoded": 726,
+        "encoded": 429
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/reuseEqual-CgPhKnrQ.js",
+        "status": 200,
+        "decoded": 3315,
+        "encoded": 1575
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/resume-CzSNJMDv.js",
+        "status": 200,
+        "decoded": 582,
+        "encoded": 338
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/replyTurns-DiEEzTZd.js",
+        "status": 200,
+        "decoded": 463,
+        "encoded": 298
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/reducer-BV5Yoq9p.js",
+        "status": 200,
+        "decoded": 8343,
+        "encoded": 2899
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/recapView-_iJ2ajBi.js",
+        "status": 200,
+        "decoded": 66342,
+        "encoded": 21578
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/recapDemo-C62sR3k9.js",
+        "status": 200,
+        "decoded": 1056,
+        "encoded": 637
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/questionDemo-V5tRSb3D.js",
+        "status": 200,
+        "decoded": 609,
+        "encoded": 405
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/persistentStorage-CHOeZ0FW.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1302
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/persistentStorage-B-SvzWCN.css",
+        "status": 200,
+        "decoded": 4392,
+        "encoded": 1390
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/permissionOptions-BDIfRmtD.js",
+        "status": 200,
+        "decoded": 27332,
+        "encoded": 10236
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/modelPreferences-05iGrrRY.js",
+        "status": 200,
+        "decoded": 2641,
+        "encoded": 1186
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/modelOptions-BExY3LzT.js",
+        "status": 200,
+        "decoded": 2499,
+        "encoded": 1060
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/messageOptions--xdCA9lJ.js",
+        "status": 200,
+        "decoded": 59709,
+        "encoded": 16688
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/management.module-DqNuXLWC.js",
+        "status": 200,
+        "decoded": 231,
+        "encoded": 157
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/management-CiAYNnh9.css",
+        "status": 200,
+        "decoded": 2612,
+        "encoded": 861
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/jsx-runtime-C3cWAN_r.js",
+        "status": 200,
+        "decoded": 8243,
+        "encoded": 3114
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/index-Dd_YuY4S.css",
+        "status": 200,
+        "decoded": 11286,
+        "encoded": 3477
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/index-CIqaXE92.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104250
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/imageDemo-Dtz41JET.js",
+        "status": 200,
+        "decoded": 1866,
+        "encoded": 991
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/handoff-TthqOaVB.js",
+        "status": 200,
+        "decoded": 1014,
+        "encoded": 585
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/errors-kAhAN8po.js",
+        "status": 200,
+        "decoded": 247,
+        "encoded": 196
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/demo-chat-DcVIH29t.png",
+        "status": 200,
+        "decoded": 822180,
+        "encoded": 781318
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/crypto-B-7Fx-4E.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152767
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/attachments-Ci7tJtIU.js",
+        "status": 200,
+        "decoded": 1144,
+        "encoded": 625
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/WorkspaceTag-DfUqfprk.js",
+        "status": 200,
+        "decoded": 2845,
+        "encoded": 1343
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/WorkspaceTag-B8Y398g7.css",
+        "status": 200,
+        "decoded": 6940,
+        "encoded": 2050
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/WorkspaceFiles-DKPLc3l0.js",
+        "status": 200,
+        "decoded": 3433,
+        "encoded": 1615
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/WorkspaceFiles-BXrpiX0W.css",
+        "status": 200,
+        "decoded": 1080,
+        "encoded": 483
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SideChats-DTx1Nezd.js",
+        "status": 200,
+        "decoded": 7588,
+        "encoded": 2859
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SideChats-CkSIJ3LT.css",
+        "status": 200,
+        "decoded": 4086,
+        "encoded": 1307
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Settings-BH2Ib1Vi.js",
+        "status": 200,
+        "decoded": 19442,
+        "encoded": 5737
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Sessions-DUJpTTsP.css",
+        "status": 200,
+        "decoded": 3510,
+        "encoded": 1230
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Sessions-BKWx2kSu.js",
+        "status": 200,
+        "decoded": 14098,
+        "encoded": 5034
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionPrompts-D9e2mPmV.css",
+        "status": 200,
+        "decoded": 418,
+        "encoded": 266
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionPrompts-Cy0lzF07.js",
+        "status": 200,
+        "decoded": 2039,
+        "encoded": 976
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionInfo-DnyjXBYC.js",
+        "status": 200,
+        "decoded": 7591,
+        "encoded": 2991
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionInfo-BuL_uVFd.css",
+        "status": 200,
+        "decoded": 4744,
+        "encoded": 1339
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionActions-DmywIqSO.js",
+        "status": 200,
+        "decoded": 1557,
+        "encoded": 792
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/ResumeSession-Dl6tw4K3.js",
+        "status": 200,
+        "decoded": 1081,
+        "encoded": 644
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Requests-ay5nO5JM.css",
+        "status": 200,
+        "decoded": 2910,
+        "encoded": 1072
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Requests-CfsXEe56.js",
+        "status": 200,
+        "decoded": 6539,
+        "encoded": 2379
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/PlanetAvatar-BZMQtId-.js",
+        "status": 200,
+        "decoded": 181653,
+        "encoded": 28926
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/NewSessionPickers-DCpPMPNE.js",
+        "status": 200,
+        "decoded": 3994,
+        "encoded": 1434
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/NewSession-BxgvUH36.js",
+        "status": 200,
+        "decoded": 14429,
+        "encoded": 4707
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/NewSession-BHfazIzE.css",
+        "status": 200,
+        "decoded": 13994,
+        "encoded": 3058
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Monitor-Rw7PqTlC.js",
+        "status": 200,
+        "decoded": 14041,
+        "encoded": 4611
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Monitor-CQNHFFEy.css",
+        "status": 200,
+        "decoded": 11931,
+        "encoded": 2568
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/MessageList-gSOGEH17.js",
+        "status": 200,
+        "decoded": 97165,
+        "encoded": 32179
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/MessageList-DeHULkCP.css",
+        "status": 200,
+        "decoded": 8581,
+        "encoded": 2410
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Login-GSk25lor.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8178
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/LiveProvider-0mlsDXXP.js",
+        "status": 200,
+        "decoded": 125714,
+        "encoded": 38306
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Inbox-DcCY5McN.js",
+        "status": 200,
+        "decoded": 1932,
+        "encoded": 861
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/DemoQuestions-DKEraArP.js",
+        "status": 200,
+        "decoded": 1852,
+        "encoded": 897
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/DemoProvider-C9E66ZEZ.js",
+        "status": 200,
+        "decoded": 9617,
+        "encoded": 3924
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Chat-CSDgCqhu.js",
+        "status": 200,
+        "decoded": 57346,
+        "encoded": 21191
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Chat-BqrmgTlK.css",
+        "status": 200,
+        "decoded": 38541,
+        "encoded": 7894
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/App-Ctb_evFM.js",
+        "status": 200,
+        "decoded": 21511,
+        "encoded": 7433
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/App-CgCyw_hR.css",
+        "status": 200,
+        "decoded": 10838,
+        "encoded": 2845
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/OFL-Geist.txt",
+        "status": 200,
+        "decoded": 4368,
+        "encoded": 1953
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/README.md",
+        "status": 200,
+        "decoded": 279,
+        "encoded": 213
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/manifest.webmanifest",
+        "status": 200,
+        "decoded": 424,
+        "encoded": 258
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Medium.ttf",
+        "status": 200,
+        "decoded": 127660,
+        "encoded": 61481
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-SemiBold.ttf",
+        "status": 200,
+        "decoded": 127872,
+        "encoded": 61470
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Bold.ttf",
+        "status": 200,
+        "decoded": 128868,
+        "encoded": 61769
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/GeistMono-Regular.ttf",
+        "status": 200,
+        "decoded": 148516,
+        "encoded": 67524
+      },
+      {
+        "phase": "webkit-unchanged-update",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 6916,
+        "encoded": 2344
+      },
+      {
+        "phase": "webkit-unchanged-update",
+        "path": "/workbox-1b66a1dc.js",
+        "status": 200,
+        "decoded": 21566,
+        "encoded": 7358
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 6916,
+        "encoded": 2338
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/workbox-1b66a1dc.js",
+        "status": 304,
+        "decoded": 0,
+        "encoded": 0
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/index.html",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 501
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/useUIState-D4zrUDnR.js",
+        "status": 200,
+        "decoded": 1551,
+        "encoded": 724
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/reducer-CC507ldI.js",
+        "status": 200,
+        "decoded": 8343,
+        "encoded": 2896
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/persistentStorage-U31rxefX.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1301
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/modelPreferences-CmHAOkND.js",
+        "status": 200,
+        "decoded": 2641,
+        "encoded": 1184
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/index-bdG4niUL.css",
+        "status": 200,
+        "decoded": 11314,
+        "encoded": 3493
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/index-COemURae.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104251
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/imageDemo-Cof3Ubxj.js",
+        "status": 200,
+        "decoded": 1866,
+        "encoded": 988
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/handoff-DMTIGMZH.js",
+        "status": 200,
+        "decoded": 1014,
+        "encoded": 583
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/crypto-BmRCfDg_.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152766
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/WorkspaceFiles-C9YedGpi.js",
+        "status": 200,
+        "decoded": 3433,
+        "encoded": 1613
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/SideChats-DgqHnNgH.js",
+        "status": 200,
+        "decoded": 7588,
+        "encoded": 2857
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Settings-CIfiqqak.js",
+        "status": 200,
+        "decoded": 19442,
+        "encoded": 5734
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Sessions-lGwxwKuQ.js",
+        "status": 200,
+        "decoded": 14098,
+        "encoded": 5034
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/SessionPrompts-CwrpCh65.js",
+        "status": 200,
+        "decoded": 2039,
+        "encoded": 973
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/SessionInfo-Cq8eJN5_.js",
+        "status": 200,
+        "decoded": 7591,
+        "encoded": 2989
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/SessionActions-CFtwKTvz.js",
+        "status": 200,
+        "decoded": 1557,
+        "encoded": 787
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/ResumeSession-Cbi4bMPH.js",
+        "status": 200,
+        "decoded": 1081,
+        "encoded": 642
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Requests-9_xsgpZd.js",
+        "status": 200,
+        "decoded": 6539,
+        "encoded": 2377
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/PlanetAvatar-CkGkXDQQ.js",
+        "status": 200,
+        "decoded": 181653,
+        "encoded": 28925
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/NewSessionPickers-CxVaeYR1.js",
+        "status": 200,
+        "decoded": 3994,
+        "encoded": 1432
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/NewSession-CFXqo98a.js",
+        "status": 200,
+        "decoded": 14429,
+        "encoded": 4704
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Monitor-BEo7Ezol.js",
+        "status": 200,
+        "decoded": 14041,
+        "encoded": 4610
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/MessageList-ooIFQtF0.js",
+        "status": 200,
+        "decoded": 97165,
+        "encoded": 32177
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Login-HPQv9ySD.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8176
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/LiveProvider-HN7a7AAs.js",
+        "status": 200,
+        "decoded": 125714,
+        "encoded": 38302
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Inbox-wgVYIG4m.js",
+        "status": 200,
+        "decoded": 1932,
+        "encoded": 860
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/DemoQuestions-B9S1A_uO.js",
+        "status": 200,
+        "decoded": 1852,
+        "encoded": 894
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/DemoProvider-Ctg8C_vt.js",
+        "status": 200,
+        "decoded": 9617,
+        "encoded": 3923
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Chat-BF34bv8A.js",
+        "status": 200,
+        "decoded": 57346,
+        "encoded": 21194
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/App-CXZ38eUM.js",
+        "status": 200,
+        "decoded": 21511,
+        "encoded": 7433
+      }
+    ]
+  },
+  "after": {
+    "totals": {
+      "chromium-cold": {
+        "requests": 91,
+        "encoded": 1104845,
+        "decoded": 2916122
+      },
+      "chromium-warm": {
+        "requests": 0,
+        "encoded": 0,
+        "decoded": 0
+      },
+      "chromium-unchanged-update": {
+        "requests": 2,
+        "encoded": 0,
+        "decoded": 0
+      },
+      "chromium-changed-update": {
+        "requests": 33,
+        "encoded": 446742,
+        "decoded": 1416963
+      },
+      "chromium-offline": {
+        "requests": 0,
+        "encoded": 0,
+        "decoded": 0
+      },
+      "webkit-cold": {
+        "requests": 105,
+        "encoded": 1632450,
+        "decoded": 4263875
+      },
+      "webkit-warm": {
+        "requests": 0,
+        "encoded": 0,
+        "decoded": 0
+      },
+      "webkit-unchanged-update": {
+        "requests": 2,
+        "encoded": 9846,
+        "decoded": 29087
+      },
+      "webkit-changed-update": {
+        "requests": 33,
+        "encoded": 446742,
+        "decoded": 1416963
+      },
+      "webkit-offline": {
+        "requests": 0,
+        "encoded": 0,
+        "decoded": 0
+      }
+    },
+    "results": [
+      {
+        "browser": "chromium",
+        "cache": [
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/registerSW.js",
+            "bytes": 134
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/index.html",
+            "bytes": 1003
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/rayno.svg",
+            "bytes": 6373
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/rayno-attention.svg",
+            "bytes": 6459
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-512.png",
+            "bytes": 25522
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-192.png",
+            "bytes": 8936
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-180.png",
+            "bytes": 8170
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/happy.png",
+            "bytes": 8062
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/codex.png",
+            "bytes": 7042
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/claude.png",
+            "bytes": 9533
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/GeistMono-Regular.ttf",
+            "bytes": 148516
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-SemiBold.ttf",
+            "bytes": 127872
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Regular.ttf",
+            "bytes": 126048
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Medium.ttf",
+            "bytes": 127660
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Italic.ttf",
+            "bytes": 128288
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Bold.ttf",
+            "bytes": 128868
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/useUIState-DLVSGL21.js",
+            "bytes": 1551
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/usageReport-D-LZBF0N.js",
+            "bytes": 1250
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/todos-Cynd4COI.js",
+            "bytes": 1702
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/syntaxHighlight-Q1Im7WcE.js",
+            "bytes": 162517
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/suggestions-Dh1h7jV6.js",
+            "bytes": 3664
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/sideChats-ByL0S8GO.js",
+            "bytes": 1334
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/settings.module-C4-BK3zc.js",
+            "bytes": 1111
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/settings-DL3CKDm2.css",
+            "bytes": 9580
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+            "bytes": 726
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/reuseEqual-CgPhKnrQ.js",
+            "bytes": 3315
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/resume-CzSNJMDv.js",
+            "bytes": 582
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/replyTurns-DiEEzTZd.js",
+            "bytes": 463
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/reducer-DxNt4FbE.js",
+            "bytes": 8343
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/recapView-_iJ2ajBi.js",
+            "bytes": 66342
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/recapDemo-C62sR3k9.js",
+            "bytes": 1056
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/questionDemo-V5tRSb3D.js",
+            "bytes": 609
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/persistentStorage-y-Afoi4x.js",
+            "bytes": 2784
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/persistentStorage-B-SvzWCN.css",
+            "bytes": 4392
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/permissionOptions-BDIfRmtD.js",
+            "bytes": 27332
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/modelPreferences-AxI68KFh.js",
+            "bytes": 2641
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/modelOptions-BExY3LzT.js",
+            "bytes": 2499
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/messageOptions--xdCA9lJ.js",
+            "bytes": 59709
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/management.module-DqNuXLWC.js",
+            "bytes": 231
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/management-CiAYNnh9.css",
+            "bytes": 2612
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/jsx-runtime-C3cWAN_r.js",
+            "bytes": 8243
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/index-Dd_YuY4S.css",
+            "bytes": 11286
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/index-Cm8YKPAs.js",
+            "bytes": 328114
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/imageDemo-Cm0QVtVa.js",
+            "bytes": 1866
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/handoff-CovRlkDD.js",
+            "bytes": 1014
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/errors-kAhAN8po.js",
+            "bytes": 247
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/crypto-DjWnRQt2.js",
+            "bytes": 436128
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/attachments-Ci7tJtIU.js",
+            "bytes": 1144
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceTag-DfUqfprk.js",
+            "bytes": 2845
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceTag-B8Y398g7.css",
+            "bytes": 6940
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceFiles-BjLHnY6I.js",
+            "bytes": 3433
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceFiles-BXrpiX0W.css",
+            "bytes": 1080
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SideChats-Cr1tORNA.js",
+            "bytes": 7588
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SideChats-CkSIJ3LT.css",
+            "bytes": 4086
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Settings-9zKtkyxA.js",
+            "bytes": 19442
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Sessions-DUJpTTsP.css",
+            "bytes": 3510
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Sessions-C9UQLfFp.js",
+            "bytes": 14098
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionPrompts-D9e2mPmV.css",
+            "bytes": 418
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionPrompts-BzCN6PfX.js",
+            "bytes": 2039
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionInfo-CRYi2LiG.js",
+            "bytes": 7591
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionInfo-BuL_uVFd.css",
+            "bytes": 4744
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionActions-BBJNaFwi.js",
+            "bytes": 1557
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/ResumeSession-BlwdgGxD.js",
+            "bytes": 1081
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Requests-ay5nO5JM.css",
+            "bytes": 2910
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Requests-Cs1aRMlB.js",
+            "bytes": 6539
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/PlanetAvatar-bxUT55n1.js",
+            "bytes": 181653
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSessionPickers-CVAjsxiN.js",
+            "bytes": 3994
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSession-CLLe_Gj5.js",
+            "bytes": 14429
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSession-BHfazIzE.css",
+            "bytes": 13994
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Monitor-CQNHFFEy.css",
+            "bytes": 11931
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Monitor-BEUbh1BF.js",
+            "bytes": 14041
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/MessageList-DeHULkCP.css",
+            "bytes": 8581
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/MessageList-CkfzalTV.js",
+            "bytes": 97165
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Login-DYkhkVk6.js",
+            "bytes": 22493
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/LiveProvider-BR9t690s.js",
+            "bytes": 125714
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Inbox-Dhjhvest.js",
+            "bytes": 1932
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/DemoQuestions-DzdkquD3.js",
+            "bytes": 1852
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/DemoProvider-B19Q65YM.js",
+            "bytes": 9617
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Chat-BqrmgTlK.css",
+            "bytes": 38541
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Chat-BcHQ9ZZL.js",
+            "bytes": 57346
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/App-DgRxzckR.js",
+            "bytes": 21511
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/App-CgCyw_hR.css",
+            "bytes": 10838
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/OFL-Geist.txt",
+            "bytes": 4368
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/README.md",
+            "bytes": 279
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/manifest.webmanifest",
+            "bytes": 424
+          }
+        ],
+        "offlineShell": true,
+        "updatedCss": "1"
+      },
+      {
+        "browser": "webkit",
+        "cache": [
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/registerSW.js",
+            "bytes": 134
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/index.html",
+            "bytes": 1003
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/rayno.svg",
+            "bytes": 6373
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/rayno-attention.svg",
+            "bytes": 6459
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-512.png",
+            "bytes": 25522
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-192.png",
+            "bytes": 8936
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/icon-180.png",
+            "bytes": 8170
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/happy.png",
+            "bytes": 8062
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/codex.png",
+            "bytes": 7042
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/icons/claude.png",
+            "bytes": 9533
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/GeistMono-Regular.ttf",
+            "bytes": 148516
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-SemiBold.ttf",
+            "bytes": 127872
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Regular.ttf",
+            "bytes": 126048
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Medium.ttf",
+            "bytes": 127660
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Italic.ttf",
+            "bytes": 128288
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/Geist-Bold.ttf",
+            "bytes": 128868
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/useUIState-DLVSGL21.js",
+            "bytes": 1551
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/usageReport-D-LZBF0N.js",
+            "bytes": 1250
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/todos-Cynd4COI.js",
+            "bytes": 1702
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/syntaxHighlight-Q1Im7WcE.js",
+            "bytes": 162517
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/suggestions-Dh1h7jV6.js",
+            "bytes": 3664
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/sideChats-ByL0S8GO.js",
+            "bytes": 1334
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/settings.module-C4-BK3zc.js",
+            "bytes": 1111
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/settings-DL3CKDm2.css",
+            "bytes": 9580
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+            "bytes": 726
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/reuseEqual-CgPhKnrQ.js",
+            "bytes": 3315
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/resume-CzSNJMDv.js",
+            "bytes": 582
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/replyTurns-DiEEzTZd.js",
+            "bytes": 463
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/reducer-DxNt4FbE.js",
+            "bytes": 8343
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/recapView-_iJ2ajBi.js",
+            "bytes": 66342
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/recapDemo-C62sR3k9.js",
+            "bytes": 1056
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/questionDemo-V5tRSb3D.js",
+            "bytes": 609
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/persistentStorage-y-Afoi4x.js",
+            "bytes": 2784
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/persistentStorage-B-SvzWCN.css",
+            "bytes": 4392
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/permissionOptions-BDIfRmtD.js",
+            "bytes": 27332
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/modelPreferences-AxI68KFh.js",
+            "bytes": 2641
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/modelOptions-BExY3LzT.js",
+            "bytes": 2499
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/messageOptions--xdCA9lJ.js",
+            "bytes": 59709
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/management.module-DqNuXLWC.js",
+            "bytes": 231
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/management-CiAYNnh9.css",
+            "bytes": 2612
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/jsx-runtime-C3cWAN_r.js",
+            "bytes": 8243
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/index-Dd_YuY4S.css",
+            "bytes": 11286
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/index-Cm8YKPAs.js",
+            "bytes": 328114
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/imageDemo-Cm0QVtVa.js",
+            "bytes": 1866
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/handoff-CovRlkDD.js",
+            "bytes": 1014
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/errors-kAhAN8po.js",
+            "bytes": 247
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/crypto-DjWnRQt2.js",
+            "bytes": 436128
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/attachments-Ci7tJtIU.js",
+            "bytes": 1144
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceTag-DfUqfprk.js",
+            "bytes": 2845
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceTag-B8Y398g7.css",
+            "bytes": 6940
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceFiles-BjLHnY6I.js",
+            "bytes": 3433
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/WorkspaceFiles-BXrpiX0W.css",
+            "bytes": 1080
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SideChats-Cr1tORNA.js",
+            "bytes": 7588
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SideChats-CkSIJ3LT.css",
+            "bytes": 4086
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Settings-9zKtkyxA.js",
+            "bytes": 19442
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Sessions-DUJpTTsP.css",
+            "bytes": 3510
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Sessions-C9UQLfFp.js",
+            "bytes": 14098
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionPrompts-D9e2mPmV.css",
+            "bytes": 418
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionPrompts-BzCN6PfX.js",
+            "bytes": 2039
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionInfo-CRYi2LiG.js",
+            "bytes": 7591
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionInfo-BuL_uVFd.css",
+            "bytes": 4744
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/SessionActions-BBJNaFwi.js",
+            "bytes": 1557
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/ResumeSession-BlwdgGxD.js",
+            "bytes": 1081
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Requests-ay5nO5JM.css",
+            "bytes": 2910
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Requests-Cs1aRMlB.js",
+            "bytes": 6539
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/PlanetAvatar-bxUT55n1.js",
+            "bytes": 181653
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSessionPickers-CVAjsxiN.js",
+            "bytes": 3994
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSession-CLLe_Gj5.js",
+            "bytes": 14429
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/NewSession-BHfazIzE.css",
+            "bytes": 13994
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Monitor-CQNHFFEy.css",
+            "bytes": 11931
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Monitor-BEUbh1BF.js",
+            "bytes": 14041
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/MessageList-DeHULkCP.css",
+            "bytes": 8581
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/MessageList-CkfzalTV.js",
+            "bytes": 97165
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Login-DYkhkVk6.js",
+            "bytes": 22493
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/LiveProvider-BR9t690s.js",
+            "bytes": 125714
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Inbox-Dhjhvest.js",
+            "bytes": 1932
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/DemoQuestions-DzdkquD3.js",
+            "bytes": 1852
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/DemoProvider-B19Q65YM.js",
+            "bytes": 9617
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Chat-BqrmgTlK.css",
+            "bytes": 38541
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/Chat-BcHQ9ZZL.js",
+            "bytes": 57346
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/App-DgRxzckR.js",
+            "bytes": 21511
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/assets/App-CgCyw_hR.css",
+            "bytes": 10838
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/OFL-Geist.txt",
+            "bytes": 4368
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/fonts/README.md",
+            "bytes": 279
+          },
+          {
+            "name": "rayno-precache-v2-http://127.0.0.1:5197/",
+            "path": "/manifest.webmanifest",
+            "bytes": 424
+          }
+        ],
+        "offlineShell": true,
+        "updatedCss": "1"
+      }
+    ],
+    "records": [
+      {
+        "phase": "chromium-cold",
+        "path": "/sessions",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 503
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+        "status": 200,
+        "decoded": 726,
+        "encoded": 429
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/index-Cm8YKPAs.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104251
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/index-Dd_YuY4S.css",
+        "status": 200,
+        "decoded": 11286,
+        "encoded": 3477
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/jsx-runtime-C3cWAN_r.js",
+        "status": 200,
+        "decoded": 8243,
+        "encoded": 3114
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/registerSW.js",
+        "status": 200,
+        "decoded": 134,
+        "encoded": 125
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Login-DYkhkVk6.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8177
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/errors-kAhAN8po.js",
+        "status": 200,
+        "decoded": 247,
+        "encoded": 196
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/persistentStorage-B-SvzWCN.css",
+        "status": 200,
+        "decoded": 4392,
+        "encoded": 1390
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/persistentStorage-y-Afoi4x.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1303
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/crypto-DjWnRQt2.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152766
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 7090,
+        "encoded": 2370
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/workbox-ddcbffc7.js",
+        "status": 200,
+        "decoded": 21997,
+        "encoded": 7476
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Regular.ttf",
+        "status": 200,
+        "decoded": 126048,
+        "encoded": 59509
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/registerSW.js",
+        "status": 200,
+        "decoded": 134,
+        "encoded": 125
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/rayno.svg",
+        "status": 200,
+        "decoded": 6373,
+        "encoded": 2880
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/index.html",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 503
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/rayno.svg",
+        "status": 200,
+        "decoded": 6373,
+        "encoded": 2880
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/rayno-attention.svg",
+        "status": 200,
+        "decoded": 6459,
+        "encoded": 2954
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/icon-512.png",
+        "status": 200,
+        "decoded": 25522,
+        "encoded": 24436
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/icon-192.png",
+        "status": 200,
+        "decoded": 8936,
+        "encoded": 8765
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/icon-180.png",
+        "status": 200,
+        "decoded": 8170,
+        "encoded": 8049
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/happy.png",
+        "status": 200,
+        "decoded": 8062,
+        "encoded": 2443
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/codex.png",
+        "status": 200,
+        "decoded": 7042,
+        "encoded": 7010
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/icons/claude.png",
+        "status": 200,
+        "decoded": 9533,
+        "encoded": 9382
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/GeistMono-Regular.ttf",
+        "status": 200,
+        "decoded": 148516,
+        "encoded": 67524
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-SemiBold.ttf",
+        "status": 200,
+        "decoded": 127872,
+        "encoded": 61470
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Regular.ttf",
+        "status": 200,
+        "decoded": 126048,
+        "encoded": 59509
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Medium.ttf",
+        "status": 200,
+        "decoded": 127660,
+        "encoded": 61481
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Italic.ttf",
+        "status": 200,
+        "decoded": 128288,
+        "encoded": 62208
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/Geist-Bold.ttf",
+        "status": 200,
+        "decoded": 128868,
+        "encoded": 61769
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/useUIState-DLVSGL21.js",
+        "status": 200,
+        "decoded": 1551,
+        "encoded": 724
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/usageReport-D-LZBF0N.js",
+        "status": 200,
+        "decoded": 1250,
+        "encoded": 608
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/todos-Cynd4COI.js",
+        "status": 200,
+        "decoded": 1702,
+        "encoded": 874
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/syntaxHighlight-Q1Im7WcE.js",
+        "status": 200,
+        "decoded": 162517,
+        "encoded": 51114
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/suggestions-Dh1h7jV6.js",
+        "status": 200,
+        "decoded": 3664,
+        "encoded": 1637
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/sideChats-ByL0S8GO.js",
+        "status": 200,
+        "decoded": 1334,
+        "encoded": 619
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/settings.module-C4-BK3zc.js",
+        "status": 200,
+        "decoded": 1111,
+        "encoded": 465
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/settings-DL3CKDm2.css",
+        "status": 200,
+        "decoded": 9580,
+        "encoded": 2436
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/reuseEqual-CgPhKnrQ.js",
+        "status": 200,
+        "decoded": 3315,
+        "encoded": 1575
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/resume-CzSNJMDv.js",
+        "status": 200,
+        "decoded": 582,
+        "encoded": 338
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/replyTurns-DiEEzTZd.js",
+        "status": 200,
+        "decoded": 463,
+        "encoded": 298
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/reducer-DxNt4FbE.js",
+        "status": 200,
+        "decoded": 8343,
+        "encoded": 2899
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/recapView-_iJ2ajBi.js",
+        "status": 200,
+        "decoded": 66342,
+        "encoded": 21578
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/recapDemo-C62sR3k9.js",
+        "status": 200,
+        "decoded": 1056,
+        "encoded": 637
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/questionDemo-V5tRSb3D.js",
+        "status": 200,
+        "decoded": 609,
+        "encoded": 405
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/permissionOptions-BDIfRmtD.js",
+        "status": 200,
+        "decoded": 27332,
+        "encoded": 10236
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/modelPreferences-AxI68KFh.js",
+        "status": 200,
+        "decoded": 2641,
+        "encoded": 1186
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/modelOptions-BExY3LzT.js",
+        "status": 200,
+        "decoded": 2499,
+        "encoded": 1060
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/messageOptions--xdCA9lJ.js",
+        "status": 200,
+        "decoded": 59709,
+        "encoded": 16688
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/management.module-DqNuXLWC.js",
+        "status": 200,
+        "decoded": 231,
+        "encoded": 157
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/management-CiAYNnh9.css",
+        "status": 200,
+        "decoded": 2612,
+        "encoded": 861
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/imageDemo-Cm0QVtVa.js",
+        "status": 200,
+        "decoded": 1866,
+        "encoded": 990
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/handoff-CovRlkDD.js",
+        "status": 200,
+        "decoded": 1014,
+        "encoded": 584
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/attachments-Ci7tJtIU.js",
+        "status": 200,
+        "decoded": 1144,
+        "encoded": 625
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/WorkspaceTag-DfUqfprk.js",
+        "status": 200,
+        "decoded": 2845,
+        "encoded": 1343
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/WorkspaceTag-B8Y398g7.css",
+        "status": 200,
+        "decoded": 6940,
+        "encoded": 2050
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/WorkspaceFiles-BjLHnY6I.js",
+        "status": 200,
+        "decoded": 3433,
+        "encoded": 1614
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/WorkspaceFiles-BXrpiX0W.css",
+        "status": 200,
+        "decoded": 1080,
+        "encoded": 483
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SideChats-Cr1tORNA.js",
+        "status": 200,
+        "decoded": 7588,
+        "encoded": 2858
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SideChats-CkSIJ3LT.css",
+        "status": 200,
+        "decoded": 4086,
+        "encoded": 1307
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Settings-9zKtkyxA.js",
+        "status": 200,
+        "decoded": 19442,
+        "encoded": 5736
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Sessions-DUJpTTsP.css",
+        "status": 200,
+        "decoded": 3510,
+        "encoded": 1230
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Sessions-C9UQLfFp.js",
+        "status": 200,
+        "decoded": 14098,
+        "encoded": 5032
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionPrompts-D9e2mPmV.css",
+        "status": 200,
+        "decoded": 418,
+        "encoded": 266
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionPrompts-BzCN6PfX.js",
+        "status": 200,
+        "decoded": 2039,
+        "encoded": 975
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionInfo-CRYi2LiG.js",
+        "status": 200,
+        "decoded": 7591,
+        "encoded": 2987
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionInfo-BuL_uVFd.css",
+        "status": 200,
+        "decoded": 4744,
+        "encoded": 1339
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/SessionActions-BBJNaFwi.js",
+        "status": 200,
+        "decoded": 1557,
+        "encoded": 787
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/ResumeSession-BlwdgGxD.js",
+        "status": 200,
+        "decoded": 1081,
+        "encoded": 643
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Requests-ay5nO5JM.css",
+        "status": 200,
+        "decoded": 2910,
+        "encoded": 1072
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Requests-Cs1aRMlB.js",
+        "status": 200,
+        "decoded": 6539,
+        "encoded": 2379
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/PlanetAvatar-bxUT55n1.js",
+        "status": 200,
+        "decoded": 181653,
+        "encoded": 28926
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/NewSessionPickers-CVAjsxiN.js",
+        "status": 200,
+        "decoded": 3994,
+        "encoded": 1434
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/NewSession-CLLe_Gj5.js",
+        "status": 200,
+        "decoded": 14429,
+        "encoded": 4708
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/NewSession-BHfazIzE.css",
+        "status": 200,
+        "decoded": 13994,
+        "encoded": 3058
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Monitor-CQNHFFEy.css",
+        "status": 200,
+        "decoded": 11931,
+        "encoded": 2568
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Monitor-BEUbh1BF.js",
+        "status": 200,
+        "decoded": 14041,
+        "encoded": 4611
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/MessageList-DeHULkCP.css",
+        "status": 200,
+        "decoded": 8581,
+        "encoded": 2410
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/MessageList-CkfzalTV.js",
+        "status": 200,
+        "decoded": 97165,
+        "encoded": 32179
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/LiveProvider-BR9t690s.js",
+        "status": 200,
+        "decoded": 125714,
+        "encoded": 38306
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Inbox-Dhjhvest.js",
+        "status": 200,
+        "decoded": 1932,
+        "encoded": 861
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/DemoQuestions-DzdkquD3.js",
+        "status": 200,
+        "decoded": 1852,
+        "encoded": 895
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/DemoProvider-B19Q65YM.js",
+        "status": 200,
+        "decoded": 9617,
+        "encoded": 3927
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Chat-BqrmgTlK.css",
+        "status": 200,
+        "decoded": 38541,
+        "encoded": 7894
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/Chat-BcHQ9ZZL.js",
+        "status": 200,
+        "decoded": 57346,
+        "encoded": 21198
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/App-DgRxzckR.js",
+        "status": 200,
+        "decoded": 21511,
+        "encoded": 7432
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/assets/App-CgCyw_hR.css",
+        "status": 200,
+        "decoded": 10838,
+        "encoded": 2845
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/OFL-Geist.txt",
+        "status": 200,
+        "decoded": 4368,
+        "encoded": 1953
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/fonts/README.md",
+        "status": 200,
+        "decoded": 279,
+        "encoded": 213
+      },
+      {
+        "phase": "chromium-cold",
+        "path": "/manifest.webmanifest",
+        "status": 200,
+        "decoded": 424,
+        "encoded": 258
+      },
+      {
+        "phase": "chromium-unchanged-update",
+        "path": "/sw.js",
+        "status": 304,
+        "decoded": 0,
+        "encoded": 0
+      },
+      {
+        "phase": "chromium-unchanged-update",
+        "path": "/workbox-ddcbffc7.js",
+        "status": 304,
+        "decoded": 0,
+        "encoded": 0
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 7090,
+        "encoded": 2368
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/workbox-ddcbffc7.js",
+        "status": 304,
+        "decoded": 0,
+        "encoded": 0
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/index.html",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 503
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/useUIState-DzBoItPP.js",
+        "status": 200,
+        "decoded": 1551,
+        "encoded": 725
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/reducer-CxrGXV1_.js",
+        "status": 200,
+        "decoded": 8343,
+        "encoded": 2900
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/persistentStorage-8HwYgXae.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1301
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/modelPreferences-DOGNlaar.js",
+        "status": 200,
+        "decoded": 2641,
+        "encoded": 1188
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/index-bdG4niUL.css",
+        "status": 200,
+        "decoded": 11314,
+        "encoded": 3493
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/index-H4GP7N9i.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104250
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/imageDemo-DdVwv4cx.js",
+        "status": 200,
+        "decoded": 1866,
+        "encoded": 989
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/handoff-D4tLd9jV.js",
+        "status": 200,
+        "decoded": 1014,
+        "encoded": 584
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/crypto-EEoavS8u.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152767
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/WorkspaceFiles-DuPWmTSH.js",
+        "status": 200,
+        "decoded": 3433,
+        "encoded": 1615
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/SideChats-Cwc7vuc2.js",
+        "status": 200,
+        "decoded": 7588,
+        "encoded": 2858
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Settings-DkQ5z3FN.js",
+        "status": 200,
+        "decoded": 19442,
+        "encoded": 5738
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Sessions-C_G2Z3aF.js",
+        "status": 200,
+        "decoded": 14098,
+        "encoded": 5033
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/SessionPrompts-DJNy0sgy.js",
+        "status": 200,
+        "decoded": 2039,
+        "encoded": 976
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/SessionInfo-CV0aDv2v.js",
+        "status": 200,
+        "decoded": 7591,
+        "encoded": 2990
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/SessionActions-Dbm-zbrl.js",
+        "status": 200,
+        "decoded": 1557,
+        "encoded": 789
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/ResumeSession-KDX7rDlu.js",
+        "status": 200,
+        "decoded": 1081,
+        "encoded": 643
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Requests-Cj9ANfPu.js",
+        "status": 200,
+        "decoded": 6539,
+        "encoded": 2380
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/PlanetAvatar-CNRkzk52.js",
+        "status": 200,
+        "decoded": 181653,
+        "encoded": 28925
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/NewSessionPickers-CIzkFyTm.js",
+        "status": 200,
+        "decoded": 3994,
+        "encoded": 1433
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/NewSession-CTiUPgnH.js",
+        "status": 200,
+        "decoded": 14429,
+        "encoded": 4708
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Monitor-0SppoRRX.js",
+        "status": 200,
+        "decoded": 14041,
+        "encoded": 4611
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/MessageList-WlGzEHIK.js",
+        "status": 200,
+        "decoded": 97165,
+        "encoded": 32178
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Login-C7b-0i4c.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8178
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/LiveProvider-CAXc3d2Q.js",
+        "status": 200,
+        "decoded": 125714,
+        "encoded": 38304
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Inbox-CUWTkNg8.js",
+        "status": 200,
+        "decoded": 1932,
+        "encoded": 863
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/DemoQuestions-a6zhdYI5.js",
+        "status": 200,
+        "decoded": 1852,
+        "encoded": 897
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/DemoProvider-DDwxJ7lN.js",
+        "status": 200,
+        "decoded": 9617,
+        "encoded": 3923
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/Chat-CLc9pUy7.js",
+        "status": 200,
+        "decoded": 57346,
+        "encoded": 21201
+      },
+      {
+        "phase": "chromium-changed-update",
+        "path": "/assets/App-h_GifD3r.js",
+        "status": 200,
+        "decoded": 21511,
+        "encoded": 7431
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/sessions",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 503
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/index-Cm8YKPAs.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104251
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+        "status": 200,
+        "decoded": 726,
+        "encoded": 429
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/index-Dd_YuY4S.css",
+        "status": 200,
+        "decoded": 11286,
+        "encoded": 3477
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/jsx-runtime-C3cWAN_r.js",
+        "status": 200,
+        "decoded": 8243,
+        "encoded": 3114
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/registerSW.js",
+        "status": 200,
+        "decoded": 134,
+        "encoded": 125
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/manifest.webmanifest",
+        "status": 200,
+        "decoded": 424,
+        "encoded": 258
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Regular.ttf",
+        "status": 200,
+        "decoded": 126048,
+        "encoded": 59509
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Login-DYkhkVk6.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8177
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/errors-kAhAN8po.js",
+        "status": 200,
+        "decoded": 247,
+        "encoded": 196
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/persistentStorage-y-Afoi4x.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1303
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/crypto-DjWnRQt2.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152766
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/persistentStorage-B-SvzWCN.css",
+        "status": 200,
+        "decoded": 4392,
+        "encoded": 1390
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 7090,
+        "encoded": 2370
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/rayno.svg",
+        "status": 200,
+        "decoded": 6373,
+        "encoded": 2880
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/workbox-ddcbffc7.js",
+        "status": 200,
+        "decoded": 21997,
+        "encoded": 7476
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/registerSW.js",
+        "status": 200,
+        "decoded": 134,
+        "encoded": 125
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/index.html",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 503
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/rayno.svg",
+        "status": 200,
+        "decoded": 6373,
+        "encoded": 2880
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/rayno-attention.svg",
+        "status": 200,
+        "decoded": 6459,
+        "encoded": 2954
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/icon-512.png",
+        "status": 200,
+        "decoded": 25522,
+        "encoded": 24436
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/icon-192.png",
+        "status": 200,
+        "decoded": 8936,
+        "encoded": 8765
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/icon-180.png",
+        "status": 200,
+        "decoded": 8170,
+        "encoded": 8049
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/happy.png",
+        "status": 200,
+        "decoded": 8062,
+        "encoded": 2443
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/codex.png",
+        "status": 200,
+        "decoded": 7042,
+        "encoded": 7010
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/icons/claude.png",
+        "status": 200,
+        "decoded": 9533,
+        "encoded": 9382
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/GeistMono-Regular.ttf",
+        "status": 200,
+        "decoded": 148516,
+        "encoded": 67524
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-SemiBold.ttf",
+        "status": 200,
+        "decoded": 127872,
+        "encoded": 61470
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Regular.ttf",
+        "status": 200,
+        "decoded": 126048,
+        "encoded": 59509
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Medium.ttf",
+        "status": 200,
+        "decoded": 127660,
+        "encoded": 61481
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Italic.ttf",
+        "status": 200,
+        "decoded": 128288,
+        "encoded": 62208
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Bold.ttf",
+        "status": 200,
+        "decoded": 128868,
+        "encoded": 61769
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/useUIState-DLVSGL21.js",
+        "status": 200,
+        "decoded": 1551,
+        "encoded": 724
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/usageReport-D-LZBF0N.js",
+        "status": 200,
+        "decoded": 1250,
+        "encoded": 608
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/todos-Cynd4COI.js",
+        "status": 200,
+        "decoded": 1702,
+        "encoded": 874
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/syntaxHighlight-Q1Im7WcE.js",
+        "status": 200,
+        "decoded": 162517,
+        "encoded": 51114
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/suggestions-Dh1h7jV6.js",
+        "status": 200,
+        "decoded": 3664,
+        "encoded": 1637
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/sideChats-ByL0S8GO.js",
+        "status": 200,
+        "decoded": 1334,
+        "encoded": 619
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/settings.module-C4-BK3zc.js",
+        "status": 200,
+        "decoded": 1111,
+        "encoded": 465
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/settings-DL3CKDm2.css",
+        "status": 200,
+        "decoded": 9580,
+        "encoded": 2436
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/rolldown-runtime-XKyaHtl9.js",
+        "status": 200,
+        "decoded": 726,
+        "encoded": 429
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/reuseEqual-CgPhKnrQ.js",
+        "status": 200,
+        "decoded": 3315,
+        "encoded": 1575
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/resume-CzSNJMDv.js",
+        "status": 200,
+        "decoded": 582,
+        "encoded": 338
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/replyTurns-DiEEzTZd.js",
+        "status": 200,
+        "decoded": 463,
+        "encoded": 298
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/reducer-DxNt4FbE.js",
+        "status": 200,
+        "decoded": 8343,
+        "encoded": 2899
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/recapView-_iJ2ajBi.js",
+        "status": 200,
+        "decoded": 66342,
+        "encoded": 21578
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/recapDemo-C62sR3k9.js",
+        "status": 200,
+        "decoded": 1056,
+        "encoded": 637
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/questionDemo-V5tRSb3D.js",
+        "status": 200,
+        "decoded": 609,
+        "encoded": 405
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/persistentStorage-y-Afoi4x.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1303
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/persistentStorage-B-SvzWCN.css",
+        "status": 200,
+        "decoded": 4392,
+        "encoded": 1390
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/permissionOptions-BDIfRmtD.js",
+        "status": 200,
+        "decoded": 27332,
+        "encoded": 10236
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/modelPreferences-AxI68KFh.js",
+        "status": 200,
+        "decoded": 2641,
+        "encoded": 1186
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/modelOptions-BExY3LzT.js",
+        "status": 200,
+        "decoded": 2499,
+        "encoded": 1060
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/messageOptions--xdCA9lJ.js",
+        "status": 200,
+        "decoded": 59709,
+        "encoded": 16688
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/management.module-DqNuXLWC.js",
+        "status": 200,
+        "decoded": 231,
+        "encoded": 157
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/management-CiAYNnh9.css",
+        "status": 200,
+        "decoded": 2612,
+        "encoded": 861
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/jsx-runtime-C3cWAN_r.js",
+        "status": 200,
+        "decoded": 8243,
+        "encoded": 3114
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/index-Dd_YuY4S.css",
+        "status": 200,
+        "decoded": 11286,
+        "encoded": 3477
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/index-Cm8YKPAs.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104251
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/imageDemo-Cm0QVtVa.js",
+        "status": 200,
+        "decoded": 1866,
+        "encoded": 990
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/handoff-CovRlkDD.js",
+        "status": 200,
+        "decoded": 1014,
+        "encoded": 584
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/errors-kAhAN8po.js",
+        "status": 200,
+        "decoded": 247,
+        "encoded": 196
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/crypto-DjWnRQt2.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152766
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/attachments-Ci7tJtIU.js",
+        "status": 200,
+        "decoded": 1144,
+        "encoded": 625
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/WorkspaceTag-DfUqfprk.js",
+        "status": 200,
+        "decoded": 2845,
+        "encoded": 1343
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/WorkspaceTag-B8Y398g7.css",
+        "status": 200,
+        "decoded": 6940,
+        "encoded": 2050
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/WorkspaceFiles-BjLHnY6I.js",
+        "status": 200,
+        "decoded": 3433,
+        "encoded": 1614
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/WorkspaceFiles-BXrpiX0W.css",
+        "status": 200,
+        "decoded": 1080,
+        "encoded": 483
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SideChats-Cr1tORNA.js",
+        "status": 200,
+        "decoded": 7588,
+        "encoded": 2858
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SideChats-CkSIJ3LT.css",
+        "status": 200,
+        "decoded": 4086,
+        "encoded": 1307
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Settings-9zKtkyxA.js",
+        "status": 200,
+        "decoded": 19442,
+        "encoded": 5736
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Sessions-DUJpTTsP.css",
+        "status": 200,
+        "decoded": 3510,
+        "encoded": 1230
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Sessions-C9UQLfFp.js",
+        "status": 200,
+        "decoded": 14098,
+        "encoded": 5032
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionPrompts-D9e2mPmV.css",
+        "status": 200,
+        "decoded": 418,
+        "encoded": 266
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionPrompts-BzCN6PfX.js",
+        "status": 200,
+        "decoded": 2039,
+        "encoded": 975
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionInfo-CRYi2LiG.js",
+        "status": 200,
+        "decoded": 7591,
+        "encoded": 2987
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionInfo-BuL_uVFd.css",
+        "status": 200,
+        "decoded": 4744,
+        "encoded": 1339
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/SessionActions-BBJNaFwi.js",
+        "status": 200,
+        "decoded": 1557,
+        "encoded": 787
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/ResumeSession-BlwdgGxD.js",
+        "status": 200,
+        "decoded": 1081,
+        "encoded": 643
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Requests-ay5nO5JM.css",
+        "status": 200,
+        "decoded": 2910,
+        "encoded": 1072
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Requests-Cs1aRMlB.js",
+        "status": 200,
+        "decoded": 6539,
+        "encoded": 2379
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/PlanetAvatar-bxUT55n1.js",
+        "status": 200,
+        "decoded": 181653,
+        "encoded": 28926
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/NewSessionPickers-CVAjsxiN.js",
+        "status": 200,
+        "decoded": 3994,
+        "encoded": 1434
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/NewSession-CLLe_Gj5.js",
+        "status": 200,
+        "decoded": 14429,
+        "encoded": 4708
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/NewSession-BHfazIzE.css",
+        "status": 200,
+        "decoded": 13994,
+        "encoded": 3058
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Monitor-CQNHFFEy.css",
+        "status": 200,
+        "decoded": 11931,
+        "encoded": 2568
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Monitor-BEUbh1BF.js",
+        "status": 200,
+        "decoded": 14041,
+        "encoded": 4611
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/MessageList-DeHULkCP.css",
+        "status": 200,
+        "decoded": 8581,
+        "encoded": 2410
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/MessageList-CkfzalTV.js",
+        "status": 200,
+        "decoded": 97165,
+        "encoded": 32179
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Login-DYkhkVk6.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8177
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/LiveProvider-BR9t690s.js",
+        "status": 200,
+        "decoded": 125714,
+        "encoded": 38306
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Inbox-Dhjhvest.js",
+        "status": 200,
+        "decoded": 1932,
+        "encoded": 861
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/DemoQuestions-DzdkquD3.js",
+        "status": 200,
+        "decoded": 1852,
+        "encoded": 895
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/DemoProvider-B19Q65YM.js",
+        "status": 200,
+        "decoded": 9617,
+        "encoded": 3927
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Chat-BqrmgTlK.css",
+        "status": 200,
+        "decoded": 38541,
+        "encoded": 7894
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/Chat-BcHQ9ZZL.js",
+        "status": 200,
+        "decoded": 57346,
+        "encoded": 21198
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/App-DgRxzckR.js",
+        "status": 200,
+        "decoded": 21511,
+        "encoded": 7432
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/assets/App-CgCyw_hR.css",
+        "status": 200,
+        "decoded": 10838,
+        "encoded": 2845
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/OFL-Geist.txt",
+        "status": 200,
+        "decoded": 4368,
+        "encoded": 1953
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/README.md",
+        "status": 200,
+        "decoded": 279,
+        "encoded": 213
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/manifest.webmanifest",
+        "status": 200,
+        "decoded": 424,
+        "encoded": 258
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Medium.ttf",
+        "status": 200,
+        "decoded": 127660,
+        "encoded": 61481
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-SemiBold.ttf",
+        "status": 200,
+        "decoded": 127872,
+        "encoded": 61470
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/Geist-Bold.ttf",
+        "status": 200,
+        "decoded": 128868,
+        "encoded": 61769
+      },
+      {
+        "phase": "webkit-cold",
+        "path": "/fonts/GeistMono-Regular.ttf",
+        "status": 200,
+        "decoded": 148516,
+        "encoded": 67524
+      },
+      {
+        "phase": "webkit-unchanged-update",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 7090,
+        "encoded": 2370
+      },
+      {
+        "phase": "webkit-unchanged-update",
+        "path": "/workbox-ddcbffc7.js",
+        "status": 200,
+        "decoded": 21997,
+        "encoded": 7476
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/sw.js",
+        "status": 200,
+        "decoded": 7090,
+        "encoded": 2368
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/workbox-ddcbffc7.js",
+        "status": 304,
+        "decoded": 0,
+        "encoded": 0
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/index.html",
+        "status": 200,
+        "decoded": 1003,
+        "encoded": 503
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/useUIState-DzBoItPP.js",
+        "status": 200,
+        "decoded": 1551,
+        "encoded": 725
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/reducer-CxrGXV1_.js",
+        "status": 200,
+        "decoded": 8343,
+        "encoded": 2900
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/persistentStorage-8HwYgXae.js",
+        "status": 200,
+        "decoded": 2784,
+        "encoded": 1301
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/modelPreferences-DOGNlaar.js",
+        "status": 200,
+        "decoded": 2641,
+        "encoded": 1188
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/index-bdG4niUL.css",
+        "status": 200,
+        "decoded": 11314,
+        "encoded": 3493
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/index-H4GP7N9i.js",
+        "status": 200,
+        "decoded": 328114,
+        "encoded": 104250
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/imageDemo-DdVwv4cx.js",
+        "status": 200,
+        "decoded": 1866,
+        "encoded": 989
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/handoff-D4tLd9jV.js",
+        "status": 200,
+        "decoded": 1014,
+        "encoded": 584
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/crypto-EEoavS8u.js",
+        "status": 200,
+        "decoded": 436128,
+        "encoded": 152767
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/WorkspaceFiles-DuPWmTSH.js",
+        "status": 200,
+        "decoded": 3433,
+        "encoded": 1615
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/SideChats-Cwc7vuc2.js",
+        "status": 200,
+        "decoded": 7588,
+        "encoded": 2858
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Settings-DkQ5z3FN.js",
+        "status": 200,
+        "decoded": 19442,
+        "encoded": 5738
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Sessions-C_G2Z3aF.js",
+        "status": 200,
+        "decoded": 14098,
+        "encoded": 5033
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/SessionPrompts-DJNy0sgy.js",
+        "status": 200,
+        "decoded": 2039,
+        "encoded": 976
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/SessionInfo-CV0aDv2v.js",
+        "status": 200,
+        "decoded": 7591,
+        "encoded": 2990
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/SessionActions-Dbm-zbrl.js",
+        "status": 200,
+        "decoded": 1557,
+        "encoded": 789
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/ResumeSession-KDX7rDlu.js",
+        "status": 200,
+        "decoded": 1081,
+        "encoded": 643
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Requests-Cj9ANfPu.js",
+        "status": 200,
+        "decoded": 6539,
+        "encoded": 2380
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/PlanetAvatar-CNRkzk52.js",
+        "status": 200,
+        "decoded": 181653,
+        "encoded": 28925
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/NewSessionPickers-CIzkFyTm.js",
+        "status": 200,
+        "decoded": 3994,
+        "encoded": 1433
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/NewSession-CTiUPgnH.js",
+        "status": 200,
+        "decoded": 14429,
+        "encoded": 4708
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Monitor-0SppoRRX.js",
+        "status": 200,
+        "decoded": 14041,
+        "encoded": 4611
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/MessageList-WlGzEHIK.js",
+        "status": 200,
+        "decoded": 97165,
+        "encoded": 32178
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Login-C7b-0i4c.js",
+        "status": 200,
+        "decoded": 22493,
+        "encoded": 8178
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/LiveProvider-CAXc3d2Q.js",
+        "status": 200,
+        "decoded": 125714,
+        "encoded": 38304
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Inbox-CUWTkNg8.js",
+        "status": 200,
+        "decoded": 1932,
+        "encoded": 863
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/DemoQuestions-a6zhdYI5.js",
+        "status": 200,
+        "decoded": 1852,
+        "encoded": 897
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/DemoProvider-DDwxJ7lN.js",
+        "status": 200,
+        "decoded": 9617,
+        "encoded": 3923
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/Chat-CLc9pUy7.js",
+        "status": 200,
+        "decoded": 57346,
+        "encoded": 21201
+      },
+      {
+        "phase": "webkit-changed-update",
+        "path": "/assets/App-h_GifD3r.js",
+        "status": 200,
+        "decoded": 21511,
+        "encoded": 7431
+      }
+    ]
+  }
+}

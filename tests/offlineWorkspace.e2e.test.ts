@@ -148,23 +148,31 @@ test('a yellow connection warning should appear only after failure and stay hidd
 });
 
 test('the installed live PWA should reopen its session list and chat with the network fully offline', async ({ browser }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop-chromium', 'Chromium verifies the generated worker; all projects verify account-cache flows.');
+  test.skip(!['desktop-chromium', 'desktop-webkit'].includes(testInfo.project.name),
+    'Desktop Chromium and WebKit verify the generated worker; all projects verify account-cache flows.');
   // Arrange
   const context = await browser.newContext({ baseURL: testInfo.project.use.baseURL, serviceWorkers: 'allow' });
   try {
     const page = await context.newPage();
+    // A controlling WebKit worker bypasses page.route API mocks. Install it after the fixture saves its account data.
+    await page.addInitScript(() => {
+      const register = navigator.serviceWorker.register.bind(navigator.serviceWorker);
+      let start!: () => void;
+      const ready = new Promise<void>(resolve => { start = resolve; });
+      (window as any).startPwaRegistration = start;
+      navigator.serviceWorker.register = (...args) => ready.then(() => register(...args));
+    });
     const server = new HappyServer();
     await server.install(page);
-    await server.pushReply('```mermaid\nflowchart LR\n  A[Saved locally] --> B[Available offline]\n```');
     const workspace = new MermaidPage(page);
     await workspace.openSession();
-    await workspace.expectRendered();
     await expectSaved(workspace, server, 'From the real protocol');
-    await page.evaluate(async () => { await navigator.serviceWorker.ready; });
-    await page.reload();
+    await page.evaluate(async () => { (window as any).startPwaRegistration(); await navigator.serviceWorker.ready; });
     await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
-    await expect(page.getByText('From the real protocol', { exact: true })).toBeVisible();
+    // The diagram worker's first load now goes through the controlling worker and fills the runtime cache.
+    await server.pushReply('```mermaid\nflowchart LR\n  A[Saved locally] --> B[Available offline]\n```');
     await workspace.expectRendered();
+    await expectSaved(workspace, server, 'Saved locally');
     await expect.poll(() => page.evaluate(async () => {
       const cache = await caches.open('rayno-diagrams');
       return (await cache.keys()).some((request) => request.url.includes('mermaid.worker-'));

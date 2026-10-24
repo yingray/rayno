@@ -70,13 +70,22 @@ export default defineConfig(({ mode }) => {
           clientsClaim: true,
           navigateFallback: '/index.html',
           globPatterns: ['**/*.{js,css,html,svg,png,ttf}'],
-          globIgnores: ['**/mermaid.worker-*.js', 'assets/404.html'],
+          globIgnores: ['**/mermaid.worker-*.js', '**/demo-chat-*.png', 'assets/404.html'],
           runtimeCaching: [{
             urlPattern: /\/assets\/mermaid\.worker-[\w-]+\.js$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'rayno-diagrams',
               expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 60 },
+            },
+          }, {
+            // Load the public demo screenshot only when the user opens it. Keep it for offline demo use.
+            urlPattern: /\/assets\/demo-chat-[\w-]+\.png$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'rayno-demo-images',
+              cacheableResponse: { statuses: [200] },
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 * 60 },
             },
           }],
           cleanupOutdatedCaches: true,

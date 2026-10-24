@@ -195,9 +195,28 @@ No production service-worker policy changed in this evaluation.
 
 | Order | Work | State |
 |---|---|---|
-| 1 | Remove the demo screenshot from unconditional precache, with an offline demo decision | Recommended; not implemented |
+| 1 | Remove the demo screenshot from unconditional precache, with an offline demo decision | Implemented: bounded first-use cache; see follow-up below |
 | 2 | Build a complete TanStack Virtual prototype with the viewport adapter and full-transcript mode | Recommended; not implemented |
 | 3 | Fix the existing 41px landscape tool target before virtual-mode rollout | Recorded; not implemented |
 | 4 | Optimize O02 only if real-device evidence justifies it | Measured; defer |
 
-This task changes benchmark tools and records only. It does not add a virtualizer dependency or change the product UI.
+The original evaluation at `ca75206` added benchmark tools and records only.
+It did not add a virtualizer dependency or change the product UI.
+
+## A01 implementation follow-up (2026-10-24)
+
+The evaluation above records the original measurements. This follow-up implements the first cache recommendation.
+The before/after builds both use source base `00c9fa7`; the old-policy build comes from a clean Git archive.
+The demo screenshot now loads and enters a bounded CacheFirst cache on its first use.
+At most two versions remain for 60 days. An image that the user never loaded needs an online first use.
+The account shell, encrypted history, and Mermaid caching keep their previous policies.
+
+Cold gzip response bodies fall from 1,886,032 to 1,104,845 B in Chromium (41.4%),
+and from 2,413,637 to 1,632,450 B in WebKit (32.4%).
+Warm shell reloads still use no network bytes. The install makes no request for the demo image.
+Both engines pass the service-worker update and updated offline-shell transfer probes.
+The new browser regression also covers an uncached offline miss, a successful online retry,
+and offline image view and download after a cold reload.
+
+The before/after request record is [2026-10-24-pwa-slim.json](benchmarks/results/2026-10-24-pwa-slim.json).
+The earlier virtualization and O02 recommendations remain unchanged.

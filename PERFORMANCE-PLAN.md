@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-24 (WebKit bounded-rendering evaluation, O02, and A01).
+Created: 2026-10-23. Updated: 2026-10-24 (A01: demo image cache on first use).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -116,7 +116,7 @@ If the encryption is still a long task after 3.5, move it to a worker as a separ
 | M02 | Add a total size budget for attachments. Limit hash and upload concurrency | done: at most 4 at the same time. The limits stay at 20 images and 10 MB, the claude.ai limits (section 6.3). No resize |
 | O01 | Add a queue limit to the Mermaid worker. Cancel stale jobs. Separate queue time from run time | done |
 | O02 | Measure grouping, new-session input, and file suggestions | done, measured: group filters take at most about 2 ms of a 125–291 ms large-list switch. Typing does not render the session list. A 50,000-file search takes about 6–21 ms by query median. Defer implementation (section 6.9) |
-| A01 | Measure cold install, warm cache, and updates | done, measured: cold gzip bodies about 1.89 MB in Chromium and 2.41 MB in WebKit; warm shell reload 0 network bytes; small release about 446 KB. Demo image accounts for about 781 KB. Policy changes remain a follow-up (section 6.10) |
+| A01 | Measure cold install, warm cache, and updates; remove the demo image from unconditional precache | done: cache the demo image on first use, with at most 2 versions for 60 days. Cold gzip bodies fall from 1.89 to 1.10 MB in Chromium and 2.41 to 1.63 MB in WebKit. Warm shell reload remains 0 network bytes. Font and chunk changes remain optional follow-ups (section 6.11) |
 | V01 | Build a complete virtualizer with data-based recap/rail navigation, scroll restoration, and a full-transcript mode | todo, recommended: prefer a TanStack Virtual prototype. The tail experiment is a performance bound, not a deployable virtualizer. Fix the existing 41px landscape tool target before rollout |
 | L01 | Load older history pages without a new pass over all loaded rows | done: the cause was the reply rail, not the data pass. It ran one list query for each reply. A late page in a 600-turn chat: Chromium 199 to 274 ms to 107 to 137 ms, WebKit 845 to 927 ms to 512 to 593 ms (section 6.7) |
 | L02 | Make the per-reply message pipeline (`visibleMessages`, `markSubagents`, `reuseEqual`) work on the changed rows only | measured, no change: the pipeline takes about 10 ms for 10,800 rows. The rail fix also cut a live reply: Chromium 114 to 116 ms to 31 to 46 ms, WebKit 426 to 469 ms to 252 to 310 ms (section 6.7) |
@@ -212,6 +212,7 @@ The client work is about 110 ms. Most of the 2–3 s in WebKit is React render a
 | 2026-10-24 | `7878e91` | Virtualization evaluation | Temporary frame probe, desktop Chromium and WebKit, one worker | See section 6.6. Decision: no list virtualization now; no `content-visibility` |
 | 2026-10-24 | after `23aea8d` | L01, L02 | Vitest, temporary probe in an unminified build, rail and recap browser checks, full browser suite | See section 6.7. A new browser test fails on the old build (19 rail queries for one reply). Full suite: 1,247 passed, 0 failed |
 | 2026-10-24 | `3ec6672` plus retained probes | WebKit virtualization, O02, A01 | 22 successful browser probes across four projects; real service workers in Chromium and WebKit; 556 unit tests | See sections 6.8–6.10 and `WEBKIT-SCALING-EVALUATION.md`. Timing builds are isolated. No production behavior changed. Raw samples are checked into `benchmarks/results/2026-10-24.json` |
+| 2026-10-24 | after `ca75206` | A01 demo image | Generated-worker regression, demo UI matrix, offline account flows, PWA update, HTTP transfer probe | Cold gzip bodies: Chromium 1,886,032 to 1,104,845 B; WebKit 2,413,637 to 1,632,450 B. Demo image works offline after first online use. Raw record: `benchmarks/results/2026-10-24-pwa-slim.json` |
 
 ## 6. Research for the Phase 4 limits (2026-10-23)
 
@@ -390,3 +391,28 @@ The demo screenshot alone transfers 781,318 gzip bytes on cold install.
 Recommend removing it from unconditional precache, with first-use caching if offline demo access remains required.
 Then review unused font entries and hash changes through shared imports.
 Keep the account shell and offline history behavior. No service-worker policy changed in this evaluation.
+
+### 6.11 A01: cache the demo image on first use (2026-10-24)
+
+`vite.config.ts` excludes `demo-chat-*.png` from precache.
+A separate `rayno-demo-images` CacheFirst route stores successful responses on first use.
+The cache keeps at most two versions for 60 days. The Mermaid route and the other precache resources stay as before.
+The paired builds use the same source base, `00c9fa7`, so the comparison excludes unrelated product changes since the original evaluation.
+
+| Cold response bodies, gzip | Before | After | Reduction |
+|---|---:|---:|---:|
+| Chromium | 1,886,032 B | 1,104,845 B | 781,187 B (41.4%) |
+| WebKit | 2,413,637 B | 1,632,450 B | 781,187 B (32.4%) |
+
+The HTTP probe sees no demo image request during installation in either engine.
+The warm reload still transfers no bytes. A small release transfers 446,742 B in both engines.
+The decoded shell cache falls from 3,575,657 to 2,753,477 B, with 85 unique entries instead of 86.
+
+The generated-worker regression fails on the previous precache build and passes on the new build.
+It checks first-use caching, an offline miss with a usable retry, online retry, and offline image view and download after reload.
+An unused demo image requires an online load before it becomes available offline.
+Existing account-history and image encryption remain unchanged.
+
+The installed-account test now covers desktop WebKit as well as Chromium.
+It delays worker registration until the mocked account data is saved, because a controlling WebKit worker bypasses page-route API mocks.
+It then loads the real diagram worker through the installed service worker and reopens the account fully offline.
