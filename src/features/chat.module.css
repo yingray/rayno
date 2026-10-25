@@ -239,6 +239,11 @@
   margin-left: auto;
 }
 .userMessage {
+  --bubble-tint: 192 132 252;
+  --bubble-top: .16;
+  --bubble-bottom: .10;
+  --bubble-edge: .16;
+  --bubble-highlight: #ffffff0a;
   contain: content;
   overflow-clip-margin: 4px;
   align-self: flex-end;
@@ -251,9 +256,12 @@
   overflow-wrap: anywhere;
 }
 .bubble {
-  background: #1d1028;
-  border: 1px solid #ad46ff;
-  border-radius: 20px 20px 6px 20px;
+  /* Message content stays opaque. Only the floating controls use backdrop glass. */
+  background: linear-gradient(150deg, rgb(var(--bubble-tint) / var(--bubble-top)),
+    rgb(var(--bubble-tint) / var(--bubble-bottom))), #17161c;
+  border: 1px solid rgb(var(--bubble-tint) / var(--bubble-edge));
+  border-radius: 22px 22px 10px 22px;
+  box-shadow: inset 0 1px 0 var(--bubble-highlight);
   padding: 12px 16px;
 }
 .invocation {
@@ -274,29 +282,24 @@
 .invocation > svg { flex: none; }
 .invocation > code { min-width: 0; overflow-wrap: anywhere; color: var(--body); }
 .skillInvocations { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 12px; }
-.userMessage[data-bubble='gray'] .bubble {
-  background: #29292d;
-  border-color: #55555e;
+.userMessage[data-bubble='gray'] { --bubble-tint: 161 161 170; }
+.userMessage[data-bubble='blue'] { --bubble-tint: 96 165 250; }
+.userMessage[data-bubble='green'] { --bubble-tint: 74 222 128; }
+.userMessage[data-bubble='purple'] { --bubble-tint: 167 139 250; }
+.userMessage[data-bubble='rose'] { --bubble-tint: 251 113 133; }
+.userMessage[data-bubble='sand'] { --bubble-tint: 214 181 124; }
+
+:global(html[data-glass-style='intense']) .userMessage {
+  --bubble-top: .24;
+  --bubble-bottom: .16;
+  --bubble-edge: .20;
+  --bubble-highlight: #ffffff0f;
 }
-.userMessage[data-bubble='blue'] .bubble {
-  background: #102139;
-  border-color: #3b82f6;
+@media (prefers-contrast: more) {
+  .bubble { border-color: var(--secondary); box-shadow: none; }
 }
-.userMessage[data-bubble='green'] .bubble {
-  background: #102a20;
-  border-color: #22c55e;
-}
-.userMessage[data-bubble='purple'] .bubble {
-  background: #24173b;
-  border-color: #8b5cf6;
-}
-.userMessage[data-bubble='rose'] .bubble {
-  background: #30141e;
-  border-color: #f43f5e;
-}
-.userMessage[data-bubble='sand'] .bubble {
-  background: #292217;
-  border-color: #b89b66;
+@media (forced-colors: active) {
+  .bubble { background: Canvas; border-color: CanvasText; box-shadow: none; color: CanvasText; }
 }
 .agentMessage {
   contain: content;

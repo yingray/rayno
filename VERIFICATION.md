@@ -1077,3 +1077,51 @@ The broad suite was not repeated after that final capture correction.
 
 Browser runs reuse the existing preview through `.performance/scroll.playwright.config.ts`.
 The patch leaves existing Tailscale routes, services, account preferences, and unrelated worktree edits unchanged.
+
+## User bubble materials (2026-10-25)
+
+Research favors a clear boundary between message content and floating controls.
+The table records first-party guidance and comparable chat interfaces.
+
+| Source | Observation | Decision for Rayno |
+| --- | --- | --- |
+| [Apple: Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/) and [Materials](https://developer.apple.com/design/human-interface-guidelines/materials) | Apple reserves Liquid Glass for navigation and controls above content. It warns against glass in the content layer and stacked glass. | Keep message surfaces opaque. Use restrained color and rounded geometry to relate them to the surrounding controls. |
+| [Apple Messages](https://support.apple.com/en-us/104972) | Message bubbles retain distinct blue and green colors. | Preserve the seven saved color choices and a clear user-message silhouette. |
+| [Telegram: Liquid Glass for iOS 26](https://telegram.org/blog/comments-in-video-chats-threads-for-bots?setln=en) | Telegram names bottom navigation, the keyboard, and the sticker panel as surfaces with transparency and refraction. | Keep strong glass effects in the control layer. This source does not establish a rule for every Telegram bubble. |
+| [Sendbird UIKit 3.36.0](https://github.com/sendbird/sendbird-uikit-ios/releases/tag/3.36.0) | The chat SDK supports Liquid Glass navigation and configurable system or theme appearance. | Keep the existing Standard and Intense preference. Give each bubble a matching, quieter surface. |
+| [Signal iOS issue 6210](https://github.com/signalapp/Signal-iOS/issues/6210) | A user reported poor bubble readability over light wallpaper, including after the keyboard moved the conversation. | Use a stable opaque base. This report is a design caution, not evidence of the current Signal release behavior. |
+
+`chat.module.css` now uses a subtle tint gradient over an opaque dark base.
+A soft border and inset highlight replace the saturated outline. Corners use 22px radii and a 10px message corner.
+Intense increases the tint and highlight slightly. All seven saved color values remain valid.
+The patch adds no backdrop filter, animation, or per-message blur.
+Bubble widths, typography, padding, border widths, and scroll logic remain unchanged.
+Increased contrast strengthens the border. Forced colors use the system canvas and text colors.
+
+Validation:
+
+- `pnpm build` passes, including TypeScript checks and PWA generation. `git diff --check` passes.
+- The existing appearance, glass, and session lifecycle suites pass 41 browser cases across desktop and phone Chromium and WebKit.
+  Three intentional skips restrict the service worker scenario to desktop Chromium.
+- Interactive coverage includes 320x640, 360x740, 390x844, 430x932, 360x350, 390x360, 844x390, and desktop sizes.
+  Checks send messages, retain drafts and preferences, open and close dialogs, verify focus, and check reachable touch controls and overflow.
+  Short viewports model keyboard pressure. These are browser emulations, not physical phone checks.
+- An additional browser probe checks all seven colors in both glass modes on each engine: 28 combinations.
+  It confirms an opaque base, full element opacity, and no backdrop filter.
+  The minimum text contrast over the gradient endpoints is about 10.07:1, above the [4.5:1 normal-text threshold](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+  Increased contrast and forced colors pass on both engines.
+- Visual review includes the Standard and Intense bubble crops and the 390px chat screenshots in both engines.
+  Evidence is in the ignored `.performance/bubble-material-check.json`, `.performance/bubble-material-check.log`,
+  `.performance/bubble-material-e2e.log`, and `.performance/bubble-chat-*.png` files.
+
+Commands:
+
+```sh
+pnpm build
+pnpm exec playwright test -c .performance/scroll.playwright.config.ts tests/glassStyle.e2e.test.ts tests/chatAppearance.e2e.test.ts tests/sessionLifecycle.e2e.test.ts --workers=4
+node .performance/check-bubble-material.mjs
+git diff --check
+```
+
+The preview at `https://rays-macbook-pro.tailf62d7d.ts.net:5179` serves this build.
+The palette probe verifies this HTTPS route directly. Existing Tailscale routes and services remain unchanged.
