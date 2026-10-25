@@ -295,7 +295,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
   }
   return (
     <article
-      className={message.role === 'user' ? styles.userMessage : styles.agentMessage}
+      className={message.role === 'user' ? `${styles.userMessage} ${styles.bubbleTint}` : styles.agentMessage}
       data-bubble={bubble}
       data-message-id={message.id}
       data-role={message.role}
@@ -597,6 +597,6 @@ export const MessageList = memo(function MessageList({
         </div>
       </article>
     )}
-    {scroll && railHost && <ResponseRail host={railHost} scroll={scroll} replies={anchors} onJump={() => onUnpin?.()} viewport={viewport} virtual={virtual} />}
+    {scroll && railHost && <ResponseRail bubble={bubble} host={railHost} scroll={scroll} replies={anchors} onJump={() => onUnpin?.()} viewport={viewport} virtual={virtual} />}
   </>;
 });

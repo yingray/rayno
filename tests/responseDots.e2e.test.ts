@@ -32,8 +32,8 @@ test('reply anchors should fit all loaded replies when possible and retain sized
   await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 600 } : { width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const view = new ResponseDotsPage(page); await page.goto('/session/real-session');
-  await expect(view.rail().getByRole('button')).toHaveText(['', '', '']);
-  for (const [index, size, pixels] of [[1, 'small', 6], [2, 'medium', 10], [3, 'large', 14]] as const) {
+  await expect(view.rail().getByRole('button')).toHaveText(['', '']);
+  for (const [index, size, pixels] of [[2, 'medium', 10], [3, 'large', 14]] as const) {
     await expect(view.pin(index)).toHaveAttribute('data-size', size);
     await expect(view.pin(index).locator('span')).toHaveCSS('width', `${pixels}px`);
     await expect(view.pin(index).locator('span')).toHaveCSS('height', `${pixels}px`);
@@ -41,18 +41,30 @@ test('reply anchors should fit all loaded replies when possible and retain sized
   await expect.poll(() => view.anchors().evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1);
   for (const progress of [0, 0.5, 1]) {
     await view.expectRailProgress(progress);
-    for (const index of [1, 2, 3]) await expect(view.pin(index)).toBeInViewport();
+    for (const index of [2, 3]) await expect(view.pin(index)).toBeInViewport();
   }
+  await expect(view.pin(1)).toHaveCount(0);
   await view.activate(view.pin(2));
   await expect(view.article(2)).toHaveClass(/flash/);
   await expect(view.pin(2)).toHaveAttribute('aria-current', 'location');
+  await expect(view.pin(2).locator('span')).toHaveCSS('background-color', 'rgb(192, 132, 252)');
+  await expect(view.pin(3).locator('span')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(view.pin(3).locator('span')).toHaveCSS('border-top-color', 'rgb(192, 132, 252)');
+  await page.goto('/settings/appearance');
+  await page.getByRole('button', { name: 'Use rose message bubbles', exact: true }).click();
+  await page.goto('/session/real-session');
+  await expect(view.pin(3).locator('span')).toHaveCSS('border-top-color', 'rgb(251, 113, 133)');
+  await view.activate(view.pin(2));
+  await expect(view.pin(2).locator('span')).toHaveCSS('background-color', 'rgb(251, 113, 133)');
+  await view.expectRailProgress(0);
+  await expect(view.rail().locator('[aria-current]')).toHaveCount(0);
   await view.expectNoPageOverflow();
   await view.capture(`${info.project.name}-response-dots`);
 });
 
 test('dense dots should scroll independently and follow chat progress through the latest bottom', async ({ page }, info) => {
   const server = new HappyServer(); await server.install(page); await server.setWorking(false);
-  await server.setMessages([reply('Previously unloaded response.'), ...Array.from({ length: 18 }, (_, index) => reply(`Reply ${index + 1}.\n\n${long}`))]);
+  await server.setMessages([reply('Previously unloaded response. '.repeat(30)), ...Array.from({ length: 18 }, (_, index) => reply(`Reply ${index + 1}.\n\n${long}`))]);
   await page.setViewportSize({ width: 844, height: 390 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const view = new ResponseDotsPage(page); await page.goto('/session/real-session');
@@ -90,7 +102,7 @@ test('dense dots should scroll independently and follow chat progress through th
 test('a live reply should place its anchor without one list query for each loaded reply', async ({ page }, info) => {
   // Arrange
   const server = new HappyServer(); await server.install(page); await server.setWorking(false);
-  await server.setMessages([reply('Previously unloaded response.'), ...Array.from({ length: 18 }, (_, index) => reply(`Reply ${index + 1}.`))]);
+  await server.setMessages([reply('Previously unloaded response. '.repeat(30)), ...Array.from({ length: 18 }, (_, index) => reply(`Reply ${index + 1}. ${long}`))]);
   await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 600 } : { width: 1440, height: 900 });
   await page.addInitScript(() => {
     const counts = { replyQueries: 0 };
@@ -105,7 +117,7 @@ test('a live reply should place its anchor without one list query for each loade
   await expect(view.rail().getByRole('button')).toHaveCount(18);
   await page.evaluate(() => { (window as unknown as { railCounts: { replyQueries: number } }).railCounts.replyQueries = 0; });
   // Act
-  await server.pushReply('Reply 19.');
+  await server.pushReply(`Reply 19. ${long}`);
   // Assert
   await expect(view.rail().getByRole('button')).toHaveCount(19);
   await expect(view.pin(19)).toBeAttached();

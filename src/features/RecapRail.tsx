@@ -1,6 +1,8 @@
 import { useText } from "../i18n";
 import { memo, useLayoutEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import type { BubbleColor } from '../data/types';
+import chatStyles from './chat.module.css';
 import type { ResponseAnchor } from '../data/responseAnchors';
 import { createPortal } from 'react-dom';
 import { contentOffsets, jumpToRecapTarget } from './recapTargets';
@@ -45,7 +47,8 @@ export function railPinTops(positions: readonly number[], height: number, gap: n
 }
 
 // Each pin marks the start of one formal agent reply, independent of any recap.
-export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, onJump, viewport, virtual = false }: {
+export const ResponseRail = memo(function ResponseRail({ bubble, host, scroll, replies, onJump, viewport, virtual = false }: {
+  bubble: BubbleColor;
   host: HTMLElement | null;
   scroll: RefObject<HTMLDivElement | null>;
   replies: ResponseAnchor[];
@@ -89,14 +92,15 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
       }
       const height = host.clientHeight, total = Math.max(1,element.scrollHeight);
       const gap=coarse?TOUCH_GAP:PIN+2, inset=coarse?13:0;
-      // Compress all loaded replies into the rail, growing only to preserve hit areas.
-      const contentHeight=Math.max(height,(offsets.length-1)*gap+PIN+2*inset);
-      const tops = railPinTops(offsets.map(item => item.offset/total*(contentHeight-2*inset)), contentHeight-2*inset, gap).map(top=>top+inset);
+      const visible = offsets.filter(item => item.size !== 'small');
+      // Compress all visible replies into the rail, growing only to preserve hit areas.
+      const contentHeight=Math.max(height,(visible.length-1)*gap+PIN+2*inset);
+      const tops = railPinTops(visible.map(item => item.offset/total*(contentHeight-2*inset)), contentHeight-2*inset, gap).map(top=>top+inset);
       const progress = element.scrollTop / Math.max(1, total-element.clientHeight);
       const padding = parseFloat(getComputedStyle(element).scrollPaddingTop) || 0;
       const active = offsets.findLast(item => item.offset <= element.scrollTop+padding+1)?.id;
       // Keep the same pins array while only the scroll position changes.
-      const next = offsets.map((item,i)=>({...item,top:tops[i]}));
+      const next = visible.map((item,i)=>({...item,top:tops[i]}));
       if (!samePins(pins, next)) pins = next;
       setLayout(offsets.length ? {pins,active,contentHeight,scrollTop:Math.min(1, Math.max(0, progress)) * (contentHeight-height),
         thumb:{top:element.scrollTop/total*height,height:Math.min(1,element.clientHeight/total)*height}} : null);
@@ -129,7 +133,7 @@ export const ResponseRail = memo(function ResponseRail({ host, scroll, replies, 
     if(element&&target){onJump();jumpToRecapTarget(element,target);}
   });
   if(!host||!layout)return null;
-  return createPortal(<nav className={styles.rail} aria-label={t('Agent replies')} data-response-rail data-testid="response-rail">
+  return createPortal(<nav className={`${styles.rail} ${chatStyles.bubbleTint}`} data-bubble={bubble} aria-label={t('Agent replies')} data-response-rail data-testid="response-rail">
     <span className={styles.track}/><span className={styles.thumb} style={{top:layout.thumb.top,height:layout.thumb.height}}/>
     <div ref={scroller} className={styles.railScroller} role="group" aria-label={t('Reply anchors')} tabIndex={0}>
     <div className={styles.railContent} style={{height:layout.contentHeight}}>

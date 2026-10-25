@@ -238,8 +238,8 @@
   border-color: var(--border-control);
   margin-left: auto;
 }
+.bubbleTint { --bubble-tint: 192 132 252; }
 .userMessage {
-  --bubble-tint: 192 132 252;
   --bubble-top: .16;
   --bubble-bottom: .10;
   --bubble-edge: .16;
@@ -282,12 +282,12 @@
 .invocation > svg { flex: none; }
 .invocation > code { min-width: 0; overflow-wrap: anywhere; color: var(--body); }
 .skillInvocations { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 12px; }
-.userMessage[data-bubble='gray'] { --bubble-tint: 161 161 170; }
-.userMessage[data-bubble='blue'] { --bubble-tint: 96 165 250; }
-.userMessage[data-bubble='green'] { --bubble-tint: 74 222 128; }
-.userMessage[data-bubble='purple'] { --bubble-tint: 167 139 250; }
-.userMessage[data-bubble='rose'] { --bubble-tint: 251 113 133; }
-.userMessage[data-bubble='sand'] { --bubble-tint: 214 181 124; }
+.bubbleTint[data-bubble='gray'] { --bubble-tint: 161 161 170; }
+.bubbleTint[data-bubble='blue'] { --bubble-tint: 96 165 250; }
+.bubbleTint[data-bubble='green'] { --bubble-tint: 74 222 128; }
+.bubbleTint[data-bubble='purple'] { --bubble-tint: 167 139 250; }
+.bubbleTint[data-bubble='rose'] { --bubble-tint: 251 113 133; }
+.bubbleTint[data-bubble='sand'] { --bubble-tint: 214 181 124; }
 
 :global(html[data-glass-style='intense']) .userMessage {
   --bubble-top: .24;

@@ -646,7 +646,7 @@ test('recap rail pins should stay inside the rail and keep their own hit areas',
   const turns = Array.from({ length: 8 }, (_, index) => [
     { role: 'user', content: { type: 'text', text: `Question ${index + 1}` } }, reply(filler),
   ]).flat();
-  const end = 'From the real protocol\n\nThe fix is ready.\n\nAlpha step passed.\n\nBeta step passed.\n\nGamma step passed.\n\n'
+  const end = filler + '\n\nFrom the real protocol\n\nThe fix is ready.\n\nAlpha step passed.\n\nBeta step passed.\n\nGamma step passed.\n\n'
     + '<rayno-recap>\n<point quote="Alpha step passed.">Alpha</point>, <point quote="Beta step passed.">beta</point>, '
     + 'and <point quote="Gamma step passed.">gamma</point> passed.\n</rayno-recap>';
   await server.setMessages([...turns, ...conversation(end)]);
