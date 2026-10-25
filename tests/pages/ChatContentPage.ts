@@ -11,6 +11,7 @@ export class ChatContentPage extends LiveWorkspacePage {
     await expect(this.page.getByRole('dialog').getByText(/The current response keeps its settings/)).toBeVisible();
   }
   async reach(control: Locator) {
+    await this.conversation().dispatchEvent('touchmove');
     await control.scrollIntoViewIfNeeded();
     await control.evaluate(el => el.scrollIntoView({ block: 'center' }));
     const bounds = (await control.boundingBox())!;

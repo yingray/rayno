@@ -39,7 +39,6 @@ const Requests = lazy(() => import('../happy/Requests').then((module) => ({ defa
 const DemoQuestions = lazy(() => import('./DemoQuestions').then((module) => ({ default: module.DemoQuestions })));
 const WorkspaceFiles = lazy(() => import('../happy/WorkspaceFiles').then((module) => ({ default: module.WorkspaceFiles })));
 
-const scrollPositions = new Map<string, number>();
 const sampleCode = `export function Panel({ children }: PanelProps) {\n  return (\n    <section className={styles.panel}>\n      {children}\n    </section>\n  );\n}`;
 const sampleFiles: Record<string, string> = {
   'src/app/App.tsx': `import { Panel } from '../components/Panel';\n\nexport function App() {\n  return <Panel>Welcome to your workspace.</Panel>;\n}`,
@@ -176,7 +175,10 @@ export const Chat = memo(function Chat({
   const viewport = useRef<TranscriptController | null>(null);
   const [virtualMode, setVirtualMode] = useState(false);
   const [managedTranscript, setManagedTranscript] = useState(false);
-  const onTranscriptPinned = useCallback((value: boolean) => setAwayFromLatest(!value), []);
+  const onTranscriptPinned = useCallback((value: boolean) => {
+    const element = scroll.current;
+    setAwayFromLatest(!value || !!element && element.scrollHeight - element.scrollTop - element.clientHeight >= 90);
+  }, []);
   const sideOpen = location.pathname === `/session/${session.id}/side`;
   const parentId = session.isSideChat && parentKnown ? session.parentSessionId : undefined;
   const view = embedded ? 'chat' : location.pathname.endsWith('/changes')
@@ -239,8 +241,8 @@ export const Chat = memo(function Chat({
     if (!managedTranscript && !virtualMode && (!scrollEvent || !pinned.current
       || element.scrollTop < previousScrollTop.current - 1 || nearEnd)) pinned.current = nearEnd;
     previousScrollTop.current = element.scrollTop;
-    setAwayFromLatest(!pinned.current);
-    scrollPositions.set(session.id, element.scrollTop);
+    // Follow intent can lag a browser scroll. Keep the shortcut tied to the visible position too.
+    setAwayFromLatest(!pinned.current || !nearEnd);
     live?.setSessionReading(session.id, pinned.current);
   }
 
@@ -255,7 +257,7 @@ export const Chat = memo(function Chat({
   useLayoutEffect(() => {
     if (!scroll.current || !scrollContent.current || view !== 'chat' || managedTranscript || virtualMode) return;
     const element = scroll.current;
-    element.scrollTop = scrollPositions.get(session.id) ?? element.scrollHeight;
+    if (pinned.current) element.scrollTop = element.scrollHeight;
     updateScrollPosition(element);
     let frame: number | undefined;
     const observer = new ResizeObserver(() => {
@@ -272,7 +274,6 @@ export const Chat = memo(function Chat({
       observer.disconnect();
       if (frame !== undefined) cancelAnimationFrame(frame);
       live?.setSessionReading(session.id, false);
-      scrollPositions.set(session.id, element.scrollTop);
     };
   }, [session.id, view, live, virtualMode, managedTranscript]);
   useLayoutEffect(() => {

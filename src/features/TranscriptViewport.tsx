@@ -1,5 +1,5 @@
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import type { ChatBlock } from '../data/chatBlocks';
 import type { TranscriptAnchor, TranscriptMemory } from '../data/transcript';
@@ -112,6 +112,10 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
   });
   const latest = useEventCallback(() => {
     generation.current++; jumping.current = false; anchored.current = undefined; userScrolling.current = false; pinned.current = true; onPinned(true); setManual(false); setForced(new Set());
+    if (ready && initialized.current && !memory.anchor?.pinned) {
+      memory.anchor = { inset: 0, pinned: true, full };
+      persist(memory.anchor);
+    }
     if (enabled) virtualizer.scrollToEnd({ behavior: 'auto' });
     else if (scroll?.current) scroll.current.scrollTop = scroll.current.scrollHeight;
   });
@@ -178,7 +182,9 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
     return () => { if (controller.current === api) controller.current = null; };
   }, [api, controller, enabled, onMode, notifyLayout]);
 
-  useLayoutEffect(() => {
+  // The parent scroll ref can still be null in child layout effects on a warm session open.
+  // Attach after all refs commit, even when the lazy message module is already loaded.
+  useEffect(() => {
     const element = scroll?.current, content = root.current;
     if (!element || !content) return;
     const measure = () => {
@@ -232,10 +238,10 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
   useLayoutEffect(() => {
     const content = root.current;
     if (enabled || !content) return;
-    const observer = new ResizeObserver(() => { if (pinned.current) latest(); });
+    const observer = new ResizeObserver(() => { if (ready && initialized.current && pinned.current) latest(); });
     observer.observe(content);
     return () => observer.disconnect();
-  }, [enabled, latest, pinned]);
+  }, [enabled, latest, pinned, ready]);
   const previousMode = useRef(enabled);
   useLayoutEffect(() => {
     if (previousMode.current === enabled) return;
@@ -244,17 +250,27 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
     if (!anchor || anchor.pinned) latest();
     else if (anchor.id) void mount(anchor.id, anchor.inset);
   }, [enabled, memory, latest, mount]);
-  useLayoutEffect(() => {
+  useEffect(() => {
     const element = scroll?.current;
     if (!element || !ready) return;
     let timer: number | undefined;
+    let previousTop = element.scrollTop;
     const save = () => { const anchor = capture(); if (anchor) persist(anchor); userScrolling.current = false; };
     const scrolled = () => {
-      if (userScrolling.current && !jumping.current && !manualRef.current) {
-        pinned.current = element.scrollHeight - element.clientHeight - element.scrollTop < 90;
+      const nearEnd = element.scrollHeight - element.clientHeight - element.scrollTop < 90;
+      // Native find, focus, and browser scroll restoration do not require a wheel or touch event.
+      // Virtual row measurements can move the scroll offset while the tail still needs to follow.
+      const movedUp = !enabled && element.scrollTop < previousTop - 1;
+      previousTop = element.scrollTop;
+      if (initialized.current && !jumping.current && !manualRef.current && (userScrolling.current || movedUp || nearEnd)) {
+        if (movedUp && !nearEnd) { anchored.current = undefined; userScrolling.current = true; }
+        pinned.current = nearEnd;
         onPinned(pinned.current);
         if (pinned.current) userScrolling.current = false;
       }
+      // Navigation can detach the rows before the debounced save or the child cleanup runs.
+      // Keep the anchor in account memory on each scroll; only the encrypted write waits.
+      if (initialized.current && !jumping.current) capture();
       clearTimeout(timer); timer = window.setTimeout(save, 250);
     };
     const input = () => {
@@ -283,7 +299,7 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
       element.removeEventListener('pointerdown', pointer); element.removeEventListener('keydown', keyboard);
       element.removeEventListener('scroll', scrolled); element.removeEventListener('wheel', input); element.removeEventListener('touchmove', input);
     };
-  }, [scroll, capture, persist, virtualizer, ready]);
+  }, [scroll, capture, persist, virtualizer, ready, enabled]);
   useLayoutEffect(() => () => { const anchor = capture(); if (anchor) persist(anchor); }, [capture, persist]);
   useLayoutEffect(() => () => { if (followFrame.current !== undefined) cancelAnimationFrame(followFrame.current); }, []);
   const items = enabled ? virtualizer.getVirtualItems() : blocks.map((block, index) => ({ key: block.id, index, start: 0 }));

@@ -996,3 +996,48 @@ pnpm exec playwright test tests/virtualTranscript.e2e.test.ts tests/replyRecap.e
 ```
 
 This session used an isolated source archive and a temporary Playwright config to preserve the existing preview services.
+
+## Chat reading position after a session reopen (2026-10-25)
+
+The main cause was the order of ref attachment on a warm session open.
+`TranscriptViewport` read its parent's scroll ref in child layout effects.
+A cold lazy import mounted after the parent, but a warm open mounted both in the same commit.
+The parent ref was still null, so geometry measurement and scroll listeners did not attach.
+The zero-width geometry blocked position restoration. The stale follow state also hid the latest-message action.
+
+Changes:
+
+- Attach geometry observers and scroll listeners after all refs commit.
+- Use message anchors for short and long chats. Remove the separate module-global map of pixel offsets.
+  Positions stay in account memory and use the existing encrypted account/server storage.
+- Capture the reading anchor on each scroll. Debounce only the encrypted write, so a quick exit retains the current row.
+- Save the latest-message choice immediately. Wait for position readiness before a resize follower can move the list.
+- Check the visible bottom gap as well as follow intent before hiding the latest-message action.
+  Keep virtual row measurements from interrupting tail following.
+- Keep the latest-message action at least 44px high on touch devices, including landscape phones.
+
+The new browser checks cover 40-reply and 320-reply chats, in-app session switches, viewport changes,
+encrypted reloads, browser scrolls without an input event, and replies that arrive while a chat is closed.
+The virtual transcript also has a warm in-app navigation regression that does not reload the document.
+Existing scroll helpers now send scroll intent before a programmatic move, so they cancel pending restoration like a user scroll.
+
+Validation uses desktop and phone Chromium and WebKit.
+The phone matrix includes 320x568, 360x640, 390x844, 430x932, 390x360, and 844x390.
+It taps the latest action, switches sessions, checks reading-row offsets, and checks overflow at each size.
+These checks use browser emulation and a short viewport for the keyboard.
+
+The production build, typecheck, diff check, and all 570 unit tests in 55 files pass.
+The final focused browser run passes 92 cases with 8 intentional skips and no failures.
+The related chat presentation, recap, reply-rail, history, and side-chat checks pass 206 cases with 14 intentional skips.
+The selected coverage therefore includes 298 distinct passing browser cases.
+An earlier warm-navigation fixture stopped at the tablet session drawer; the corrected fixture selects the session and passes in all four projects.
+
+The final focused command was:
+
+```sh
+pnpm exec playwright test -c .performance/scroll.playwright.config.ts tests/chatScroll.e2e.test.ts tests/virtualTranscript.e2e.test.ts --workers=4
+```
+
+The temporary config keeps the base browser projects and reuses the existing preview on port 5179.
+The existing preview at `https://rays-macbook-pro.tailf62d7d.ts.net:5179` returns the final build version.
+No Tailscale route or service changed.

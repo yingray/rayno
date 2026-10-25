@@ -448,7 +448,8 @@ export const MessageList = memo(function MessageList({
   }), [visible]);
   const available = blocks.length >= 300;
   const virtual = available && faster;
-  useLayoutEffect(() => { onManaged(available); if (!available) onVirtualMode(false); return () => onManaged(false); }, [available, onManaged, onVirtualMode]);
+  // Every chat uses a message anchor. The row count only controls virtualization.
+  useLayoutEffect(() => { onManaged(true); return () => onManaged(false); }, [onManaged]);
   const outcomes = useMemo(() => {
     const permissions = completedPermissions(agentState), forms = completedForms(agentState);
     const modeLabel = (mode: string) => permissionLabel(metadata || {}, mode);
@@ -561,9 +562,9 @@ export const MessageList = memo(function MessageList({
             && <RecapButton disabled={disabled || pending} onClick={() => void onRecap!()} />}
         </Fragment>;
   return <>
-    {available ? <TranscriptViewport blocks={blocks} enabled={virtual} full={full} scroll={scroll} pinned={pinned}
+    <TranscriptViewport blocks={blocks} enabled={virtual} full={full} scroll={scroll} pinned={pinned}
       controller={viewport} memory={memory} ready={positionReady && historyReady} layoutKey={`${font}:${compactTools}:${language}`}
-      render={renderBlock} onMode={onVirtualMode} onPinned={onPinned} persist={persist} /> : blocks.map(renderBlock)}
+      render={renderBlock} onMode={onVirtualMode} onPinned={onPinned} persist={persist} />
     {placeholder && (
       <article className={styles.agentMessage}>
         <div className={styles.markdown}>

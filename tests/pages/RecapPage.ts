@@ -103,6 +103,7 @@ export class RecapPage extends LiveWorkspacePage {
     await expect(card).toHaveAttribute('data-state', 'open');
   }
   async scrollToLatest() {
+    await this.conversation().dispatchEvent('touchmove');
     await this.conversation().evaluate((element) => { element.scrollTop = element.scrollHeight; });
     await expect.poll(async () => (await this.conversationPosition()).remaining).toBeLessThan(2);
   }

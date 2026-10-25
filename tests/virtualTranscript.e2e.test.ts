@@ -78,6 +78,21 @@ test('virtual transcript should keep an encrypted reading anchor through navigat
   await page.reload(); await view.expectAnchor(anchor);
 });
 
+test('virtual transcript should restore its reading row after in-app navigation with the message module already loaded', async ({ page }) => {
+  // Arrange
+  await page.setViewportSize({ width: 844, height: 600 });
+  const { view } = await arrange(page);
+  await view.jumpReply(40);
+  const anchor = await view.readingAnchor();
+  // Act
+  await view.goToSection('Settings');
+  await view.goToSection('Sessions');
+  await view.openRow();
+  // Assert: no document reload or lazy import supplies another initialization pass.
+  await view.expectAnchor(anchor);
+  await expect(view.latestShortcut()).toBeVisible();
+});
+
 test('virtual transcript should preserve the visible row when older history is prepended', async ({ page }, info) => {
   await page.setViewportSize(info.project.use.isMobile ? { width: 844, height: 600 } : { width: 1440, height: 900 });
   // Arrange: load 120 turns first, then prepend 30 more through the real history control.

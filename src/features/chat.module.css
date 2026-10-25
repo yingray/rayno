@@ -1310,6 +1310,7 @@
 .messages { margin-inline: auto; padding-inline: 0; }
 .sessionMenuButton { width: 44px; height: 44px; flex: none; margin-left: auto; }
 @media (hover: none) and (pointer: coarse) {
+  .latestButton { min-height: 44px; }
   .send, .attach, .permission, .model { min-height: 44px; }
   .send, .attach { min-width: 44px; }
 }

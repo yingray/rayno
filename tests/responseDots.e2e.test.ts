@@ -11,6 +11,8 @@ class ResponseDotsPage extends PriorityFeaturesPage {
   article(index: number) { return this.page.locator(`article[data-message-id="fixture-${index + 1}"]`); }
   anchors() { return this.rail().getByRole('group', { name: 'Reply anchors', exact: true }); }
   async expectRailProgress(progress: number) {
+    // A user scroll cancels an active restoration after an older page loads.
+    await this.conversation().dispatchEvent('touchmove');
     await this.conversation().evaluate((element, fraction) => {
       element.scrollTop = fraction * (element.scrollHeight - element.clientHeight);
     }, progress);
