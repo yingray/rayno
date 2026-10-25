@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { HappyServer } from './fixtures/HappyServer';
 import { ChatScrollPage } from './pages/ChatScrollPage';
 
-async function arrange(page: import('@playwright/test').Page, count: number) {
+async function arrange(page: import('@playwright/test').Page, count: number, faster = false) {
   const server = new HappyServer();
   await server.install(page);
   await server.setWorking(false);
@@ -16,10 +16,34 @@ async function arrange(page: import('@playwright/test').Page, count: number) {
     body: JSON.stringify({ messages: server.messages, hasMore: false }),
   }));
   const view = new ChatScrollPage(page);
+  if (faster) await view.enableFasterChats();
   await page.goto('/session/real-session');
   await expect(page.getByRole('heading', { name: `Reply ${count}`, exact: true })).toBeAttached();
   await expect.poll(async () => (await view.conversationPosition()).remaining).toBeLessThan(4);
   return { server, view };
+}
+
+for (const [count, faster] of [[40, false], [320, false], [320, true]] as const) {
+  for (const size of ['desktop', '320x568', '360x640', '390x844', '430x932', '390x360', '844x390'] as const)
+  test(`chat should stop following after a small upward scroll in a ${count}-reply ${faster ? 'virtual' : 'full'} session at ${size}`, async ({ page }, info) => {
+    test.skip((size === 'desktop') === !!info.project.use.hasTouch, 'Run each size in its matching input projects.');
+    const [width, height] = size === 'desktop' ? [1440, 900] : size.split('x').map(Number);
+    await page.setViewportSize({ width, height });
+    // Arrange
+    const { server, view } = await arrange(page, count, faster);
+    // Act: the first trackpad step can stay inside the former 90px follow threshold.
+    await view.scrollUpStep(40, info.project.name === 'mobile-webkit');
+    const anchor = await view.readingRow();
+    const reply = 'A live reply while the reader starts to scroll up.';
+    await server.pushReply(reply + '\n\n' + 'New detail.\n\n'.repeat(12));
+    // Assert: check every frame, including transient downward pulls.
+    await expect(page.getByText(reply, { exact: true })).toBeAttached();
+    await view.expectNoDownwardPull(anchor);
+    await expect(view.latestShortcut()).toBeVisible();
+    if (info.project.use.hasTouch) await view.latestShortcut().tap();
+    else await view.latestShortcut().click();
+    await expect.poll(async () => (await view.conversationPosition()).remaining).toBeLessThan(2);
+  });
 }
 
 for (const count of [40, 320]) {

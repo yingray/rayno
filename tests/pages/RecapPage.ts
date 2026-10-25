@@ -119,10 +119,10 @@ export class RecapPage extends LiveWorkspacePage {
   }
   /** The composer does not cover any part of the card. */
   async expectCardClearOfComposer() {
-    const card = (await this.card().boundingBox())!;
-    const composer = (await this.page.getByRole('region', { name: 'Chat session', exact: true })
-      .locator('[data-focus-frame]').boundingBox())!;
-    expect(card.y + card.height).toBeLessThanOrEqual(composer.y + 1);
+    await expect.poll(() => this.card().evaluate(card => {
+      const composer = card.closest('[data-chat-session]')!.querySelector('[data-focus-frame]')!.getBoundingClientRect();
+      return card.getBoundingClientRect().bottom <= composer.top + 1;
+    })).toBe(true);
   }
   /** Scroll the list so the control sits between the overlay header and the floating composer. */
   async centerInList(control: Locator) {

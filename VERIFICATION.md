@@ -1041,3 +1041,39 @@ pnpm exec playwright test -c .performance/scroll.playwright.config.ts tests/chat
 The temporary config keeps the base browser projects and reuses the existing preview on port 5179.
 The existing preview at `https://rays-macbook-pro.tailf62d7d.ts.net:5179` returns the final build version.
 No Tailscale route or service changed.
+
+## Recap visibility and upward scroll regressions (2026-10-25)
+
+The shared transcript controller exposed two regressions in the previous scroll fix.
+Focus on a recap toggle paused follow before its body expanded, so the new text could sit behind the composer.
+On short screens, tail alignment could also place the recap text behind the fixed header.
+A small upward gesture inside the 90px threshold left follow active and let a later reply pull the viewport downward.
+
+- Reveal an expanded card inside the space above the composer and latest-message action.
+  If the full card cannot fit, reveal the start of its text. A saved open card does not move the restored viewport.
+- Stop follow on input before the next render or animation frame. Cancel queued follow frames, saves, and virtual scroll targets.
+  Keep scroll ownership in a synchronous ref. A downward move to the actual end or the latest action resumes follow.
+- Preserve focused history controls and their anchors during pagination. Suspend automatic restoration during a free scroll gesture.
+- Observe parent border-box changes and viewport height, so composer padding and short-screen changes enter the geometry model.
+- Use one immediate recap jump and capture its final visible row. Keep rail targets stable through later measurements.
+
+New tests first reproduced the obscured recap and the downward pull.
+They click the visible recap toggle and phrase without a helper scroll after expansion.
+They also reopen a session after a recap jump and check that its destination returns.
+The upward-scroll matrix covers 40-reply full chats, 320-reply full chats, and 320-reply virtual chats.
+It adds a live reply after a small scroll and samples the same message position for 20 frames.
+This checks visual stability instead of raw offsets, which virtual measurements can change without moving the content.
+
+Both phone engines cover 320x568, 360x640, 390x844, 430x932, 390x360, and 844x390.
+Chromium uses browser wheel input. Mobile WebKit has no wheel driver, so it uses keyboard input with a controlled scroll step.
+Both engines tap recap points and the latest action. These checks use browser emulation, not a physical iPhone.
+
+All 570 unit tests pass. The production build, typecheck, and diff check pass.
+The broad selected browser run passed 290 cases, skipped 76, and found two rail-anchor failures after width changes.
+The final capture correction preserves rail anchors and records actual rows only for recap DOM jumps.
+All 16 repeated anchor and recap-navigation checks then passed across the four browser projects.
+The selected coverage includes 292 distinct passing browser scenarios.
+The broad suite was not repeated after that final capture correction.
+
+Browser runs reuse the existing preview through `.performance/scroll.playwright.config.ts`.
+The patch leaves existing Tailscale routes, services, account preferences, and unrelated worktree edits unchanged.

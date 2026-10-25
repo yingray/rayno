@@ -32,12 +32,13 @@ function rememberOpen(id: string, open: boolean) {
 
 const rateLabel = (rate: number) => `${rate}×`;
 
-export const RecapCard = memo(function RecapCard({ messageId, value, writing, onJump, notify }: {
+export const RecapCard = memo(function RecapCard({ messageId, value, writing, onJump, onReveal, notify }: {
   messageId: string;
   // Undefined for the placeholder card of a recap that the agent writes now.
   value?: MessageRecap;
   writing: boolean;
   onJump: (messageId: string, index: number) => void;
+  onReveal?: (card: HTMLElement) => void;
   notify: (message: string) => void;
 }) {
   const t = useText();
@@ -47,6 +48,8 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
   const [more, setMore] = useState(false);
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const textRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  const revealPending = useRef(false);
   const speech = useRecapSpeech();
   const recap = value?.recap;
   const own = !!recap && speech.key === messageId && speech.text === recap.text;
@@ -60,6 +63,7 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
   const expanded = open && !!recap;
   const long = !!recap && recap.text.length > RECAP_TEXT_LIMIT;
   function toggleOpen() {
+    revealPending.current = !open;
     rememberOpen(messageId, !open);
     setOpen(!open);
   }
@@ -75,9 +79,14 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
   // A clamp box that comes back after "Show less" starts at the first line.
   useLayoutEffect(() => {
     if (textRef.current) textRef.current.scrollTop = 0;
-  }, [more, expanded]);
+    if (expanded && revealPending.current && cardRef.current) {
+      revealPending.current = false;
+      onReveal?.(cardRef.current);
+    }
+  }, [more, expanded, onReveal]);
   return (
     <section
+      ref={cardRef}
       className={styles.card}
       aria-label={t("Recap")}
       data-recap-card
@@ -134,7 +143,7 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
       {own && speech.notice && <p className={styles.speechNotice} role="status">{t(speech.notice)}</p>}
       {expanded && !writing && (
         <div className={styles.body} id={bodyId}>
-          <div ref={textRef} className={`${styles.text} ${long && !more ? styles.clamped : ''}`} onFocus={revealFocused}>
+          <div ref={textRef} data-recap-text className={`${styles.text} ${long && !more ? styles.clamped : ''}`} onFocus={revealFocused}>
             {recap.segments.map((segment, index) => {
               if (segment.kind === 'text') return <span key={index}>{segment.text}</span>;
               if (!value!.targets[segment.index - 1]) return <span key={index}>{segment.text}</span>;
@@ -168,7 +177,7 @@ export const RecapCard = memo(function RecapCard({ messageId, value, writing, on
             })}
           </div>
           {long && (
-            <button type="button" className={styles.more} aria-expanded={more} onClick={() => setMore(!more)}>
+            <button type="button" className={styles.more} aria-expanded={more} onClick={() => { revealPending.current = !more; setMore(!more); }}>
               {more ? t("Show less") : t("Show more")}
             </button>
           )}

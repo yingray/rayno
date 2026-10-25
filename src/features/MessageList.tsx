@@ -262,7 +262,7 @@ function ResponseHeader({ sentAt }: { sentAt?: number }) {
   </div>;
 }
 
-const MessageBlock = memo(function MessageBlock({ sessionId, message, response, optionsDisabled, onOption, bubble, notify, recap, recapWriting, onJump, memory }: {
+const MessageBlock = memo(function MessageBlock({ sessionId, message, response, optionsDisabled, onOption, bubble, notify, recap, recapWriting, onJump, onReveal, memory }: {
   sessionId: string;
   memory: TranscriptMemory;
   message: Message;
@@ -274,6 +274,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
   recap?: MessageRecap;
   recapWriting: boolean;
   onJump: (messageId: string, index: number) => void;
+  onReveal: (card: HTMLElement) => void;
 }) {
   const t = useText();
   const pendingShown = usePendingShown(message.delivery);
@@ -282,7 +283,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
   const codeFilename = message.content.match(/\/\* ([\w./-]+) \*\//)?.[1] || 'Code';
   // The recap card closes the reply. Options stay last.
   const card = message.role !== 'user' && (recap || recapWriting)
-    ? <RecapCard key="recap" messageId={message.id} value={recap} writing={recapWriting} onJump={onJump} notify={notify} />
+    ? <RecapCard key="recap" messageId={message.id} value={recap} writing={recapWriting} onJump={onJump} onReveal={onReveal} notify={notify} />
     : null;
   const optionsAt = card ? parts.findIndex((part) => part.kind === 'options') : -1;
   const canCopy = message.role === 'assistant' && parts.some((part) =>
@@ -486,6 +487,30 @@ export const MessageList = memo(function MessageList({
   // Tool groups whose closed rows are mounted for a recap jump. A jump that finds no target in the DOM
   // reveals the tool groups of its turn, then looks again after that render.
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
+  const revealRecap = useEventCallback((card: HTMLElement) => {
+    onUnpin?.();
+    const previousTop = scroll?.current?.scrollTop;
+    // Let the latest action commit before measuring the space above the composer.
+    requestAnimationFrame(() => {
+      const element = scroll?.current;
+      if (!element || !card.isConnected || card.dataset.state !== 'open'
+        || previousTop === undefined || Math.abs(element.scrollTop - previousTop) > 1) return;
+      const chat = element.closest('[data-chat-session]');
+      const composer = chat?.querySelector('[data-focus-frame]')?.getBoundingClientRect();
+      const latest = chat?.querySelector('button[aria-controls="' + CSS.escape(element.id) + '"]')?.getBoundingClientRect();
+      const box = element.getBoundingClientRect();
+      const top = box.top + (parseFloat(getComputedStyle(element).scrollPaddingTop) || 0);
+      const bottom = Math.min(box.bottom, composer?.top ?? box.bottom, latest?.top ?? box.bottom) - 8;
+      const cardBox = card.getBoundingClientRect();
+      // A short viewport cannot fit the whole card. Start with its text instead of its footer.
+      const target = cardBox.height <= bottom - top ? card : card.querySelector<HTMLElement>('[data-recap-text]') || card;
+      const targetBox = target.getBoundingClientRect();
+      const delta = targetBox.height > bottom - top || targetBox.top < top
+        ? targetBox.top - top : Math.max(0, targetBox.bottom - bottom);
+      element.scrollTop += delta;
+      viewport.current?.capture(true);
+    });
+  });
   const jump = useEventCallback(async (messageId: string, index: number) => {
     selectRecapPoint(messageId, index);
     const point = recaps.get(messageId)?.recap.segments.find(isPoint(index));
@@ -493,7 +518,7 @@ export const MessageList = memo(function MessageList({
     const groups = recapTurnGroups(blocks, messageId);
     const existing = scroll?.current && findRecapTarget(scroll.current, messageId, point.quote, groups);
     if (!virtual && existing && scroll?.current) {
-      onUnpin?.(); jumpToRecapTarget(scroll.current, existing, available ? 'auto' : undefined, () => viewport.current?.capture()); return;
+      onUnpin?.(); jumpToRecapTarget(scroll.current, existing, 'auto', () => viewport.current?.capture(true)); return;
     }
     const id = recapTargetBlock(blocks, messageId, point.quote);
     if (virtual && !id) return;
@@ -503,7 +528,7 @@ export const MessageList = memo(function MessageList({
     else await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     const element = scroll?.current;
     const target = element ? findRecapTarget(element, messageId, point.quote, groups) : null;
-    if (element && target) jumpToRecapTarget(element, target, available ? 'auto' : undefined, () => viewport.current?.capture());
+    if (element && target) jumpToRecapTarget(element, target, 'auto', () => viewport.current?.capture(true));
   });
 
   // Option+R reads the latest recap in this session, or pauses it.
@@ -556,7 +581,7 @@ export const MessageList = memo(function MessageList({
         : <Fragment key={block.id}>
           <MessageBlock sessionId={sessionId} memory={memory} message={block.message} response={responseIds.has(block.message.id)}
             bubble={bubble} notify={notify}
-            recap={recaps.get(block.message.id)} recapWriting={writingTarget === block.message.id} onJump={jump}
+            recap={recaps.get(block.message.id)} recapWriting={writingTarget === block.message.id} onJump={jump} onReveal={revealRecap}
             optionsDisabled={disabled || pending || !unanswered.has(block.message.id) || !!answered?.has(block.message.id)} onOption={onOption} />
           {showButton && block.message.id === lastReply
             && <RecapButton disabled={disabled || pending} onClick={() => void onRecap!()} />}

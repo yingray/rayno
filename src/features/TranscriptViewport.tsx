@@ -10,7 +10,7 @@ export type TranscriptController = {
   enabled: boolean;
   latest(): void;
   unpin(): void;
-  capture(): TranscriptAnchor | undefined;
+  capture(actual?: boolean): TranscriptAnchor | undefined;
   mount(id: string, inset?: number): Promise<HTMLElement | null>;
   offset(id: string): number | undefined;
 };
@@ -28,12 +28,11 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
   persist: (anchor: TranscriptAnchor) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
-  const [geometry, setGeometry] = useState({ origin: 0, tail: 0, top: 80, bottom: 160, width: 0 });
+  const [geometry, setGeometry] = useState({ origin: 0, tail: 0, top: 80, bottom: 160, width: 0, height: 0 });
   const [forced, setForced] = useState<ReadonlySet<string>>(() => new Set());
   const [focused, setFocused] = useState<string>();
-  const [manual, setManual] = useState(false);
-  const manualRef = useRef(manual);
-  useLayoutEffect(() => { manualRef.current = manual; }, [manual]);
+  // Scroll ownership changes before the next render or animation frame.
+  const manualRef = useRef(false);
   const followFrame = useRef<number | undefined>(undefined);
   const generation = useRef(0), jumping = useRef(false), initialized = useRef(false);
   const saved = useRef(memory.anchor);
@@ -111,7 +110,7 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
     return anchor;
   });
   const latest = useEventCallback(() => {
-    generation.current++; jumping.current = false; anchored.current = undefined; userScrolling.current = false; pinned.current = true; onPinned(true); setManual(false); setForced(new Set());
+    generation.current++; jumping.current = false; anchored.current = undefined; userScrolling.current = false; pinned.current = true; onPinned(true); manualRef.current = false; setForced(new Set());
     if (ready && initialized.current && !memory.anchor?.pinned) {
       memory.anchor = { inset: 0, pinned: true, full };
       persist(memory.anchor);
@@ -122,7 +121,7 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
   const unpin = useEventCallback(() => {
     const token = ++generation.current;
     jumping.current = false; anchored.current = undefined; userScrolling.current = true;
-    pinned.current = false; onPinned(false); setManual(true); virtualizer.cancelScroll();
+    pinned.current = false; onPinned(false); manualRef.current = true; virtualizer.cancelScroll();
     if (memory.anchor) memory.anchor = { ...memory.anchor, pinned: false };
     // Focus can scroll the browser after its focus event. Capture that final position on the next frame.
     const revision = anchorRevision.current;
@@ -140,7 +139,7 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
       const index = indices.get(id), element = scroll?.current;
       if (index === undefined || !element) return null;
       const token = ++generation.current;
-      jumping.current = true; userScrolling.current = false; anchored.current = id; pinned.current = false; onPinned(false); setManual(true);
+      jumping.current = true; userScrolling.current = false; anchored.current = id; pinned.current = false; onPinned(false); manualRef.current = true;
       memory.anchor = { id, inset, pinned: false, full }; persist(memory.anchor);
       setForced(new Set([id]));
       virtualizer.cancelScroll();
@@ -175,7 +174,12 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
     const element = scroll?.current, target = mounted(id);
     if (element && target) return target.getBoundingClientRect().top - element.getBoundingClientRect().top + element.scrollTop;
   });
-  const remember = useEventCallback(() => { anchorRevision.current++; const anchor = capture(true); if (anchor) persist(anchor); return anchor; });
+  const remember = useEventCallback((actual = false) => {
+    anchorRevision.current++;
+    // Rail mounts retain their target through measurements. DOM jumps record the row that is visible now.
+    if (actual && !jumping.current) anchored.current = undefined;
+    const anchor = capture(true); if (anchor) persist(anchor); return anchor;
+  });
   const api = useMemo<TranscriptController>(() => ({ enabled, latest, unpin, capture: remember, mount, offset }), [enabled, latest, unpin, remember, mount, offset]);
   useLayoutEffect(() => {
     controller.current = api; onMode(enabled); notifyLayout();
@@ -192,12 +196,14 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
       const origin = content.getBoundingClientRect().top - element.getBoundingClientRect().top + element.scrollTop;
       const next = { origin, tail: Math.max(0, element.scrollHeight - origin - content.offsetHeight),
         top: parseFloat(style.scrollPaddingTop) || 0, bottom: parseFloat(style.scrollPaddingBottom) || 0,
-        width: content.clientWidth };
+        width: content.clientWidth, height: element.clientHeight };
       setGeometry(previous => Object.keys(next).every(key => Math.abs(next[key as keyof typeof next] - previous[key as keyof typeof next]) < 1) ? previous : next);
     };
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(element); if (content.parentElement) observer.observe(content.parentElement);
+    observer.observe(element, { box: 'border-box' });
+    // Composer and safe-area spacing can change only the parent's padding.
+    if (content.parentElement) observer.observe(content.parentElement, { box: 'border-box' });
     return () => observer.disconnect();
   }, [scroll, enabled]);
   useLayoutEffect(() => {
@@ -205,7 +211,7 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
     if (!geometry.width || !blocks.length) return;
     const changed = memory.layout !== currentLayout;
     if (changed) { memory.layout = currentLayout; memory.heights.clear(); if (enabled) virtualizer.measure(); }
-    if (!initialized.current || changed) {
+    if (!initialized.current || changed && (!userScrolling.current || manualRef.current)) {
       initialized.current = true;
       const anchor = saved.current || memory.anchor;
       saved.current = undefined;
@@ -218,7 +224,7 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
   useLayoutEffect(() => {
     const first = blocks[0]?.id, previous = previousFirst.current;
     previousFirst.current = first;
-    if (!previous || previous === first || !ready || !initialized.current) return;
+    if (!previous || previous === first || !ready || !initialized.current || userScrolling.current && !manualRef.current) return;
     const anchor = memory.anchor;
     if (anchor?.pinned) latest();
     else if (anchor?.id && indices.has(anchor.id)) void mount(anchor.id, anchor.inset);
@@ -228,7 +234,7 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
   useLayoutEffect(() => {
     const previous = previousGeometry.current;
     previousGeometry.current = geometry;
-    if (!initialized.current || !ready || jumping.current) return;
+    if (!initialized.current || !ready || jumping.current || userScrolling.current && !manualRef.current) return;
     if (pinned.current) latest();
     else if (previous.origin !== geometry.origin || previous.top !== geometry.top) {
       const anchor = memory.anchor;
@@ -257,16 +263,20 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
     let previousTop = element.scrollTop;
     const save = () => { const anchor = capture(); if (anchor) persist(anchor); userScrolling.current = false; };
     const scrolled = () => {
-      const nearEnd = element.scrollHeight - element.clientHeight - element.scrollTop < 90;
-      // Native find, focus, and browser scroll restoration do not require a wheel or touch event.
-      // Virtual row measurements can move the scroll offset while the tail still needs to follow.
-      const movedUp = !enabled && element.scrollTop < previousTop - 1;
+      const gap = element.scrollHeight - element.clientHeight - element.scrollTop;
+      const atEnd = gap <= 1;
+      // Large browser jumps also leave follow. Small layout corrections do not claim user intent.
+      const movedUp = !enabled && gap >= 90 && element.scrollTop < previousTop - 1;
+      const movedDown = element.scrollTop > previousTop + 1;
       previousTop = element.scrollTop;
-      if (initialized.current && !jumping.current && !manualRef.current && (userScrolling.current || movedUp || nearEnd)) {
-        if (movedUp && !nearEnd) { anchored.current = undefined; userScrolling.current = true; }
-        pinned.current = nearEnd;
+      // Layout and virtual measurements can change offsets without a reader gesture.
+      if (initialized.current && !jumping.current && !manualRef.current && (userScrolling.current || movedUp || atEnd)) {
+        if (movedUp) { anchored.current = undefined; userScrolling.current = true; }
+        // A small upward gesture owns the viewport even inside the former 90px threshold.
+        // Only a downward move to the actual end resumes follow after user input.
+        pinned.current = atEnd && (!userScrolling.current || movedDown);
         onPinned(pinned.current);
-        if (pinned.current) userScrolling.current = false;
+        if (pinned.current) { userScrolling.current = false; anchored.current = undefined; }
       }
       // Navigation can detach the rows before the debounced save or the child cleanup runs.
       // Keep the anchor in account memory on each scroll; only the encrypted write waits.
@@ -274,7 +284,11 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
       clearTimeout(timer); timer = window.setTimeout(save, 250);
     };
     const input = () => {
-      generation.current++; jumping.current = false; anchored.current = undefined; userScrolling.current = true; virtualizer.cancelScroll(); setForced(new Set()); setManual(false);
+      clearTimeout(timer);
+      generation.current++; jumping.current = false; anchored.current = undefined; userScrolling.current = true;
+      pinned.current = false; onPinned(false); manualRef.current = false;
+      if (followFrame.current !== undefined) { cancelAnimationFrame(followFrame.current); followFrame.current = undefined; }
+      virtualizer.cancelScroll(); setForced(new Set());
     };
     const pointer = (event: PointerEvent) => {
       if (!(event.target as Element).closest('button, summary, input, textarea, select, [contenteditable]')) input();

@@ -21,6 +21,59 @@ const reply = (text: string) => ({ role: 'agent', content: { type: 'codex', data
 const conversation = (text: string) => [{ role: 'user', content: { type: 'text', text: 'Fix the week bar' } }, reply(text)];
 const point2 = recapText.indexOf('A newer manual reading now wins');
 
+for (const size of ['default', '320x568', '360x640', '390x844', '430x932', '390x360', '844x390'] as const)
+test(`recap details should stay above the composer when opened at the latest reply at ${size}`, async ({ page }, info) => {
+  test.skip(size !== 'default' && !info.project.use.hasTouch, 'Phone interaction matrix.');
+  if (size !== 'default') {
+    const [width, height] = size.split('x').map(Number);
+    await page.setViewportSize({ width, height });
+  }
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  await server.setWorking(false);
+  await server.setMessages(conversation(body + '\n\n' + recapBlock));
+  const recap = new RecapPage(page);
+  await recap.openSession();
+  await expect.poll(async () => (await recap.conversationPosition()).remaining).toBeLessThan(2);
+  // Act: click the visible toggle without a helper scroll after expansion.
+  await recap.expand(!!info.project.use.hasTouch);
+  // Assert
+  if (page.viewportSize()!.height > 500) await recap.expectCardClearOfComposer();
+  await recap.expectInView(recap.phrase('The merge kept the older session reading'));
+  // Act / Assert: the visible phrase jumps without a helper scroll or an artificial scroll gesture.
+  await recap.activate(recap.phrase('The merge kept the older session reading'), !!info.project.use.hasTouch);
+  const target = page.locator('article p').filter({ hasText: 'The Codex row never moves' });
+  await expect(target).toHaveClass(/flash/);
+  await recap.expectInView(target);
+});
+
+test('recap jumps should restore the destination after in-app navigation', async ({ page }, info) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  await server.setWorking(false);
+  await server.setMessages(conversation(body + '\n\n' + recapBlock));
+  const recap = new RecapPage(page);
+  await recap.openSession();
+  await expect.poll(async () => (await recap.conversationPosition()).remaining).toBeLessThan(2);
+  await recap.expand(!!info.project.use.hasTouch);
+  await recap.expectInView(recap.phrase('A newer manual reading now wins'));
+  // Act
+  await recap.activate(recap.phrase('A newer manual reading now wins'), !!info.project.use.hasTouch);
+  const target = page.locator('figure').filter({ hasText: 'manual.capturedAt > session.capturedAt' });
+  await expect(target).toHaveClass(/flash/);
+  await recap.expectInView(target);
+  const position = await recap.conversationPosition();
+  await recap.showSessions();
+  await recap.goToSection('Settings');
+  await recap.goToSection('Sessions');
+  await recap.openRow();
+  // Assert
+  await recap.expectInView(target);
+  await expect.poll(async () => Math.abs((await recap.conversationPosition()).top - position.top)).toBeLessThan(2);
+});
+
 test('recap card should render collapsed, expand, and keep the open state after a reload', async ({ page }, testInfo) => {
   // Arrange
   const server = new HappyServer();
