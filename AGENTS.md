@@ -15,3 +15,12 @@
 - Keep Rayno account preferences independent from the Happy app. Preserve existing Tailscale routes and services.
 - Keep the session list and previously loaded chat pages available after an offline reload. Encrypt cached account content and isolate it by account and server.
 - Treat initial connection and workspace loading as normal states. Show the connection warning only after a failed attempt; keep it hidden during retry and known offline use.
+
+# Interactive demo requirements
+
+- Include an interactive demo for every new or changed user-facing feature. Update the demo in the same task as the feature.
+- Use the same components and interaction logic as the app. Provide sample data so the feature works without a Happy account or live CLI.
+- Make the demo discoverable in the demo session list and provide a direct `?demo=1` URL. Direct links must also work with demo data saved before the feature existed; preserve existing sessions, drafts, and preferences.
+- Let users repeat the interaction. Provide new sample choices after a demo send, or a clear way to reset the example.
+- Verify the actual demo flow in Chromium and WebKit, including the required phone widths, a short keyboard viewport, and landscape. Test interactions, not only screenshots.
+- Include the verified demo URL and brief trial steps in the delivery message. State any simulated behavior that affects what the user can verify.

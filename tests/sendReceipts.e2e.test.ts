@@ -98,6 +98,9 @@ for (const [width, height] of [[320, 640], [390, 844], [844, 390]]) {
     await expect(buttons.first()).toBeEnabled();
     // Act
     await workspace.selectReply('Ship it');
+    await workspace.expectDraft('Ship it');
+    expect(server.sends).toHaveLength(0);
+    await workspace.sendDraft();
     // Assert
     await workspace.expectSendState('Ship it', 'Sending…');
     await expect(buttons.first()).toBeDisabled();
@@ -114,6 +117,7 @@ for (const [width, height] of [[320, 640], [390, 844], [844, 390]]) {
     // Act
     await workspace.openRow();
     await workspace.selectReply('Wait');
+    await workspace.sendDraft();
     await expect(buttons.first()).toBeDisabled();
     await server.pushReceipt('sent-' + server.sends[1].localId);
     // Assert

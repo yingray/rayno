@@ -321,12 +321,15 @@ test('recap followed by options should keep both parts and leave literal recap t
   await recap.expectReplyTargetsReachable();
   if (touch) await recap.tapReply(labels[0]);
   else await recap.selectReply(labels[0]);
+  await recap.expectDraft('Keep my draft\n' + labels[0]);
+  expect(server.sends).toHaveLength(0);
+  await recap.sendDraft();
   // Assert
   await expect(recap.replyOptions().getByRole('button').nth(0)).toBeDisabled();
-  await recap.expectDraft('Keep my draft');
+  await recap.expectDraft('');
   expect(server.sends).toHaveLength(1);
   const raw = await server.encryption.decrypt<{ content: { text: string }; meta: Record<string, unknown> }>(server.sends[0].content, server.dataKey);
-  expect(raw).toMatchObject({ role: 'user', content: { type: 'text', text: labels[0] } });
+  expect(raw).toMatchObject({ role: 'user', content: { type: 'text', text: 'Keep my draft\n' + labels[0] } });
   expect(raw.meta.raynoRecap).toBeUndefined();
   expect(raw.meta.appendSystemPrompt).toContain('<options>');
   expect(raw.meta.appendSystemPrompt).toContain('<rayno-recap>');
@@ -381,6 +384,8 @@ test('manual recap should hide the request, show the writing state, and attach t
   // Act
   if (touch) await recap.tapReply(labels[1]);
   else await recap.selectReply(labels[1]);
+  await recap.expectDraft(labels[1]);
+  await recap.sendDraft();
   // Assert
   await expect.poll(() => server.sends.length).toBe(2);
   const choice = await server.encryption.decrypt(server.sends[1].content, server.dataKey);
@@ -406,7 +411,7 @@ test('manual recap should work in demo mode and keep the draft', async ({ page }
   await expect(page.getByRole('status').filter({ hasText: 'Writing recap…' })).toHaveCount(0);
   await expect(page.locator('article[data-role="user"]')).toHaveCount(users);
   await expect(recap.ghost()).toHaveCount(0);
-  await recap.expectDraft('Keep my draft');
+  await recap.expectDraft('');
   await recap.expand(touch);
   await expect(recap.card().getByRole('button', { name: /^Jump to point \d$/ }).first()).toBeVisible();
 });

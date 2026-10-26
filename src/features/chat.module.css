@@ -440,6 +440,11 @@
   font-size: calc(13px * var(--font-scale));
   line-height: calc(22px * var(--font-scale));
 }
+.replyOptions > button[aria-pressed='true'] {
+  border-color: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 16%, var(--well));
+  color: var(--accent-soft);
+}
 .replyOptions > button > :first-child {
   flex: none;
 }

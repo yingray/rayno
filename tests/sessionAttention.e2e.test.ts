@@ -96,6 +96,9 @@ test('options should retain a needs-input indicator while offline and after read
   // Act
   await workspace.openRow();
   await workspace.selectReply('繼續 ✓');
+  await workspace.expectDraft('繼續 ✓');
+  expect(server.sends).toHaveLength(0);
+  await workspace.sendDraft();
   await expect(workspace.replyOptions().getByRole('button').first()).toBeDisabled();
   await workspace.showSessions();
   // Assert

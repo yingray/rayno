@@ -53,3 +53,10 @@ export function useDraft(sessionId: string) {
   const getSnapshot = useCallback(() => ui.getDraft(sessionId), [ui, sessionId]);
   return useSyncExternalStore(subscribe, getSnapshot);
 }
+
+export function useDraftOptions(sessionId: string) {
+  const ui = useDemo(store => store.ui);
+  const subscribe = useCallback((listener: () => void) => ui.subscribeDraft(sessionId, listener), [ui, sessionId]);
+  const getSnapshot = useCallback(() => ui.getDraftOptions(sessionId), [ui, sessionId]);
+  return useSyncExternalStore(subscribe, getSnapshot);
+}

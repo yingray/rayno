@@ -9,6 +9,7 @@ import { useUIState } from './useUIState';
 import { questionDemoId, createQuestionDemo } from './questionDemo';
 import { imageDemoId, createImageDemo } from './imageDemo';
 import { invocationDemoId, createInvocationDemo } from './invocationDemo';
+import { replyOptionsDemoId, createReplyOptionsDemo, replyOptionsDemoChoices } from './replyOptionsDemo';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 // The simulated recap answer comes before a normal reply, so the chat can show the waiting state.
@@ -37,6 +38,10 @@ export function DemoProvider({
     const fallback = createInitialState();
     try {
       const restored = restoreState(localStorage.getItem(STORAGE_KEY), fallback);
+      if (window.location.pathname === `/session/${replyOptionsDemoId}`
+        && !restored.sessions.some(session => session.id === replyOptionsDemoId)) {
+        return { ...restored, sessions: [...restored.sessions, createReplyOptionsDemo()] };
+      }
       if (window.location.pathname === `/session/${invocationDemoId}`
         && !restored.sessions.some(session => session.id === invocationDemoId)) {
         return { ...restored, sessions: [...restored.sessions, createInvocationDemo()] };
@@ -95,7 +100,7 @@ export function DemoProvider({
             sentAt: Date.now(),
             duration: '3s',
             tools: ['Read the current workspace context', 'Prepare a local demonstration response'],
-            content: `I’ve received your request:\n\n> ${prompts.replace(/\n/g, '\n> ')}\n\nThis is a **simulated response** in the Rayno demo. Your message and this conversation stay in this browser.\n\nYou can explore the **Changes** and **Files** tabs, open session details, or start another session.`,
+            content: `I’ve received your request:\n\n> ${prompts.replace(/\n/g, '\n> ')}\n\nThis is a **simulated response** in the Rayno demo. Your message and this conversation stay in this browser.\n\nYou can explore the **Changes** and **Files** tabs, open session details, or start another session.${id === replyOptionsDemoId ? '\n\n' + replyOptionsDemoChoices : ''}`,
           },
         });
       }, 3000);

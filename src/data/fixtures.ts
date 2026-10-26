@@ -57,6 +57,7 @@ export { defaultNewDraft, defaultPreferences } from './defaults';
 import { defaultNewDraft, defaultPreferences } from './defaults';
 import { createQuestionDemo } from './questionDemo';
 import { createImageDemo } from './imageDemo';
+import { createReplyOptionsDemo } from './replyOptionsDemo';
 
 export function createInitialState(now = Date.now()): DemoState {
   const sessions: Session[] = [
@@ -214,6 +215,7 @@ export function createInitialState(now = Date.now()): DemoState {
   }
   sessions.push(createQuestionDemo(now));
   sessions.push(createImageDemo(now));
+  sessions.push(createReplyOptionsDemo(now));
   return {
     version: 1,
     sessions,

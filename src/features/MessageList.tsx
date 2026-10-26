@@ -3,7 +3,7 @@ import { Children, Fragment, isValidElement, memo, useContext, useEffect, useId,
 import type { ReactNode, RefObject } from 'react';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
 import { Button, copyText, Icon } from '../components/ui';
-import { useDemo } from '../data/store';
+import { useDemo, useDraftOptions } from '../data/store';
 import { formatToolValue, groupChatActivity, toolCount, type ChatBlock, type ToolActivityBlock } from '../data/chatBlocks';
 import { partsForMessage } from '../data/messageOptions';
 import { commandInvocation, skillInvocation } from '../data/invocations';
@@ -262,13 +262,31 @@ function ResponseHeader({ sentAt }: { sentAt?: number }) {
   </div>;
 }
 
+function ReplyOptions({ sessionId, messageId, partIndex, items, disabled, onOption }: {
+  sessionId: string; messageId: string; partIndex: number; items: string[]; disabled: boolean;
+  onOption: (messageId: string, key: string, text: string) => void;
+}) {
+  const t = useText();
+  const selected = useDraftOptions(sessionId);
+  return <div className={styles.replyOptions} role="group" aria-label={t("Reply options")} data-reply-options>
+    {items.map((item, index) => {
+      const key = JSON.stringify([messageId, partIndex, index]);
+      const pressed = selected.some(option => option.key === key);
+      return <Button key={key} disabled={disabled} aria-pressed={pressed}
+        onClick={() => onOption(messageId, key, item)} icon={pressed ? "checkmarkCircle" : "ellipseOutline"}>
+        {item}
+      </Button>;
+    })}
+  </div>;
+}
+
 const MessageBlock = memo(function MessageBlock({ sessionId, message, response, optionsDisabled, onOption, bubble, notify, recap, recapWriting, onJump, onReveal, memory }: {
   sessionId: string;
   memory: TranscriptMemory;
   message: Message;
   response: boolean;
   optionsDisabled: boolean;
-  onOption: (messageId: string, text: string) => void;
+  onOption: (messageId: string, key: string, text: string) => void;
   bubble: BubbleColor;
   notify: (message: string) => void;
   recap?: MessageRecap;
@@ -323,18 +341,8 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
           {message.thinking && <Thinking text={message.thinking} memory={memory} stateKey={`thinking:${message.id}`} />}
           {message.unplaced ? <><p className={styles.toolNote}>{t("Earlier context is unavailable. Load earlier messages to place this work.")}</p>
             <RenderedMarkdown sessionId={sessionId} messageId={message.id} content={message.content} codeFilename={codeFilename} notify={notify} /></> : parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
-            <div className={styles.replyOptions} role="group" aria-label={t("Reply options")} data-reply-options key={index}>
-              {part.items.map((item, optionIndex) => (
-                <Button
-                  key={optionIndex}
-                  disabled={optionsDisabled}
-                  onClick={() => onOption(message.id, item)}
-                  icon="arrowUp"
-                >
-                  {item}
-                </Button>
-              ))}
-            </div>
+            <ReplyOptions key={index} sessionId={sessionId} messageId={message.id} partIndex={index}
+              items={part.items} disabled={optionsDisabled} onOption={onOption} />
           ) : (
             <RenderedMarkdown key={index} sessionId={sessionId} messageId={message.id} content={part.content} codeFilename={codeFilename} notify={notify} />
           )])}
@@ -390,7 +398,7 @@ export const MessageList = memo(function MessageList({
   recapBusy?: boolean;
   scroll?: RefObject<HTMLDivElement | null>;
   railHost?: HTMLElement | null;
-  onOption: (messageId: string, text: string) => void;
+  onOption: (messageId: string, key: string, text: string) => void;
   onRecap?: () => unknown;
   onUnpin?: () => void;
   pinned: RefObject<boolean>;

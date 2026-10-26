@@ -74,18 +74,20 @@ test('working agents should accept button, Enter, and option sends without an ab
   await server.pushReply('Choose the next step.\n\n<options><option>繼續檢查 ✓</option></options>');
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Keep this unfinished draft');
   await workspace.selectReply('繼續檢查 ✓');
+  await workspace.expectDraft('Keep this unfinished draft\n繼續檢查 ✓');
+  await workspace.sendDraft();
   // Assert
   await expect(workspace.replyOptions().getByRole('button')).toBeDisabled();
-  await workspace.expectDraft('Keep this unfinished draft');
+  await workspace.expectDraft('');
   await expect(page.getByText('Claude is working', { exact: true })).toBeVisible();
   expect(server.mutations.filter((method) => method.endsWith(':abort'))).toEqual([]);
   const messages = await Promise.all(server.sends.map((packet) =>
     server.encryption.decrypt<{ content: { text: string } }>(packet.content, server.dataKey),
   ));
   expect(messages.map((message) => message.content.text)).toEqual([
-    'Add this instruction while you work', 'Also keep the original task', '繼續檢查 ✓',
+    'Add this instruction while you work', 'Also keep the original task', 'Keep this unfinished draft\n繼續檢查 ✓',
   ]);
-  await expect(send).toBeEnabled();
+  await expect(send).toBeDisabled();
   await expect(stop).toBeEnabled();
   await workspace.expectNoPageOverflow();
   await workspace.capture(`${testInfo.project.name}-working-composer`);
@@ -95,8 +97,8 @@ test('working agents should accept button, Enter, and option sends without an ab
   await server.setWorking(false);
   // Assert
   await expect(stop).toHaveCount(0);
-  await expect(send).toBeEnabled();
-  await workspace.expectDraft('Keep this unfinished draft');
+  await expect(send).toBeDisabled();
+  await workspace.expectDraft('');
   expect(server.sends).toHaveLength(3);
 });
 

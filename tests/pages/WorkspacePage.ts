@@ -42,6 +42,11 @@ export class WorkspacePage {
     await this.page.getByRole('textbox', { name: 'Message', exact: true }).fill(content);
     await this.page.getByRole('button', { name: 'Send message' }).click();
   }
+  async sendDraft() {
+    const button = this.page.getByRole('button', { name: 'Send message', exact: true });
+    if (await this.page.evaluate(() => matchMedia('(pointer: coarse)').matches)) await button.tap();
+    else await button.click();
+  }
   async sendWithEnter(content: string) {
     const input = this.page.getByRole('textbox', { name: 'Message', exact: true });
     await input.fill(content);

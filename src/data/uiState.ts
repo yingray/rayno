@@ -1,3 +1,4 @@
+import { reconcileDraftOptions, toggleDraftOption, type DraftOption } from './draftOptions';
 import { demoReducer } from './reducer';
 import type { Action, DemoState } from './types';
 import type { TranscriptMemory } from './transcript';
@@ -6,6 +7,8 @@ import type { TranscriptMemory } from './transcript';
 // receive an external-store notification for each character in the composer.
 export function createUIState(initial: DemoState) {
   // This map belongs to the account provider. No transcript content enters a module-global cache.
+  const optionDrafts = new Map<string, readonly DraftOption[]>();
+  const emptyOptions: readonly DraftOption[] = [];
   const transcripts = new Map<string, TranscriptMemory>();
   let state = initial;
   let snapshot = initial;
@@ -16,6 +19,7 @@ export function createUIState(initial: DemoState) {
     transcripts,
     getState: () => state,
     getSnapshot: () => snapshot,
+    getDraftOptions: (id: string) => optionDrafts.get(id) || emptyOptions,
     getDraft: (id: string) => state.drafts[id] || '',
     subscribe(listener: () => void) {
       listeners.add(listener);
@@ -35,10 +39,21 @@ export function createUIState(initial: DemoState) {
       };
     },
     dispatch(action: Action) {
-      if (action.type === 'delete') transcripts.delete(action.id);
+      if (action.type === 'reset') optionDrafts.clear();
+      if (action.type === 'delete') { transcripts.delete(action.id); optionDrafts.delete(action.id); }
+      const optionAction = action.type === 'draftOption';
+      if (action.type === 'draftOption') {
+        const result = toggleDraftOption(state.drafts[action.id] || '', optionDrafts.get(action.id) || [], action.key, action.messageId, action.text);
+        optionDrafts.set(action.id, result.options);
+        action = { type: 'draft', id: action.id, value: result.value };
+      }
       const previous = state;
       const next = demoReducer(state, action);
       if (next === previous) return;
+      if (!optionAction) for (const [id, options] of optionDrafts) {
+        const value = next.drafts[id] || '', old = previous.drafts[id] || '';
+        if (value !== old) optionDrafts.set(id, reconcileDraftOptions(old, value, options));
+      }
       state = next;
       if (action.type !== 'draft') {
         snapshot = next;

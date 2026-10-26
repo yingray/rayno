@@ -72,14 +72,14 @@ export const Chat = memo(function Chat({
   onSettings?: (sessionId: string, settings: MessageSettings) => void;
 }) {
   const t = useText();
-  const { preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline, sideChats, sideUnread, parentKnown, sideEntry, sideTitle } = useDemo((store) => ({
+  const { ui, preferences, savedChoice, liveMetadata, agentState, dispatch, adapter, notify, mode, live, history, connection, offline, sideChats, sideUnread, parentKnown, sideEntry, sideTitle } = useDemo((store) => ({
     // A side chat whose parent is gone returns to the session list.
     parentKnown: !!session.parentSessionId && store.state.sessions.some((item) => item.id === session.parentSessionId),
     sideChats: session.isSideChat || embedded ? 0 : countOpenSideChats(store.state.sessions, session.id),
     sideUnread: !session.isSideChat && hasUnreadSideChats(store.state.sessions, session.id),
     sideEntry: !embedded && showSideChatEntry(store.state.sessions, session, store.live),
     sideTitle: embedded || !session.isSideChat ? undefined : sideChatTitle(store.state.sessions, session.id),
-    preferences: store.state.preferences,
+    ui: store.ui, preferences: store.state.preferences,
     savedChoice: store.state.modelChoices?.[modelChoiceKey(session.agent, session.machineId)],
     liveMetadata: store.snapshot?.sessionData[session.id]?.metadata,
     agentState: store.snapshot?.sessionData[session.id]?.agentState,
@@ -350,12 +350,15 @@ export const Chat = memo(function Chat({
     setError('');
     try {
       pinned.current = true;
+      const chosen = ui.getDraftOptions(session.id);
       await adapter.sendMessage(
         session.id,
         value,
         attachments.map((file): Attachment => ({ name: file.name, size: file.size, type: file.type, ...(mode === 'live' ? { file } : {}) })),
         messageSettings,
       );
+      chosen.forEach(option => answeredOptions.current.add(option.messageId));
+      setAnsweredIds(new Set(answeredOptions.current));
       setAttachments([]);
       if (!dismissKeyboard) input.current?.focus();
     } catch (error) {
@@ -379,28 +382,10 @@ export const Chat = memo(function Chat({
       setStopping(false);
     }
   }
-  const sendOption = useCallback(async (messageId: string, text: string) => {
-    if (
-      pendingRef.current || disabled ||
-      answeredOptions.current.has(messageId) || !unansweredMessages.has(messageId)
-    )
-      return;
-    pendingRef.current = true;
-    setPending(true);
-    setError('');
-    pinned.current = true;
-    try {
-      await adapter.sendMessage(session.id, text, [], { ...messageSettings, preserveDraft: true });
-      answeredOptions.current.add(messageId);
-      setAnsweredIds(new Set(answeredOptions.current));
-    } catch (error) {
-      setError(messageError(error));
-    } finally {
-      pendingRef.current = false;
-      setPending(false);
-    }
-  }, [adapter, disabled, session.id, messageSettings, unansweredMessages]);
-  const chooseReply = useEventCallback(sendOption);
+  const chooseReply = useEventCallback((messageId: string, key: string, text: string) => {
+    if (pendingRef.current || disabled || answeredOptions.current.has(messageId) || !unansweredMessages.has(messageId)) return;
+    dispatch({ type: 'draftOption', id: session.id, key, messageId, text });
+  });
   const requestRecap = useEventCallback(async () => {
     if (pendingRef.current || disabled || running || !canRecap || recapBusy) return;
     pendingRef.current = true;

@@ -174,6 +174,7 @@ export type Action =
   | { type: 'delete' | 'stop' | 'read'; id: string }
   | { type: 'send' | 'reply'; id: string; message: Message; now: number; preserveDraft?: boolean; keepRunning?: boolean }
   | { type: 'draft'; id: string; value: string }
+  | { type: 'draftOption'; id: string; key: string; messageId: string; text: string }
   | { type: 'newDraft'; value: Partial<NewSessionDraft> }
   | { type: 'rememberWorkspace'; value: RecentWorkspace }
   | { type: 'rememberModel'; key: string; value: ModelChoice }
