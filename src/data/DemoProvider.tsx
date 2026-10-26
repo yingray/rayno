@@ -13,6 +13,7 @@ import { replyOptionsDemoId, createReplyOptionsDemo, replyOptionsDemoChoices } f
 import { toolTimelineDemoId, createToolTimelineDemo } from './toolTimelineDemo';
 import { gitDiffDemoId, createGitDiffDemo } from './gitDiffDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
+import { createMarkdownAppearanceDemo, markdownAppearanceDemoId } from './markdownAppearanceDemo';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 // The simulated recap answer comes before a normal reply, so the chat can show the waiting state.
@@ -43,6 +44,8 @@ export function DemoProvider({
       const restored = restoreState(localStorage.getItem(STORAGE_KEY), fallback);
       const examples = createWorkspaceLayoutDemo().filter(example => !restored.sessions.some(session => session.id === example.id));
       if (examples.length) restored.sessions = [...restored.sessions, ...examples];
+      if (!restored.sessions.some(session => session.id === markdownAppearanceDemoId))
+        restored.sessions = [...restored.sessions, createMarkdownAppearanceDemo()];
       if (!restored.sessions.some(session => session.id === gitDiffDemoId))
         restored.sessions = [...restored.sessions, createGitDiffDemo()];
       // Make the new example discoverable on older saved demo accounts, too.

@@ -1,5 +1,6 @@
 import type { NewSessionDraft, Preferences } from './types';
 import { DEFAULT_RECAP_STYLE } from '../happy/systemPrompt';
+import { defaultMarkdownAppearance } from './markdownAppearance';
 
 export const defaultNewDraft: NewSessionDraft = {
   machineId: 'mbp',
@@ -19,6 +20,7 @@ export const defaultPreferences: Preferences = {
   bubble: 'rayno',
   fontSize: 'medium',
   chatWidth: 'medium',
+  ...defaultMarkdownAppearance,
   glassStyle: 'standard',
   compactTools: false,
   fasterTranscript: false,

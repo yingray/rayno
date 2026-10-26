@@ -1,3 +1,5 @@
+import type { MarkdownAppearancePreferences } from './markdownAppearance';
+
 export type Agent = 'Claude' | 'Codex' | 'Happy Agent';
 export type Status = 'idle' | 'running' | 'blocked' | 'offline';
 export type Attachment = { name: string; size: number; type: string; file?: File; ref?: string };
@@ -124,7 +126,7 @@ export type FontSize = 'small' | 'medium' | 'large';
 export type AvatarStyle = 'provider' | 'initials' | 'planets';
 export type GlassStyle = 'standard' | 'intense';
 export type ChatWidth = 'full' | 'medium' | 'standard';
-export type Preferences = {
+export type Preferences = MarkdownAppearancePreferences & {
   language: 'en' | 'zh-TW';
   alwaysShowContextSize: boolean;
   customCodexModel: string;

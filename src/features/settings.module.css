@@ -103,8 +103,9 @@
 }
 .group {
   flex: none;
+  scroll-margin-top: 16px;
 }
-.group h2 {
+.group > h2 {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -226,6 +227,24 @@
   padding: 8px 28px 8px 12px;
   cursor: pointer;
 }
+.markdownPreview { min-width: 0; padding: 16px; }
+.markdownThemeRow { flex-wrap: wrap; }
+.markdownThemePair { display: grid; flex: 0 1 392px; min-width: 0; gap: 8px; }
+.markdownThemeField { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; }
+.markdownThemeCaption { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: var(--muted); font-size: 12px; }
+.markdownThemeCaption small { color: var(--secondary); font-size: 11px; }
+.markdownSwatches { display: flex; flex-wrap: wrap; min-width: 0; }
+.markdownSwatch { display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.markdownSwatchDot { display: block; width: 20px; height: 20px; border-radius: 50%; position: relative; box-shadow: inset 0 0 0 1px #fff2; }
+.markdownSwatchDot[data-empty] { background: conic-gradient(#38383f 25%, #19191e 0 50%, #38383f 0 75%, #19191e 0) 0 0 / 8px 8px; }
+.markdownSwatchDot[data-empty]::after { content: ''; position: absolute; left: 1px; right: 1px; top: 9px; height: 1px; background: var(--secondary); transform: rotate(-45deg); }
+.markdownSwatch[aria-pressed='true'] > .markdownSwatchDot { outline: 1px solid var(--text); outline-offset: 3px; }
+.markdownSwatch:focus { outline: none; }
+.markdownSwatch:focus-visible > .markdownSwatchDot { outline: 1px solid var(--focus-color); outline-offset: 3px; }
+.markdownSwatch:hover > .markdownSwatchDot { filter: brightness(1.15); }
+.markdownPreviewLabel { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+.markdownDemoLink { padding: 0 16px 16px; }
+.markdownDemoLink > button { min-height: 44px; max-width: 100%; }
 .recapStyleRow {
   flex-wrap: wrap;
 }
@@ -503,7 +522,7 @@
   .groupCard {
     border-radius: 26px;
   }
-  .group h2 {
+  .group > h2 {
     font-size: 12px;
     margin: 0 12px 9px;
   }
@@ -537,6 +556,9 @@
     row-gap: 12px;
   }
   .chatWidthRow { flex-wrap: wrap; }
+  .markdownThemePair { flex-basis: 100%; gap: 12px; }
+  .markdownThemeField { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .markdownThemeCaption { flex-direction: row; align-items: baseline; justify-content: space-between; }
   .widthSelect { width: calc(100% - 38px); margin-left: 38px; }
   /* Phones put the choices on their own line, aligned with the row text. */
   .fontSize {

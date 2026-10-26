@@ -426,6 +426,7 @@
 }
 .markdown {
   color: var(--body);
+  min-width: 0;
   font-size: calc(15px * var(--font-scale));
   line-height: calc(24px * var(--font-scale));
   overflow-wrap: anywhere;
@@ -436,16 +437,27 @@
 .markdown p:last-child {
   margin-bottom: 0;
 }
+.markdown h1 {
+  margin-top: 36px;
+}
+.markdown h2 {
+  margin-top: 32px;
+}
 .markdown h3 {
   font-size: calc(15px * var(--font-scale));
   line-height: calc(24px * var(--font-scale));
-  margin: 22px 0 10px;
+  margin: 28px 0 10px;
   color: var(--text);
   font-weight: 500;
 }
 .markdown strong {
   font-weight: 500;
-  color: #c084fc;
+  color: var(--markdown-bold-color, #c084fc);
+  background: var(--markdown-bold-background, transparent);
+  padding: var(--markdown-bold-padding, 0);
+  border-radius: 4px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 .markdown :not(pre) > code {
   font: calc(12px * var(--font-scale)) 'Geist Mono';
@@ -455,14 +467,21 @@
   border-radius: 6px;
 }
 .markdown a {
-  color: var(--accent-soft);
+  color: var(--markdown-link-color, var(--accent-soft));
+  background: var(--markdown-link-background, transparent);
+  padding: var(--markdown-link-padding, 0);
+  border-radius: 4px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
   text-decoration: underline;
 }
 .markdown blockquote {
   margin: 12px 0;
   padding: 4px 14px;
-  border-left: 2px solid #8b5cf6;
-  color: var(--secondary);
+  border-left: 2px solid currentColor;
+  color: var(--markdown-quote-color, var(--secondary));
+  background: var(--markdown-quote-background, transparent);
+  border-radius: 0 8px 8px 0;
 }
 .markdown ul,
 .markdown ol {

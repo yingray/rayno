@@ -1,5 +1,5 @@
 import { useText } from "../i18n";
-import { useEffect, useId, useState } from 'react';
+import { lazy, useEffect, useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dialog, Empty, Icon, Segment, Toggle } from '../components/ui';
@@ -13,6 +13,11 @@ import { DEFAULT_RECAP_STYLE, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 import styles from './settings.module.css';
 import { UsageReport } from './UsageReport';
 import { AdvancedSettings } from './AdvancedSettings';
+import { markdownBackgroundThemes, markdownElements, markdownTextThemes, type MarkdownBackgroundTheme, type MarkdownTextTheme } from '../data/markdownAppearance';
+import { markdownAppearanceDemoId } from '../data/markdownAppearanceDemo';
+import { LazyBoundary } from '../components/LazyBoundary';
+
+const MarkdownAppearancePreview = lazy(() => import('./MarkdownAppearancePreview').then(module => ({ default: module.MarkdownAppearancePreview })));
 
 const categories: { key: string; label: string; icon: IconName }[] = [
   { key: 'account', label: 'Account', icon: 'personOutline' },
@@ -37,6 +42,31 @@ const swatches: { name: BubbleColor; color: string }[] = [
   { name: 'rose', color: '#f43f5e' },
   { name: 'sand', color: '#b89b66' },
 ];
+function ColorSwatches({ label, caption, options, value, originalColor, onChange }: {
+  label: string;
+  caption: string;
+  options: readonly { value: string; label: string; color: string | null }[];
+  value: string;
+  originalColor?: string;
+  onChange: (value: string) => void;
+}) {
+  const t = useText();
+  const selected = options.find(option => option.value === value) || options[0];
+  return <div className={styles.markdownThemeField}>
+    <div className={styles.markdownThemeCaption}><span>{caption}</span><small>{t(selected.label)}</small></div>
+    <div className={styles.markdownSwatches} role="group" aria-label={label}>
+      {options.map(option => {
+        const color = option.color || originalColor;
+        return <button key={option.value} type="button" className={styles.markdownSwatch}
+          aria-label={t(option.label)} title={t(option.label)} aria-pressed={option.value === value}
+          onClick={() => onChange(option.value)}>
+          <span className={styles.markdownSwatchDot} data-empty={color === 'transparent' || undefined}
+            style={{ background: color === 'transparent' ? undefined : color }} />
+        </button>;
+      })}
+    </div>
+  </div>;
+}
 function Row({
   icon,
   title,
@@ -64,16 +94,18 @@ function Row({
   );
 }
 function Group({
+  id,
   label,
   footer,
   children,
 }: {
+  id?: string;
   label: string;
   footer?: string;
   children: ReactNode;
 }) {
   return (
-    <div className={styles.group}>
+    <div id={id} className={styles.group}>
       <h2>{label}</h2>
       <div className={styles.groupCard}>{children}</div>
       {footer && <p>{footer}</p>}
@@ -148,6 +180,10 @@ export function Settings() {
   const navigate = useNavigate();
   const recapStyleId = useId();
   const category = location.pathname.split('/')[2] || 'appearance';
+  useEffect(() => {
+    if (category === 'appearance' && location.hash === '#markdown')
+      document.getElementById('markdown')?.scrollIntoView({ block: 'start' });
+  }, [category, location.hash]);
   const current = categories.find((item) => item.key === category);
   const [confirmReset, setConfirmReset] = useState(false);
   return (
@@ -279,6 +315,22 @@ export function Settings() {
                   }
                 />
               </Row>
+            </Group>
+            <Group id="markdown" label={t('Markdown')} footer={t('Choose preset text and background colors for each element in agent replies.')}>
+              {markdownElements.map(element => <Row key={element.value} icon="colorPaletteOutline" title={t(element.label)} className={styles.markdownThemeRow}>
+                <div className={styles.markdownThemePair}>
+                  <ColorSwatches label={t(element.textLabel)} caption={t('Text color')} options={markdownTextThemes}
+                    value={preferences[element.textKey]} originalColor={element.originalColor}
+                    onChange={value => dispatch({ type: 'preferences', value: { [element.textKey]: value as MarkdownTextTheme } })} />
+                  <ColorSwatches label={t(element.backgroundLabel)} caption={t('Background')} options={markdownBackgroundThemes}
+                    value={preferences[element.backgroundKey]}
+                    onChange={value => dispatch({ type: 'preferences', value: { [element.backgroundKey]: value as MarkdownBackgroundTheme } })} />
+                </div>
+              </Row>)}
+              <LazyBoundary><MarkdownAppearancePreview preferences={preferences} /></LazyBoundary>
+              {mode === 'demo' && <div className={styles.markdownDemoLink}>
+                <Button icon="chatbubblesOutline" onClick={() => navigate(`/session/${markdownAppearanceDemoId}?demo=1`)}>{t('Open Markdown demo')}</Button>
+              </div>}
             </Group>
             <Group label={t("Reading")}>
               <Row icon="speedometerOutline" title={t("Faster long chats (preview)")} className={styles.readingRow}

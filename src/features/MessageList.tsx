@@ -1,7 +1,6 @@
 import { LanguageContext, useText } from "../i18n";
-import { Children, Fragment, isValidElement, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import Markdown, { defaultUrlTransform } from 'react-markdown';
 import { Button, copyText, Icon } from '../components/ui';
 import { useDemo, useDraftOptions } from '../data/store';
 import { formatToolValue, groupChatActivity, toolCount, type ChatBlock, type ToolActivityBlock } from '../data/chatBlocks';
@@ -10,7 +9,6 @@ import { commandInvocation, skillInvocation } from '../data/invocations';
 import { isRejected, unansweredMessageIds } from '../data/replyTurns';
 import { recapView, type MessageRecap } from '../data/recapView';
 import type { RecapSegment } from '../data/messageRecap';
-import { remarkPlugins } from '../data/recapQuote';
 import type { BubbleColor, Message, ToolCall, ToolPermission } from '../data/types';
 import { toolAnswers, toolSections } from '../data/toolResults';
 import { completedForms, completedPermissions, mergedPermission, permissionSummary, toolName, type AnsweredForm, type PermissionSummary } from '../happy/toolDecisions';
@@ -18,6 +16,8 @@ import { permissionLabel } from '../happy/permissionOptions';
 import { ToolAnswers, ToolDecision, ToolSections, type ToolOutcome } from './ToolDetails';
 import { useEventCallback } from '../components/useEventCallback';
 import styles from './chat.module.css';
+import { RenderedMarkdown } from './RenderedMarkdown';
+import { markdownElements } from '../data/markdownAppearance';
 import { RecapButton, RecapCard } from './RecapCard';
 import { ResponseRail } from './RecapRail';
 import { responseAnchors } from '../data/responseAnchors';
@@ -25,11 +25,7 @@ import { findRecapTarget, jumpToRecapTarget } from './recapTargets';
 import {
   hasUserGesture, playRecapSpeech, recapSpeechState, selectRecapPoint, speechSupported, toggleRecapSpeech,
 } from './recapSpeech';
-import { MermaidDiagram } from './MermaidDiagram';
 import { AttachmentImage } from './AttachmentImage';
-import { LocalImage } from './LocalImage';
-import { isLocalImageLink, isLocalImageSource } from '../happy/localImages';
-import { CodeBlock } from './CodeBlock';
 import { TodoList } from './TodoList';
 import { InlineToolQuestion, questionCallIds } from '../happy/Requests';
 import { timeStage } from '../happy/perf';
@@ -196,52 +192,6 @@ function TodoTool({ todos, decision }: { todos: Todo[]; decision?: PermissionSum
   </div>;
 }
 
-const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify, sessionId, messageId }: {
-  content: string; codeFilename: string; notify: (message: string) => void;
-  sessionId: string; messageId: string;
-}) {
-  const t = useText();
-  return (
-    <Markdown
-      remarkPlugins={remarkPlugins}
-      urlTransform={(url, key) => (key === 'src' && isLocalImageSource(url)) || (key === 'href' && isLocalImageLink(url))
-        ? url : defaultUrlTransform(url)}
-      components={{
-        a: ({ node: _node, ...props }) => props.href && isLocalImageLink(props.href)
-          ? <LocalImage sessionId={sessionId} messageId={messageId} source={props.href} alt={typeof props.children === 'string' ? props.children : undefined} />
-          : <a {...props} target="_blank" rel="noreferrer noopener" />,
-        img: ({ node: _node, ...props }) => typeof props.src === 'string' && isLocalImageSource(props.src)
-          ? <LocalImage sessionId={sessionId} messageId={messageId} source={props.src} alt={props.alt} />
-          : props.src ? <img {...props} loading="lazy" /> : <span>{t('Image unavailable')}</span>,
-        table: ({ children }) => (
-          <div
-            className={styles.tableScroll}
-            data-markdown-table
-            role="region"
-            aria-label={t("Markdown table")}
-            tabIndex={0}
-          >
-            <table>{children}</table>
-          </div>
-        ),
-        th: ({ children, style }) => <th scope="col" style={style}>{children}</th>,
-        pre: ({ children }) => {
-          const code = Children.toArray(children)[0];
-          if (isValidElement<{ className?: string; children?: ReactNode }>(code)
-            && /\blanguage-mermaid\b/i.test(code.props.className || '')) {
-            return <MermaidDiagram source={String(code.props.children || '').replace(/\n$/, '')} notify={notify} />;
-          }
-          if (!isValidElement<{ className?: string; children?: ReactNode }>(code)) return <pre>{children}</pre>;
-          const language = /\blanguage-([\w+-]+)/i.exec(code.props.className || '')?.[1].toLowerCase() || '';
-          return <CodeBlock source={String(code.props.children || '')} language={language} filename={codeFilename} notify={notify} />;
-        },
-      }}
-    >
-      {content}
-    </Markdown>
-  );
-});
-
 // Happy Web MessageView.tsx: a queued send shows its state at once. Other sends wait a short grace period.
 const PENDING_GRACE_MS = 1000;
 function usePendingShown(delivery: Message['delivery']) {
@@ -348,7 +298,7 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
         {message.delivery?.status === 'rejected' && <p className={styles.sendState} data-rejected>{t("Not sent:")}{' '}{message.delivery.reason}
         </p>}
       </>) : (
-        <div className={styles.markdown}>
+        <div className={styles.markdown} data-markdown-content>
           {message.thinking && <Thinking text={message.thinking} memory={memory} stateKey={`thinking:${message.id}`} />}
           {message.unplaced ? <><p className={styles.toolNote}>{t("Earlier context is unavailable. Load earlier messages to place this work.")}</p>
             <RenderedMarkdown sessionId={sessionId} messageId={message.id} content={message.content} codeFilename={codeFilename} notify={notify} /></> : parts.map((part, index) => [index === optionsAt && card, part.kind === 'recap' ? null : part.kind === 'options' ? (
@@ -419,9 +369,10 @@ export const MessageList = memo(function MessageList({
   onManaged: (enabled: boolean) => void;
   onPinned: (pinned: boolean) => void;
 }) {
-  const { bubble, compactTools, faster, font, notify, autoplay, agentState, metadata, ui, live, language, historyReady } = useDemo((store) => ({
+  const { bubble, compactTools, faster, font, markdownLayout, notify, autoplay, agentState, metadata, ui, live, language, historyReady } = useDemo((store) => ({
     bubble: store.state.preferences.bubble, compactTools: store.state.preferences.compactTools,
     faster: store.state.preferences.fasterTranscript, font: store.state.preferences.fontSize, language: store.state.preferences.language,
+    markdownLayout: markdownElements.map(element => store.state.preferences[element.backgroundKey]).join(':'),
     ui: store.ui, live: store.live,
     historyReady: !store.live || !!store.snapshot?.histories[sessionId]?.loaded,
     notify: store.notify, autoplay: store.state.preferences.recapAutoplay,
@@ -609,7 +560,7 @@ export const MessageList = memo(function MessageList({
         </Fragment>;
   return <>
     <TranscriptViewport blocks={blocks} enabled={virtual} full={full} scroll={scroll} pinned={pinned}
-      controller={viewport} memory={memory} ready={positionReady && historyReady} layoutKey={`${font}:${compactTools}:${language}`}
+      controller={viewport} memory={memory} ready={positionReady && historyReady} layoutKey={`${font}:${compactTools}:${language}:${markdownLayout}`}
       render={renderBlock} onMode={onVirtualMode} onPinned={onPinned} persist={persist} />
     {running && !activeBlock && <ActivityWaiting agent={agent} simulated={simulated} />}
     {placeholder && (

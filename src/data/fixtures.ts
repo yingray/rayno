@@ -61,6 +61,7 @@ import { createReplyOptionsDemo } from './replyOptionsDemo';
 import { createToolTimelineDemo } from './toolTimelineDemo';
 import { createGitDiffDemo } from './gitDiffDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
+import { createMarkdownAppearanceDemo } from './markdownAppearanceDemo';
 
 export function createInitialState(now = Date.now()): DemoState {
   const sessions: Session[] = [
@@ -222,6 +223,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createToolTimelineDemo(now));
   sessions.push(createGitDiffDemo(now));
   sessions.push(...createWorkspaceLayoutDemo(now));
+  sessions.push(createMarkdownAppearanceDemo(now));
   return {
     version: 1,
     sessions,

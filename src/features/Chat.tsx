@@ -36,6 +36,8 @@ import type { TranscriptController } from './TranscriptViewport';
 import { ActivityWaiting } from './ActivityTicker';
 import { SessionGitInfo } from './SessionGitInfo';
 import { toolTimelineDemoId } from '../data/toolTimelineDemo';
+import { markdownThemeStyle } from '../data/markdownAppearance';
+import { markdownAppearanceDemoId } from '../data/markdownAppearanceDemo';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
@@ -423,6 +425,7 @@ export const Chat = memo(function Chat({
       className={styles.chat}
       data-view={view}
       data-chat-width={preferences.chatWidth}
+      style={markdownThemeStyle(preferences)}
       data-chat-session
       data-connection={mode === 'live' ? connection : undefined}
       data-keyboard-open={keyboardOpen}
@@ -521,6 +524,9 @@ export const Chat = memo(function Chat({
               {hasRequests && <LazyBoundary><Requests sessionId={session.id} /></LazyBoundary>}
               {mode === 'demo' && session.id === questionDemoId && <LazyBoundary><DemoQuestions /></LazyBoundary>}
               {mode === 'demo' && session.id === toolTimelineDemoId && <LazyBoundary><DemoToolTimeline session={session} /></LazyBoundary>}
+              {mode === 'demo' && session.id === markdownAppearanceDemoId && <div className={styles.activityDemo}>
+                <Button icon="colorPaletteOutline" onClick={() => navigate('/settings/appearance?demo=1#markdown')}>{t('Appearance settings')}</Button>
+              </div>}
               <div className={styles.conversationEnd}>
                 <span className={styles.liveDot} />
                 {disabled
