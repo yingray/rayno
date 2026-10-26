@@ -22,7 +22,7 @@ export class ToolResultsPage extends PriorityFeaturesPage {
     if (!await row.evaluate((element) => (element as HTMLDetailsElement).open)) await summary.click();
     await expect(row).toHaveAttribute('open', '');
     if (await this.page.evaluate(() => matchMedia('(max-width: 767px), (hover: none) and (pointer: coarse)').matches))
-      await this.expectTouchTarget(summary);
+      await this.expectToolLogTarget(summary);
     return row;
   }
   async expectDecision(name: string, label: string) {

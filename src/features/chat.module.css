@@ -336,26 +336,26 @@
   min-width: 0;
   border: 1px solid var(--border);
   background: var(--well);
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
 }
 .toolGroup > button {
   min-height: 44px;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   color: var(--muted);
-  font-size: calc(13px * var(--font-scale));
+  font-size: calc(12px * var(--font-scale));
   background: transparent;
   border: 0;
-  padding: 12px 14px;
+  padding: 8px 10px;
   width: 100%;
   text-align: left;
   cursor: pointer;
 }
 .toolRows {
-  --tool-row-height: 44px;
-  padding: 12px 16px 16px;
+  --tool-row-height: 22px;
+  padding: 2px 10px 4px;
   margin: 0;
   border-top: 1px solid var(--border);
   list-style: none;
@@ -363,13 +363,13 @@
 .toolRows > li {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 4px 0;
+  gap: 8px;
+  padding: 0;
   position: relative;
   min-height: var(--tool-row-height);
-  font: calc(13px * var(--font-scale)) 'Geist Mono';
+  font: calc(12px * var(--font-scale)) 'Geist Mono';
   color: var(--muted);
-  line-height: 1.7;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .toolRows > li > :first-child {
@@ -381,8 +381,8 @@
   content: '';
   position: absolute;
   left: 6px;
-  top: calc(var(--tool-row-height) / 2 + 15px);
-  bottom: -5px;
+  top: calc(var(--tool-row-height) / 2 + 9px);
+  bottom: calc(9px - var(--tool-row-height) / 2);
   width: 1px;
   background: var(--border);
 }
@@ -392,13 +392,14 @@
 .activityMark[data-state='done'] { color: #10c99a; }
 .activityMark[data-state='error'] { color: #fca5a5; }
 .activitySpinner { width: 14px; height: 14px; border: 2px solid color-mix(in srgb, var(--accent-soft) 24%, transparent); border-top-color: var(--accent-soft); border-radius: 50%; animation: activitySpin 1s linear infinite; }
-.toolGroup[data-active] > button { gap: 12px; padding: 14px 16px; }
-.activityLines { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; font-family: 'Geist Mono', monospace; animation: activityArrive 180ms ease-out; }
-.activityPrevious { display: block; color: var(--muted); opacity: .5; font-size: calc(11px * var(--font-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.activityCurrent { color: var(--body); font-weight: 500; overflow-wrap: anywhere; line-height: 1.5; }
-.activityStep { flex: none; white-space: nowrap; border: 1px solid var(--border); background: var(--card); border-radius: 20px; padding: 4px 8px; font-size: calc(11px * var(--font-scale)); font-variant-numeric: tabular-nums; }
-.activityWaiting { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--well); color: var(--muted); font-size: calc(13px * var(--font-scale)); }
-.activityWaiting small { display: block; margin-top: 3px; font-size: calc(11px * var(--font-scale)); }
+.toolGroup[data-active] > button { gap: 8px; padding: 8px 10px; }
+.activityLines { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; font-family: 'Geist Mono', monospace; animation: activityArrive 180ms ease-out; }
+.activityPrevious { display: block; color: var(--muted); opacity: .5; font-size: calc(10px * var(--font-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activityCurrent { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--body); font-weight: 500; line-height: 1.5; }
+.activitySummary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activityStep { flex: none; white-space: nowrap; border: 1px solid var(--border); background: var(--card); border-radius: 20px; padding: 2px 6px; font-size: calc(10px * var(--font-scale)); font-variant-numeric: tabular-nums; }
+.activityWaiting { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--well); color: var(--muted); font-size: calc(12px * var(--font-scale)); }
+.activityWaiting small { display: block; margin-top: 1px; font-size: calc(10px * var(--font-scale)); }
 .activityWaiting > .simulated { margin-left: auto; }
 .activityDemo { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; color: var(--muted); font-size: 12px; }
 .activityDemo > div { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -407,7 +408,7 @@
 @keyframes activitySpin { to { transform: rotate(360deg); } }
 @keyframes activityArrive { from { opacity: .5; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 540px) {
-  .toolGroup[data-active] > button { display: grid; grid-template-columns: 14px minmax(0, 1fr) 14px; gap: 6px 10px; }
+  .toolGroup[data-active] > button { display: grid; grid-template-columns: 14px minmax(0, 1fr) 14px; gap: 3px 8px; }
   .activityLines { grid-column: 2; grid-row: 1; }
   .activityStep { grid-column: 2; grid-row: 2; justify-self: start; }
   .toolGroup[data-active] > button > :last-child { grid-column: 3; grid-row: 1 / 3; }
@@ -1094,10 +1095,10 @@
     font-size: calc(14px * var(--font-scale));
   }
   .toolGroup {
-    margin-bottom: 15px;
+    margin-bottom: 8px;
   }
   .toolGroup > button {
-    font-size: calc(13px * var(--font-scale));
+    font-size: calc(12px * var(--font-scale));
   }
   .toolRows > div {
     font-size: 13px;
@@ -1260,8 +1261,9 @@
 }
 .toolDetails summary::marker { content: ''; }
 .toolDetails summary::-webkit-details-marker { display: none; }
-@media (max-width: 767px), (hover: none) and (pointer: coarse) {
-  .toolRows { --tool-row-height: 44px; }
+@media (max-width: 767px), (max-width: 1024px) and (max-height: 480px), (hover: none) and (pointer: coarse) {
+  /* Compact log rows follow the requested phone density. Primary actions stay 44px. */
+  .toolRows { --tool-row-height: 24px; }
 }
 .toolDetails h4 { margin: 12px 0 4px; }
 .toolDetails pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; font-size: 12px; }

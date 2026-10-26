@@ -147,7 +147,7 @@ test('tool details and answered questions should stay usable on phone viewports'
     const diff = (await edit.getByLabel('Tool diff').boundingBox())!;
     expect(diff.x + diff.width).toBeLessThanOrEqual(width);
     const summary = edit.locator(':scope > summary');
-    if (width < 768) await workspace.expectTouchTarget(summary);
+    if (width < 768) await workspace.expectToolLogTarget(summary);
     await workspace.expectNoPageOverflow();
     if (width === 320) await workspace.capture('tool-results-320');
   }

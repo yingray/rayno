@@ -34,12 +34,12 @@ export function ActivityTicker({ block, active, expanded }: { block: ToolActivit
     <ActivityMark state={current.call?.isError ? 'error' : callEnded(current.call) ? 'done' : 'running'} />
     <span className={styles.activityLines} key={current.call?.id ?? current.index}>
       {previous && <span className={styles.activityPrevious} title={previous.label}>{previous.label}</span>}
-      <span className={styles.activityCurrent}>{current.label}</span>
+      <span className={styles.activityCurrent} title={current.label}>{current.label}</span>
     </span>
     <span className={styles.activityStep}>{t('Step {step}', { step: String(position + 1) })}
       {timing.start !== undefined && <> · <ActivityClock start={timing.start} /></>}
     </span>{chevron}
-  </> : <>{chevron}<span>{duration ? t('Worked for {duration}', { duration }) : t('Tool activity')}
+  </> : <>{chevron}<span className={styles.activitySummary}>{duration ? t('Worked for {duration}', { duration }) : t('Tool activity')}
     {' · '}{steps.length} {steps.length === 1 ? t('tool') : t('tools')}</span></>;
 }
 

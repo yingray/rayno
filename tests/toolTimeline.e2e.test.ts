@@ -22,12 +22,14 @@ for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [
     await timeline.expectStep(2);
     await timeline.next();
     await timeline.expectStep(3);
+    await timeline.expectSingleLineTitle();
     await timeline.expand();
+    await timeline.expectCompactLogs();
     await expect(timeline.group().locator('li[data-step-state="done"]')).toHaveCount(2);
     await expect(timeline.group().locator('li[data-step-state="running"]')).toHaveCount(1);
     const detail = timeline.group().locator('details').last();
     await timeline.activate(detail.locator('summary'));
-    await expect(detail.locator('pre').first()).toContainText('sources/monitor/agentUsage.ts');
+    await expect(detail.locator('pre').first()).toContainText('sources/monitor/providers/claude/workspace/agentUsage.ts');
     await timeline.activate(detail.locator('summary'));
     await timeline.expectNoPageOverflow();
     if (width === 390 && height === 844) {

@@ -1,11 +1,11 @@
 import type { Message, Session, ToolCall } from './types';
 
 export const toolTimelineDemoId = 'tool-timeline-demo';
-const labels = ['Read sources/monitor/manualUsage.ts', 'Grep capturedAt · 9 matches', 'Read sources/monitor/agentUsage.ts', 'Run monitor tests'];
+const labels = ['Read sources/monitor/manualUsage.ts', 'Grep capturedAt · 9 matches', 'Read sources/monitor/providers/claude/workspace/agentUsage.ts', 'Run monitor tests'];
 export function timelineDemoMessages(stage: number, now: number, previous: Message[] = []): Message[] {
   const intro: Message = { id: 'timeline-intro', role: 'assistant', sentAt: previous[0]?.sentAt ?? now, content: [
     '### Ticker + timeline · Interactive demo',
-    'Start, then choose Next step. Expand Tool activity to inspect the timeline and tool details. Finish to see the duration summary.',
+    'Start, then choose Next step. Long titles stay on one line. Expand Tool activity to read the full tool name and details. Finish to see the duration summary.',
     'Tools are simulated. This example uses the real chat components. Restart preserves your draft.',
   ].join('\n\n') };
   const old = previous.find(message => message.id === 'timeline-tools');

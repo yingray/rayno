@@ -40,8 +40,13 @@ export class PriorityFeaturesPage extends LiveWorkspacePage {
     const summary = group.locator('summary').filter({ hasText: name });
     if (!await summary.evaluate(element => (element.parentElement as HTMLDetailsElement).open)) await summary.click();
     if (await this.page.evaluate(() => matchMedia('(max-width: 767px), (hover: none) and (pointer: coarse)').matches))
-      await this.expectTouchTarget(summary);
+      await this.expectToolLogTarget(summary);
     return group;
+  }
+  async expectToolLogTarget(control: import('@playwright/test').Locator) {
+    const box = (await control.boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(24);
+    expect(box.width).toBeGreaterThanOrEqual(44);
   }
   async expectTouchTarget(control: import('@playwright/test').Locator) {
     const box = (await control.boundingBox())!;
