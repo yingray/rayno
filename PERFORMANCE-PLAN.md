@@ -1,6 +1,6 @@
 # Performance and sync improvement plan
 
-Created: 2026-10-23. Updated: 2026-10-24 (A01: demo image cache on first use).
+Created: 2026-10-23. Updated: 2026-10-26 (React Compiler adoption and comparison).
 Input: `rayno_audit_20261023.md` (audit commit `8cd14a2`).
 Plan base: `main` at `0b15c38`.
 
@@ -470,3 +470,80 @@ The full pipeline, loaded history, and search data remain in memory. A very larg
 Anchors identify blocks, not inner tool calls. Exact restoration when older records merge into the first tool group needs a separate probe.
 Physical iPhone Safari, real keyboard transitions, assistive technology, and production latency need validation before a default rollout.
 Automated phone checks use Chromium and WebKit emulation, including a short keyboard viewport and landscape.
+
+
+## 8. React Compiler adoption, 2026-10-26
+
+Base: `8400406`. The build uses `babel-plugin-react-compiler@1.0.0` through Vite's `reactCompilerPreset`, with React 19 as its target.
+Development and production builds enable it by default. `RAYNO_REACT_COMPILER=0` disables it for a comparison build.
+Existing manual memoization and store subscriptions stay in place.
+A source audit reports 78 successful function compilations and diagnostics for 32 distinct functions that the compiler leaves unchanged.
+Unsupported `try/finally`, render-time ref access, and the virtualizer's incompatible-library diagnostic account for most exclusions.
+No compiler safety checks are disabled. A successful build does not mean that every component is compiled.
+
+The comparison uses `tests/performanceBaseline.e2e.test.ts`, one worker, and three runs per browser project for each build.
+The fixture has 200 turns, 1,000 tool calls, and 20 live replies.
+`shownAfter` includes fixture encryption, socket delivery, React work, and layout. It does not isolate React rendering.
+The browsers use desktop and phone emulation on a Mac, without CPU throttling. No physical iPhone is measured.
+
+| Project | Compiler off median (range), ms | Compiler on median (range), ms | Later off control (two runs), ms |
+|---|---:|---:|---:|
+| Desktop Chromium | 122 (118–131) | 252 (172–256) | 281–286 |
+| Mobile Chromium | 193 (95–194) | 133 (122–366) | Not run |
+| Desktop WebKit | 1,239 (1,011–1,351) | 1,356 (1,353–2,048) | 1,146–1,912 |
+| Mobile WebKit | 861 (704–945) | 865 (754–963) | Not run |
+
+The later control overlaps the compiler results. These sequential samples do not establish a consistent speedup or an isolated compiler regression.
+Keep this as an adoption and compatibility change; do not claim a measured production speedup.
+Local build wall time changes from 2.17s to 4.15s in one sample per variant.
+The Workbox precache report changes from about 2,753.9 to 2,807.5 KiB; this is an uncompressed asset sum, not transfer size.
+Raw browser samples and the source audit are in [2026-10-26-react-compiler.json](benchmarks/results/2026-10-26-react-compiler.json).
+
+To repeat the comparison, build with `RAYNO_REACT_COMPILER=0 pnpm build`, run the stage-timing case with one worker,
+then run `pnpm build` and repeat the same case. Finish with the compiler enabled.
+
+Validation for the default compiled build: all 577 unit tests pass.
+The production browser selection has 320 passes and 72 device-specific skips across Chromium and WebKit.
+It covers input and IME, suggestions, reply options and its demo, full and virtual reading positions,
+model choices, session menus, new sessions, resizing, and embedded side chats at phone and desktop sizes.
+Two additional demo interaction cases pass against the development server, with Compiler output and Fast Refresh both verified.
+All 28 timing cases pass. Frozen-lockfile installation, typecheck, production build, and diff checks pass.
+
+The built site also serves `/reports/react-compiler.html` without sign-in, with a JSON download beside it.
+The page derives its timing tables from the raw result file. Report disclosure, download, and mobile reading pass in 24 Chromium and WebKit cases.
+
+
+## 9. Paired Compiler measurements, 2026-10-26
+
+The follow-up uses runtime gating in one payload per phase. Fresh pages alternate off/on and on/off in eight adjacent pairs per device project.
+Each page loads the same 200-turn, 1,000-tool fixture, discards three warm-ups, and measures seven operations per scenario.
+There are 128 isolated pages, 64 adjacent pairs across the two phases, and 2,688 recorded interactions.
+The analysis uses page medians. Repeated operations within a page are not treated as independent experiments.
+
+One isolated production-profiling build wraps the workspace in a root React Profiler and uses `react-dom/profiling`.
+Its CPU metric sums `actualDuration` for committed renders from the native event through two frames after the DOM update.
+This measures render CPU; it is not DOM commit-phase duration.
+A second isolated build uses the normal production renderer for DOM and frame timing, without Profiler overhead.
+A native WebSocket listener excludes fixture encryption and transport before browser delivery. Client decryption and state work remain in reply DOM latency.
+Input and option timing start at document event capture. Text input waits for the controlled textarea's defaultValue update.
+Two animation callbacks bracket a rendering opportunity; these timings are not INP or a physical screen timestamp.
+
+| Project | New-reply render CPU, off → on (ms) | Paired render delta, 95% CI (ms) | Reply delivery → DOM, off → on (ms) |
+|---|---:|---:|---:|
+| Desktop Chromium | 2.80 → 2.95 | +0.10, −0.10 to +0.30 | 9.95 → 9.95 |
+| Mobile Chromium | 3.55 → 3.70 | +0.05, −0.10 to +0.20 | 6.50 → 6.20 |
+| Desktop WebKit | 4 → 4 | 0, 0 to 0 | 38 → 39 |
+| Mobile WebKit | 3 → 3.5 | 0, −1 to +1 | 9 → 9 |
+
+Draft and option render medians in Chromium are about 0.1–0.2ms in both variants.
+WebKit returns integer-millisecond profiling durations; many small operations report zero. These values do not establish zero work or equivalence.
+All Holm-adjusted sign-flip p values are 1 across the 12 comparisons per metric.
+The seeded 20,000-resample paired bootstrap intervals are descriptive, not simultaneous intervals.
+The paired results show no material render, DOM, or next-frame improvement for this fixture.
+They support no performance claim for enabling the compiler by default. Production defaults are not changed by the benchmark.
+
+The profiling renderer, runtime gate, and observers exist only in `.performance/compiler-*` builds.
+Normal app builds retain their normal entry and renderer. These probes do not measure cold download, physical iPhone latency, battery use, or thermal behavior.
+Raw samples, adjusted statistics, browser versions, and source hashes are in [2026-10-26-react-compiler-paired.json](benchmarks/results/2026-10-26-react-compiler-paired.json).
+The public report at `/reports/react-compiler.html` now leads with the paired results and retains the earlier trial in a collapsed section.
+Reproduction commands and timing boundaries are in [benchmarks/README.md](benchmarks/README.md#paired-react-compiler-probe).

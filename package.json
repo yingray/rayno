@@ -35,11 +35,15 @@
     "socket.io-client": "4.8.4"
   },
   "devDependencies": {
+    "@babel/core": "7.29.7",
     "@playwright/test": "1.64.1",
+    "@rolldown/plugin-babel": "0.2.4",
+    "@types/babel__core": "7.20.5",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "babel-plugin-react-compiler": "1.0.0",
     "typescript": "7.0.2",
     "vite": "8.3.4",
     "vite-plugin-pwa": "2.0.0",

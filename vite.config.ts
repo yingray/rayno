@@ -2,8 +2,12 @@ import { execSync } from 'node:child_process';
 import { loadEnv } from 'vite';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
 import { VitePWA } from 'vite-plugin-pwa';
+import { resolve } from 'node:path';
+import { compilerBenchmarkEntry } from './benchmarks/compiler/plugin.ts';
+import { reactCompilerReport } from './benchmarks/reactCompilerReport.ts';
 
 // Cloudflare Pages sets CF_PAGES_COMMIT_SHA. A local build reads the commit from git.
 function buildCommit(): string {
@@ -29,6 +33,11 @@ function versionFile(build: { commit: string; builtAt: string }): Plugin {
 
 export default defineConfig(({ mode }) => {
   const build = { commit: buildCommit(), builtAt: new Date().toISOString() };
+  // Keep an uncompiled build available for performance comparisons.
+  const benchmark = process.env.RAYNO_COMPILER_BENCHMARK;
+  if (benchmark && !['profiled', 'production'].includes(benchmark)) throw new Error('Use profiled or production for RAYNO_COMPILER_BENCHMARK.');
+  const profiling = benchmark === 'profiled';
+  const compilerEnabled = !!benchmark || process.env.RAYNO_REACT_COMPILER !== '0';
   // Extra host names for `pnpm dev` and `pnpm preview`, such as a Tailscale name.
   // Set RAYNO_ALLOWED_HOSTS in `.env.local` as a comma-separated list.
   const allowedHosts = (loadEnv(mode, '.', 'RAYNO_').RAYNO_ALLOWED_HOSTS || '')
@@ -36,13 +45,23 @@ export default defineConfig(({ mode }) => {
     .map((host) => host.trim())
     .filter(Boolean);
   return {
-    define: { __RAYNO_BUILD__: JSON.stringify(build) },
+    define: { __RAYNO_BUILD__: JSON.stringify(build), __RAYNO_COMPILER_PROFILE__: profiling },
+    build: benchmark ? { outDir: `.performance/compiler-${benchmark}` } : undefined,
+    resolve: benchmark ? { alias: [
+      { find: '@rayno/compiler-benchmark-gate', replacement: resolve('benchmarks/compiler/gate.ts') },
+      ...(profiling ? [{ find: /^react-dom\/client$/, replacement: 'react-dom/profiling' }] : []),
+    ] } : undefined,
     server: { allowedHosts },
     preview: { allowedHosts },
     plugins: [
       react(),
+      compilerEnabled && babel({ presets: [reactCompilerPreset({ target: '19',
+        ...(benchmark ? { gating: { source: '@rayno/compiler-benchmark-gate', importSpecifierName: 'isCompilerEnabled' } } : {}),
+      })] }),
       versionFile(build),
-      VitePWA({
+      !benchmark && reactCompilerReport(),
+      !!benchmark && compilerBenchmarkEntry(),
+      !benchmark && VitePWA({
         registerType: 'prompt',
         includeAssets: ['fonts/*', 'icons/*'],
         manifest: {

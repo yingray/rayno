@@ -242,6 +242,19 @@ RAYNO_ALLOWED_HOSTS=your-machine.your-tailnet.ts.net
 `.env.local` stays out of git. `.env.example` lists the supported variables.
 Each origin has its own login and browser storage.
 
+### React Compiler
+
+React Compiler runs in development and production builds through the official Babel plugin and Vite's `reactCompilerPreset`.
+It targets React 19. Keep existing `memo`, `useMemo`, and `useCallback` calls during adoption.
+The compiler can skip components or hooks that it cannot safely optimize.
+
+For a comparison build without the compiler, run `RAYNO_REACT_COMPILER=0 pnpm build`.
+Run `pnpm build` again to restore the default compiled build before delivery.
+Use the same browser scenarios for both builds; see [the performance plan](PERFORMANCE-PLAN.md).
+Open `/reports/react-compiler.html` on your Rayno server to read the paired A/B report and download its raw measurements without signing in.
+The [paired probe](benchmarks/README.md#paired-react-compiler-probe) separates React render CPU from normal production response timing.
+Open `/session/reply-options-demo?demo=1` on your Rayno server to test the same compiled components as live chats.
+
 ## Recap cloud speech
 
 On Cloudflare Pages, Recap uses the same-origin `/api/tts` Function for cloud speech.

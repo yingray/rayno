@@ -81,3 +81,33 @@ They enable the preference through Settings and also run against a normal produc
 
 The paired real-virtualizer record is `results/2026-10-24-virtual-prototype.json`.
 It includes one seven-reply run per case and retains every reply sample.
+
+## Paired React Compiler probe
+
+Build the two isolated renderers, then run their comparisons in sequence with one worker:
+
+```sh
+RAYNO_COMPILER_BENCHMARK=profiled pnpm build
+RAYNO_COMPILER_PHASE=profiled pnpm exec playwright test -c benchmarks/compiler/playwright.config.ts
+RAYNO_COMPILER_BENCHMARK=production pnpm build
+RAYNO_COMPILER_PHASE=production pnpm exec playwright test -c benchmarks/compiler/playwright.config.ts
+node --test benchmarks/compiler/stats.test.mjs
+node benchmarks/compiler/summarize.mjs
+pnpm exec tsc --noEmit -p benchmarks/compiler/tsconfig.json
+```
+
+The probe uses port 5197 by default. Keep existing Tailscale services; add a route only if the port has none.
+Both compiler variants are present in the same payload. A query gate selects one at module initialization.
+Each variant gets a fresh browser context. Eight adjacent pairs alternate off/on and on/off to balance order.
+Each page uses the same 200-turn fixture, three warm-up interactions, and seven measured interactions for each scenario.
+The scenarios are a live reply, an option toggle, and one character in the draft.
+Warm-up rows are excluded. The summary resamples complete adjacent pairs, not individual repeated interactions.
+
+The profiling build aliases the renderer to `react-dom/profiling` and records render CPU for each commit through a root Profiler.
+The normal production renderer records DOM and frame boundaries separately, without Profiler overhead.
+A native WebSocket listener starts a reply sample after the fixture encryption and transport.
+Input and click samples start at document capture. A controlled textarea's defaultValue update marks its React DOM commit.
+Two animation frames after DOM observation bracket a rendering opportunity. This is not INP or a physical display timestamp.
+
+The instrumentation, gate, and profiling renderer exist only in these isolated builds under `.performance/`.
+They do not enter the normal app build. Do not deploy the benchmark builds or sign in with a real account.

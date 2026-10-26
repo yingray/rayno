@@ -1,0 +1,4742 @@
+{
+  "date": "2026-10-26",
+  "baseCommit": "8400406",
+  "compilerVersion": "1.0.0",
+  "target": "19",
+  "scenario": "200 turns, 1000 tool calls, 20 live replies; one browser worker; three runs per project before and after, then two desktop control runs with RAYNO_REACT_COMPILER=0",
+  "limitations": [
+    "Browser emulation on a Mac, without CPU throttling. No physical iPhone.",
+    "shownAfter includes fixture encryption, socket delivery, React work, and layout; it does not isolate React render time.",
+    "Variants ran in sequence. Timing variance and the later control runs prevent a reliable speedup claim."
+  ],
+  "variants": {
+    "before": [
+      {
+        "project": "desktop-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 46.5,
+              "max": 2.7,
+              "mean": 1.16
+            },
+            "request-history": {
+              "count": 40,
+              "total": 4.9,
+              "max": 0.5,
+              "mean": 0.12
+            },
+            "publish": {
+              "count": 39,
+              "total": 70,
+              "max": 3.8,
+              "mean": 1.79
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1.1,
+              "max": 0.1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 11.3,
+              "max": 0.7,
+              "mean": 0.31
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 1119.1,
+              "max": 71.8,
+              "mean": 30.25
+            },
+            "group-chat-activity": {
+              "count": 36,
+              "total": 9.7,
+              "max": 0.5,
+              "mean": 0.27
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 992,
+            "list-refreshed": 1005,
+            "active-chat-caught-up": 1004,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.2,
+              "max": 0.1,
+              "mean": 0.1
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 1.3,
+              "max": 0.8,
+              "mean": 0.65
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 131,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 67.4,
+              "max": 5,
+              "mean": 1.69
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 44.1,
+              "max": 3.7,
+              "mean": 2.21
+            },
+            "request-history": {
+              "count": 20,
+              "total": 3.3,
+              "max": 0.3,
+              "mean": 0.17
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1,
+              "max": 0.5,
+              "mean": 0.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "desktop-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 46.1,
+              "max": 2.7,
+              "mean": 1.15
+            },
+            "request-history": {
+              "count": 40,
+              "total": 4.5,
+              "max": 0.3,
+              "mean": 0.11
+            },
+            "publish": {
+              "count": 39,
+              "total": 71.4,
+              "max": 4.7,
+              "mean": 1.83
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 0.9,
+              "max": 0.1,
+              "mean": 0.02
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 12.6,
+              "max": 1.1,
+              "mean": 0.34
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 1249.5,
+              "max": 88,
+              "mean": 33.77
+            },
+            "group-chat-activity": {
+              "count": 38,
+              "total": 9.7,
+              "max": 0.6,
+              "mean": 0.26
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 572,
+            "list-refreshed": 591,
+            "active-chat-caught-up": 590,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.2,
+              "max": 0.1,
+              "mean": 0.1
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 1.2,
+              "max": 0.7,
+              "mean": 0.6
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 122,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 61.8,
+              "max": 4.9,
+              "mean": 1.55
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 41.3,
+              "max": 3.6,
+              "mean": 2.07
+            },
+            "request-history": {
+              "count": 20,
+              "total": 2.9,
+              "max": 0.3,
+              "mean": 0.14
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 0.7,
+              "max": 0.4,
+              "mean": 0.35
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "desktop-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 48.8,
+              "max": 2.9,
+              "mean": 1.22
+            },
+            "request-history": {
+              "count": 40,
+              "total": 4.3,
+              "max": 0.5,
+              "mean": 0.11
+            },
+            "publish": {
+              "count": 39,
+              "total": 72.9,
+              "max": 4.5,
+              "mean": 1.87
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1.1,
+              "max": 0.1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 11.7,
+              "max": 0.6,
+              "mean": 0.32
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 1210.9,
+              "max": 80.2,
+              "mean": 32.73
+            },
+            "group-chat-activity": {
+              "count": 37,
+              "total": 10.5,
+              "max": 1.5,
+              "mean": 0.28
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 900,
+            "list-refreshed": 935,
+            "active-chat-caught-up": 937,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.2,
+              "max": 0.1,
+              "mean": 0.1
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 31.1,
+              "max": 20.3,
+              "mean": 15.55
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 118,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 62.9,
+              "max": 5.5,
+              "mean": 1.57
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 41.8,
+              "max": 4,
+              "mean": 2.09
+            },
+            "request-history": {
+              "count": 20,
+              "total": 3.2,
+              "max": 0.3,
+              "mean": 0.16
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 0.8,
+              "max": 0.5,
+              "mean": 0.4
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "mobile-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 46.6,
+              "max": 3.6,
+              "mean": 1.16
+            },
+            "request-history": {
+              "count": 40,
+              "total": 4.9,
+              "max": 0.2,
+              "mean": 0.12
+            },
+            "publish": {
+              "count": 39,
+              "total": 70.8,
+              "max": 4.7,
+              "mean": 1.82
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 0.8,
+              "max": 0.1,
+              "mean": 0.02
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 11.2,
+              "max": 0.7,
+              "mean": 0.3
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 480.8,
+              "max": 38.2,
+              "mean": 12.99
+            },
+            "group-chat-activity": {
+              "count": 36,
+              "total": 8.5,
+              "max": 0.5,
+              "mean": 0.24
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 807,
+            "list-refreshed": 823,
+            "active-chat-caught-up": 822,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.5,
+              "max": 0.3,
+              "mean": 0.25
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 1.4,
+              "max": 0.7,
+              "mean": 0.7
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 95,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 61.2,
+              "max": 5.4,
+              "mean": 1.53
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 40.9,
+              "max": 4,
+              "mean": 2.04
+            },
+            "request-history": {
+              "count": 20,
+              "total": 3.2,
+              "max": 0.3,
+              "mean": 0.16
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 0.8,
+              "max": 0.4,
+              "mean": 0.4
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "mobile-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 47.3,
+              "max": 3.5,
+              "mean": 1.18
+            },
+            "request-history": {
+              "count": 40,
+              "total": 3.6,
+              "max": 0.2,
+              "mean": 0.09
+            },
+            "publish": {
+              "count": 39,
+              "total": 72.1,
+              "max": 4.4,
+              "mean": 1.85
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1,
+              "max": 0.1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 10.7,
+              "max": 0.8,
+              "mean": 0.29
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 605,
+              "max": 91,
+              "mean": 16.35
+            },
+            "group-chat-activity": {
+              "count": 36,
+              "total": 9.7,
+              "max": 1.9,
+              "mean": 0.27
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1505,
+            "list-refreshed": 1521,
+            "active-chat-caught-up": 1520,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.4,
+              "max": 0.2,
+              "mean": 0.2
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 4.2,
+              "max": 3.5,
+              "mean": 2.1
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 193,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 83.1,
+              "max": 7.9,
+              "mean": 2.08
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 54.7,
+              "max": 5.4,
+              "mean": 2.73
+            },
+            "request-history": {
+              "count": 20,
+              "total": 4.7,
+              "max": 0.5,
+              "mean": 0.23
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1.2,
+              "max": 0.7,
+              "mean": 0.6
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "mobile-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 54.7,
+              "max": 3.3,
+              "mean": 1.37
+            },
+            "request-history": {
+              "count": 40,
+              "total": 5.5,
+              "max": 0.3,
+              "mean": 0.14
+            },
+            "publish": {
+              "count": 39,
+              "total": 83.9,
+              "max": 4.4,
+              "mean": 2.15
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1.2,
+              "max": 0.1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 13.9,
+              "max": 0.6,
+              "mean": 0.38
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 1030.5,
+              "max": 156.7,
+              "mean": 27.85
+            },
+            "group-chat-activity": {
+              "count": 38,
+              "total": 13,
+              "max": 1.6,
+              "mean": 0.34
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 876,
+            "list-refreshed": 889,
+            "active-chat-caught-up": 889,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 1.5,
+              "max": 0.9,
+              "mean": 0.75
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 194,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 81.4,
+              "max": 6.6,
+              "mean": 2.03
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 53.1,
+              "max": 4.6,
+              "mean": 2.65
+            },
+            "request-history": {
+              "count": 20,
+              "total": 5.1,
+              "max": 0.8,
+              "mean": 0.26
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1.2,
+              "max": 0.6,
+              "mean": 0.6
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "desktop-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 70,
+              "max": 6,
+              "mean": 1.75
+            },
+            "request-history": {
+              "count": 40,
+              "total": 10,
+              "max": 1,
+              "mean": 0.25
+            },
+            "publish": {
+              "count": 39,
+              "total": 113,
+              "max": 9,
+              "mean": 2.9
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1,
+              "max": 1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 18,
+              "max": 1,
+              "mean": 0.49
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 3658,
+              "max": 276,
+              "mean": 98.86
+            },
+            "group-chat-activity": {
+              "count": 48,
+              "total": 12,
+              "max": 2,
+              "mean": 0.25
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1180,
+            "list-refreshed": 1272,
+            "active-chat-caught-up": 1276,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 51,
+              "max": 49,
+              "mean": 25.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 1011,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 110,
+              "max": 8,
+              "mean": 2.75
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 69,
+              "max": 6,
+              "mean": 3.45
+            },
+            "request-history": {
+              "count": 20,
+              "total": 7,
+              "max": 1,
+              "mean": 0.35
+            },
+            "group-chat-activity": {
+              "count": 10,
+              "total": 3,
+              "max": 1,
+              "mean": 0.3
+            },
+            "cache-snapshot": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 1,
+              "total": 1,
+              "max": 1,
+              "mean": 1
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 145,
+              "max": 145,
+              "mean": 145
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "desktop-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 66,
+              "max": 4,
+              "mean": 1.65
+            },
+            "request-history": {
+              "count": 40,
+              "total": 10,
+              "max": 1,
+              "mean": 0.25
+            },
+            "publish": {
+              "count": 39,
+              "total": 111,
+              "max": 9,
+              "mean": 2.85
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 2,
+              "max": 1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 17,
+              "max": 1,
+              "mean": 0.46
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 3656,
+              "max": 330,
+              "mean": 98.81
+            },
+            "group-chat-activity": {
+              "count": 47,
+              "total": 18,
+              "max": 5,
+              "mean": 0.38
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 780,
+            "list-refreshed": 885,
+            "active-chat-caught-up": 889,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 57,
+              "max": 56,
+              "mean": 28.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 1239,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 104,
+              "max": 8,
+              "mean": 2.6
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 69,
+              "max": 6,
+              "mean": 3.45
+            },
+            "request-history": {
+              "count": 20,
+              "total": 3,
+              "max": 1,
+              "mean": 0.15
+            },
+            "group-chat-activity": {
+              "count": 9,
+              "total": 5,
+              "max": 1,
+              "mean": 0.56
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 373,
+              "max": 373,
+              "mean": 373
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "desktop-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 65,
+              "max": 6,
+              "mean": 1.63
+            },
+            "request-history": {
+              "count": 40,
+              "total": 12,
+              "max": 1,
+              "mean": 0.3
+            },
+            "publish": {
+              "count": 39,
+              "total": 108,
+              "max": 7,
+              "mean": 2.77
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1,
+              "max": 1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 15,
+              "max": 1,
+              "mean": 0.41
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 3608,
+              "max": 417,
+              "mean": 97.51
+            },
+            "group-chat-activity": {
+              "count": 47,
+              "total": 12,
+              "max": 1,
+              "mean": 0.26
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1178,
+            "list-refreshed": 1271,
+            "active-chat-caught-up": 1273,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 47,
+              "max": 46,
+              "mean": 23.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 1351,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 121,
+              "max": 11,
+              "mean": 3.03
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 76,
+              "max": 9,
+              "mean": 3.8
+            },
+            "request-history": {
+              "count": 20,
+              "total": 9,
+              "max": 1,
+              "mean": 0.45
+            },
+            "group-chat-activity": {
+              "count": 10,
+              "total": 5,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 6,
+              "max": 6,
+              "mean": 3
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 421,
+              "max": 353,
+              "mean": 210.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "mobile-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 67,
+              "max": 5,
+              "mean": 1.68
+            },
+            "request-history": {
+              "count": 40,
+              "total": 5,
+              "max": 1,
+              "mean": 0.13
+            },
+            "publish": {
+              "count": 39,
+              "total": 106,
+              "max": 8,
+              "mean": 2.72
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1,
+              "max": 1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 12,
+              "max": 1,
+              "mean": 0.32
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 2311,
+              "max": 226,
+              "mean": 62.46
+            },
+            "group-chat-activity": {
+              "count": 42,
+              "total": 12,
+              "max": 1,
+              "mean": 0.29
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 794,
+            "list-refreshed": 844,
+            "active-chat-caught-up": 847,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 29,
+              "max": 28,
+              "mean": 14.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 861,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 106,
+              "max": 8,
+              "mean": 2.65
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 70,
+              "max": 5,
+              "mean": 3.5
+            },
+            "request-history": {
+              "count": 20,
+              "total": 4,
+              "max": 1,
+              "mean": 0.2
+            },
+            "group-chat-activity": {
+              "count": 10,
+              "total": 4,
+              "max": 1,
+              "mean": 0.4
+            },
+            "cache-snapshot": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 104,
+              "max": 104,
+              "mean": 104
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "mobile-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 69,
+              "max": 5,
+              "mean": 1.73
+            },
+            "request-history": {
+              "count": 40,
+              "total": 7,
+              "max": 1,
+              "mean": 0.18
+            },
+            "publish": {
+              "count": 39,
+              "total": 114,
+              "max": 7,
+              "mean": 2.92
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 16,
+              "max": 1,
+              "mean": 0.43
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 2205,
+              "max": 137,
+              "mean": 59.59
+            },
+            "group-chat-activity": {
+              "count": 41,
+              "total": 6,
+              "max": 1,
+              "mean": 0.15
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1060,
+            "list-refreshed": 1119,
+            "active-chat-caught-up": 1124,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 2,
+              "max": 1,
+              "mean": 1
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 28,
+              "max": 27,
+              "mean": 14
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 945,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 129,
+              "max": 11,
+              "mean": 3.23
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 85,
+              "max": 8,
+              "mean": 4.25
+            },
+            "request-history": {
+              "count": 20,
+              "total": 9,
+              "max": 1,
+              "mean": 0.45
+            },
+            "group-chat-activity": {
+              "count": 9,
+              "total": 3,
+              "max": 1,
+              "mean": 0.33
+            },
+            "cache-snapshot": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 1,
+              "total": 1,
+              "max": 1,
+              "mean": 1
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 327,
+              "max": 327,
+              "mean": 327
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "mobile-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 64,
+              "max": 4,
+              "mean": 1.6
+            },
+            "request-history": {
+              "count": 40,
+              "total": 8,
+              "max": 1,
+              "mean": 0.2
+            },
+            "publish": {
+              "count": 39,
+              "total": 107,
+              "max": 7,
+              "mean": 2.74
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 2,
+              "max": 1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 18,
+              "max": 1,
+              "mean": 0.49
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 2272,
+              "max": 261,
+              "mean": 61.41
+            },
+            "group-chat-activity": {
+              "count": 41,
+              "total": 10,
+              "max": 1,
+              "mean": 0.24
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 991,
+            "list-refreshed": 1037,
+            "active-chat-caught-up": 1040,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 2,
+              "max": 1,
+              "mean": 1
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 26,
+              "max": 24,
+              "mean": 13
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 704,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 95,
+              "max": 8,
+              "mean": 2.38
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 62,
+              "max": 6,
+              "mean": 3.1
+            },
+            "request-history": {
+              "count": 20,
+              "total": 5,
+              "max": 1,
+              "mean": 0.25
+            },
+            "group-chat-activity": {
+              "count": 10,
+              "total": 6,
+              "max": 1,
+              "mean": 0.6
+            },
+            "cache-snapshot": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 1,
+              "total": 1,
+              "max": 1,
+              "mean": 1
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 115,
+              "max": 115,
+              "mean": 115
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      }
+    ],
+    "after": [
+      {
+        "project": "desktop-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 53.3,
+              "max": 3,
+              "mean": 1.33
+            },
+            "request-history": {
+              "count": 40,
+              "total": 5.4,
+              "max": 0.6,
+              "mean": 0.14
+            },
+            "publish": {
+              "count": 39,
+              "total": 83.8,
+              "max": 4.2,
+              "mean": 2.15
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 2.1,
+              "max": 1.2,
+              "mean": 0.06
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 14.8,
+              "max": 0.7,
+              "mean": 0.4
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 1888.8,
+              "max": 170.5,
+              "mean": 51.05
+            },
+            "group-chat-activity": {
+              "count": 37,
+              "total": 28.9,
+              "max": 17.5,
+              "mean": 0.78
+            }
+          },
+          "longTasks": {
+            "count": 1,
+            "total": 66,
+            "max": 66,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1186,
+            "list-refreshed": 1210,
+            "active-chat-caught-up": 1210,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.4,
+              "max": 0.3,
+              "mean": 0.2
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 7.7,
+              "max": 6.9,
+              "mean": 3.85
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 172,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 81.6,
+              "max": 6.7,
+              "mean": 2.04
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 53.7,
+              "max": 4.5,
+              "mean": 2.68
+            },
+            "request-history": {
+              "count": 20,
+              "total": 3.9,
+              "max": 0.3,
+              "mean": 0.2
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1,
+              "max": 0.6,
+              "mean": 0.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "desktop-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 58.2,
+              "max": 3.4,
+              "mean": 1.46
+            },
+            "request-history": {
+              "count": 40,
+              "total": 5.1,
+              "max": 0.3,
+              "mean": 0.13
+            },
+            "publish": {
+              "count": 39,
+              "total": 89.6,
+              "max": 5.1,
+              "mean": 2.3
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1,
+              "max": 0.1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 14.5,
+              "max": 0.6,
+              "mean": 0.39
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 1757.3,
+              "max": 101.3,
+              "mean": 47.49
+            },
+            "group-chat-activity": {
+              "count": 41,
+              "total": 15.1,
+              "max": 1,
+              "mean": 0.37
+            }
+          },
+          "longTasks": {
+            "count": 2,
+            "total": 106,
+            "max": 55,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1465,
+            "list-refreshed": 1490,
+            "active-chat-caught-up": 1490,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.2,
+              "max": 0.1,
+              "mean": 0.1
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.2,
+              "max": 0.1,
+              "mean": 0.1
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 6.5,
+              "max": 6.2,
+              "mean": 3.25
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 256,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 81.3,
+              "max": 6.2,
+              "mean": 2.03
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 53.3,
+              "max": 4.2,
+              "mean": 2.67
+            },
+            "request-history": {
+              "count": 20,
+              "total": 4.5,
+              "max": 0.4,
+              "mean": 0.23
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1.1,
+              "max": 0.6,
+              "mean": 0.55
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "desktop-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 58.2,
+              "max": 3.3,
+              "mean": 1.45
+            },
+            "request-history": {
+              "count": 40,
+              "total": 6.2,
+              "max": 0.3,
+              "mean": 0.15
+            },
+            "publish": {
+              "count": 39,
+              "total": 92,
+              "max": 4.9,
+              "mean": 2.36
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1.2,
+              "max": 0.2,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 15.6,
+              "max": 0.7,
+              "mean": 0.42
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 1781.1,
+              "max": 149.4,
+              "mean": 48.14
+            },
+            "group-chat-activity": {
+              "count": 39,
+              "total": 16.2,
+              "max": 1.5,
+              "mean": 0.42
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1004,
+            "list-refreshed": 1027,
+            "active-chat-caught-up": 1027,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.5,
+              "max": 0.3,
+              "mean": 0.25
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 7.4,
+              "max": 7,
+              "mean": 3.7
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 252,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 72.3,
+              "max": 5.7,
+              "mean": 1.81
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 47.6,
+              "max": 4.2,
+              "mean": 2.38
+            },
+            "request-history": {
+              "count": 20,
+              "total": 3.8,
+              "max": 0.4,
+              "mean": 0.19
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1.3,
+              "max": 0.7,
+              "mean": 0.65
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "mobile-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 52.5,
+              "max": 2.8,
+              "mean": 1.31
+            },
+            "request-history": {
+              "count": 40,
+              "total": 5.2,
+              "max": 0.4,
+              "mean": 0.13
+            },
+            "publish": {
+              "count": 39,
+              "total": 82.7,
+              "max": 5.1,
+              "mean": 2.12
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1.3,
+              "max": 0.2,
+              "mean": 0.04
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 12.6,
+              "max": 0.6,
+              "mean": 0.34
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 949.5,
+              "max": 167.6,
+              "mean": 25.66
+            },
+            "group-chat-activity": {
+              "count": 40,
+              "total": 15.6,
+              "max": 2.4,
+              "mean": 0.39
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1262,
+            "list-refreshed": 1279,
+            "active-chat-caught-up": 1279,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 3.2,
+              "max": 2.7,
+              "mean": 1.6
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 122,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 75.6,
+              "max": 5.8,
+              "mean": 1.89
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 48.7,
+              "max": 4.1,
+              "mean": 2.44
+            },
+            "request-history": {
+              "count": 20,
+              "total": 3.8,
+              "max": 0.4,
+              "mean": 0.19
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1,
+              "max": 0.6,
+              "mean": 0.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "mobile-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 53.3,
+              "max": 3.6,
+              "mean": 1.33
+            },
+            "request-history": {
+              "count": 40,
+              "total": 4.6,
+              "max": 0.3,
+              "mean": 0.12
+            },
+            "publish": {
+              "count": 39,
+              "total": 80.5,
+              "max": 4.7,
+              "mean": 2.06
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1.4,
+              "max": 0.1,
+              "mean": 0.04
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 12.3,
+              "max": 0.7,
+              "mean": 0.33
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 894.5,
+              "max": 112.2,
+              "mean": 24.18
+            },
+            "group-chat-activity": {
+              "count": 37,
+              "total": 11.8,
+              "max": 0.8,
+              "mean": 0.32
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 998,
+            "list-refreshed": 1013,
+            "active-chat-caught-up": 1014,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 3,
+              "max": 2.5,
+              "mean": 1.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 133,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 79.5,
+              "max": 6.4,
+              "mean": 1.99
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 52.7,
+              "max": 4.8,
+              "mean": 2.64
+            },
+            "request-history": {
+              "count": 20,
+              "total": 4.2,
+              "max": 0.9,
+              "mean": 0.21
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1.9,
+              "max": 1.3,
+              "mean": 0.95
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "mobile-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 56,
+              "max": 3.4,
+              "mean": 1.4
+            },
+            "request-history": {
+              "count": 40,
+              "total": 6.4,
+              "max": 1.6,
+              "mean": 0.16
+            },
+            "publish": {
+              "count": 39,
+              "total": 88.7,
+              "max": 5.8,
+              "mean": 2.27
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1.4,
+              "max": 0.2,
+              "mean": 0.04
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 13.7,
+              "max": 0.7,
+              "mean": 0.37
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 997.2,
+              "max": 167.3,
+              "mean": 26.95
+            },
+            "group-chat-activity": {
+              "count": 37,
+              "total": 13.2,
+              "max": 0.8,
+              "mean": 0.36
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 953,
+            "list-refreshed": 973,
+            "active-chat-caught-up": 969,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.2,
+              "max": 0.2,
+              "mean": 0.1
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.5,
+              "max": 0.4,
+              "mean": 0.25
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.5,
+              "max": 0.3,
+              "mean": 0.25
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 2.1,
+              "max": 1.2,
+              "mean": 1.05
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 366,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 80.6,
+              "max": 6.4,
+              "mean": 2.02
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 51.8,
+              "max": 4.5,
+              "mean": 2.59
+            },
+            "request-history": {
+              "count": 20,
+              "total": 5.3,
+              "max": 1.1,
+              "mean": 0.27
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1.2,
+              "max": 0.6,
+              "mean": 0.6
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "desktop-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 62,
+              "max": 5,
+              "mean": 1.55
+            },
+            "request-history": {
+              "count": 40,
+              "total": 7,
+              "max": 1,
+              "mean": 0.18
+            },
+            "publish": {
+              "count": 39,
+              "total": 107,
+              "max": 8,
+              "mean": 2.74
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 3,
+              "max": 1,
+              "mean": 0.08
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 21,
+              "max": 1,
+              "mean": 0.57
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 3440,
+              "max": 323,
+              "mean": 92.97
+            },
+            "group-chat-activity": {
+              "count": 46,
+              "total": 15,
+              "max": 2,
+              "mean": 0.33
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1460,
+            "list-refreshed": 1548,
+            "active-chat-caught-up": 1551,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 45,
+              "max": 45,
+              "mean": 22.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 1356,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 116,
+              "max": 11,
+              "mean": 2.9
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 76,
+              "max": 7,
+              "mean": 3.8
+            },
+            "request-history": {
+              "count": 20,
+              "total": 5,
+              "max": 1,
+              "mean": 0.25
+            },
+            "group-chat-activity": {
+              "count": 8,
+              "total": 4,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 321,
+              "max": 310,
+              "mean": 160.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "desktop-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 75,
+              "max": 5,
+              "mean": 1.88
+            },
+            "request-history": {
+              "count": 40,
+              "total": 10,
+              "max": 1,
+              "mean": 0.25
+            },
+            "publish": {
+              "count": 39,
+              "total": 121,
+              "max": 7,
+              "mean": 3.1
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 2,
+              "max": 1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 23,
+              "max": 2,
+              "mean": 0.62
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 3577,
+              "max": 274,
+              "mean": 96.68
+            },
+            "group-chat-activity": {
+              "count": 54,
+              "total": 20,
+              "max": 1,
+              "mean": 0.37
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1503,
+            "list-refreshed": 1594,
+            "active-chat-caught-up": 1596,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 43,
+              "max": 43,
+              "mean": 21.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 1353,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 122,
+              "max": 11,
+              "mean": 3.05
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 78,
+              "max": 7,
+              "mean": 3.9
+            },
+            "request-history": {
+              "count": 20,
+              "total": 7,
+              "max": 1,
+              "mean": 0.35
+            },
+            "group-chat-activity": {
+              "count": 9,
+              "total": 2,
+              "max": 1,
+              "mean": 0.22
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 488,
+              "max": 487,
+              "mean": 244
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "desktop-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 85,
+              "max": 7,
+              "mean": 2.13
+            },
+            "request-history": {
+              "count": 40,
+              "total": 7,
+              "max": 1,
+              "mean": 0.18
+            },
+            "publish": {
+              "count": 39,
+              "total": 141,
+              "max": 10,
+              "mean": 3.62
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1,
+              "max": 1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 20,
+              "max": 1,
+              "mean": 0.54
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 4013,
+              "max": 367,
+              "mean": 108.46
+            },
+            "group-chat-activity": {
+              "count": 50,
+              "total": 11,
+              "max": 1,
+              "mean": 0.22
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1275,
+            "list-refreshed": 1379,
+            "active-chat-caught-up": 1381,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 49,
+              "max": 48,
+              "mean": 24.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 2048,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 139,
+              "max": 9,
+              "mean": 3.48
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 85,
+              "max": 7,
+              "mean": 4.25
+            },
+            "request-history": {
+              "count": 20,
+              "total": 9,
+              "max": 1,
+              "mean": 0.45
+            },
+            "group-chat-activity": {
+              "count": 9,
+              "total": 4,
+              "max": 1,
+              "mean": 0.44
+            },
+            "cache-snapshot": {
+              "count": 3,
+              "total": 1,
+              "max": 1,
+              "mean": 0.33
+            },
+            "cache-encrypt": {
+              "count": 3,
+              "total": 10,
+              "max": 9,
+              "mean": 3.33
+            },
+            "cache-save": {
+              "count": 3,
+              "total": 936,
+              "max": 667,
+              "mean": 312
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "mobile-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 82,
+              "max": 4,
+              "mean": 2.05
+            },
+            "request-history": {
+              "count": 40,
+              "total": 12,
+              "max": 1,
+              "mean": 0.3
+            },
+            "publish": {
+              "count": 39,
+              "total": 133,
+              "max": 7,
+              "mean": 3.41
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 5,
+              "max": 1,
+              "mean": 0.14
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 18,
+              "max": 1,
+              "mean": 0.49
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 2865,
+              "max": 279,
+              "mean": 77.43
+            },
+            "group-chat-activity": {
+              "count": 41,
+              "total": 10,
+              "max": 1,
+              "mean": 0.24
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1077,
+            "list-refreshed": 1129,
+            "active-chat-caught-up": 1134,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 26,
+              "max": 25,
+              "mean": 13
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 963,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 117,
+              "max": 12,
+              "mean": 2.93
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 69,
+              "max": 5,
+              "mean": 3.45
+            },
+            "request-history": {
+              "count": 20,
+              "total": 5,
+              "max": 1,
+              "mean": 0.25
+            },
+            "group-chat-activity": {
+              "count": 11,
+              "total": 4,
+              "max": 1,
+              "mean": 0.36
+            },
+            "cache-snapshot": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 240,
+              "max": 240,
+              "mean": 240
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "mobile-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 68,
+              "max": 4,
+              "mean": 1.7
+            },
+            "request-history": {
+              "count": 40,
+              "total": 3,
+              "max": 1,
+              "mean": 0.08
+            },
+            "publish": {
+              "count": 39,
+              "total": 130,
+              "max": 10,
+              "mean": 3.33
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1,
+              "max": 1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 25,
+              "max": 1,
+              "mean": 0.68
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 2582,
+              "max": 313,
+              "mean": 69.78
+            },
+            "group-chat-activity": {
+              "count": 48,
+              "total": 24,
+              "max": 9,
+              "mean": 0.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1403,
+            "list-refreshed": 1449,
+            "active-chat-caught-up": 1453,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 26,
+              "max": 25,
+              "mean": 13
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 865,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 103,
+              "max": 9,
+              "mean": 2.58
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 67,
+              "max": 7,
+              "mean": 3.35
+            },
+            "request-history": {
+              "count": 20,
+              "total": 5,
+              "max": 1,
+              "mean": 0.25
+            },
+            "group-chat-activity": {
+              "count": 10,
+              "total": 5,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-snapshot": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 213,
+              "max": 213,
+              "mean": 213
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "mobile-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 124,
+              "max": 46,
+              "mean": 3.1
+            },
+            "request-history": {
+              "count": 40,
+              "total": 10,
+              "max": 1,
+              "mean": 0.25
+            },
+            "publish": {
+              "count": 39,
+              "total": 180,
+              "max": 51,
+              "mean": 4.62
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 2,
+              "max": 1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 16,
+              "max": 1,
+              "mean": 0.43
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 2963,
+              "max": 308,
+              "mean": 80.08
+            },
+            "group-chat-activity": {
+              "count": 50,
+              "total": 12,
+              "max": 1,
+              "mean": 0.24
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 761,
+            "list-refreshed": 819,
+            "active-chat-caught-up": 823,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 31,
+              "max": 30,
+              "mean": 15.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 754,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 120,
+              "max": 9,
+              "mean": 3
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 71,
+              "max": 5,
+              "mean": 3.55
+            },
+            "request-history": {
+              "count": 20,
+              "total": 4,
+              "max": 1,
+              "mean": 0.2
+            },
+            "group-chat-activity": {
+              "count": 9,
+              "total": 5,
+              "max": 1,
+              "mean": 0.56
+            },
+            "cache-snapshot": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 1,
+              "total": 1,
+              "max": 1,
+              "mean": 1
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 141,
+              "max": 141,
+              "mean": 141
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      }
+    ],
+    "control": [
+      {
+        "project": "desktop-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 55,
+              "max": 3.4,
+              "mean": 1.38
+            },
+            "request-history": {
+              "count": 40,
+              "total": 5.6,
+              "max": 0.3,
+              "mean": 0.14
+            },
+            "publish": {
+              "count": 39,
+              "total": 84.8,
+              "max": 4.8,
+              "mean": 2.17
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1,
+              "max": 0.1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 15.5,
+              "max": 1.2,
+              "mean": 0.42
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 2074,
+              "max": 311.1,
+              "mean": 56.05
+            },
+            "group-chat-activity": {
+              "count": 39,
+              "total": 13.7,
+              "max": 0.9,
+              "mean": 0.35
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 892,
+            "list-refreshed": 939,
+            "active-chat-caught-up": 939,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.4,
+              "max": 0.3,
+              "mean": 0.2
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 16.3,
+              "max": 15.9,
+              "mean": 8.15
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 281,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 77.2,
+              "max": 5.5,
+              "mean": 1.93
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 50.7,
+              "max": 4,
+              "mean": 2.54
+            },
+            "request-history": {
+              "count": 20,
+              "total": 3.9,
+              "max": 0.4,
+              "mean": 0.19
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1.9,
+              "max": 1,
+              "mean": 0.95
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "desktop-chromium",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 59.9,
+              "max": 3.9,
+              "mean": 1.5
+            },
+            "request-history": {
+              "count": 40,
+              "total": 7.5,
+              "max": 1,
+              "mean": 0.19
+            },
+            "publish": {
+              "count": 39,
+              "total": 93.3,
+              "max": 5.8,
+              "mean": 2.39
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 1.2,
+              "max": 0.1,
+              "mean": 0.03
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 16,
+              "max": 1,
+              "mean": 0.43
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 1824.6,
+              "max": 293.1,
+              "mean": 49.31
+            },
+            "group-chat-activity": {
+              "count": 40,
+              "total": 17,
+              "max": 1.2,
+              "mean": 0.43
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1095,
+            "list-refreshed": 1120,
+            "active-chat-caught-up": 1121,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2,
+              "mean": 0.15
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0.4,
+              "max": 0.2,
+              "mean": 0.2
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 6.2,
+              "max": 5.7,
+              "mean": 3.1
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        },
+        "live": {
+          "shownAfter": 286,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 79.1,
+              "max": 5.1,
+              "mean": 1.98
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 52.3,
+              "max": 3.7,
+              "mean": 2.61
+            },
+            "request-history": {
+              "count": 20,
+              "total": 4.1,
+              "max": 0.3,
+              "mean": 0.21
+            },
+            "group-chat-activity": {
+              "count": 2,
+              "total": 1.8,
+              "max": 1,
+              "mean": 0.9
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": true
+          }
+        }
+      },
+      {
+        "project": "desktop-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 74,
+              "max": 6,
+              "mean": 1.85
+            },
+            "request-history": {
+              "count": 40,
+              "total": 9,
+              "max": 1,
+              "mean": 0.23
+            },
+            "publish": {
+              "count": 39,
+              "total": 122,
+              "max": 10,
+              "mean": 3.13
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 3,
+              "max": 1,
+              "mean": 0.08
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 21,
+              "max": 1,
+              "mean": 0.57
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 3382,
+              "max": 198,
+              "mean": 91.41
+            },
+            "group-chat-activity": {
+              "count": 54,
+              "total": 20,
+              "max": 1,
+              "mean": 0.37
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 1199,
+            "list-refreshed": 1301,
+            "active-chat-caught-up": 1304,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 1,
+              "max": 1,
+              "mean": 0.5
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 46,
+              "max": 45,
+              "mean": 23
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 1146,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 160,
+              "max": 16,
+              "mean": 4
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 104,
+              "max": 13,
+              "mean": 5.2
+            },
+            "request-history": {
+              "count": 20,
+              "total": 7,
+              "max": 1,
+              "mean": 0.35
+            },
+            "group-chat-activity": {
+              "count": 10,
+              "total": 7,
+              "max": 1,
+              "mean": 0.7
+            },
+            "cache-snapshot": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 1,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 1,
+              "total": 350,
+              "max": 350,
+              "mean": 350
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      },
+      {
+        "project": "desktop-webkit",
+        "load": {
+          "stages": {
+            "visible-messages": {
+              "count": 40,
+              "total": 61,
+              "max": 3,
+              "mean": 1.53
+            },
+            "request-history": {
+              "count": 40,
+              "total": 4,
+              "max": 1,
+              "mean": 0.1
+            },
+            "publish": {
+              "count": 39,
+              "total": 98,
+              "max": 4,
+              "mean": 2.51
+            },
+            "cache-snapshot": {
+              "count": 37,
+              "total": 2,
+              "max": 1,
+              "mean": 0.05
+            },
+            "cache-encrypt": {
+              "count": 37,
+              "total": 17,
+              "max": 1,
+              "mean": 0.46
+            },
+            "cache-save": {
+              "count": 37,
+              "total": 3354,
+              "max": 283,
+              "mean": 90.65
+            },
+            "group-chat-activity": {
+              "count": 46,
+              "total": 9,
+              "max": 1,
+              "mean": 0.2
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "recovery": {
+          "timeline": {
+            "transport-connected": 979,
+            "list-refreshed": 1054,
+            "active-chat-caught-up": 1056,
+            "first-rpc-ok": null
+          },
+          "stages": {
+            "publish": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-snapshot": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-encrypt": {
+              "count": 2,
+              "total": 0,
+              "max": 0,
+              "mean": 0
+            },
+            "cache-save": {
+              "count": 2,
+              "total": 39,
+              "max": 39,
+              "mean": 19.5
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        },
+        "live": {
+          "shownAfter": 1912,
+          "stages": {
+            "publish": {
+              "count": 40,
+              "total": 100,
+              "max": 8,
+              "mean": 2.5
+            },
+            "visible-messages": {
+              "count": 20,
+              "total": 64,
+              "max": 7,
+              "mean": 3.2
+            },
+            "request-history": {
+              "count": 20,
+              "total": 6,
+              "max": 1,
+              "mean": 0.3
+            },
+            "group-chat-activity": {
+              "count": 10,
+              "total": 4,
+              "max": 1,
+              "mean": 0.4
+            },
+            "cache-snapshot": {
+              "count": 3,
+              "total": 1,
+              "max": 1,
+              "mean": 0.33
+            },
+            "cache-encrypt": {
+              "count": 3,
+              "total": 10,
+              "max": 5,
+              "mean": 3.33
+            },
+            "cache-save": {
+              "count": 3,
+              "total": 719,
+              "max": 497,
+              "mean": 239.67
+            }
+          },
+          "longTasks": {
+            "count": 0,
+            "total": 0,
+            "max": 0,
+            "supported": false
+          }
+        }
+      }
+    ]
+  },
+  "sourceAudit": [
+    {
+      "file": "src/data/DemoProvider.tsx",
+      "kind": "CompileError",
+      "line": 19,
+      "reason": "(BuildHIR::lowerExpression) Handle Import expressions"
+    },
+    {
+      "file": "src/data/useUIState.ts",
+      "kind": "CompileSuccess",
+      "name": "useUIState",
+      "line": 6,
+      "slots": 14
+    },
+    {
+      "file": "src/data/store.tsx",
+      "kind": "CompileSuccess",
+      "name": "StoreProvider",
+      "line": 29,
+      "slots": 18
+    },
+    {
+      "file": "src/data/store.tsx",
+      "kind": "CompileSuccess",
+      "name": "useDemo",
+      "line": 41,
+      "slots": 4
+    },
+    {
+      "file": "src/data/store.tsx",
+      "kind": "CompileSuccess",
+      "name": "useDraft",
+      "line": 48,
+      "slots": 8
+    },
+    {
+      "file": "src/data/store.tsx",
+      "kind": "CompileSuccess",
+      "name": "useDraftOptions",
+      "line": 57,
+      "slots": 6
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "Icon",
+      "line": 144,
+      "slots": 11
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "Button",
+      "line": 163,
+      "slots": 13
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "Avatar",
+      "line": 186,
+      "slots": 17
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "Mark",
+      "line": 203,
+      "slots": 5
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "Spinner",
+      "line": 210,
+      "slots": 4
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "Segment",
+      "line": 214,
+      "slots": 21
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "Toggle",
+      "line": 252,
+      "slots": 6
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileError",
+      "line": 278,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "Empty",
+      "line": 363,
+      "slots": 11
+    },
+    {
+      "file": "src/components/ui.tsx",
+      "kind": "CompileSuccess",
+      "name": "RelativeTime",
+      "line": 388,
+      "slots": 8
+    },
+    {
+      "file": "src/components/OfflineStatus.tsx",
+      "kind": "CompileSuccess",
+      "name": "OfflineStatus",
+      "line": 7,
+      "slots": 12
+    },
+    {
+      "file": "src/components/useMinuteNow.ts",
+      "kind": "CompileSuccess",
+      "name": null,
+      "line": 31,
+      "slots": 0
+    },
+    {
+      "file": "src/components/PlanetAvatar.tsx",
+      "kind": "CompileSuccess",
+      "name": "PlanetAvatar",
+      "line": 5,
+      "slots": 4
+    },
+    {
+      "file": "src/components/LazyBoundary.tsx",
+      "kind": "CompileSuccess",
+      "name": "PanelLoading",
+      "line": 19,
+      "slots": 1
+    },
+    {
+      "file": "src/components/LazyBoundary.tsx",
+      "kind": "CompileSuccess",
+      "name": "LazyBoundary",
+      "line": 43,
+      "slots": 3
+    },
+    {
+      "file": "src/components/WorkspaceTag.tsx",
+      "kind": "CompileSuccess",
+      "name": "WorkspaceTag",
+      "line": 5,
+      "slots": 9
+    },
+    {
+      "file": "src/components/useTextareaSize.ts",
+      "kind": "CompileSuccess",
+      "name": "useTextareaSize",
+      "line": 6,
+      "slots": 7
+    },
+    {
+      "file": "src/components/useEventCallback.ts",
+      "kind": "CompileSuccess",
+      "name": "useEventCallback",
+      "line": 4,
+      "slots": 3
+    },
+    {
+      "file": "src/i18n.tsx",
+      "kind": "CompileSuccess",
+      "name": "useText",
+      "line": 10,
+      "slots": 2
+    },
+    {
+      "file": "src/features/ChatSessionMenu.tsx",
+      "kind": "CompileError",
+      "line": 20,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/ChatSessionMenu.tsx",
+      "kind": "CompileSuccess",
+      "name": "DuplicateDialog",
+      "line": 186,
+      "slots": 51
+    },
+    {
+      "file": "src/features/CodeBlock.tsx",
+      "kind": "CompileError",
+      "line": 19,
+      "reason": "(BuildHIR::lowerExpression) Handle Import expressions"
+    },
+    {
+      "file": "src/features/recapSpeech.ts",
+      "kind": "CompileSuccess",
+      "name": "useRecapSpeech",
+      "line": 305,
+      "slots": 0
+    },
+    {
+      "file": "src/features/recapSpeech.ts",
+      "kind": "CompileSuccess",
+      "name": "useRecapClock",
+      "line": 310,
+      "slots": 5
+    },
+    {
+      "file": "src/features/SessionPrompts.tsx",
+      "kind": "CompileSuccess",
+      "name": "FolderApprovalDialog",
+      "line": 9,
+      "slots": 40
+    },
+    {
+      "file": "src/features/SessionPrompts.tsx",
+      "kind": "CompileError",
+      "line": 31,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/ContextMeter.tsx",
+      "kind": "CompileSuccess",
+      "name": "Ring",
+      "line": 26,
+      "slots": 3
+    },
+    {
+      "file": "src/features/ContextMeter.tsx",
+      "kind": "CompileSuccess",
+      "name": "ContextWarning",
+      "line": 39,
+      "slots": 22
+    },
+    {
+      "file": "src/features/ContextMeter.tsx",
+      "kind": "CompileSuccess",
+      "name": "ContextMeter",
+      "line": 55,
+      "slots": 32
+    },
+    {
+      "file": "src/features/TodoList.tsx",
+      "kind": "CompileSuccess",
+      "name": "TodoList",
+      "line": 10,
+      "slots": 5
+    },
+    {
+      "file": "src/features/SideChats.tsx",
+      "kind": "CompileError",
+      "line": 24,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/ToolDetails.tsx",
+      "kind": "CompileSuccess",
+      "name": "ToolDiff",
+      "line": 13,
+      "slots": 30
+    },
+    {
+      "file": "src/features/ToolDetails.tsx",
+      "kind": "CompileError",
+      "line": 23,
+      "reason": "(BuildHIR::lowerStatement) Support ThrowStatement inside of try/catch"
+    },
+    {
+      "file": "src/features/ToolDetails.tsx",
+      "kind": "CompileSuccess",
+      "name": "ToolAnswers",
+      "line": 40,
+      "slots": 4
+    },
+    {
+      "file": "src/features/ToolDetails.tsx",
+      "kind": "CompileSuccess",
+      "name": "ToolDecision",
+      "line": 46,
+      "slots": 6
+    },
+    {
+      "file": "src/features/ToolDetails.tsx",
+      "kind": "CompileSuccess",
+      "name": "ToolSections",
+      "line": 52,
+      "slots": 7
+    },
+    {
+      "file": "src/features/LocalImage.tsx",
+      "kind": "CompileError",
+      "line": 13,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/LocalImage.tsx",
+      "kind": "CompileError",
+      "line": 13,
+      "reason": "(BuildHIR::lowerExpression) Handle Import expressions"
+    },
+    {
+      "file": "src/features/AgentChoices.tsx",
+      "kind": "CompileSuccess",
+      "name": "AgentChoices",
+      "line": 11,
+      "slots": 9
+    },
+    {
+      "file": "src/features/Chat.tsx",
+      "kind": "CompileError",
+      "line": 60,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/Chat.tsx",
+      "kind": "CompileError",
+      "line": 60,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/Chat.tsx",
+      "kind": "CompileError",
+      "line": 60,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/Monitor.tsx",
+      "kind": "CompileError",
+      "line": 10,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/Monitor.tsx",
+      "kind": "CompileError",
+      "line": 148,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/Monitor.tsx",
+      "kind": "CompileSuccess",
+      "name": "MachineDetail",
+      "line": 377,
+      "slots": 35
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "Thinking",
+      "line": 42,
+      "slots": 18
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "SubagentWork",
+      "line": 51,
+      "slots": 14
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "ToolRowDetails",
+      "line": 67,
+      "slots": 18
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "ToolActivity",
+      "line": 83,
+      "slots": 75
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "TodoTool",
+      "line": 179,
+      "slots": 27
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "RenderedMarkdown",
+      "line": 188,
+      "slots": 20
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "usePendingShown",
+      "line": 236,
+      "slots": 5
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "ResponseHeader",
+      "line": 250,
+      "slots": 5
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "ReplyOptions",
+      "line": 265,
+      "slots": 18
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileSuccess",
+      "name": "MessageBlock",
+      "line": 283,
+      "slots": 51
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileError",
+      "line": 369,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileError",
+      "line": 369,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileError",
+      "line": 369,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/features/MessageList.tsx",
+      "kind": "CompileError",
+      "line": 388,
+      "reason": "(BuildHIR::lowerExpression) Handle &&= operators in AssignmentExpression"
+    },
+    {
+      "file": "src/features/SessionActions.tsx",
+      "kind": "CompileError",
+      "line": 13,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/NewSession.tsx",
+      "kind": "CompileError",
+      "line": 26,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/RecapRail.tsx",
+      "kind": "CompileSuccess",
+      "name": "RailPin",
+      "line": 26,
+      "slots": 16
+    },
+    {
+      "file": "src/features/RecapRail.tsx",
+      "kind": "CompileError",
+      "line": 50,
+      "reason": "(BuildHIR::lowerExpression) Handle ||= operators in AssignmentExpression"
+    },
+    {
+      "file": "src/features/NewSessionPickers.tsx",
+      "kind": "CompileSuccess",
+      "name": "NewModelPicker",
+      "line": 10,
+      "slots": 82
+    },
+    {
+      "file": "src/features/NewSessionPickers.tsx",
+      "kind": "CompileSuccess",
+      "name": "WorkspacePicker",
+      "line": 52,
+      "slots": 93
+    },
+    {
+      "file": "src/features/TranscriptViewport.tsx",
+      "kind": "CompileError",
+      "line": 19,
+      "reason": "Use of incompatible library"
+    },
+    {
+      "file": "src/features/DraftComposer.tsx",
+      "kind": "CompileSuccess",
+      "name": "DraftComposer",
+      "line": 15,
+      "slots": 91
+    },
+    {
+      "file": "src/features/ResumeSession.tsx",
+      "kind": "CompileError",
+      "line": 9,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/RecapCard.tsx",
+      "kind": "CompileSuccess",
+      "name": "RecapCard",
+      "line": 35,
+      "slots": 80
+    },
+    {
+      "file": "src/features/RecapCard.tsx",
+      "kind": "CompileSuccess",
+      "name": "RecapButton",
+      "line": 216,
+      "slots": 10
+    },
+    {
+      "file": "src/features/UsageReport.tsx",
+      "kind": "CompileSuccess",
+      "name": "UsageReport",
+      "line": 12,
+      "slots": 95
+    },
+    {
+      "file": "src/features/AdvancedSettings.tsx",
+      "kind": "CompileSuccess",
+      "name": "AdvancedSettings",
+      "line": 8,
+      "slots": 93
+    },
+    {
+      "file": "src/features/useMediaQuery.ts",
+      "kind": "CompileSuccess",
+      "name": "useMediaQuery",
+      "line": 8,
+      "slots": 5
+    },
+    {
+      "file": "src/features/Inbox.tsx",
+      "kind": "CompileSuccess",
+      "name": "Inbox",
+      "line": 8,
+      "slots": 19
+    },
+    {
+      "file": "src/features/TerminalControl.tsx",
+      "kind": "CompileError",
+      "line": 10,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/ChatHistoryStatus.tsx",
+      "kind": "CompileSuccess",
+      "name": "ChatHistoryStatus",
+      "line": 6,
+      "slots": 23
+    },
+    {
+      "file": "src/features/TaskDock.tsx",
+      "kind": "CompileError",
+      "line": 14,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/ComposerSuggestions.tsx",
+      "kind": "CompileSuccess",
+      "name": "ComposerSuggestions",
+      "line": 10,
+      "slots": 28
+    },
+    {
+      "file": "src/features/SessionInfo.tsx",
+      "kind": "CompileError",
+      "line": 16,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/SessionUsage.tsx",
+      "kind": "CompileError",
+      "line": 15,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement without a catch clause"
+    },
+    {
+      "file": "src/features/AttachmentImage.tsx",
+      "kind": "CompileSuccess",
+      "name": "AttachmentImage",
+      "line": 9,
+      "slots": 31
+    },
+    {
+      "file": "src/features/Sessions.tsx",
+      "kind": "CompileSuccess",
+      "name": "SessionRow",
+      "line": 26,
+      "slots": 66
+    },
+    {
+      "file": "src/features/Sessions.tsx",
+      "kind": "CompileSuccess",
+      "name": "SessionList",
+      "line": 106,
+      "slots": 116
+    },
+    {
+      "file": "src/features/MachineManagement.tsx",
+      "kind": "CompileError",
+      "line": 10,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/features/MermaidDiagram.tsx",
+      "kind": "CompileSuccess",
+      "name": "DiagramViewer",
+      "line": 12,
+      "slots": 64
+    },
+    {
+      "file": "src/features/MermaidDiagram.tsx",
+      "kind": "CompileSuccess",
+      "name": "MermaidDiagram",
+      "line": 54,
+      "slots": 71
+    },
+    {
+      "file": "src/features/DemoQuestions.tsx",
+      "kind": "CompileSuccess",
+      "name": "DemoQuestions",
+      "line": 31,
+      "slots": 8
+    },
+    {
+      "file": "src/features/Settings.tsx",
+      "kind": "CompileSuccess",
+      "name": "Row",
+      "line": 40,
+      "slots": 14
+    },
+    {
+      "file": "src/features/Settings.tsx",
+      "kind": "CompileSuccess",
+      "name": "Group",
+      "line": 66,
+      "slots": 10
+    },
+    {
+      "file": "src/features/Settings.tsx",
+      "kind": "CompileSuccess",
+      "name": "AboutGroup",
+      "line": 92,
+      "slots": 42
+    },
+    {
+      "file": "src/features/Settings.tsx",
+      "kind": "CompileSuccess",
+      "name": "Settings",
+      "line": 141,
+      "slots": 87
+    },
+    {
+      "file": "src/app/useSideChatNavigation.ts",
+      "kind": "CompileError",
+      "line": 5,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/app/useSideChatNavigation.ts",
+      "kind": "CompileError",
+      "line": 5,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/app/Root.tsx",
+      "kind": "CompileSuccess",
+      "name": "Root",
+      "line": 11,
+      "slots": 14
+    },
+    {
+      "file": "src/app/NavigationUpdate.tsx",
+      "kind": "CompileError",
+      "line": 14,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement without a catch clause"
+    },
+    {
+      "file": "src/app/NavigationUpdate.tsx",
+      "kind": "CompileError",
+      "line": 14,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/app/NavigationUpdate.tsx",
+      "kind": "CompileError",
+      "line": 90,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/app/NavigationUpdate.tsx",
+      "kind": "CompileError",
+      "line": 90,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/app/NavigationUpdate.tsx",
+      "kind": "CompileError",
+      "line": 90,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/app/NavigationUpdate.tsx",
+      "kind": "CompileError",
+      "line": 90,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/app/NavigationUpdate.tsx",
+      "kind": "CompileError",
+      "line": 90,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/app/NavigationUpdate.tsx",
+      "kind": "CompileSuccess",
+      "name": "UpdateNotice",
+      "line": 104,
+      "slots": 36
+    },
+    {
+      "file": "src/app/ResizablePanel.tsx",
+      "kind": "CompileError",
+      "line": 9,
+      "reason": "Cannot access refs during render"
+    },
+    {
+      "file": "src/app/App.tsx",
+      "kind": "CompileSuccess",
+      "name": null,
+      "line": 36,
+      "slots": 0
+    },
+    {
+      "file": "src/app/App.tsx",
+      "kind": "CompileSuccess",
+      "name": "App",
+      "line": 38,
+      "slots": 197
+    },
+    {
+      "file": "src/happy/WorkspaceFiles.tsx",
+      "kind": "CompileError",
+      "line": 11,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/happy/WorkspaceFiles.tsx",
+      "kind": "CompileError",
+      "line": 11,
+      "reason": "(BuildHIR::lowerStatement) Support ThrowStatement inside of try/catch"
+    },
+    {
+      "file": "src/happy/WorkspaceFiles.tsx",
+      "kind": "CompileError",
+      "line": 11,
+      "reason": "(BuildHIR::lowerStatement) Support ThrowStatement inside of try/catch"
+    },
+    {
+      "file": "src/happy/WorkspaceFiles.tsx",
+      "kind": "CompileError",
+      "line": 11,
+      "reason": "(BuildHIR::lowerStatement) Support ThrowStatement inside of try/catch"
+    },
+    {
+      "file": "src/happy/LiveProvider.tsx",
+      "kind": "CompileSuccess",
+      "name": "LiveProvider",
+      "line": 35,
+      "slots": 19
+    },
+    {
+      "file": "src/happy/LiveProvider.tsx",
+      "kind": "CompileError",
+      "line": 81,
+      "reason": "Existing memoization could not be preserved"
+    },
+    {
+      "file": "src/happy/LiveProvider.tsx",
+      "kind": "CompileError",
+      "line": 81,
+      "reason": "Existing memoization could not be preserved"
+    },
+    {
+      "file": "src/happy/Requests.tsx",
+      "kind": "CompileError",
+      "line": 33,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/happy/Requests.tsx",
+      "kind": "CompileError",
+      "line": 57,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    },
+    {
+      "file": "src/happy/Requests.tsx",
+      "kind": "CompileSuccess",
+      "name": "QuestionForm",
+      "line": 147,
+      "slots": 40
+    },
+    {
+      "file": "src/happy/Requests.tsx",
+      "kind": "CompileSuccess",
+      "name": "ClaudeQuestion",
+      "line": 244,
+      "slots": 21
+    },
+    {
+      "file": "src/happy/Login.tsx",
+      "kind": "CompileSuccess",
+      "name": "InstallCommand",
+      "line": 10,
+      "slots": 15
+    },
+    {
+      "file": "src/happy/Login.tsx",
+      "kind": "CompileSuccess",
+      "name": "InstallGuide",
+      "line": 32,
+      "slots": 7
+    },
+    {
+      "file": "src/happy/Login.tsx",
+      "kind": "CompileError",
+      "line": 86,
+      "reason": "(BuildHIR::lowerStatement) Handle TryStatement with a finalizer ('finally') clause"
+    }
+  ]
+}
