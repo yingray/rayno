@@ -1,4 +1,5 @@
 import { useText } from "../i18n";
+import { COARSE_QUERY, useMediaQuery } from './useMediaQuery';
 import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +25,7 @@ const WorkspacePicker = lazy(() => import('./NewSessionPickers').then((module) =
 
 export function NewSession() {
   const t = useText();
+  const touchKeyboard = useMediaQuery(COARSE_QUERY);
   const { draft, lastAgent, modelChoices, permissionChoices, sessions, recentWorkspaces, enterToSend, customCodexModel, dispatch, adapter, machines, mode, live } = useDemo((store) => ({
     draft: store.state.newDraft, lastAgent: store.state.lastAgent, modelChoices: store.state.modelChoices,
     permissionChoices: store.state.permissionChoices,
@@ -135,7 +137,7 @@ export function NewSession() {
     if (
       event.key === 'Enter' &&
       !event.nativeEvent.isComposing &&
-      ((enterToSend && !event.shiftKey) || event.metaKey || event.ctrlKey)
+      ((enterToSend && !touchKeyboard && !event.shiftKey) || event.metaKey || event.ctrlKey)
     ) {
       event.preventDefault();
       void start();
@@ -302,6 +304,7 @@ export function NewSession() {
                 </div>
               )}
               <textarea
+                enterKeyHint={touchKeyboard ? "enter" : undefined}
                 ref={taskInput}
                 aria-label={t("Task description")}
                 placeholder={draft.handoff ? t("Add instructions, or start to continue the work") : t("What should the agent do?")}

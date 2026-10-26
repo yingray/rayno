@@ -116,3 +116,27 @@ test('a manually entered workspace should remain recent after its session disapp
   await expect(workspace.workspacePicker().getByRole('button', { name: 'Use workspace ~/new-workspace', exact: true })).toBeVisible();
   expect(server.spawns).toHaveLength(1);
 });
+
+
+test('touch task description should insert lines with Enter without starting a session', async ({ page }, info) => {
+  test.skip(!info.project.use.hasTouch, 'Touch keyboard behavior.');
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  const workspace = new LiveWorkspacePage(page);
+  await page.goto('/new');
+  await page.getByLabel('Folder', { exact: true }).fill('/real/project');
+  // Act / Assert
+  for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 360], [844, 390]]) {
+    await page.setViewportSize({ width, height });
+    await workspace.taskDescription().fill('First line');
+    await expect(workspace.taskDescription()).toHaveAttribute('enterkeyhint', 'enter');
+    await workspace.taskDescription().press('Enter');
+    await workspace.taskDescription().pressSequentially('Second line');
+    await expect(workspace.taskDescription()).toHaveValue('First line\nSecond line');
+    expect(server.spawns).toHaveLength(0);
+    await workspace.expectNoPageOverflow();
+  }
+  await workspace.startDraft();
+  await expect.poll(() => server.spawns.length).toBe(1);
+});

@@ -16,7 +16,7 @@ async function open(page: import('@playwright/test').Page) {
   return { server, workspace };
 }
 
-test('slash command suggestions should follow the keyboard and insert the command without a send', async ({ page }) => {
+test('slash command suggestions should follow the keyboard and insert the command without a send', async ({ page }, info) => {
   // Arrange
   const { server, workspace } = await open(page);
   await workspace.input().click();
@@ -28,14 +28,15 @@ test('slash command suggestions should follow the keyboard and insert the comman
   // Act
   await workspace.input().press('ArrowUp');
   await workspace.input().press('ArrowDown');
-  await workspace.input().press('Enter');
+  await workspace.input().press(info.project.use.hasTouch ? 'Tab' : 'Enter');
   // Assert
   await workspace.expectDraft('/pr-review ');
   await expect(workspace.suggestions('Command')).toHaveCount(0);
   expect(server.sends).toHaveLength(0);
   // Act
   await workspace.input().pressSequentially('now');
-  await workspace.input().press('Enter');
+  if (info.project.use.hasTouch) await workspace.sendButton().tap();
+  else await workspace.input().press('Enter');
   // Assert
   await expect.poll(() => server.sends.length).toBe(1);
   const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[0].content, server.dataKey);
@@ -62,7 +63,7 @@ test('Escape should close suggestions for the current word and Tab should pick t
   expect(server.sends).toHaveLength(0);
 });
 
-test('picking a command that is already complete should close the list and keep later typing at the caret', async ({ page }) => {
+test('picking a command that is already complete should close the list and keep later typing at the caret', async ({ page }, info) => {
   // Arrange
   const { server, workspace } = await open(page);
   await workspace.input().click();
@@ -70,7 +71,7 @@ test('picking a command that is already complete should close the list and keep 
   for (let index = 0; index < 4; index++) await workspace.input().press('ArrowLeft');
   await workspace.expectSelected('Command', '/compact');
   // Act
-  await workspace.input().press('Enter');
+  await workspace.input().press(info.project.use.hasTouch ? 'Tab' : 'Enter');
   // Assert
   await expect(workspace.suggestions('Command')).toHaveCount(0);
   await workspace.expectDraft('/compact now');
@@ -100,7 +101,7 @@ test('file mention suggestions should read the session files once and insert the
   await expect(workspace.input()).toBeFocused();
   // Act
   await workspace.input().pressSequentially('and @pan');
-  await workspace.input().press('Enter');
+  await workspace.input().press(touch ? 'Tab' : 'Enter');
   // Assert
   await workspace.expectDraft('Read @src/app/app.module.css and @src/components/Panel.tsx ');
   expect(server.ripgrepCalls).toEqual([{ args: ['--files', '--follow'] }]);
@@ -139,3 +140,52 @@ for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [
     expect(message.content.text).toBe(`/design-check at ${width}x${height}`);
   });
 }
+
+
+test('touch composer should insert lines with Enter and send the full draft with the button at phone sizes', async ({ page }, info) => {
+  test.skip(!info.project.use.hasTouch, 'Touch keyboard behavior.');
+  // Arrange
+  const { server, workspace } = await open(page);
+  // Act / Assert
+  for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 360], [844, 390]]) {
+    await page.setViewportSize({ width, height });
+    await workspace.input().fill('First line');
+    await expect(workspace.input()).toHaveAttribute('enterkeyhint', 'enter');
+    const sent = server.sends.length;
+    await workspace.input().press('Enter');
+    await workspace.input().pressSequentially('Second line');
+    await workspace.expectDraft('First line\nSecond line');
+    expect(server.sends).toHaveLength(sent);
+    await expect(workspace.input()).toHaveCSS('font-size', '16px');
+    await expect(workspace.sendButton()).toHaveCSS('transform', 'none');
+    await workspace.expectSendReachable();
+    await workspace.sendButton().tap();
+    await workspace.expectDraft('');
+    await expect.poll(() => server.sends.length).toBe(sent + 1);
+    const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[sent].content, server.dataKey);
+    expect(message.content.text).toBe('First line\nSecond line');
+    await workspace.expectNoPageOverflow();
+  }
+  // Enter must also insert a line when a suggestion is selected.
+  await workspace.input().fill('/pr');
+  await workspace.expectSelected('Command', '/pr-review');
+  await workspace.input().press('Enter');
+  await workspace.expectDraft('/pr\n');
+  expect(server.sends).toHaveLength(6);
+});
+
+
+test('desktop composer should keep Shift+Enter for lines and Control+Enter for send', async ({ page }, info) => {
+  test.skip(!!info.project.use.hasTouch, 'Desktop keyboard shortcuts.');
+  // Arrange
+  const { server, workspace } = await open(page);
+  await workspace.input().fill('First line');
+  // Act / Assert
+  await workspace.input().press('Shift+Enter');
+  await workspace.input().pressSequentially('Second line');
+  await workspace.expectDraft('First line\nSecond line');
+  expect(server.sends).toHaveLength(0);
+  await workspace.input().press('Control+Enter');
+  await workspace.expectDraft('');
+  await expect.poll(() => server.sends.length).toBe(1);
+});

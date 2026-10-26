@@ -68,7 +68,8 @@ test('working agents should accept button, Enter, and option sends without an ab
   // Act
   await workspace.send('Add this instruction while you work');
   await workspace.expectDraft('');
-  await workspace.sendWithEnter('Also keep the original task');
+  if (testInfo.project.use.hasTouch) await workspace.send('Also keep the original task');
+  else await workspace.sendWithEnter('Also keep the original task');
   await workspace.expectDraft('');
   await server.pushReply('Choose the next step.\n\n<options><option>繼續檢查 ✓</option></options>');
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Keep this unfinished draft');

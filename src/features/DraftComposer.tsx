@@ -1,4 +1,5 @@
 import { useText } from "../i18n";
+import { COARSE_QUERY, useMediaQuery } from './useMediaQuery';
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { Button } from '../components/ui';
@@ -31,6 +32,7 @@ export const DraftComposer = memo(function DraftComposer({
   children: ReactNode;
 }) {
   const t = useText();
+  const touchKeyboard = useMediaQuery(COARSE_QUERY);
   const value = useDraft(sessionId);
   const { enterToSend, dispatch } = useDemo((store) => ({
     enterToSend: store.state.preferences.enterToSend,
@@ -91,6 +93,8 @@ export const DraftComposer = memo(function DraftComposer({
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     // Safari can clear isComposing before the Enter that confirms an IME choice.
     if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+    // Return inserts a line on touch devices, including when suggestions are open.
+    if (touchKeyboard && event.key === 'Enter' && !event.metaKey && !event.ctrlKey) return;
     if (open && !event.altKey && !event.metaKey && !event.ctrlKey) {
       const move = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
       if (move) {
@@ -121,6 +125,7 @@ export const DraftComposer = memo(function DraftComposer({
   return <>
     {open && <ComposerSuggestions id={listId} input={input} items={found.items} selected={found.selected} onPick={pick} />}
     <textarea
+      enterKeyHint={touchKeyboard ? "enter" : undefined}
       ref={input}
       aria-label={t("Message")}
       aria-autocomplete={suggest ? "list" : undefined}

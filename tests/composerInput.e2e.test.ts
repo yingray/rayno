@@ -28,7 +28,7 @@ for (const legacy of [false, true]) {
   });
 }
 
-test('Chinese composition should retain text during live updates and send only after an explicit Enter', async ({ page }) => {
+test('Chinese composition should retain text during live updates and send only after an explicit action', async ({ page }, info) => {
   // Arrange
   const server = new HappyServer();
   await server.install(page);
@@ -47,15 +47,21 @@ test('Chinese composition should retain text during live updates and send only a
   await workspace.input().press('Shift+Enter');
   await workspace.input().pressSequentially('next line');
   await workspace.input().press('Enter');
+  if (info.project.use.hasTouch) {
+    await workspace.expectDraft('中文輸入不中斷\nnext line\n');
+    expect(server.sends).toHaveLength(0);
+    await workspace.input().press('Backspace');
+    await workspace.sendButton().tap();
+  }
   // Assert
   await workspace.expectDraft('');
-  await expect(workspace.input()).toBeFocused();
+  if (!info.project.use.hasTouch) await expect(workspace.input()).toBeFocused();
   expect(server.sends).toHaveLength(1);
   const message = await server.encryption.decrypt<{ content: { text: string } }>(server.sends[0].content, server.dataKey);
   expect(message.content.text).toBe('中文輸入不中斷\nnext line');
 });
 
-test('send confirmation should keep a newer draft typed while the request is pending', async ({ page }) => {
+test('send confirmation should keep a newer draft typed while the request is pending', async ({ page }, info) => {
   // Arrange
   const server = new HappyServer();
   await server.install(page);
@@ -69,7 +75,8 @@ test('send confirmation should keep a newer draft typed while the request is pen
   });
   // Act
   await workspace.input().fill('Send this first');
-  await workspace.input().press('Enter');
+  if (info.project.use.hasTouch) await workspace.sendButton().tap();
+  else await workspace.input().press('Enter');
   await expect(page.getByText('Wait for Happy to confirm this message…', { exact: true })).toBeVisible();
   await workspace.input().fill('保留下一則草稿');
   release();
