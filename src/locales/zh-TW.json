@@ -679,5 +679,18 @@
   "Searches loaded history. Load earlier messages to search more.": "搜尋範圍為已載入的對話，載入較早訊息可擴大搜尋範圍。",
   "Search results": "搜尋結果",
   "No matching messages": "找不到相符訊息",
-  "Showing the first 50 matches. Refine your search for more.": "顯示前 50 筆結果，請縮小搜尋範圍以查看其他相符訊息。"
+  "Showing the first 50 matches. Refine your search for more.": "顯示前 50 筆結果，請縮小搜尋範圍以查看其他相符訊息。",
+  "Step {step}": "第 {step} 步",
+  "Worked for {duration}": "已執行 {duration}",
+  "Waiting for the first step": "等待第一個步驟",
+  "Completed": "已完成",
+  "Failed": "失敗",
+  "In progress": "執行中",
+  "No completion reported": "尚未回報完成",
+  "Timeline demo controls": "時間軸示範控制",
+  "Simulated tool execution · advance at your own pace": "模擬工具執行 · 可手動逐步試用",
+  "Finish demo": "完成示範",
+  "Next step": "下一步",
+  "Restart demo": "重新示範",
+  "Start demo": "開始示範"
 }

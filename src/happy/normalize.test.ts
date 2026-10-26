@@ -28,6 +28,16 @@ const row = (id: string, seq: number, raw: object, localId?: string): MessageRec
   createdAt: 1000,
 });
 describe('Happy record normalization', () => {
+  it('should retain tool start and end times when the CLI sends no result body', () => {
+    // Arrange
+    const start = { ...row('start', 1, { role: 'session', content: { id: 'start', time: 1000, role: 'agent', turn: 'turn',
+      ev: { t: 'tool-call-start', call: 'read', name: 'Read', args: {} } } }), createdAt: 2000 };
+    const end = { ...row('end', 2, { role: 'session', content: { id: 'end', time: 2000, role: 'agent', turn: 'turn',
+      ev: { t: 'tool-call-end', call: 'read' } } }), createdAt: 6500 };
+    // Act / Assert
+    expect(visibleMessages([start])[0].toolCalls?.[0]).toMatchObject({ startedAt: 2000 });
+    expect(visibleMessages([start, end])[0].toolCalls?.[0]).toMatchObject({ startedAt: 2000, endedAt: 6500, ended: true, result: null });
+  });
   it('should retain the original server time on agent replies across normalization', () => {
     const source = { ...row('dated', 1, { role: 'agent', content: { type: 'codex', data: { type: 'message', message: 'A dated reply' } } }), createdAt: 1700000001234 };
     expect(visibleMessages([source])[0]).toMatchObject({ content: 'A dated reply', sentAt: 1700000001234 });
@@ -534,10 +544,10 @@ describe('CLI record formats', () => {
     const messages = visibleMessages(rows);
     // Assert
     expect(messages.map((message) => message.toolCalls)).toEqual([
-      [{ id: '0b6f3c1e-5d1a-4c55-9a3e-2f8f1d1f0b01', name: 'file-edit', input: {
+      [{ id: '0b6f3c1e-5d1a-4c55-9a3e-2f8f1d1f0b01', name: 'file-edit', startedAt: 1000, input: {
         filePath: 'src/app.ts', description: 'Update the greeting', diff: '-hi\n+hello', oldContent: undefined, newContent: undefined,
       } }],
-      [{ id: 'call-ls', name: 'run_shell_command', input: { command: 'ls' }, result: 'README.md\nsrc\n', isError: false, ended: true }],
+      [{ id: 'call-ls', name: 'run_shell_command', input: { command: 'ls' }, result: 'README.md\nsrc\n', isError: false, ended: true, startedAt: 1000, endedAt: 1000 }],
     ]);
   });
   it('should prefer the stored Claude tool result and keep the model text of a structured result', () => {

@@ -381,14 +381,14 @@ export function normalizeMessage(row: MessageRecord): Message | null {
   const results: NonNullable<Message['toolResults']> = [];
   const addCall = (id: unknown, name: unknown, input: unknown, tool = name) => {
     // A session tool call shows its title. `tool` keeps the tool name for the permission and answer views.
-    calls.push({ id: text(id, row.id), name: text(name, 'Tool call'), input,
+    calls.push({ id: text(id, row.id), name: text(name, 'Tool call'), input, startedAt: row.createdAt,
       ...(typeof tool === 'string' && tool && tool !== name ? { tool } : {}) });
     const active = typeof tool === 'string' ? planTools.get(tool) : undefined;
     if (active !== undefined) message.planMode = { active, call: text(id, row.id), at: row.createdAt };
   };
   const addResult = (id: unknown, result: unknown, isError: unknown, resultText?: string, permissions?: unknown) => {
     const permission = resultPermission(permissions);
-    results.push({ id: text(id), result, isError: isError === true,
+    results.push({ id: text(id), result, isError: isError === true, endedAt: row.createdAt,
       ...(resultText && resultText !== result ? { resultText } : {}), ...(permission ? { permission } : {}) });
   };
   if (envelope) {
@@ -606,7 +606,7 @@ export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false
     const result = results.get(call.id);
     if (!result) return call;
     matched.add(call.id);
-    return { ...call, result: result.result, isError: result.isError, ended: true,
+    return { ...call, result: result.result, isError: result.isError, ended: true, endedAt: result.endedAt,
       ...(result.resultText ? { resultText: result.resultText } : {}), ...(result.permission ? { permission: result.permission } : {}) };
   }) };
   const ownerOf = (call: ToolCall) => {
@@ -672,7 +672,7 @@ export function visibleMessages(rows: MessageRecord[], holdUntilAccepted = false
     if (!unmatched.length && !message.content && !message.tools?.length && !message.thinking) continue;
     output.push({ ...message, ...(unmatched.length ? {
       tools: unmatched.map(() => 'Earlier tool call'),
-      toolCalls: unmatched.map(result => ({ ...result, name: 'Earlier tool call' })),
+      toolCalls: unmatched.map(result => ({ ...result, name: 'Earlier tool call', ended: true })),
     } : {}) });
   }
   return output;

@@ -58,6 +58,7 @@ import { defaultNewDraft, defaultPreferences } from './defaults';
 import { createQuestionDemo } from './questionDemo';
 import { createImageDemo } from './imageDemo';
 import { createReplyOptionsDemo } from './replyOptionsDemo';
+import { createToolTimelineDemo } from './toolTimelineDemo';
 
 export function createInitialState(now = Date.now()): DemoState {
   const sessions: Session[] = [
@@ -216,6 +217,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createQuestionDemo(now));
   sessions.push(createImageDemo(now));
   sessions.push(createReplyOptionsDemo(now));
+  sessions.push(createToolTimelineDemo(now));
   return {
     version: 1,
     sessions,

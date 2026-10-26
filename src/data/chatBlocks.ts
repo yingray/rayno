@@ -8,6 +8,7 @@ export type ToolActivityBlock = {
   // The text of a thinking row, at the index of its row. Thinking rows are not tools.
   thinking?: (string | undefined)[];
   duration?: string;
+  startedAt?: number;
 };
 export type ThinkingBlock = { kind: 'thinking'; id: string; text: string };
 export type EventBlock = { kind: 'event'; id: string; text: string };
@@ -42,7 +43,8 @@ function addRow(block: ToolActivityBlock, name: string, call?: ToolCall, thinkin
 export function groupChatActivity(messages: readonly Message[]): ChatBlock[] {
   const blocks: ChatBlock[] = [];
   const toolBlock = (message: Message): ToolActivityBlock => {
-    const block: ToolActivityBlock = { kind: 'tools', id: `tools:${message.id}`, tools: [], duration: message.duration };
+    const block: ToolActivityBlock = { kind: 'tools', id: `tools:${message.id}`, tools: [], duration: message.duration,
+      ...(message.sentAt !== undefined ? { startedAt: message.sentAt } : {}) };
     blocks.push(block);
     return block;
   };

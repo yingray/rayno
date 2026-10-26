@@ -37,6 +37,8 @@ import { reuseEqual } from '../data/reuseEqual';
 import { isTodoWrite, todoProgress, todoRowList, type Todo } from '../data/todos';
 import { createTranscriptMemory, parseTranscriptAnchor, recapTargetBlock, recapTurnGroups, type TranscriptAnchor, type TranscriptMemory } from '../data/transcript';
 import { TranscriptViewport, type TranscriptController } from './TranscriptViewport';
+import { ActivityMark, ActivityTicker, ActivityWaiting } from './ActivityTicker';
+import { callEnded } from '../data/toolActivity';
 
 // Thinking is secondary. It stays closed until the user opens it.
 function Thinking({ text, memory, stateKey }: { text: string; memory?: TranscriptMemory; stateKey?: string }) {
@@ -80,12 +82,14 @@ function ToolRowDetails({ summary, reveal, children, memory, stateKey }: {
   </details>;
 }
 
-const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes, questions, reveal = false, sessionId, memory }: {
+const ToolActivity = memo(function ToolActivity({ block, active, compactTools, outcomes, questions, reveal = false, sessionId, memory }: {
+  active: boolean;
   block: ToolActivityBlock; compactTools: boolean; outcomes?: (ToolOutcome | undefined)[];
   questions?: string[]; reveal?: boolean; sessionId: string; memory: TranscriptMemory;
 }) {
   const t = useText();
   const rowsId = useId();
+  const group = useRef<HTMLElement>(null);
   const [expanded, setExpanded] = useState(
     memory.groups.get(block.id) ?? (!compactTools && window.innerWidth >= 768),
   );
@@ -93,21 +97,26 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
   const [rowsMounted, setRowsMounted] = useState(expanded || reveal);
   if ((expanded || reveal) && !rowsMounted) setRowsMounted(true);
   const count = toolCount(block);
+  const wasActive = useRef(active);
+  useEffect(() => {
+    // Finish in the compact summary, without hiding a detail that the reader is using.
+    if (wasActive.current && !active && !group.current?.querySelector('ul')?.contains(document.activeElement)) {
+      setExpanded(false); memory.groups.set(block.id, false);
+    }
+    wasActive.current = active;
+  }, [active, block.id, memory]);
   // Answered questions stay visible in a collapsed group.
   const answered = outcomes?.flatMap((outcome, index) => outcome?.answers?.length || outcome?.dismissed ? [{ index, outcome }] : []) || [];
   return (
-    <section className={styles.toolGroup} aria-label={t("Tool activity")} data-tool-activity data-tool-block={block.id}>
+    <section ref={group} className={styles.toolGroup} aria-label={t("Tool activity")} data-tool-activity data-tool-block={block.id} data-active={active || undefined}>
       <button
         type="button"
         aria-expanded={expanded}
         aria-controls={rowsId}
+        aria-label={active ? `${t('Tool activity')} · ${t('Step {step}', { step: String(count) })}` : undefined}
         onClick={() => setExpanded((value) => { memory.groups.set(block.id, !value); return !value; })}
       >
-        <Icon name={expanded ? "chevronDown" : "chevronForwardOutline"} size={13} />
-        {block.duration ? `Worked for ${block.duration}` : t("Tool activity")}
-        <span>
-          · {count} {count === 1 ? t("tool") : t("tools")}
-        </span>
+        <ActivityTicker block={block} active={active} expanded={expanded} />
       </button>
       {block.details?.some(call => skillInvocation(call)) && <div className={styles.skillInvocations}>
         {block.details.map((call, index) => {
@@ -131,8 +140,9 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
           const skill = skillInvocation(call), label = skill ? `Skill · ${skill}` : tool;
           // The answered questions group already shows the answers of this call.
           const sections = !call ? [] : toolSections(call).filter((section) => section.kind !== 'answers' || !outcomes?.[index]?.answers?.length);
-          return <li key={index}>
-            <Icon name={thinking !== undefined ? "sparklesOutline" : call?.children?.length ? "gitNetworkOutline" : call && isTodoWrite(call) ? "listOutline" : "codeSlash"} size={14} />
+          const state = thinking !== undefined ? 'thinking' : call?.isError ? 'error' : callEnded(call) ? 'done' : active ? 'running' : 'unknown';
+          return <li key={call?.id ?? index} data-step-state={state} aria-label={thinking === undefined ? `${tool} · ${t(state === 'done' ? 'Completed' : state === 'error' ? 'Failed' : state === 'running' ? 'In progress' : 'No completion reported')}` : undefined}>
+            <ActivityMark state={state} />
             {thinking !== undefined ? <details className={`${styles.toolDetails} ${styles.thinkingRow}`}
               open={!!memory.details.get(`${block.id}:thinking:${index}`)}
               onToggle={event => memory.details.set(`${block.id}:thinking:${index}`, event.currentTarget.open)}>
@@ -150,6 +160,7 @@ const ToolActivity = memo(function ToolActivity({ block, compactTools, outcomes,
     </section>
   );
 }, (previous, next) => previous.sessionId === next.sessionId && previous.compactTools === next.compactTools
+  && previous.active === next.active && previous.block.startedAt === next.block.startedAt
   && previous.reveal === next.reveal && previous.block.id === next.block.id && previous.block.duration === next.block.duration
   && previous.block.details === next.block.details
   && previous.block.tools.length === next.block.tools.length
@@ -386,7 +397,7 @@ const isPoint = (index: number) => (segment: RecapSegment): segment is Extract<R
   segment.kind === 'point' && segment.index === index;
 
 export const MessageList = memo(function MessageList({
-  sessionId = '', messages, disabled, pending, answered, running = false, recapBusy = false, scroll, railHost = null,
+  sessionId = '', messages, disabled, pending, answered, running = false, agent = 'Claude', simulated = false, recapBusy = false, scroll, railHost = null,
   onOption, onRecap, onUnpin, pinned, viewport, onVirtualMode, onManaged, onPinned,
 }: {
   sessionId?: string; messages: Message[]; disabled: boolean; pending: boolean;
@@ -394,6 +405,7 @@ export const MessageList = memo(function MessageList({
   answered?: ReadonlySet<string>;
   // The agent works now. The recap button waits for the end of the reply.
   running?: boolean;
+  agent?: string; simulated?: boolean;
   // A manual recap request is on its way or the agent answers it now.
   recapBusy?: boolean;
   scroll?: RefObject<HTMLDivElement | null>;
@@ -455,6 +467,7 @@ export const MessageList = memo(function MessageList({
     previousBlocks.current = next;
     return next;
   }), [visible]);
+  const activeBlock = running && blocks.at(-1)?.kind === 'tools' ? blocks.at(-1)!.id : null;
   const available = blocks.length >= 300;
   const virtual = available && faster;
   // Every chat uses a message anchor. The row count only controls virtualization.
@@ -580,7 +593,7 @@ export const MessageList = memo(function MessageList({
   const placeholder = writingTarget === null || (writingTarget && !visible.some((message) => message.id === writingTarget));
   const showButton = !!onRecap && !!lastReply && !recaps.has(lastReply) && !writing && !running;
   const renderBlock = (block: ChatBlock) => block.kind === 'tools'
-      ? <ToolActivity key={block.id} block={block} sessionId={sessionId} compactTools={compactTools} outcomes={outcomes.get(block.id)} memory={memory}
+      ? <ToolActivity key={block.id} block={block} active={block.id === activeBlock} sessionId={sessionId} compactTools={compactTools} outcomes={outcomes.get(block.id)} memory={memory}
         questions={questions.get(block.id)} reveal={revealed.has(block.id)} />
       : block.kind === 'thinking'
         ? <article key={block.id} className={styles.agentMessage} data-role="thinking"><Thinking text={block.text} memory={memory} stateKey={block.id} /></article>
@@ -598,6 +611,7 @@ export const MessageList = memo(function MessageList({
     <TranscriptViewport blocks={blocks} enabled={virtual} full={full} scroll={scroll} pinned={pinned}
       controller={viewport} memory={memory} ready={positionReady && historyReady} layoutKey={`${font}:${compactTools}:${language}`}
       render={renderBlock} onMode={onVirtualMode} onPinned={onPinned} persist={persist} />
+    {running && !activeBlock && <ActivityWaiting agent={agent} simulated={simulated} />}
     {placeholder && (
       <article className={styles.agentMessage}>
         <div className={styles.markdown}>

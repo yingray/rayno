@@ -33,10 +33,13 @@ import { latestTodos } from '../data/todos';
 import { parseRipgrepFiles, searchCommands, searchFiles, sessionCommands, type FileItem } from '../happy/suggestions';
 import type { Suggestion } from './ComposerSuggestions';
 import type { TranscriptController } from './TranscriptViewport';
+import { ActivityWaiting } from './ActivityTicker';
+import { toolTimelineDemoId } from '../data/toolTimelineDemo';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
 const DemoQuestions = lazy(() => import('./DemoQuestions').then((module) => ({ default: module.DemoQuestions })));
+const DemoToolTimeline = lazy(() => import('./DemoToolTimeline').then((module) => ({ default: module.DemoToolTimeline })));
 const WorkspaceFiles = lazy(() => import('../happy/WorkspaceFiles').then((module) => ({ default: module.WorkspaceFiles })));
 
 const sampleCode = `export function Panel({ children }: PanelProps) {\n  return (\n    <section className={styles.panel}>\n      {children}\n    </section>\n  );\n}`;
@@ -508,7 +511,7 @@ export const Chat = memo(function Chat({
                 loadEarlier={() => { viewport.current?.unpin(); viewport.current?.capture(); void live?.loadHistory(session.id, 'older').catch(() => {}); }} />
               {session.messages.length ? (
                 <LazyBoundary><MessageList sessionId={session.id} messages={renderedMessages} disabled={disabled} pending={pending} answered={answeredIds}
-                  running={running} recapBusy={recapBusy} scroll={scroll} railHost={railHost}
+                  running={running} agent={session.agent} simulated={mode === 'demo'} recapBusy={recapBusy} scroll={scroll} railHost={railHost}
                   pinned={pinned} viewport={viewport} onVirtualMode={setVirtualMode} onManaged={setManagedTranscript} onPinned={onTranscriptPinned}
                   onOption={chooseReply} onRecap={requestRecap} onUnpin={unpin} /></LazyBoundary>
               ) : !history?.loading && (!history?.error || offline) ? (
@@ -516,14 +519,10 @@ export const Chat = memo(function Chat({
                   {offline ? t("Open this chat online to save its messages on this device.") : t("Give your agent a task to work on.")}
                 </Empty>
               ) : null}
-              {running && (
-                <div className={styles.thinking} role="status">
-                  <Spinner />
-                  {session.agent}{' '}{t("is working")}{mode === 'demo' && <span className={styles.simulated}>{t("Simulated")}</span>}
-                </div>
-              )}
+              {running && !renderedMessages.length && <ActivityWaiting agent={session.agent} simulated={mode === 'demo'} />}
               {hasRequests && <LazyBoundary><Requests sessionId={session.id} /></LazyBoundary>}
               {mode === 'demo' && session.id === questionDemoId && <LazyBoundary><DemoQuestions /></LazyBoundary>}
+              {mode === 'demo' && session.id === toolTimelineDemoId && <LazyBoundary><DemoToolTimeline session={session} /></LazyBoundary>}
               <div className={styles.conversationEnd}>
                 <span className={styles.liveDot} />
                 {disabled

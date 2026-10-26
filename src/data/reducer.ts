@@ -69,6 +69,8 @@ export function demoReducer(state: DemoState, action: Action): DemoState {
     sessions: state.sessions.map((session) => {
       if (session.id !== action.id) return session;
       switch (action.type) {
+        case 'demoActivity':
+          return { ...session, messages: action.messages, status: action.status, updatedAt: action.now };
         case 'rename':
           return { ...session, customTitle: action.name.trim() || undefined };
         case 'archive':

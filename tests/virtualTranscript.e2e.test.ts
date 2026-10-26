@@ -220,11 +220,15 @@ test('virtual transcript should keep Settings, tools, and send reachable across 
 test('virtual transcript should retain a focused tool control when scrolling it out of view', async ({ page }, info) => {
   test.skip(!!info.project.use.isMobile, 'Desktop keyboard focus and wheel interaction.');
   // Arrange
-  const { view } = await arrange(page);
+  const rows = toolHeavyHistory(120);
+  // Give this reply a visible rail pin. Short replies no longer have one.
+  const reply = rows.find(row => row.content.turn === 'turn-30' && row.content.ev.text?.startsWith('### Result 30'))!;
+  reply.content.ev.text += '\n\n' + 'The build report includes the test results and source changes. '.repeat(12);
+  const { view } = await arrange(page, rows);
   await view.jumpReply(30);
   const group = view.transcript().locator('[data-tool-activity]').filter({ hasText: 'Bash 30' });
   if (await group.locator(':scope > button').getAttribute('aria-expanded') !== 'true') await group.locator(':scope > button').click();
-  const summary = view.transcript().locator('[data-tool-activity]').filter({ hasText: 'Bash 30' }).locator('summary').first();
+  const summary = group.locator('summary').first();
   await summary.focus();
   // Act
   await view.messages().hover(); await page.mouse.wheel(0, 2400);

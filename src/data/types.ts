@@ -11,6 +11,7 @@ export type ToolPermission = {
 export type ToolCall = {
   id: string; name: string; tool?: string; input?: unknown; result?: unknown; resultText?: string; isError?: boolean; ended?: boolean;
   permission?: ToolPermission; children?: Message[];
+  startedAt?: number; endedAt?: number;
 };
 // Happy Web sync/storageTypes.ts TodoItemSchema.
 export type Todo = { content: string; status: 'pending' | 'in_progress' | 'completed'; priority?: 'high' | 'medium' | 'low'; id?: string };
@@ -26,7 +27,7 @@ export type Message = {
   tools?: string[];
   toolCalls?: ToolCall[];
   toolResults?: {
-    id: string; result: unknown; resultText?: string; isError?: boolean; hideUnmatched?: boolean; permission?: ToolPermission;
+    id: string; result: unknown; resultText?: string; isError?: boolean; hideUnmatched?: boolean; permission?: ToolPermission; endedAt?: number;
   }[];
   duration?: string;
   attachments?: Attachment[];
@@ -168,6 +169,7 @@ export type DemoState = {
   lastAgent?: 'Claude' | 'Codex';
 };
 export type Action =
+  | { type: 'demoActivity'; id: string; now: number; status: Status; messages: Message[] }
   | { type: 'create'; session: Session }
   | { type: 'rename'; id: string; name: string }
   | { type: 'archive'; id: string }

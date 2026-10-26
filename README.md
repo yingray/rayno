@@ -209,6 +209,10 @@ Demo computers, files, usage, and attachment names stay separate from real accou
 Use Settings > Account > Connect to Happy to return to the connected client.
 Reset demo affects only demo data.
 
+Open `/session/tool-timeline-demo?demo=1` to try the tool activity ticker and timeline.
+Select Start demo, then Next step to advance the simulated tools. Expand the activity to inspect each result.
+Select Finish demo to see the duration summary. Select Restart demo to repeat the example and keep your draft.
+
 Open `/session/private-image-demo?demo=1` on your Rayno server to try the image preview.
 Select **Load private image**, then select the thumbnail to open or download it.
 This demo encrypts and decrypts the public README screenshot in this browser. It reads no computer file and uploads no attachment.
