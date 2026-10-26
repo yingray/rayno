@@ -36,7 +36,7 @@ test('side chats should stay out of the session list and open beside the parent 
   await workspace.headerButton().click();
   await expect(page).toHaveURL(/\/session\/real-session\/side$/);
   await expect(workspace.panel()).toBeVisible();
-  await expect(workspace.sessionList()).toHaveCount(0);
+  await expect(workspace.sessionList()).toBeVisible();
   await expect(page.getByRole('region', { name: 'Chat session', exact: true })).toBeVisible();
   await expect(workspace.tabs().getByRole('button', { name: /^(Side chat 1|Check the parser)$/ })).toHaveCount(2);
   await expect(workspace.tab('Check the parser')).toHaveAttribute('aria-pressed', 'true');

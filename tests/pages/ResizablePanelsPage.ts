@@ -16,8 +16,15 @@ export class ResizablePanelsPage extends SideChatsPage {
     await expect.poll(() => this.panelWidth(kind)).toBeCloseTo(width, 0);
     await expect(this.separator(kind)).toHaveAttribute('aria-valuenow', String(width));
   }
+  async limit(kind: PanelKind, edge: 'min' | 'max') {
+    return Number(await this.separator(kind).getAttribute(`aria-value${edge}`));
+  }
   async expectMainUsable() {
-    await expect.poll(async () => (await this.mainChat().boundingBox())!.width).toBeGreaterThanOrEqual(520);
+    const side = this.separator('side');
+    await expect.poll(async () => {
+      const minimum = await side.count() ? (await this.limit('side', 'min')) - 2 : 520;
+      return (await this.mainChat().boundingBox())!.width - minimum;
+    }).toBeGreaterThanOrEqual(0);
     const input = this.mainChat().getByRole('textbox', { name: 'Message', exact: true });
     const send = this.mainChat().getByRole('button', { name: 'Send message', exact: true });
     for (const control of [input, send]) await this.expectInViewport(control);

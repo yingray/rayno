@@ -42,6 +42,7 @@
   margin: 0;
   font-weight: 600;
 }
+.collapseButton { min-width: 44px; min-height: 44px; flex: none; }
 .mobileLogo {
   display: none;
 }

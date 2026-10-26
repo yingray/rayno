@@ -14,7 +14,7 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
     try { return savedPanelWidth(live ? live.readLocal(key) : localStorage.getItem('rayno.demo.' + key), kind); }
     catch { return null; }
   });
-  const [space, setSpace] = useState({ available: Infinity, viewport: window.innerWidth });
+  const [space, setSpace] = useState({ available: window.innerWidth, viewport: window.innerWidth });
   const [resizing, setResizing] = useState(false);
   // A resize marks the root for its cursor and text selection rules (global.css).
   // Do not use a `:has()` rule on the shell for this: then each DOM change in the chat restyles the whole tree.
@@ -38,13 +38,28 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
       else localStorage.setItem('rayno.demo.' + key, String(value));
     } catch { /* A blocked browser store must not prevent resizing. */ }
   };
+  function measureSpace() {
+    const panel = frame.current!, main = panel.previousElementSibling as HTMLElement, shell = panel.parentElement!;
+    const css = getComputedStyle(shell);
+    const mainStyle = getComputedStyle(main);
+    const children = [...shell.children].filter((child): child is HTMLElement => child instanceof HTMLElement
+      && getComputedStyle(child).display !== 'none' && !['absolute', 'fixed'].includes(getComputedStyle(child).position));
+    const margins = (child: HTMLElement) => {
+      const style = getComputedStyle(child);
+      return parseFloat(style.marginLeft) + parseFloat(style.marginRight);
+    };
+    const occupied = children.reduce((sum, child) => sum + margins(child)
+      + (child === main || child === panel ? 0 : child.getBoundingClientRect().width), 0);
+    return { available: shell.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight)
+      - occupied - (children.length - 1) * parseFloat(css.columnGap)
+      - parseFloat(mainStyle.borderLeftWidth) - parseFloat(mainStyle.borderRightWidth), viewport: window.innerWidth };
+  }
   useLayoutEffect(() => {
     const panel = frame.current!, main = panel.previousElementSibling as HTMLElement;
     const shell = panel.parentElement!;
     const measure = () => {
-      const available = main.clientWidth + panel.getBoundingClientRect().width;
-      setSpace(previous => Math.abs(previous.available - available) < 0.5 && previous.viewport === window.innerWidth
-        ? previous : { available, viewport: window.innerWidth });
+      const next = measureSpace();
+      setSpace(previous => Math.abs(previous.available - next.available) < 0.5 && previous.viewport === next.viewport ? previous : next);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -71,7 +86,10 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
     event.preventDefault();
     event.currentTarget.focus({ preventScroll: true });
     event.currentTarget.setPointerCapture(event.pointerId);
-    drag.current = { pointer: event.pointerId, x: event.clientX, width, preferred };
+    const next = measureSpace();
+    setSpace(next);
+    drag.current = { pointer: event.pointerId, x: event.clientX,
+      width: clampPanelWidth(width, panelWidthBounds(kind, next.available)), preferred };
     setResizing(true);
   }
   function move(event: PointerEvent<HTMLButtonElement>) {
@@ -83,6 +101,8 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
   }
   function reset() {
     finish(true);
+    const space = measureSpace(), bounds = panelWidthBounds(kind, space.available);
+    setSpace(space);
     const value = clampPanelWidth(defaultPanelWidth(kind, window.innerWidth), bounds);
     setPreferred(null);
     try {
@@ -93,11 +113,13 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
   function keyboard(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key === 'Escape' && drag.current) { event.preventDefault(); event.stopPropagation(); finish(true); return; }
     if (event.key === 'Enter') { event.preventDefault(); reset(); return; }
+    const space = measureSpace(), bounds = panelWidthBounds(kind, space.available);
     const step = event.shiftKey ? 50 : 10;
     const next = event.key === 'ArrowLeft' ? width + step : event.key === 'ArrowRight' ? width - step
       : event.key === 'Home' ? bounds.min : event.key === 'End' ? bounds.max : undefined;
     if (next === undefined) return;
     event.preventDefault();
+    setSpace(space);
     const value = clampPanelWidth(next, bounds);
     setPreferred(value); persist(value);
   }

@@ -51,6 +51,16 @@ export function App() {
     }
   });
   const [listOpen, setListOpen] = useState(width >= 768 && width < 1024 && path === '/sessions');
+  const [sessionsCollapsed, setSessionsCollapsed] = useState(() => {
+    try { return localStorage.getItem('rayno.sessions.collapsed') === 'true'; }
+    catch { return false; }
+  });
+  const setSessionsVisible = useCallback((visible: boolean) => {
+    setSessionsCollapsed(!visible);
+    try { localStorage.setItem('rayno.sessions.collapsed', String(!visible)); }
+    catch { /* Keep the control usable when browser storage is unavailable. */ }
+  }, []);
+  const collapseSessions = useCallback(() => setSessionsVisible(false), [setSessionsVisible]);
   const [searchRequested, setSearchRequested] = useState(false);
   const searchHandled = useCallback(() => setSearchRequested(false), []);
   const closeList = useCallback(() => setListOpen(false), []);
@@ -86,7 +96,7 @@ export function App() {
         ? 'inbox'
         : 'sessions';
   const showList =
-    sessionsArea && (mobile ? path === '/sessions' : width >= 1024 && !((infoOpen || sideOpen) && width >= 1280));
+    sessionsArea && (mobile ? path === '/sessions' : width >= 1024);
   const showTabs =
     (mobile && ['/sessions', '/inbox', '/monitor'].includes(path)) ||
     (mobile && path.startsWith('/settings'));
@@ -101,7 +111,8 @@ export function App() {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         if (!mobile && width < 1024) setListOpen(true);
-        else if (!sessionsArea || (mobile && path !== '/sessions')) navigate('/sessions');
+        else if (width >= 1024) setSessionsVisible(true);
+        if (!sessionsArea || (mobile && path !== '/sessions')) navigate('/sessions');
         setSearchRequested(true);
       }
       if (event.key === 'Escape') {
@@ -113,7 +124,7 @@ export function App() {
     }
     window.addEventListener('keydown', search);
     return () => window.removeEventListener('keydown', search);
-  }, [sessionsArea, mobile, width, path, listOpen, infoOpen, sideOpen, session, navigate]);
+  }, [sessionsArea, mobile, width, path, listOpen, infoOpen, sideOpen, session, navigate, setSessionsVisible]);
   useEffect(() => {
     const update = () => setOffline(!navigator.onLine);
     window.addEventListener('online', update);
@@ -134,7 +145,10 @@ export function App() {
   const closeInfo = useCallback(() => navigate(`/session/${session?.id}`), [navigate, session?.id]);
   const closeSide = closeInfo;
   const openInfo = useCallback(() => navigate(infoOpen ? `/session/${session?.id}` : `/session/${session?.id}/info`), [navigate, infoOpen, session?.id]);
-  const openList = useCallback(() => setListOpen(true), []);
+  const openList = useCallback(() => {
+    if (width >= 1024) setSessionsVisible(sessionsCollapsed);
+    else setListOpen(true);
+  }, [width, sessionsCollapsed, setSessionsVisible]);
   if (path === '/') return <Navigate to="/sessions" replace />;
   if (path === '/settings') return <Navigate to="/settings/appearance" replace />;
   const knownRoute =
@@ -144,6 +158,10 @@ export function App() {
     path.startsWith('/settings/') ||
     path.startsWith('/machine/');
   const goNav = (item: (typeof navigation)[number]) => {
+    if (item.key === 'sessions' && width >= 1024) {
+      setSessionsVisible(sessionsArea ? sessionsCollapsed : true);
+      if (sessionsArea) return;
+    }
     if (item.key === 'sessions' && width >= 768 && width < 1024) {
       setListOpen(true);
       return;
@@ -198,6 +216,8 @@ export function App() {
                 className={`${styles.navItem} ${active === item.key ? styles.navActive : ''}`}
                 aria-label={t(item.name)}
                 aria-current={active === item.key ? "page" : undefined}
+                aria-expanded={item.key === 'sessions' && width >= 1024 ? showList && !sessionsCollapsed : undefined}
+                aria-controls={item.key === 'sessions' && showList ? 'session-list-panel' : undefined}
                 title={t(item.name)}
                 onClick={() => goNav(item)}
                 aria-description={item.key === 'sessions' && hasUnread ? t('Unread messages') : undefined}
@@ -242,8 +262,9 @@ export function App() {
           </nav>
         )}
         {showList && (
-          <div className={styles.listPanel}>
-            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled} /></LazyBoundary>
+          <div id="session-list-panel" className={styles.listPanel} hidden={!mobile && sessionsCollapsed}>
+            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled}
+              onCollapse={!mobile ? collapseSessions : undefined} /></LazyBoundary>
           </div>
         )}
         {!(mobile && path === '/sessions') && (
@@ -275,6 +296,7 @@ export function App() {
                 session={session}
                 onInfo={openInfo}
                 onList={openList}
+                listExpanded={width >= 1024 && !sessionsCollapsed}
                 onSettings={keepSettings}
               />
             ) : (

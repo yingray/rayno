@@ -5,6 +5,40 @@ import { createDebouncedSave } from './debouncedSave';
 import { createTranscriptMemory } from './transcript';
 
 describe('workspace state notifications', () => {
+  it('should notify only the new session prompt and save the latest text without a workspace update', () => {
+    // Arrange
+    const initial = createInitialState(0);
+    const store = createUIState(initial);
+    const workspace = vi.fn(), prompt = vi.fn(), session = vi.fn(), save = vi.fn();
+    const writer = createDebouncedSave(save);
+    store.subscribe(workspace);
+    const unsubscribe = store.subscribeNewSessionPrompt(prompt);
+    store.subscribeDraft('floating-panels', session);
+    store.subscribeChanges(() => writer.schedule(store.getState()));
+    // Act
+    store.dispatch({ type: 'newDraft', value: { prompt: '中文 task' } });
+    store.dispatch({ type: 'newDraft', value: { prompt: '中文 task' } });
+    writer.flush();
+    // Assert
+    expect(store.getNewSessionPrompt()).toBe('中文 task');
+    expect(store.getSnapshot()).toBe(initial);
+    expect(workspace).not.toHaveBeenCalled();
+    expect(session).not.toHaveBeenCalled();
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0][0].newDraft.prompt).toBe('中文 task');
+    // Other form changes publish the latest prompt without another prompt notification.
+    store.dispatch({ type: 'newDraft', value: { agent: 'Codex' } });
+    expect(store.getSnapshot().newDraft.prompt).toBe('中文 task');
+    expect(prompt).toHaveBeenCalledTimes(1);
+    store.dispatch({ type: 'newDraft', value: { prompt: '', handoff: null } });
+    expect(store.getNewSessionPrompt()).toBe('');
+    expect(prompt).toHaveBeenCalledTimes(2);
+    unsubscribe();
+    store.dispatch({ type: 'newDraft', value: { prompt: 'Another task' } });
+    store.dispatch({ type: 'reset', state: initial });
+    expect(prompt).toHaveBeenCalledTimes(2);
+    writer.flush();
+  });
   it('should notify only the edited session without invalidating the workspace snapshot', () => {
     // Arrange
     const initial = createInitialState(0);

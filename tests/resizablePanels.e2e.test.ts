@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { HappyServer } from './fixtures/HappyServer';
 import { ResizablePanelsPage } from './pages/ResizablePanelsPage';
-import { PANEL_WIDTHS, defaultPanelWidth, type PanelKind } from '../src/app/panelWidths';
+import { clampPanelWidth, defaultPanelWidth, type PanelKind } from '../src/app/panelWidths';
 
 async function setup(page: import('@playwright/test').Page) {
+  await page.addInitScript(() => localStorage.setItem('rayno.sessions.collapsed', 'true'));
   const server = new HappyServer();
   await server.install(page);
   await server.addSession('side-1', { parentSessionId: 'real-session', isSideChat: true, claudeSessionId: 'side-provider' });
@@ -16,7 +17,9 @@ for (const kind of ['info', 'side'] as PanelKind[]) {
     const { workspace, server } = await setup(page);
     await page.setViewportSize({ width: 1920, height: 1000 });
     await workspace.openPanel(kind);
-    const initial = defaultPanelWidth(kind, 1920);
+    const initial = clampPanelWidth(defaultPanelWidth(kind, 1920), {
+      min: await workspace.limit(kind, 'min'), max: await workspace.limit(kind, 'max'),
+    });
     await workspace.expectPanelWidth(kind, initial);
     await workspace.mainChat().getByRole('textbox', { name: 'Message', exact: true }).fill('Keep the main draft');
     if (kind === 'side') await workspace.sideChat().getByRole('textbox', { name: 'Message', exact: true }).fill('Keep the side draft');
@@ -26,16 +29,17 @@ for (const kind of ['info', 'side'] as PanelKind[]) {
     await workspace.separator(kind).press('ArrowRight');
     await workspace.expectPanelWidth(kind, initial + 70);
     await workspace.separator(kind).press('Home');
-    await workspace.expectPanelWidth(kind, PANEL_WIDTHS[kind].min);
+    await workspace.expectPanelWidth(kind, await workspace.limit(kind, 'min'));
     if (kind === 'side') await workspace.expectComposerFits();
     await workspace.separator(kind).press('End');
-    await workspace.expectPanelWidth(kind, PANEL_WIDTHS[kind].max);
+    const maximum = await workspace.limit(kind, 'max');
+    await workspace.expectPanelWidth(kind, maximum);
     await workspace.expectMainUsable();
     await expect(workspace.mainChat().getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Keep the main draft');
     if (kind === 'side') await expect(workspace.sideChat().getByRole('textbox', { name: 'Message', exact: true })).toHaveValue('Keep the side draft');
     expect(server.sends).toHaveLength(0);
     await page.reload();
-    await workspace.expectPanelWidth(kind, PANEL_WIDTHS[kind].max);
+    await workspace.expectPanelWidth(kind, maximum);
     await workspace.separator(kind).dblclick();
     await workspace.expectPanelWidth(kind, initial);
     await workspace.separator(kind).press('Shift+ArrowLeft');
@@ -50,19 +54,21 @@ for (const kind of ['info', 'side'] as PanelKind[]) {
     await page.setViewportSize({ width: 1920, height: 1000 });
     await workspace.openPanel(kind);
     await workspace.separator(kind).focus(); await workspace.separator(kind).press('End');
+    const maximum = await workspace.limit(kind, 'max');
     await page.setViewportSize({ width: 1280, height: 800 });
     await workspace.expectMainUsable();
     await page.getByRole('button', { name: 'Expand navigation', exact: true }).click();
-    await expect.poll(async () => Number(await workspace.separator(kind).getAttribute('aria-valuemax'))).toBeLessThan(PANEL_WIDTHS[kind].max);
+    await expect.poll(() => workspace.limit(kind, 'max')).toBeLessThan(maximum);
     await workspace.expectMainUsable();
     await page.setViewportSize({ width: 1920, height: 1000 });
-    await workspace.expectPanelWidth(kind, PANEL_WIDTHS[kind].max);
+    await page.getByRole('button', { name: 'Collapse navigation', exact: true }).click();
+    await workspace.expectPanelWidth(kind, maximum);
     await workspace.expectMainUsable();
     await page.setViewportSize({ width: 1024, height: 768 });
     await expect(workspace.separator(kind)).toHaveCount(0);
     await expect(page.getByRole('dialog', { name: kind === 'info' ? 'Session info' : 'Side chats', exact: true })).toBeVisible();
     await page.setViewportSize({ width: 1920, height: 1000 });
-    await workspace.expectPanelWidth(kind, PANEL_WIDTHS[kind].max);
+    await workspace.expectPanelWidth(kind, maximum);
   });
 }
 

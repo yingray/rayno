@@ -66,12 +66,14 @@ export const Chat = memo(function Chat({
   session,
   onInfo,
   onList,
+  listExpanded = false,
   embedded = false,
   onSettings,
 }: {
   session: Session;
   onInfo: () => void;
   onList: () => void;
+  listExpanded?: boolean;
   /** A side chat inside its parent's panel. The panel owns the header. */
   embedded?: boolean;
   onSettings?: (sessionId: string, settings: MessageSettings) => void;
@@ -438,8 +440,9 @@ export const Chat = memo(function Chat({
         <Button
           className={styles.listButton}
           variant="ghost"
-          icon="codeSlash"
-          aria-label={t("Open session list")}
+          icon="sidebarOutline"
+          aria-label={listExpanded ? t("Collapse session list") : t("Open session list")}
+          aria-expanded={listExpanded}
           onClick={onList}
         />
         <button className={styles.titleCapsule} onClick={onInfo} aria-label={t("Open session info")}>

@@ -103,8 +103,9 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
     && previous.onAction === next.onAction && shallowEqual(previousSummary, nextSummary);
 });
 
-export const SessionList = memo(function SessionList({ onSelect, onNew, searchRequested, onSearchHandled }: {
+export const SessionList = memo(function SessionList({ onSelect, onNew, onCollapse, searchRequested, onSearchHandled }: {
   onSelect?: () => void; onNew?: () => void; searchRequested?: boolean; onSearchHandled?: () => void;
+  onCollapse?: () => void;
 }) {
   const t = useText();
   const { allSessions, loading, offline } = useDemo((store) => ({
@@ -211,6 +212,8 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
             <Mark size={36} />
           </span>
           <h1>{archived ? t("Archived") : t("Sessions")}</h1>
+          {onCollapse && <Button variant="ghost" icon="sidebarOutline" aria-label={t('Collapse session list')}
+            className={styles.collapseButton} onClick={onCollapse} />}
           <button
             ref={optionsButton}
             className={`${styles.optionsButton} ${filtered ? styles.filtered : ''}`}

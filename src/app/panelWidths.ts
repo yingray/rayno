@@ -2,9 +2,10 @@ export type PanelKind = 'info' | 'side';
 export const MIN_MAIN_CHAT_WIDTH = 520;
 export const PANEL_WIDTHS = {
   info: { min: 320, max: 560 },
-  side: { min: 360, max: 720 },
 } as const;
+export const SIDE_CHAT_SHARE = { min: 0.3, max: 0.7 } as const;
 export function panelWidthBounds(kind: PanelKind, available: number) {
+  if (kind === 'side') return { min: Math.round(available * SIDE_CHAT_SHARE.min), max: Math.round(available * SIDE_CHAT_SHARE.max) };
   const { min, max } = PANEL_WIDTHS[kind];
   return { min, max: Math.max(min, Math.min(max, Math.floor(available - MIN_MAIN_CHAT_WIDTH))) };
 }
@@ -15,6 +16,8 @@ export function clampPanelWidth(width: number, bounds: { min: number; max: numbe
   return Math.max(bounds.min, Math.min(bounds.max, Math.round(width)));
 }
 export function savedPanelWidth(raw: string | null, kind: PanelKind): number | null {
-  const width = Number(raw), bounds = PANEL_WIDTHS[kind];
+  const width = Number(raw);
+  if (kind === 'side') return raw && Number.isFinite(width) && width > 0 ? width : null;
+  const bounds = PANEL_WIDTHS[kind];
   return raw && Number.isFinite(width) && width >= bounds.min && width <= bounds.max ? width : null;
 }

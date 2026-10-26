@@ -60,3 +60,8 @@ export function useDraftOptions(sessionId: string) {
   const getSnapshot = useCallback(() => ui.getDraftOptions(sessionId), [ui, sessionId]);
   return useSyncExternalStore(subscribe, getSnapshot);
 }
+
+export function useNewSessionPrompt() {
+  const ui = useDemo(store => store.ui);
+  return useSyncExternalStore(ui.subscribeNewSessionPrompt, ui.getNewSessionPrompt);
+}

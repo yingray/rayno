@@ -12,7 +12,7 @@ export class SideChatsPage extends SessionOperationsPage {
         await this.page.keyboard.press('ControlOrMeta+k');
         await this.closeListOptions();
       }
-    } else {
+    } else if (!await this.sessionList().isVisible()) {
       await this.page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('button', { name: 'Sessions', exact: true }).click();
     }
     const previous = this.page.url();

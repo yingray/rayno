@@ -75,6 +75,7 @@ import type { Agent } from '../data/types';
 import styles from './ui.module.css';
 
 const icons = {
+  sidebarOutline: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' class='ionicon'><rect x='48' y='80' width='416' height='352' rx='40' stroke-linejoin='round' class='ionicon-fill-none ionicon-stroke-width'/><path d='M176 80v352' class='ionicon-fill-none ionicon-stroke-width'/></svg>",
   add,
   arrowUp,
   arrowDown,

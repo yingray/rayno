@@ -1,4 +1,5 @@
 .chat {
+  container: chat / inline-size;
   height: 100%;
   min-height: 0;
   display: flex;
@@ -995,6 +996,9 @@
     max-width: none;
   }
 }
+@media (min-width: 1024px) {
+  .listButton { display: inline-flex; min-width: 44px; min-height: 44px; }
+}
 @media (min-width: 1024px) and (max-width: 1399px) {
   .titleCapsule {
     max-width: none;
@@ -1487,6 +1491,18 @@
 .chat[data-embedded] .permission { flex: 0 1 auto; max-width: 150px; overflow: hidden; }
 .chat[data-embedded] .model { flex: 0 1 auto; overflow: hidden; }
 .chat[data-embedded] .model > span { overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 768px) {
+  @container chat (max-width: 420px) {
+    .header { gap: 6px; padding-inline: 10px; }
+    .header .sideChatsButton { display: none; }
+    .titleCapsule { min-width: 44px; padding: 0 4px; justify-content: center; }
+    .titleText { display: none; }
+    .composerActions { flex-wrap: wrap; }
+    .composerActions > .model { order: 1; flex: 1 1 calc(100% - 54px); margin-left: 0; min-height: 44px; }
+    .composerActions > .send, .composerActions > .stop { order: 1; }
+    .composerActions > .permission { flex: 1; overflow: hidden; }
+  }
+}
 .chat[data-embedded] .recapRail,
 .chat[data-embedded] .recapPill { display: none; }
 .chat[data-embedded]:has(.recapRail:not(:empty)) .messageScroll { padding-right: 0; }

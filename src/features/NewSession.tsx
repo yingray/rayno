@@ -4,7 +4,7 @@ import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Button, Icon, Segment, Spinner } from '../components/ui';
-import { useDemo } from '../data/store';
+import { useDemo, useNewSessionPrompt } from '../data/store';
 import { modelOptions, effortOptions, effortLabel } from '../happy/modelOptions';
 import { validateDraft } from '../data/reducer';
 import type { Agent, Attachment, NewSessionDraft } from '../data/types';
@@ -26,7 +26,8 @@ const WorkspacePicker = lazy(() => import('./NewSessionPickers').then((module) =
 export function NewSession() {
   const t = useText();
   const touchKeyboard = useMediaQuery(COARSE_QUERY);
-  const { draft, lastAgent, modelChoices, permissionChoices, sessions, recentWorkspaces, enterToSend, customCodexModel, dispatch, adapter, machines, mode, live } = useDemo((store) => ({
+  const { draft, ui, lastAgent, modelChoices, permissionChoices, sessions, recentWorkspaces, enterToSend, customCodexModel, dispatch, adapter, machines, mode, live } = useDemo((store) => ({
+    ui: store.ui,
     draft: store.state.newDraft, lastAgent: store.state.lastAgent, modelChoices: store.state.modelChoices,
     permissionChoices: store.state.permissionChoices,
     sessions: store.state.sessions, recentWorkspaces: store.state.recentWorkspaces,
@@ -58,16 +59,9 @@ export function NewSession() {
   const [folderApproval, setFolderApproval] = useState<{ directory: string; draft: NewSessionDraft; attachments: Attachment[] } | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
-  const taskInput = useRef<HTMLTextAreaElement>(null);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
-    const input = taskInput.current;
-    if (input && (input.value || draft.handoff)) {
-      input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
-      input.scrollTop = input.scrollHeight;
-    }
     return () => {
       mounted.current = false;
     };
@@ -78,6 +72,8 @@ export function NewSession() {
   }, [agent, model, effort, permissionMode, draft.agent, draft.model, draft.effort, draft.permissionMode, dispatch]);
   async function start() {
     if (busy) return;
+    // Prompt edits do not publish a workspace snapshot. Read the current draft at submit time.
+    const draft = ui.getState().newDraft;
     const validation = validateDraft(
       { ...draft, permissionMode },
       !!machines.find((machine) => machine.id === draft.machineId)?.online,
@@ -303,18 +299,7 @@ export function NewSession() {
                   </button>
                 </div>
               )}
-              <textarea
-                enterKeyHint={touchKeyboard ? "enter" : undefined}
-                ref={taskInput}
-                aria-label={t("Task description")}
-                placeholder={draft.handoff ? t("Add instructions, or start to continue the work") : t("What should the agent do?")}
-                value={draft.prompt}
-                onChange={(event) =>
-                  dispatch({ type: 'newDraft', value: { prompt: event.target.value } })
-                }
-                onKeyDown={keyDown}
-                rows={4}
-              />
+              <NewSessionPrompt handoff={!!draft.handoff} touchKeyboard={touchKeyboard} onKeyDown={keyDown} />
               {attachments.length > 0 && (
                 <div className={styles.attached}>
                   {attachments.map((file, index) => (
@@ -392,4 +377,26 @@ export function NewSession() {
         machineName={machine?.name || 'Selected computer'} onSelect={chooseWorkspace} onClose={() => setPicker(null)} /></LazyBoundary>}
     </section>
   );
+}
+
+function NewSessionPrompt({ handoff, touchKeyboard, onKeyDown }: {
+  handoff: boolean; touchKeyboard: boolean; onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+}) {
+  const t = useText();
+  const prompt = useNewSessionPrompt();
+  const dispatch = useDemo(store => store.dispatch);
+  const input = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const field = input.current;
+    if (field && (field.value || handoff)) {
+      field.focus();
+      field.setSelectionRange(field.value.length, field.value.length);
+      field.scrollTop = field.scrollHeight;
+    }
+  }, []);
+  return <textarea ref={input} enterKeyHint={touchKeyboard ? 'enter' : undefined}
+    aria-label={t('Task description')}
+    placeholder={handoff ? t('Add instructions, or start to continue the work') : t('What should the agent do?')}
+    value={prompt} onChange={event => dispatch({ type: 'newDraft', value: { prompt: event.target.value } })}
+    onKeyDown={onKeyDown} rows={4} />;
 }

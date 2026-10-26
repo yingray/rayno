@@ -17,6 +17,7 @@ export function createUIState(initial: DemoState) {
   const listeners = new Set<() => void>();
   const changes = new Set<() => void>();
   const drafts = new Map<string, Set<() => void>>();
+  const newSessionPrompts = new Set<() => void>();
   return {
     transcripts,
     git,
@@ -24,6 +25,11 @@ export function createUIState(initial: DemoState) {
     getSnapshot: () => snapshot,
     getDraftOptions: (id: string) => optionDrafts.get(id) || emptyOptions,
     getDraft: (id: string) => state.drafts[id] || '',
+    getNewSessionPrompt: () => state.newDraft.prompt,
+    subscribeNewSessionPrompt(listener: () => void) {
+      newSessionPrompts.add(listener);
+      return () => { newSessionPrompts.delete(listener); };
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
@@ -58,10 +64,13 @@ export function createUIState(initial: DemoState) {
         if (value !== old) optionDrafts.set(id, reconcileDraftOptions(old, value, options));
       }
       state = next;
-      if (action.type !== 'draft') {
+      const promptOnly = action.type === 'newDraft' && Object.keys(action.value).length === 1 && 'prompt' in action.value;
+      if (action.type !== 'draft' && !promptOnly) {
         snapshot = next;
         listeners.forEach((listener) => listener());
       }
+      if (next.newDraft.prompt !== previous.newDraft.prompt)
+        newSessionPrompts.forEach((listener) => listener());
       if (next.drafts !== previous.drafts) {
         const ids = action.type === 'draft' ? [action.id] : drafts.keys();
         for (const id of ids) if ((previous.drafts[id] || '') !== (next.drafts[id] || ''))
