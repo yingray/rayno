@@ -59,6 +59,7 @@ import { createQuestionDemo } from './questionDemo';
 import { createImageDemo } from './imageDemo';
 import { createReplyOptionsDemo } from './replyOptionsDemo';
 import { createToolTimelineDemo } from './toolTimelineDemo';
+import { createGitDiffDemo } from './gitDiffDemo';
 
 export function createInitialState(now = Date.now()): DemoState {
   const sessions: Session[] = [
@@ -218,6 +219,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createImageDemo(now));
   sessions.push(createReplyOptionsDemo(now));
   sessions.push(createToolTimelineDemo(now));
+  sessions.push(createGitDiffDemo(now));
   return {
     version: 1,
     sessions,

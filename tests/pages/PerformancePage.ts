@@ -144,7 +144,7 @@ export class PerformancePage extends LiveWorkspacePage {
   }
   async expectLazyScreensAbsent() {
     const assets = await this.loadedAssets();
-    expect(assets.filter((name) => /\/(Monitor|Settings|NewSession|WorkspaceFiles|NewSessionPickers)-/.test(name))).toEqual([]);
+    expect(assets.filter((name) => /\/(Monitor|Settings|NewSession|WorkspaceFiles|GitChanges|NewSessionPickers)-/.test(name))).toEqual([]);
   }
   async loadedAssets(): Promise<string[]> {
     return this.page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname));
@@ -152,7 +152,7 @@ export class PerformancePage extends LiveWorkspacePage {
   async openFiles() {
     await this.info();
     await this.page.getByRole('button', { name: /^View changes/ }).click();
-    await expect(this.page.getByRole('region', { name: 'Real workspace files', exact: true })).toBeVisible();
+    await expect(this.page.getByRole('region', { name: 'Git changes', exact: true })).toBeVisible();
   }
   // Stage timings need `rayno.perf` before the client module loads. WebKit has no long task entries.
   async enableStageTiming() {

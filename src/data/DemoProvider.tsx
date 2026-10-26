@@ -11,6 +11,7 @@ import { imageDemoId, createImageDemo } from './imageDemo';
 import { invocationDemoId, createInvocationDemo } from './invocationDemo';
 import { replyOptionsDemoId, createReplyOptionsDemo, replyOptionsDemoChoices } from './replyOptionsDemo';
 import { toolTimelineDemoId, createToolTimelineDemo } from './toolTimelineDemo';
+import { gitDiffDemoId, createGitDiffDemo } from './gitDiffDemo';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 // The simulated recap answer comes before a normal reply, so the chat can show the waiting state.
@@ -39,6 +40,8 @@ export function DemoProvider({
     const fallback = createInitialState();
     try {
       const restored = restoreState(localStorage.getItem(STORAGE_KEY), fallback);
+      if (!restored.sessions.some(session => session.id === gitDiffDemoId))
+        restored.sessions = [...restored.sessions, createGitDiffDemo()];
       // Make the new example discoverable on older saved demo accounts, too.
       if (!restored.sessions.some(session => session.id === toolTimelineDemoId))
         restored.sessions = [...restored.sessions, createToolTimelineDemo()];

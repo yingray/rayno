@@ -41,7 +41,7 @@ test('chat should load file tools on demand and retain the draft across the lazy
   // Act
   await workspace.openFiles();
   // Assert
-  expect((await workspace.loadedAssets()).some((name) => /\/WorkspaceFiles-.*\.js$/.test(name))).toBe(true);
+  expect((await workspace.loadedAssets()).some((name) => /\/GitChanges-.*\.js$/.test(name))).toBe(true);
   // Act
   await page.getByRole('button', { name: 'Back to chat', exact: true }).click();
   // Assert

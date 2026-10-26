@@ -41,6 +41,7 @@ const Requests = lazy(() => import('../happy/Requests').then((module) => ({ defa
 const DemoQuestions = lazy(() => import('./DemoQuestions').then((module) => ({ default: module.DemoQuestions })));
 const DemoToolTimeline = lazy(() => import('./DemoToolTimeline').then((module) => ({ default: module.DemoToolTimeline })));
 const WorkspaceFiles = lazy(() => import('../happy/WorkspaceFiles').then((module) => ({ default: module.WorkspaceFiles })));
+const GitChanges = lazy(() => import('./GitChanges').then((module) => ({ default: module.GitChanges })));
 
 const sampleCode = `export function Panel({ children }: PanelProps) {\n  return (\n    <section className={styles.panel}>\n      {children}\n    </section>\n  );\n}`;
 const sampleFiles: Record<string, string> = {
@@ -684,12 +685,14 @@ export const Chat = memo(function Chat({
             <ContextWarning context={session.context} always={preferences.alwaysShowContextSize} />
           </div>
         </>
+      ) : view === 'changes' ? (
+        <LazyBoundary><GitChanges key={session.id} session={session} /></LazyBoundary>
       ) : mode === 'live' ? (
-        <LazyBoundary><WorkspaceFiles key={session.id + view} session={session} view={view} /></LazyBoundary>
+        <LazyBoundary><WorkspaceFiles key={session.id + view} session={session} /></LazyBoundary>
       ) : (
         <div className={styles.fileView}>
           <div className={styles.fileTitle}>
-            <span>{view === 'changes' ? t("Changes in this workspace") : t("Workspace files")}</span>
+            <span>{t("Workspace files")}</span>
             <span className={styles.simulated}>{t("Sample files · read only")}</span>
           </div>
           <div className={styles.fileLayout}>
@@ -716,9 +719,7 @@ export const Chat = memo(function Chat({
                 </button>
               </div>
               <pre>
-                {view === 'changes'
-                  ? `@@ -12,3 +12,9 @@\n- <View style={styles.container}>\n+ <section className={styles.panel}>\n+   {children}\n+ </section>\n\n${sampleFiles[selectedFile]}`
-                  : sampleFiles[selectedFile]}
+                {sampleFiles[selectedFile]}
               </pre>
             </div>
           </div>

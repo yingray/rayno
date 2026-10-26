@@ -209,6 +209,11 @@ Demo computers, files, usage, and attachment names stay separate from real accou
 Use Settings > Account > Connect to Happy to return to the connected client.
 Reset demo affects only demo data.
 
+Open `/session/git-diff-demo/changes?demo=1` to try the Git diff viewer.
+Select files and compare working tree or staged changes in unified or split views.
+Sample files include binary and rename changes. Use the state selector to try clean, conflict, and read-error states.
+This demo uses sample data. The connected view reads Git through the session CLI and does not change the repository.
+
 Open `/session/tool-timeline-demo?demo=1` to try the tool activity ticker and timeline.
 Select Start demo, then Next step to advance the simulated tools. Expand the activity to inspect each result.
 Select Finish demo to see the duration summary. Select Restart demo to repeat the example and keep your draft.

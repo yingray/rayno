@@ -82,6 +82,12 @@ export class HappyServer {
   worktreeListing = '';
   // `git status --porcelain` output for a worktree check. Other commands keep the dirty default.
   gitStatus = ' M README.md\n';
+  gitChangesStatus = '## main\0 M README.md\0';
+  gitWorkingNumstat = '1\t1\tREADME.md\0';
+  gitStagedNumstat = '';
+  gitRoot = '/real/project';
+  gitReadError = '';
+  gitPatches = new Map<string, string>();
   workspaceReady: Promise<void> = Promise.resolve();
   workspaceFailure = false;
   historyFailure = false;
@@ -435,6 +441,17 @@ export class HappyServer {
                   : 'M README.md',
               stderr: '',
             };
+          if (payload.method.endsWith(':bash') && (params.command === 'git rev-parse --show-toplevel'
+            || params.command.includes('--porcelain=v1 -z') || params.command.includes('--numstat -z') || params.command.includes(':(top,literal)'))) {
+            const prefix = 'bash -o pipefail -c ';
+            const command = params.command.startsWith(prefix) ? params.command.slice(prefix.length + 1, -1).split("'\\''").join("'") : params.command;
+            const selected = [...this.gitPatches].find(([path]) => command.includes("'" + (':(top,literal)' + path).replace(/'/g, "'\\''") + "'"));
+            result = this.gitReadError ? { success: false, exitCode: 1, stderr: this.gitReadError }
+              : { success: true, exitCode: 0, stderr: '', stdout: params.command === 'git rev-parse --show-toplevel' ? this.gitRoot + '\n'
+                : params.command.includes('--porcelain=v1 -z') ? this.gitChangesStatus
+                : params.command.includes('--numstat -z') ? params.command.includes('--cached') ? this.gitStagedNumstat : this.gitWorkingNumstat
+                : selected?.[1] ?? 'diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-old\n+new\n' };
+          }
           if (/:(claude-list-rewind-points|codex-list-rewind-points)$/.test(payload.method))
             result = { type: 'success', points: this.rewindPoints };
           if (/:(claude-fork-session|claude-duplicate-session|codex-fork-thread|codex-duplicate-thread)$/.test(payload.method)) {

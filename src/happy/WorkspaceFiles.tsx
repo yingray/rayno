@@ -8,7 +8,7 @@ import { messageError } from './errors';
 import { unbase64 } from './encoding';
 import styles from './workspace-files.module.css';
 
-export function WorkspaceFiles({ session, view }: { session: Session; view: 'files' | 'changes' }) {
+export function WorkspaceFiles({ session }: { session: Session }) {
   const { live, connection, offline } = useDemo((store) => ({
     live: store.live, connection: store.snapshot?.connection, offline: store.snapshot?.offline,
   }));
@@ -33,39 +33,10 @@ export function WorkspaceFiles({ session, view }: { session: Session; view: 'fil
     setContent('');
     setSelected('');
     (async () => {
-      if (view === 'files') {
-        const result = await live.rpc(session.id, 'listDirectory', { path: folder });
-        if (!result.success || !Array.isArray(result.entries))
-          throw new Error(result.error || 'The agent cannot list this folder.');
-        if (!cancelled) setEntries(result.entries);
-      } else {
-        const results = await Promise.all([
-          live.bash(session.id, 'git status --short', session.path),
-          live.bash(
-            session.id,
-            'git --no-pager diff --no-ext-diff --no-textconv --no-color -- .',
-            session.path,
-          ),
-          live.bash(
-            session.id,
-            'git --no-pager diff --cached --no-ext-diff --no-textconv --no-color -- .',
-            session.path,
-          ),
-        ]);
-        if (!cancelled) {
-          setSelected('Git changes');
-          setContent(
-            results
-              .map(
-                (result, index) =>
-                  ['Status', 'Working tree', 'Staged'][index] +
-                  '\n' +
-                  (result.stdout || '(No changes)'),
-              )
-              .join('\n\n'),
-          );
-        }
-      }
+      const result = await live.rpc(session.id, 'listDirectory', { path: folder });
+      if (!result.success || !Array.isArray(result.entries))
+        throw new Error(result.error || 'The agent cannot list this folder.');
+      if (!cancelled) setEntries(result.entries);
     })()
       .catch((error) => {
         if (!cancelled) setError(messageError(error));
@@ -76,7 +47,7 @@ export function WorkspaceFiles({ session, view }: { session: Session; view: 'fil
     return () => {
       cancelled = true;
     };
-  }, [live, connected, session.id, session.path, folder, view, revision]);
+  }, [live, connected, session.id, session.path, folder, revision]);
   async function open(entry: Json) {
     if (!live || busy || !connected) return;
     const path = folder.replace(/\/$/, '') + '/' + entry.name;
@@ -106,7 +77,7 @@ export function WorkspaceFiles({ session, view }: { session: Session; view: 'fil
   return (
     <section className={styles.screen} aria-label="Real workspace files">
       <header>
-        <strong>{view === 'files' ? 'Workspace files' : 'Git changes'}</strong>
+        <strong>Workspace files</strong>
         <Button
           icon="refreshOutline"
           disabled={busy || !connected}
@@ -116,7 +87,7 @@ export function WorkspaceFiles({ session, view }: { session: Session; view: 'fil
         </Button>
       </header>
       <p className={styles.path}>{folder || 'No workspace path'} · read only</p>
-      {!connected && <p role="status">{offline ? 'Connect to browse workspace files and Git changes.' : 'Connect to Happy…'}</p>}
+      {!connected && <p role="status">{offline ? 'Connect to browse workspace files.' : 'Connect to Happy…'}</p>}
       {busy && (
         <div className={styles.status}>
           <Spinner /> Read from the agent…
@@ -128,7 +99,6 @@ export function WorkspaceFiles({ session, view }: { session: Session; view: 'fil
         </div>
       )}
       <div className={styles.layout}>
-        {view === 'files' && (
           <nav aria-label="Workspace files">
             {folder !== session.path && (
               <button onClick={() => setFolder(folder.slice(0, folder.lastIndexOf('/')) || '/')}>
@@ -145,7 +115,6 @@ export function WorkspaceFiles({ session, view }: { session: Session; view: 'fil
               <Empty title="Empty folder">This folder has no entries.</Empty>
             )}
           </nav>
-        )}
         <div className={styles.content}>
           <small>{selected || 'Select a file to preview'}</small>
           <pre>{content}</pre>

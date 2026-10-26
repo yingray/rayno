@@ -31,6 +31,13 @@ Paths under `rayno/` and `monitor/` below come from that overlay.
 Server contracts also reference `happy-server/sources/app/api/routes/sessionRoutes.ts` and `v3SessionRoutes.ts`.
 Copies update only through an explicit compatibility review.
 
+`gitChanges.ts` uses the existing `bash` and `readFile` handlers in
+`happy-cli/src/modules/common/registerCommonHandlers.ts` for read-only Git inspection.
+All shell RPCs retain the session working directory, including sessions in a repository subfolder.
+Status and statistics use NUL-delimited Git records. Diff pathspecs use `top,literal` and shell quoting.
+External diff tools and text conversion are disabled. A Bash pipeline limits each patch preview to 512 KB
+and preserves Git failures. New files and conflicts use the existing file RPC and its workspace path checks.
+
 Local image imports follow `happy-cli/src/modules/common/registerCommonHandlers.ts` (`listDirectory`, `readFile`),
 `happy-server/sources/app/api/socketConfig.ts`, and `attachmentRoutes.ts` in local Happy snapshot `2dcac1ad`.
 The user selects **Load private image** on a Markdown image or image link. Rendering the path performs no disk read or upload.
