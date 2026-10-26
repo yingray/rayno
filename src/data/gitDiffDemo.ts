@@ -29,6 +29,6 @@ export function createGitDiffDemo(now = Date.now()): Session {
   return { id: gitDiffDemoId, title: 'Git diff · Interactive demo', workspace: 'rayno', project: 'Rayno',
     path: '/demo/rayno', branch: 'demo/git-diff', machineId: 'mbp', agent: 'Claude', model: 'claude-opus-5', effort: 'high',
     status: 'idle', unread: false, archived: false, createdAt: now, updatedAt: now, additions: 20, deletions: 7,
-    messages: [{ id: 'git-diff-intro', role: 'assistant', sentAt: now, content: '### Try the Git diff viewer\n\nOpen Session info, then View changes. Select files, compare working tree and staged changes, or switch to a split diff. The repository states are simulated. Your drafts and other demo sessions stay in place.' }],
+    messages: [{ id: 'git-diff-intro', role: 'assistant', sentAt: now, content: '### Try the Git diff viewer\n\nOpen Session info, then View changes. Select files, compare working tree and staged changes, or switch to a split diff. Return to chat to see the branch and change summary from that read. The repository states are simulated. Your drafts and other demo sessions stay in place.' }],
   };
 }

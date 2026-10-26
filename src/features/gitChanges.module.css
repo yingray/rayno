@@ -1,4 +1,4 @@
-.screen { flex: 1; min-height: 0; min-width: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: 22px; color: var(--body); }
+.screen { flex: 1; min-height: 0; min-width: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: 22px; color: var(--body); container: git-changes / inline-size; }
 .screen button { cursor: pointer; }
 .screen button:disabled { cursor: default; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -7,7 +7,7 @@
 .heading h1 { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 0; font-size: 23px; font-weight: 550; letter-spacing: -.025em; }
 .heading h1 small { border: 1px solid var(--border); border-radius: 20px; padding: 4px 8px; color: var(--muted); font-size: 10px; font-weight: 400; letter-spacing: 0; }
 .actions { display: flex; align-items: center; gap: 6px; flex: none; }
-.actions button, .screen > .error button, .toolbar > button, .more button, .empty button { min-height: 44px; min-width: 44px; }
+.actions button, .screen > .error button, .toolbar button, .more button, .empty button { min-height: 44px; min-width: 44px; }
 .repository { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--muted); font-size: 11px; }
 .repository > span:first-child { display: flex; gap: 6px; align-items: center; color: var(--secondary); }
 .repository strong { font-weight: 500; overflow-wrap: anywhere; }
@@ -17,7 +17,7 @@
 .demo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; border: 1px dashed var(--border-control); border-radius: 12px; padding: 10px 12px; font-size: 11px; color: var(--muted); }
 .demo label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .demo select { max-width: 100%; border: 1px solid var(--border-control); background: var(--well); color: var(--body); border-radius: 8px; min-height: 44px; padding: 5px 8px; font-size: 13px; }
-.filters { display: flex; gap: 4px; overflow-x: auto; flex: none; padding: 2px; }
+.filters { display: flex; flex-wrap: wrap; gap: 4px; flex: none; padding: 2px; }
 .filters button { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: transparent; border: 1px solid transparent; border-radius: 10px; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .filters button[aria-pressed='true'] { border-color: var(--border-control); background: var(--well); color: var(--body); }
 .filters button > span { background: #ffffff08; padding: 2px 5px; border-radius: 5px; font-size: 10px; font-variant-numeric: tabular-nums; }
@@ -43,15 +43,18 @@
 .statusBadge[data-status='Added'], .statusBadge[data-status='Untracked'] { color: var(--green); }
 .statusBadge[data-status='Deleted'], .statusBadge[data-status='Conflict'] { color: #f99199; }
 .statusBadge[data-status='Modified'], .statusBadge[data-status='Renamed'] { color: #c4b5fd; }
-.viewer { display: flex; flex-direction: column; }
+.viewer { display: flex; flex-direction: column; container: git-diff-viewer / inline-size; }
 .fileHeader { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; }
 .fileHeader > div:first-child { min-width: 0; }
 .fileHeader h2 { margin: 0 0 5px; font: 12px/1.6 'Geist Mono', monospace; overflow-wrap: anywhere; color: var(--body); }
 .fileHeader span { font-size: 10px; color: var(--muted); overflow-wrap: anywhere; }
 .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 10px 10px; border-bottom: 1px solid var(--border); }
-.toolbar .segment { height: 44px; max-width: 100%; }
-.toolbar .segment button { min-height: 44px; padding: 7px 10px; font-size: 11px; white-space: nowrap; }
-.toolbar .segment:first-child { margin-right: auto; }
+.toolbar .segment { height: 52px; max-width: 100%; }
+.toolbar > .segment { min-width: 168px; }
+.viewControls > .segment { min-width: 128px; }
+.toolbar .segment button { min-height: 44px; padding: 7px 8px; font-size: 11px; white-space: nowrap; }
+.viewControls, .patchActions { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.patchActions { margin-left: auto; flex: none; }
 .wrap { min-height: 44px; border: 1px solid var(--border-control); border-radius: 8px; background: transparent; padding: 7px 10px; color: var(--muted); font-size: 11px; }
 .wrap[aria-pressed='true'] { color: var(--accent-soft); background: #8b5cf610; }
 .diffScroll { overflow: auto; flex: 1; min-height: 180px; max-height: 66dvh; overscroll-behavior: contain; outline-offset: -1px; }
@@ -67,8 +70,10 @@
 .diffScroll[data-wrap='true'] .diffTable { table-layout: fixed; }
 .diffScroll[data-wrap='true'] .code { white-space: pre-wrap; overflow-wrap: anywhere; }
 .diffScroll[data-layout='split'] .code { border-right: 1px solid var(--border); }
-.diffTable [data-kind='add'] { background: #0e2a2070; color: #ade7c0; }
-.diffTable [data-kind='remove'] { background: #35171e70; color: #f3b7bf; }
+.diffTable tr[data-kind='add'] > td, .diffTable td[data-kind='add'] { background: #154a30; color: #c1ffda; }
+.diffTable tr[data-kind='remove'] > td, .diffTable td[data-kind='remove'] { background: #582530; color: #ffd0d5; }
+.diffTable tr[data-kind='add'] .prefix, .diffTable .prefix[data-kind='add'] { color: #6fffaa; font-weight: 700; box-shadow: inset 2px 0 #4ade80; }
+.diffTable tr[data-kind='remove'] .prefix, .diffTable .prefix[data-kind='remove'] { color: #ff96aa; font-weight: 700; box-shadow: inset 2px 0 #fb7185; }
 .diffTable tr[data-kind='hunk'] { background: #191d2e; color: #aab8e1; }
 .diffTable tr[data-kind='note'] { color: var(--muted); }
 .marker { white-space: pre-wrap; overflow-wrap: anywhere; padding: 5px 10px !important; }
@@ -93,6 +98,8 @@
   .demo > span { flex: 1; min-width: 0; line-height: 1.5; }
   .demo label { max-width: 58%; }
   .demo label > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+}
+@container git-changes (max-width: 640px) {
   .layout { display: flex; flex-direction: column; flex: none; min-height: 280px; }
   .fileToggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 10px; background: transparent; border: 0; color: var(--body); text-align: left; }
   .fileToggle > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
@@ -102,6 +109,12 @@
   .fileStats .counts { flex-direction: row; gap: 6px; }
   .viewer { min-height: 280px; }
   .diffScroll { min-height: 200px; max-height: 65dvh; }
-  .toolbar { gap: 5px; }
+}
+@container git-diff-viewer (max-width: 560px) {
+  .toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .toolbar > .segment { min-width: 0; width: 100%; grid-column: 1; grid-row: 1; }
+  .patchActions { grid-column: 2; grid-row: 1; margin-left: 0; }
+  .viewControls { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .viewControls .segment { min-width: 0; width: 100%; }
 }
 @media (max-height: 500px) { .layout { flex: none; }.fileList { max-height: 180px; }.diffScroll { max-height: 70dvh; } }

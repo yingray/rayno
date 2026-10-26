@@ -12,6 +12,7 @@ import { ResumeSession } from './ResumeSession';
 import { needsSessionResume } from '../happy/resume';
 import { useWorktreeCleanup } from './SessionPrompts';
 import { archiveAction, leaveRoute } from '../data/sideChats';
+import { useSessionGitSummary } from './SessionGitInfo';
 
 export function SessionInfo({
   session,
@@ -23,6 +24,7 @@ export function SessionInfo({
   embedded?: boolean;
 }) {
   const t = useText();
+  const git = useSessionGitSummary(session);
   const { adapter, notify, machines, mode, newDraft, metadata, dispatch, live, parentKnown } = useDemo((store) => ({
     parentKnown: !!session.parentSessionId && store.state.sessions.some((item) => item.id === session.parentSessionId),
     adapter: store.adapter, notify: store.notify, machines: store.machines, mode: store.mode,
@@ -66,7 +68,7 @@ export function SessionInfo({
   const facts = [
     { label: 'Path', value: session.path },
     { label: 'Machine', value: machine?.name || 'Unknown' },
-    { label: 'Branch', value: session.branch },
+    { label: 'Branch', value: git.branch },
     {
       label: 'Started',
       value: new Date(session.createdAt).toLocaleDateString('en-US', {
@@ -100,9 +102,9 @@ export function SessionInfo({
       icon: 'gitCompareOutline',
       label: 'View changes',
       detail:
-        mode === 'live' && !session.gitReported
+        !git.known
           ? 'Not read'
-          : `+${session.additions} −${session.deletions}`,
+          : `+${git.additions} −${git.deletions}`,
       run: () => navigate(`/session/${session.id}/changes`),
     },
     {

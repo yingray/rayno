@@ -10,10 +10,15 @@ for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [
     await view.openChanges(true);
     // Act / Assert
     await expect(view.diff()).toContainText('Rayno workspace');
+    await view.expectHeaderGit('demo/git-diff', '+19−8');
+    await view.expectControlLayout();
+    await view.expectDiffContrast();
     await view.source('Staged');
     await expect(view.diff()).toContainText('My workspace');
     await expect(view.diff()).not.toContainText('Rayno workspace');
     await view.layout('Split');
+    await view.expectControlLayout();
+    await view.expectDiffContrast();
     await expect(view.diff()).toHaveAttribute('data-layout', 'split');
     await view.use(view.screen().getByRole('button', { name: 'Wrap lines', exact: true }));
     await expect(view.diff()).toHaveAttribute('data-wrap', 'false');
@@ -41,6 +46,7 @@ for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [
     if (width === 390 && height === 844) await page.screenshot({ path: info.outputPath('git-diff-phone.png') });
     await view.use(view.screen().getByRole('button', { name: 'Back to chat', exact: true }));
     await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeVisible();
+    await view.expectHeaderGit('demo/git-diff', '+19−8');
   });
 }
 

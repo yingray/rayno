@@ -80,6 +80,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
 }
 .titleText > strong {
   font-size: 15px;
@@ -98,6 +99,9 @@
   color: var(--secondary);
   font-size: 11px;
 }
+.workspaceMeta { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 42%; overflow: hidden; flex: 0 1 auto; }
+.gitSummaryLine { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+.gitUnknown { flex: none; color: var(--muted); font-size: 10px; white-space: nowrap; }
 .branch {
   display: flex;
   align-items: center;
@@ -106,7 +110,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 11px;
+  flex: 1;
 }
+.branchName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .diff {
   display: flex;
   gap: 5px;
@@ -1007,7 +1013,7 @@
 }
 @media (max-width: 767px) {
   .chat[data-view='chat']::before {
-    height: 64px;
+    height: 84px;
   }
   .chat[data-view='chat']::after {
     height: 84px;
@@ -1017,7 +1023,7 @@
     gap: 8px;
   }
   .chat[data-view='chat'] > [data-offline-status] {
-    top: 56px;
+    top: 72px;
   }
   .back {
     display: flex;
@@ -1025,7 +1031,7 @@
     height: 44px;
   }
   .titleCapsule {
-    height: 48px;
+    height: 64px;
     padding-left: 6px;
     padding-right: 10px;
     gap: 7px;
@@ -1039,12 +1045,19 @@
     font-size: 14px;
   }
   .subtitle {
-    gap: 5px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
   }
-  .branch,
   .infoButton {
     display: none;
   }
+  .titleText { gap: 2px; }
+  .workspaceMeta { max-width: 100%; height: 15px; }
+  .workspaceMeta > :last-child { height: 15px; line-height: 15px; font-size: 10px; }
+  .gitSummaryLine { gap: 4px; }
+  .branch { font-size: 10px; }
+  .gitUnknown { font-size: 9px; }
   .diff {
     font-size: 9px;
   }
@@ -1058,19 +1071,19 @@
   }
   .messageScroll {
     padding-top: 0;
-    scroll-padding-top: 64px;
+    scroll-padding-top: 80px;
   }
   .messages {
     --message-gap: calc(var(--mobile-bottom) + 12px);
     --message-gap-with-keyboard: 20px;
-    padding: 68px 16px 42px;
+    padding: 84px 16px 42px;
     gap: 18px;
   }
   .chat[data-view='chat']:has(> [data-offline-status]) .messages {
-    padding-top: 100px;
+    padding-top: 116px;
   }
   .chat[data-view='chat']:has(> [data-offline-status]) .messageScroll {
-    scroll-padding-top: 96px;
+    scroll-padding-top: 112px;
   }
   .conversationDate {
     font-size: 10px;

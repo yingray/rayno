@@ -218,7 +218,7 @@ export function normalizeSession(
     parentSessionId: typeof m.parentSessionId === 'string' && m.parentSessionId ? m.parentSessionId : undefined,
     additions: typeof m.git?.insertions === 'number' ? m.git.insertions : 0,
     deletions: typeof m.git?.deletions === 'number' ? m.git.deletions : 0,
-    gitReported: !!m.git,
+    gitReported: Number.isFinite(m.git?.insertions) && Number.isFinite(m.git?.deletions),
     messages,
   };
 }

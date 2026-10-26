@@ -34,6 +34,7 @@ import { parseRipgrepFiles, searchCommands, searchFiles, sessionCommands, type F
 import type { Suggestion } from './ComposerSuggestions';
 import type { TranscriptController } from './TranscriptViewport';
 import { ActivityWaiting } from './ActivityTicker';
+import { SessionGitInfo } from './SessionGitInfo';
 import { toolTimelineDemoId } from '../data/toolTimelineDemo';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
@@ -446,18 +447,11 @@ export const Chat = memo(function Chat({
           <span className={styles.titleText}>
             <strong>{sideTitle || titleOf(session)}</strong>
             <span className={styles.subtitle}>
+              <span className={styles.workspaceMeta} title={session.workspace}>
               {session.isSideChat && titleOf(session) !== SIDE_CHAT_TITLE && <span className={styles.sideTag}>{t("Side chat")}</span>}
               <WorkspaceTag name={session.workspace} small />
-              <span className={styles.branch}>
-                <Icon name="gitBranchOutline" size={12} />
-                {session.branch}
               </span>
-              {(mode === 'demo' || session.gitReported) && (
-                <span className={styles.diff}>
-                  <i>+{session.additions}</i>
-                  <b>−{session.deletions}</b>
-                </span>
-              )}
+              <SessionGitInfo session={session} />
             </span>
           </span>
         </button>

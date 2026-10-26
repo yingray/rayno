@@ -10,6 +10,7 @@ import { readGitPatch, readGitSnapshot } from '../happy/gitChanges';
 import { messageError } from '../happy/errors';
 import { GitDiffViewer } from './GitDiffViewer';
 import styles from './gitChanges.module.css';
+import { gitReportKey } from '../data/sessionGit';
 
 type Filter = 'all' | 'working' | 'staged' | 'untracked' | 'conflicts';
 const matchesFilter = (file: GitFile, filter: Filter) => filter === 'all' || filter === 'conflicts' && file.conflict
@@ -21,7 +22,7 @@ function Counts({ added, removed }: { added: number; removed: number }) {
 
 export function GitChanges({ session }: { session: Session }) {
   const t = useText(), navigate = useNavigate();
-  const { live, mode, connected, offline, notify } = useDemo(store => ({ live: store.live, mode: store.mode,
+  const { live, mode, connected, offline, notify, ui } = useDemo(store => ({ live: store.live, mode: store.mode, ui: store.ui,
     connected: store.snapshot?.connection === 'connected', offline: store.snapshot?.offline, notify: store.notify }));
   const available = mode === 'demo' || connected && !offline;
   const [snapshot, setSnapshot] = useState<GitSnapshot>();
@@ -32,16 +33,17 @@ export function GitChanges({ session }: { session: Session }) {
   const [filesOpen, setFilesOpen] = useState(false), [split, setSplit] = useState(false), [wrap, setWrap] = useState(true);
   const fileButton = useRef<HTMLButtonElement>(null);
   const [patchState, setPatchState] = useState<{ key: string; patch?: GitPatch; error?: string }>();
+  const reported = gitReportKey(session);
   useEffect(() => {
     if (!available) { setBusy(false); return; }
     let current = true;
     setBusy(true); setError('');
     const read = mode === 'demo' ? Promise.resolve().then(() => gitDemoSnapshot(scenario)) : readGitSnapshot(live!, session.id, session.path);
-    void read.then(data => { if (current) setSnapshot(data); }).catch(reason => {
+    void read.then(data => { if (current) { setSnapshot(data); ui.git.publish(session.id, { snapshot: data, reported, reportedBranch: session.branch, readAt: Date.now() }); } }).catch(reason => {
       if (current) { setError(messageError(reason)); setSnapshot(undefined); }
     }).finally(() => { if (current) setBusy(false); });
     return () => { current = false; };
-  }, [available, live, mode, session.id, session.path, revision, scenario]);
+  }, [available, live, mode, session.id, session.path, revision, scenario, ui, reported]);
   const files = snapshot?.files ?? [];
   const matching = files.filter(file => matchesFilter(file, filter) && `${file.path}\n${file.oldPath ?? ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const selected = matching.find(file => file.path === selectedPath) ?? matching[0];
@@ -69,7 +71,7 @@ export function GitChanges({ session }: { session: Session }) {
   function choose(file: GitFile) {
     setSelectedPath(file.path); setSide(filter === 'staged' ? 'staged' : preferredGitSide(file));
     setFilesOpen(false);
-    if (window.innerWidth < 768) fileButton.current?.focus();
+    if (fileButton.current?.offsetParent !== null) fileButton.current?.focus();
   }
   function download() {
     if (!patch?.patch || !selected) return;
@@ -137,14 +139,17 @@ export function GitChanges({ session }: { session: Session }) {
                   <Button icon="chevronForwardOutline" aria-label={t('Next changed file')} disabled={matching.indexOf(selected) === matching.length - 1 || !available} onClick={() => choose(matching[matching.indexOf(selected) + 1])} />
                 </div>
               </div>
-              <div className={styles.toolbar}>
+              <div className={styles.toolbar} data-diff-toolbar>
                 <Segment label={t('Diff source')} value={currentSide} onChange={setSide} className={styles.segment}
                   options={(['working', 'staged'] as const).filter(value => hasGitSide(selected, value)).map(value => ({ value, label: t(value === 'staged' ? 'Staged' : 'Working tree') }))} />
-                <Segment label={t('Diff layout')} value={split ? 'split' : 'unified'} onChange={value => setSplit(value === 'split')} className={styles.segment}
+                <div className={styles.viewControls}><Segment label={t('Diff layout')} value={split ? 'split' : 'unified'} onChange={value => setSplit(value === 'split')} className={styles.segment}
                   options={[{ value: 'unified', label: t('Unified') }, { value: 'split', label: t('Split') }]} />
                 <button className={styles.wrap} type="button" aria-pressed={wrap} onClick={() => setWrap(value => !value)}>{t('Wrap lines')}</button>
+                </div>
+                <div className={styles.patchActions}>
                 <Button icon="copyOutline" aria-label={t(patch?.patch?.source ? 'Copy content' : 'Copy diff')} disabled={!patch?.patch?.text} onClick={() => void copyText(patch?.patch?.text || '', notify)} />
                 <Button icon="arrowDown" aria-label={t(patch?.patch?.source ? 'Download file' : 'Download diff')} disabled={!patch?.patch?.text || patch.patch.truncated} onClick={download} />
+                </div>
               </div>
               {selected.conflict && <p className={styles.notice}>{t('This file has a merge conflict. The working file shows its conflict markers.')}</p>}
               {isUntracked(selected) && <p className={styles.hint}>{t('New file · all lines are additions')}</p>}

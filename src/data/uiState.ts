@@ -2,6 +2,7 @@ import { reconcileDraftOptions, toggleDraftOption, type DraftOption } from './dr
 import { demoReducer } from './reducer';
 import type { Action, DemoState } from './types';
 import type { TranscriptMemory } from './transcript';
+import { createSessionGitStore } from './sessionGit';
 
 // Draft notifications stay local to one session. The full workspace must not
 // receive an external-store notification for each character in the composer.
@@ -10,6 +11,7 @@ export function createUIState(initial: DemoState) {
   const optionDrafts = new Map<string, readonly DraftOption[]>();
   const emptyOptions: readonly DraftOption[] = [];
   const transcripts = new Map<string, TranscriptMemory>();
+  const git = createSessionGitStore();
   let state = initial;
   let snapshot = initial;
   const listeners = new Set<() => void>();
@@ -17,6 +19,7 @@ export function createUIState(initial: DemoState) {
   const drafts = new Map<string, Set<() => void>>();
   return {
     transcripts,
+    git,
     getState: () => state,
     getSnapshot: () => snapshot,
     getDraftOptions: (id: string) => optionDrafts.get(id) || emptyOptions,
@@ -39,8 +42,8 @@ export function createUIState(initial: DemoState) {
       };
     },
     dispatch(action: Action) {
-      if (action.type === 'reset') optionDrafts.clear();
-      if (action.type === 'delete') { transcripts.delete(action.id); optionDrafts.delete(action.id); }
+      if (action.type === 'reset') { optionDrafts.clear(); git.clear(); }
+      if (action.type === 'delete') { transcripts.delete(action.id); optionDrafts.delete(action.id); git.clear(action.id); }
       const optionAction = action.type === 'draftOption';
       if (action.type === 'draftOption') {
         const result = toggleDraftOption(state.drafts[action.id] || '', optionDrafts.get(action.id) || [], action.key, action.messageId, action.text);

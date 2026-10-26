@@ -762,5 +762,8 @@
   "Type changed": "類型已變更",
   "Changed": "已變更",
   "Conflict": "衝突",
-  "Simulated repository": "模擬儲存庫"
+  "Simulated repository": "模擬儲存庫",
+  "Git not read": "Git 未讀取",
+  "Git status has not been reported. Open Session info → View changes to read it.": "尚未回報 Git 狀態，請開啟 Session info → View changes 讀取。",
+  "file": "個檔案"
 }
