@@ -42,23 +42,23 @@ const swatches: { name: BubbleColor; color: string }[] = [
   { name: 'rose', color: '#f43f5e' },
   { name: 'sand', color: '#b89b66' },
 ];
-function ColorSwatches({ label, caption, options, value, originalColor, onChange }: {
+function ColorSwatches({ label, caption, options, value, onChange }: {
   label: string;
   caption: string;
-  options: readonly { value: string; label: string; color: string | null }[];
+  options: readonly { value: string; label: string; shade: number | null; color: string }[];
   value: string;
-  originalColor?: string;
   onChange: (value: string) => void;
 }) {
   const t = useText();
   const selected = options.find(option => option.value === value) || options[0];
+  const name = (option: typeof selected) => `${t(option.label)}${option.shade === null ? '' : ` ${option.shade}`}`;
   return <div className={styles.markdownThemeField}>
-    <div className={styles.markdownThemeCaption}><span>{caption}</span><small>{t(selected.label)}</small></div>
+    <div className={styles.markdownThemeCaption}><span>{caption}</span><small>{name(selected)}</small></div>
     <div className={styles.markdownSwatches} role="group" aria-label={label}>
       {options.map(option => {
-        const color = option.color || originalColor;
+        const color = option.color;
         return <button key={option.value} type="button" className={styles.markdownSwatch}
-          aria-label={t(option.label)} title={t(option.label)} aria-pressed={option.value === value}
+          aria-label={name(option)} title={name(option)} aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}>
           <span className={styles.markdownSwatchDot} data-empty={color === 'transparent' || undefined}
             style={{ background: color === 'transparent' ? undefined : color }} />
@@ -316,11 +316,11 @@ export function Settings() {
                 />
               </Row>
             </Group>
-            <Group id="markdown" label={t('Markdown')} footer={t('Choose preset text and background colors for each element in agent replies.')}>
+            <Group id="markdown" label={t('Markdown')} footer={t('Official shadcn/Tailwind colors: color text 300, neutral text 400, backgrounds 950.')}>
               {markdownElements.map(element => <Row key={element.value} icon="colorPaletteOutline" title={t(element.label)} className={styles.markdownThemeRow}>
                 <div className={styles.markdownThemePair}>
                   <ColorSwatches label={t(element.textLabel)} caption={t('Text color')} options={markdownTextThemes}
-                    value={preferences[element.textKey]} originalColor={element.originalColor}
+                    value={preferences[element.textKey]}
                     onChange={value => dispatch({ type: 'preferences', value: { [element.textKey]: value as MarkdownTextTheme } })} />
                   <ColorSwatches label={t(element.backgroundLabel)} caption={t('Background')} options={markdownBackgroundThemes}
                     value={preferences[element.backgroundKey]}

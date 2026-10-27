@@ -4,7 +4,7 @@ import { rememberWorkspace } from './workspaces';
 import { shallowEqual } from './subscriptions';
 import { PREVIOUS_RECAP_STYLES, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 import { resolveNewSessionPermission } from '../happy/permissionOptions';
-import { markdownBackgroundThemes, markdownElements, markdownTextThemes } from './markdownAppearance';
+import { markdownElements, restoreMarkdownBackgroundTheme, restoreMarkdownTextTheme } from './markdownAppearance';
 
 export const STORAGE_KEY = 'rayno.demo.v1';
 export const titleOf = (session: Session) => session.customTitle || session.title;
@@ -203,10 +203,8 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         preferences.chatWidth = parsed.preferences.chatWidth as typeof preferences.chatWidth;
       for (const element of markdownElements) {
         const storedText = parsed.preferences[element.textKey], storedBackground = parsed.preferences[element.backgroundKey];
-        const textTheme = markdownTextThemes.find(theme => theme.value === storedText);
-        const backgroundTheme = markdownBackgroundThemes.find(theme => theme.value === storedBackground);
-        if (textTheme) preferences[element.textKey] = textTheme.value;
-        if (backgroundTheme) preferences[element.backgroundKey] = backgroundTheme.value;
+        preferences[element.textKey] = restoreMarkdownTextTheme(storedText, element.defaultText);
+        preferences[element.backgroundKey] = restoreMarkdownBackgroundTheme(storedBackground);
       }
     }
     const drafts = record(parsed.drafts)

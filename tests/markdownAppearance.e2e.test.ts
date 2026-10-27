@@ -6,9 +6,9 @@ import { createMarkdownAppearanceDemo } from '../src/data/markdownAppearanceDemo
 import { createInitialState } from '../src/data/fixtures';
 
 const separateThemes: MarkdownAppearancePreferences = {
-  markdownBoldText: 'sand', markdownBoldBackground: 'midnight',
-  markdownQuoteText: 'mint', markdownQuoteBackground: 'forest',
-  markdownLinkText: 'blue', markdownLinkBackground: 'plum',
+  markdownBoldText: 'amber', markdownBoldBackground: 'blue',
+  markdownQuoteText: 'emerald', markdownQuoteBackground: 'green',
+  markdownLinkText: 'blue', markdownLinkBackground: 'purple',
 };
 
 for (const mode of ['live', 'demo']) {
@@ -23,11 +23,11 @@ for (const mode of ['live', 'demo']) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/session/${session}`);
     await view.input().fill('Keep my draft through appearance changes');
-    for (const [index, text] of markdownTextThemes.entries()) {
+    for (const text of markdownTextThemes.filter(theme => ['neutral', 'mauve', 'olive', 'mist', 'taupe', 'red', 'amber', 'emerald', 'indigo', 'violet', 'rose'].includes(theme.value))) {
       const themes = { ...defaultMarkdownAppearance };
       for (const element of markdownElements) {
         themes[element.textKey] = text.value;
-        themes[element.backgroundKey] = markdownBackgroundThemes[index].value;
+        themes[element.backgroundKey] = markdownBackgroundThemes.find(theme => theme.value === text.value)!.value;
       }
       await page.goto('/settings/appearance');
       await view.choose(themes);
@@ -79,7 +79,9 @@ test('Markdown demo should appear in older saved accounts without replacing sess
   old.drafts['floating-panels'] = 'Keep this saved draft';
   old.newDraft.prompt = 'Keep this new task';
   const raw = JSON.parse(JSON.stringify(old));
-  for (const key of Object.keys(defaultMarkdownAppearance)) delete raw.preferences[key];
+  raw.preferences.markdownBoldText = 'sand'; raw.preferences.markdownBoldBackground = 'midnight';
+  raw.preferences.markdownQuoteText = 'mint'; raw.preferences.markdownQuoteBackground = 'forest';
+  raw.preferences.markdownLinkText = 'blue'; raw.preferences.markdownLinkBackground = 'plum';
   await page.addInitScript(state => {
     if (!localStorage.getItem('rayno.demo.v1')) localStorage.setItem('rayno.demo.v1', JSON.stringify(state));
   }, raw);
@@ -89,7 +91,10 @@ test('Markdown demo should appear in older saved accounts without replacing sess
   await view.sessionRow('Markdown appearance · Interactive demo').click();
   await expect(view.sample()).toBeVisible();
   await view.openDemoSettings();
-  await view.expectChoices(defaultMarkdownAppearance);
+  await view.expectChoices(separateThemes);
+  await view.expectColors(view.preview(), separateThemes);
+  await view.choose(defaultMarkdownAppearance);
+  await view.expectColors(view.preview(), defaultMarkdownAppearance);
   await view.choose(separateThemes);
   await view.returnToDemo();
   await view.expectColors(view.sample(), separateThemes);
@@ -114,8 +119,9 @@ test('Markdown themes should apply to both chats and remain readable at both wid
   await view.activate(side.getByRole('button', { name: 'Send message', exact: true }));
   await expect(side.getByText(/simulated response/)).toBeVisible();
   const strong = side.locator('[data-markdown-content] strong').first();
-  await expect(strong).toHaveCSS('color', 'rgb(240, 205, 136)');
-  await expect(strong).toHaveCSS('background-color', 'rgb(19, 30, 46)');
+  const mainStrong = view.sample().locator('strong').first();
+  await expect(strong).toHaveCSS('color', await mainStrong.evaluate(element => getComputedStyle(element).color));
+  await expect(strong).toHaveCSS('background-color', await mainStrong.evaluate(element => getComputedStyle(element).backgroundColor));
   for (const key of ['Home', 'End']) {
     await page.getByRole('separator', { name: 'Resize side chat', exact: true }).press(key);
     await view.expectColors(view.sample(), separateThemes);

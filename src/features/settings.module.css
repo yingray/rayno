@@ -229,9 +229,9 @@
 }
 .markdownPreview { min-width: 0; padding: 16px; }
 .markdownThemeRow { flex-wrap: wrap; }
-.markdownThemePair { display: grid; flex: 0 1 392px; min-width: 0; gap: 8px; }
-.markdownThemeField { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; }
-.markdownThemeCaption { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: var(--muted); font-size: 12px; }
+.markdownThemePair { display: grid; flex: 0 0 100%; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); min-width: 0; gap: 24px; }
+.markdownThemeField { display: grid; align-content: start; gap: 2px; min-width: 0; }
+.markdownThemeCaption { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; min-width: 0; color: var(--muted); font-size: 12px; }
 .markdownThemeCaption small { color: var(--secondary); font-size: 11px; }
 .markdownSwatches { display: flex; flex-wrap: wrap; min-width: 0; }
 .markdownSwatch { display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
@@ -556,9 +556,7 @@
     row-gap: 12px;
   }
   .chatWidthRow { flex-wrap: wrap; }
-  .markdownThemePair { flex-basis: 100%; gap: 12px; }
-  .markdownThemeField { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  .markdownThemeCaption { flex-direction: row; align-items: baseline; justify-content: space-between; }
+  .markdownThemePair { gap: 12px; }
   .widthSelect { width: calc(100% - 38px); margin-left: 38px; }
   /* Phones put the choices on their own line, aligned with the row text. */
   .fontSize {
