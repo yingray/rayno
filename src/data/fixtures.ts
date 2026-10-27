@@ -58,6 +58,7 @@ import { defaultNewDraft, defaultPreferences } from './defaults';
 import { createQuestionDemo } from './questionDemo';
 import { createImageDemo } from './imageDemo';
 import { createReplyOptionsDemo } from './replyOptionsDemo';
+import { createReplyNavigatorDemo } from './replyNavigatorDemo';
 import { createToolTimelineDemo } from './toolTimelineDemo';
 import { createGitDiffDemo } from './gitDiffDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
@@ -224,6 +225,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createGitDiffDemo(now));
   sessions.push(...createWorkspaceLayoutDemo(now));
   sessions.push(createMarkdownAppearanceDemo(now));
+  sessions.push(createReplyNavigatorDemo(now));
   return {
     version: 1,
     sessions,

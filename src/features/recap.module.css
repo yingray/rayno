@@ -252,7 +252,7 @@
   }
 }
 
-/* The pin rail on the right edge of the chat panel. Desktop only. */
+/* The reply rail on the right edge of the chat panel: a hairline with one tick per reply. Desktop only. */
 .rail {
   position: absolute;
   inset: 0;
@@ -260,17 +260,9 @@
   justify-content: center;
 }
 .track {
-  width: 2px;
+  width: 1px;
   height: 100%;
-  border-radius: 999px;
-  background: #1f1f23;
-}
-.thumb {
-  position: absolute;
-  top: 0;
-  width: 4px;
-  border-radius: 999px;
-  background: #2e2e35;
+  background: #232328;
 }
 .railPin {
   position: absolute;
@@ -282,10 +274,6 @@
   border-radius: 999px;
   background: transparent;
   border: 0;
-  color: #ddd6fe;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -296,14 +284,67 @@
 .railScroller { position: absolute; inset: 0 -13px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; pointer-events: auto; touch-action: pan-y; }
 .railScroller::-webkit-scrollbar { display: none; }
 .railContent { position: relative; width: 100%; }
-.railPin:hover {
-  filter: brightness(1.15);
+.railTick {
+  display: block;
+  width: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: #3f3f46;
+  pointer-events: none;
+  transition: width 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s ease;
 }
-.railDot { width: 6px; height: 6px; border-radius: 50%; background: transparent; border: 1px solid rgb(var(--bubble-tint)); pointer-events: none; }
-.railPin[data-size='medium'] .railDot { width: 10px; height: 10px; }
-.railPin[data-size='large'] .railDot { width: 14px; height: 14px; }
-.railPin[data-active='true'] .railDot {
+.railPin:hover .railTick,
+.railPin:focus-visible .railTick {
+  width: 16px;
+  background: #d4d4d8;
+}
+.railPin[data-active='true'] .railTick {
+  width: 16px;
   background: rgb(var(--bubble-tint));
+}
+/* The first words of a reply, to the left of the hovered or focused tick. */
+.railTip {
+  position: absolute;
+  right: calc(100% + 10px);
+  height: 28px;
+  margin-top: -14px;
+  max-width: 280px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1f1f24, #18181c);
+  border: 1px solid #2e2e35;
+  box-shadow: inset 0 1px 0 #ffffff12, 0 8px 20px -10px #000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #e4e4e7;
+  pointer-events: none;
+  animation: railTipIn 0.16s ease;
+}
+.railTipIndex {
+  flex-shrink: 0;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  color: #8e8e99;
+  font-variant-numeric: tabular-nums;
+}
+.railTipText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@keyframes railTipIn {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .railTick { transition: none; }
+  .railTip { animation: none; }
 }
 
 @media (hover: none) and (pointer: coarse) {

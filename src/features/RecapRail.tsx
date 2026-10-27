@@ -15,20 +15,28 @@ const PIN = 20;
 // A pin on a touch screen has a 46px hit area: the CSS extends it 13px on each side.
 const TOUCH_GAP = PIN + 26;
 type Pin = ResponseAnchor & { index: number; top: number };
-type Layout = { pins: Pin[]; active?: string; contentHeight: number; scrollTop: number; thumb: { top: number; height: number } };
+type Layout = { pins: Pin[]; active?: string; contentHeight: number; scrollTop: number };
 
 const samePins = (a: readonly Pin[], b: readonly Pin[]) => a.length === b.length && a.every((pin, index) => {
   const other = b[index];
   return pin.id === other.id && pin.top === other.top && pin.index === other.index && pin.size === other.size && pin.label === other.label;
 });
 
+type Tip = { id: string; index: number; label: string; top: number };
+
 // A scroll frame changes only the active pin, so the other pins skip their render.
-const RailPin = memo(function RailPin({ pin, active, onSelect }: { pin: Pin; active: boolean; onSelect: (id: string) => void }) {
+const RailPin = memo(function RailPin({ pin, active, onSelect, onHint }: {
+  pin: Pin; active: boolean; onSelect: (id: string) => void; onHint: (pin: Pin, element: HTMLElement | null) => void;
+}) {
   const t = useText();
   return <button type="button" className={styles.railPin} style={{top:pin.top}}
     data-size={pin.size} data-active={active} aria-current={active?'location':undefined}
-    aria-label={`${t('Jump to reply')} ${pin.index}`} title={pin.label}
-    onClick={()=>onSelect(pin.id)}><span className={styles.railDot} aria-hidden="true" /></button>;
+    aria-label={`${t('Jump to reply')} ${pin.index}`}
+    onPointerEnter={event=>{ if (event.pointerType === 'mouse') onHint(pin, event.currentTarget); }}
+    onPointerLeave={()=>onHint(pin, null)}
+    onFocus={event=>{ if (event.currentTarget.matches(':focus-visible')) onHint(pin, event.currentTarget); }}
+    onBlur={()=>onHint(pin, null)}
+    onClick={()=>onSelect(pin.id)}><span className={styles.railTick} aria-hidden="true" /></button>;
 });
 
 /**
@@ -60,6 +68,15 @@ export const ResponseRail = memo(function ResponseRail({ bubble, host, scroll, r
   const desktop = useMediaQuery(DESKTOP_QUERY), coarse = useMediaQuery(COARSE_QUERY);
   const [layout, setLayout] = useState<Layout | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const nav = useRef<HTMLElement>(null);
+  const [tip, setTip] = useState<Tip | null>(null);
+  // One shared label sits outside the rail scroller, so the scroller does not clip it.
+  const hint = useEventCallback((pin: Pin, target: HTMLElement | null) => {
+    const box = nav.current?.getBoundingClientRect();
+    if (!target || !box) { setTip(current => current?.id === pin.id ? null : current); return; }
+    const rect = target.getBoundingClientRect();
+    setTip({ id: pin.id, index: pin.index, label: pin.label, top: rect.top + rect.height / 2 - box.top });
+  });
   useLayoutEffect(() => {
     const element = scroll.current;
     if (!element || !host || !desktop) { setLayout(null); return; }
@@ -98,12 +115,13 @@ export const ResponseRail = memo(function ResponseRail({ bubble, host, scroll, r
       const tops = railPinTops(visible.map(item => item.offset/total*(contentHeight-2*inset)), contentHeight-2*inset, gap).map(top=>top+inset);
       const progress = element.scrollTop / Math.max(1, total-element.clientHeight);
       const padding = parseFloat(getComputedStyle(element).scrollPaddingTop) || 0;
-      const active = offsets.findLast(item => item.offset <= element.scrollTop+padding+1)?.id;
+      // At the bottom the last reply is current, even when its start is still below the top of the view.
+      const bottom = element.scrollTop + element.clientHeight >= total - 2;
+      const active = (bottom ? offsets.at(-1) : offsets.findLast(item => item.offset <= element.scrollTop+padding+1))?.id;
       // Keep the same pins array while only the scroll position changes.
       const next = visible.map((item,i)=>({...item,top:tops[i]}));
       if (!samePins(pins, next)) pins = next;
-      setLayout(offsets.length ? {pins,active,contentHeight,scrollTop:Math.min(1, Math.max(0, progress)) * (contentHeight-height),
-        thumb:{top:element.scrollTop/total*height,height:Math.min(1,element.clientHeight/total)*height}} : null);
+      setLayout(offsets.length ? {pins,active,contentHeight,scrollTop:Math.min(1, Math.max(0, progress)) * (contentHeight-height)} : null);
     }
     const schedule = (resize: boolean) => { changed ||= resize; if (frame === undefined) frame=requestAnimationFrame(measure); };
     measure();
@@ -133,11 +151,15 @@ export const ResponseRail = memo(function ResponseRail({ bubble, host, scroll, r
     if(element&&target){onJump();jumpToRecapTarget(element,target);}
   });
   if(!host||!layout)return null;
-  return createPortal(<nav className={`${styles.rail} ${chatStyles.bubbleTint}`} data-bubble={bubble} aria-label={t('Agent replies')} data-response-rail data-testid="response-rail">
-    <span className={styles.track}/><span className={styles.thumb} style={{top:layout.thumb.top,height:layout.thumb.height}}/>
-    <div ref={scroller} className={styles.railScroller} role="group" aria-label={t('Reply anchors')} tabIndex={0}>
+  return createPortal(<nav ref={nav} className={`${styles.rail} ${chatStyles.bubbleTint}`} data-bubble={bubble} aria-label={t('Agent replies')} data-response-rail data-testid="response-rail">
+    <span className={styles.track}/>
+    <div ref={scroller} className={styles.railScroller} role="group" aria-label={t('Reply anchors')} tabIndex={0} onScroll={()=>setTip(null)}>
     <div className={styles.railContent} style={{height:layout.contentHeight}}>
-    {layout.pins.map(pin=><RailPin key={pin.id} pin={pin} active={layout.active===pin.id} onSelect={select} />)}
+    {layout.pins.map(pin=><RailPin key={pin.id} pin={pin} active={layout.active===pin.id} onSelect={select} onHint={hint} />)}
     </div></div>
+    {tip && <span className={styles.railTip} style={{top:tip.top}} aria-hidden="true" data-testid="response-rail-tip">
+      <span className={styles.railTipIndex}>{String(tip.index).padStart(2,'0')}</span>
+      <span className={styles.railTipText}>{tip.label}</span>
+    </span>}
   </nav>,host);
 });

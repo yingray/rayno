@@ -675,3 +675,37 @@ test('recap rail pins should stay inside the rail and keep their own hit areas',
   // Assert
   await expect(page.locator('article[data-message-id]').filter({hasText:'Alpha step passed.'})).toHaveClass(/flash/);
 });
+
+test('reply rail ticks should mark the current reply and show its first words on hover', async ({ page }, testInfo) => {
+  test.skip(!!testInfo.project.use.hasTouch, 'Touch screens have no hover label.');
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  const turns = Array.from({ length: 3 }, (_, index) => [
+    { role: 'user', content: { type: 'text', text: `Question ${index + 1}` } },
+    reply(`Answer ${index + 1}.\n\n${index === 2 ? 'From the real protocol\n\n' : ''}${filler}`),
+  ]).flat();
+  await server.setMessages(turns);
+  const recap = new RecapPage(page);
+  await recap.openSession();
+  await recap.scrollToLatest();
+  const pins = recap.rail().getByRole('button');
+  const tip = page.getByTestId('response-rail-tip');
+  await expect(pins).toHaveCount(3);
+  // Assert
+  await expect(pins.nth(2)).toHaveAttribute('aria-current', 'location');
+  const width = (index: number) => pins.nth(index).locator('span').evaluate(element => element.getBoundingClientRect().width);
+  await expect.poll(() => width(2)).toBe(16);
+  await expect.poll(() => width(0)).toBe(8);
+  // Act
+  await pins.nth(0).hover();
+  // Assert
+  await expect(tip).toHaveText(/^01Answer 1\./);
+  const box = (await tip.boundingBox())!, rail = (await recap.rail().boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(rail.x);
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  // Act
+  await page.mouse.move(10, 10);
+  // Assert
+  await expect(tip).toHaveCount(0);
+});
