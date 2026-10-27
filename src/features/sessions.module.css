@@ -337,7 +337,7 @@
     display: flex;
     width: 56px;
     height: 56px;
-    border-radius: 20px;
+    border-radius: 50%;
     position: fixed;
     bottom: calc(var(--mobile-usage-bottom) + 44px + 12px);
     right: 20px;

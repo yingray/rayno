@@ -18,7 +18,7 @@ export class WorkspaceLayoutPage extends ResizablePanelsPage {
     const list = this.sessionList();
     expect(await list.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     for (const control of [list.getByRole('button', { name: 'Collapse session list', exact: true }),
-      this.listOptionsButton(), list.getByRole('button', { name: 'New', exact: true })]) {
+      this.listOptionsButton(), list.getByRole('button', { name: 'New session', exact: true })]) {
       await this.expectInViewport(control);
       const listBox = (await list.boundingBox())!, box = (await control.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(listBox.x);

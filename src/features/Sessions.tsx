@@ -230,12 +230,14 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, onCollap
           <Button
             className={styles.newDesktop}
             variant="accent"
-            icon="add"
+            icon="createOutline"
+            aria-label={t("New session")}
+            title={t("New session")}
             onClick={() => {
               navigate('/new');
               onNew?.();
             }}
-          >{t("New")}</Button>
+          />
         </div>
         <OfflineStatus label={t("Session list availability")} />
       </header>
@@ -326,8 +328,9 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, onCollap
       <Button
         className={styles.fab}
         variant="accent"
-        icon="add"
+        icon="createOutline"
         aria-label={t("New session")}
+        title={t("New session")}
         onClick={() => {
           navigate('/new');
           onNew?.();
