@@ -23,5 +23,15 @@ describe('panel width limits', () => {
     expect(defaultPanelWidth('info', 1920)).toBe(380);
     expect(defaultPanelWidth('side', 1920)).toBe(520);
     expect(defaultPanelWidth('side', 1280)).toBe(435);
+    expect(defaultPanelWidth('sessions', 1920)).toBe(360);
+    expect(defaultPanelWidth('sessions', 1024)).toBe(320);
+  });
+  it('should reserve chat space when the session list grows on a smaller desktop', () => {
+    expect(panelWidthBounds('sessions', 1600)).toEqual({ min: 280, max: 520 });
+    expect(panelWidthBounds('sessions', 910)).toEqual({ min: 280, max: 390 });
+    expect(clampPanelWidth(520, panelWidthBounds('sessions', 910))).toBe(390);
+    expect(savedPanelWidth('480', 'sessions')).toBe(480);
+    for (const raw of [null, '', 'NaN', 'Infinity', '279', '521', '-1', '0', '{}'])
+      expect(savedPanelWidth(raw, 'sessions')).toBeNull();
   });
 });

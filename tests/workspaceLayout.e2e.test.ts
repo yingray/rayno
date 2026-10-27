@@ -83,7 +83,7 @@ for (const [width, height] of [[320, 640], [360, 740], [390, 844], [430, 932], [
     await demo.activate(demo.start());
     await expect(page).toHaveURL(/\/session\/[^/?]+$/);
     await demo.openDemo(true);
-    await expect(page.getByRole('separator')).toHaveCount(0);
+    await expect(page.getByRole('separator', { name: /^Resize / })).toHaveCount(0);
     await demo.activate(demo.row('Side chat 1'));
     await expect(page).toHaveURL(/\/session\/workspace-layout-side-demo$/);
     await expect(page.getByRole('button', { name: 'Open session info', exact: true })).toContainText('Side chat 1');

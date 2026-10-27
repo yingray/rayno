@@ -32,6 +32,7 @@
 }
 .heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 7px;
 }
@@ -43,6 +44,7 @@
   font-weight: 600;
 }
 .collapseButton { min-width: 44px; min-height: 44px; flex: none; }
+.newDesktop { min-width: 44px; min-height: 44px; flex: none; }
 .mobileLogo {
   display: none;
 }

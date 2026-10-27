@@ -10,7 +10,38 @@ export class WorkspaceLayoutPage extends ResizablePanelsPage {
     if (await this.page.evaluate(() => navigator.maxTouchPoints > 0)) await control.tap();
     else await control.click();
   }
-  async openDemo(side = false) { await this.page.goto(`/session/workspace-layout-demo${side ? '/side' : ''}?demo=1`); }
+  async openDemo(side = false) {
+    await this.page.goto(`/session/workspace-layout-demo${side ? '/side' : ''}?demo=1`);
+    await expect(side ? this.panel() : this.mainChat()).toBeVisible();
+  }
+  async expectSessionsUsable() {
+    const list = this.sessionList();
+    expect(await list.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    for (const control of [list.getByRole('button', { name: 'Collapse session list', exact: true }),
+      this.listOptionsButton(), list.getByRole('button', { name: 'New', exact: true })]) {
+      await this.expectInViewport(control);
+      const listBox = (await list.boundingBox())!, box = (await control.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(listBox.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(listBox.x + listBox.width);
+      if (await this.page.evaluate(() => navigator.maxTouchPoints > 0)) await this.expectTouchTarget(control);
+    }
+    await this.openListOptions();
+    const search = this.listOptions().getByRole('textbox', { name: 'Search sessions', exact: true });
+    await search.fill('Workspace layout');
+    await expect(this.sessionRow('Workspace layout · Interactive demo')).toBeVisible();
+    await search.fill('');
+    await this.closeListOptions();
+    await this.expectNoPageOverflow();
+  }
+  async resizeSessionsWithEscape() {
+    const control = this.separator('sessions'), box = (await control.boundingBox())!;
+    await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await this.page.mouse.down();
+    await this.page.mouse.move(box.x + 90, box.y + box.height / 2, { steps: 6 });
+    await control.press('Escape');
+    await this.page.mouse.up();
+    await expect(this.page.locator('html')).not.toHaveAttribute('data-panel-resizing');
+  }
   async openNew() { await this.page.goto('/new?demo=1'); await expect(this.prompt()).toBeVisible(); }
   async toggleSessions(visible: boolean) {
     if (await this.sessionsToggle().getAttribute('aria-expanded') !== String(visible)) await this.activate(this.sessionsToggle());

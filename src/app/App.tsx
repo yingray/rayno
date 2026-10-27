@@ -261,12 +261,16 @@ export function App() {
             </div>
           </nav>
         )}
-        {showList && (
-          <div id="session-list-panel" className={styles.listPanel} hidden={!mobile && sessionsCollapsed}>
-            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled}
-              onCollapse={!mobile ? collapseSessions : undefined} /></LazyBoundary>
+        {showList && (mobile ? (
+          <div id="session-list-panel" className={styles.listPanel}>
+            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled} /></LazyBoundary>
           </div>
-        )}
+        ) : (
+          <ResizablePanel kind="sessions" id="session-list-panel" hidden={sessionsCollapsed}>
+            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled}
+              onCollapse={collapseSessions} /></LazyBoundary>
+          </ResizablePanel>
+        ))}
         {!(mobile && path === '/sessions') && (
           <main
             className={`${styles.mainPanel} ${showTabs ? styles.withTabs : ''} ${path === '/new' ? styles.newMobile : ''}`}

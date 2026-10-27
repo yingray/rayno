@@ -227,6 +227,8 @@
   min-height: 0;
   position: relative;
 }
+.resizablePanel[data-panel-kind='sessions'] > .listPanel { width: 100%; height: 100%; }
+.resizablePanel[data-panel-kind='sessions'] > .panelSeparator { left: auto; right: -10px; }
 .panelSeparator {
   position: absolute;
   left: -10px;
@@ -251,6 +253,7 @@
   border-radius: 2px;
   background: var(--border-control);
 }
+.resizablePanel[data-panel-kind='sessions'] > .panelSeparator::after { width: 1px; left: calc(50% - 0.5px); }
 .panelSeparator:hover::after,
 .panelSeparator:focus-visible::after,
 .resizablePanel[data-resizing] > .panelSeparator::after { background: var(--accent-soft); }
@@ -258,6 +261,8 @@
 @media (pointer: coarse) {
   .resizablePanel { margin-left: 34px; }
   .panelSeparator { left: -44px; width: 44px; }
+  .resizablePanel[data-panel-kind='sessions'] { margin-left: 0; margin-right: 34px; }
+  .resizablePanel[data-panel-kind='sessions'] > .panelSeparator { right: -44px; }
 }
 .networkBar {
   height: 2px;

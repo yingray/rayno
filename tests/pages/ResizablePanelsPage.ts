@@ -3,7 +3,7 @@ import { SideChatsPage } from './SideChatsPage';
 import type { PanelKind } from '../../src/app/panelWidths';
 
 export class ResizablePanelsPage extends SideChatsPage {
-  separator(kind: PanelKind) { return this.page.getByRole('separator', { name: kind === 'info' ? 'Resize session info' : 'Resize side chat', exact: true }); }
+  separator(kind: PanelKind) { return this.page.getByRole('separator', { name: kind === 'sessions' ? 'Resize session list' : kind === 'info' ? 'Resize session info' : 'Resize side chat', exact: true }); }
   mainChat() { return this.page.getByRole('region', { name: 'Chat session', exact: true }); }
   async openPanel(kind: PanelKind) {
     await this.page.goto(`/session/real-session/${kind === 'info' ? 'info' : 'side'}`);

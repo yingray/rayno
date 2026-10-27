@@ -6,7 +6,7 @@ import { useEventCallback } from '../components/useEventCallback';
 import { clampPanelWidth, defaultPanelWidth, panelWidthBounds, savedPanelWidth, type PanelKind } from './panelWidths';
 import styles from './app.module.css';
 
-export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: PanelKind }>) {
+export function ResizablePanel({ kind, id, hidden, children }: PropsWithChildren<{ kind: PanelKind; id?: string; hidden?: boolean }>) {
   const t = useText();
   const live = useDemo(store => store.live);
   const key = `panelWidth.${kind}`;
@@ -27,7 +27,9 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
   const frame = useRef<HTMLDivElement>(null);
   const separator = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ pointer: number; x: number; width: number; preferred: number | null } | null>(null);
-  const panelId = useId();
+  const generatedId = useId();
+  const panelId = id || generatedId;
+  const direction = kind === 'sessions' ? 1 : -1;
   const bounds = panelWidthBounds(kind, space.available);
   const width = clampPanelWidth(preferred ?? defaultPanelWidth(kind, space.viewport), bounds);
   const currentWidth = useRef(width);
@@ -39,7 +41,8 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
     } catch { /* A blocked browser store must not prevent resizing. */ }
   };
   function measureSpace() {
-    const panel = frame.current!, main = panel.previousElementSibling as HTMLElement, shell = panel.parentElement!;
+    const panel = frame.current!, shell = panel.parentElement!;
+    const main = shell.querySelector<HTMLElement>(`:scope > .${styles.mainPanel}`)!;
     const css = getComputedStyle(shell);
     const mainStyle = getComputedStyle(main);
     const children = [...shell.children].filter((child): child is HTMLElement => child instanceof HTMLElement
@@ -49,14 +52,16 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
       return parseFloat(style.marginLeft) + parseFloat(style.marginRight);
     };
     const occupied = children.reduce((sum, child) => sum + margins(child)
-      + (child === main || child === panel ? 0 : child.getBoundingClientRect().width), 0);
+      + (child === main || child === panel || (kind === 'sessions' && child.dataset.panelKind === 'side')
+        ? 0 : child.getBoundingClientRect().width), 0);
     return { available: shell.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight)
       - occupied - (children.length - 1) * parseFloat(css.columnGap)
       - parseFloat(mainStyle.borderLeftWidth) - parseFloat(mainStyle.borderRightWidth), viewport: window.innerWidth };
   }
   useLayoutEffect(() => {
-    const panel = frame.current!, main = panel.previousElementSibling as HTMLElement;
+    const panel = frame.current!;
     const shell = panel.parentElement!;
+    const main = shell.querySelector<HTMLElement>(`:scope > .${styles.mainPanel}`)!;
     const measure = () => {
       const next = measureSpace();
       setSpace(previous => Math.abs(previous.available - next.available) < 0.5 && previous.viewport === next.viewport ? previous : next);
@@ -95,7 +100,7 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
   function move(event: PointerEvent<HTMLButtonElement>) {
     const start = drag.current;
     if (!start || start.pointer !== event.pointerId) return;
-    const next = clampPanelWidth(start.width + start.x - event.clientX, bounds);
+    const next = clampPanelWidth(start.width + (event.clientX - start.x) * direction, bounds);
     currentWidth.current = next;
     setPreferred(next);
   }
@@ -115,7 +120,7 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
     if (event.key === 'Enter') { event.preventDefault(); reset(); return; }
     const space = measureSpace(), bounds = panelWidthBounds(kind, space.available);
     const step = event.shiftKey ? 50 : 10;
-    const next = event.key === 'ArrowLeft' ? width + step : event.key === 'ArrowRight' ? width - step
+    const next = event.key === 'ArrowLeft' ? width - step * direction : event.key === 'ArrowRight' ? width + step * direction
       : event.key === 'Home' ? bounds.min : event.key === 'End' ? bounds.max : undefined;
     if (next === undefined) return;
     event.preventDefault();
@@ -123,9 +128,9 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
     const value = clampPanelWidth(next, bounds);
     setPreferred(value); persist(value);
   }
-  return <div ref={frame} className={styles.resizablePanel} style={{ width }} data-resizing={resizing || undefined} data-panel-kind={kind}>
+  return <div ref={frame} className={styles.resizablePanel} style={{ width }} hidden={hidden} data-resizing={resizing || undefined} data-panel-kind={kind}>
     <button ref={separator} type="button" role="separator" aria-orientation="vertical" aria-controls={panelId}
-      aria-label={t(kind === 'info' ? 'Resize session info' : 'Resize side chat')}
+      aria-label={t(kind === 'sessions' ? 'Resize session list' : kind === 'info' ? 'Resize session info' : 'Resize side chat')}
       aria-valuemin={bounds.min} aria-valuemax={bounds.max} aria-valuenow={width} aria-valuetext={t('{width} pixels', { width: String(width) })}
       title={t('Drag to resize. Use arrow keys to adjust. Double-click or press Enter to reset.')}
       className={styles.panelSeparator} onPointerDown={start} onPointerMove={move}
@@ -133,6 +138,6 @@ export function ResizablePanel({ kind, children }: PropsWithChildren<{ kind: Pan
       onPointerCancel={event => { if (drag.current?.pointer === event.pointerId) finish(true); }}
       onLostPointerCapture={event => { if (drag.current?.pointer === event.pointerId) finish(); }}
       onKeyDown={keyboard} onDoubleClick={reset} />
-    <aside id={panelId} className={kind === 'info' ? styles.infoPanel : styles.sidePanel}>{children}</aside>
+    <aside id={panelId} className={kind === 'sessions' ? styles.listPanel : kind === 'info' ? styles.infoPanel : styles.sidePanel}>{children}</aside>
   </div>;
 }
