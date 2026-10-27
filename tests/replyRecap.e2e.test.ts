@@ -411,7 +411,7 @@ test('manual recap should work in demo mode and keep the draft', async ({ page }
   await expect(page.getByRole('status').filter({ hasText: 'Writing recap…' })).toHaveCount(0);
   await expect(page.locator('article[data-role="user"]')).toHaveCount(users);
   await expect(recap.ghost()).toHaveCount(0);
-  await recap.expectDraft('');
+  await recap.expectDraft('Keep my draft');
   await recap.expand(touch);
   await expect(recap.card().getByRole('button', { name: /^Jump to point \d$/ }).first()).toBeVisible();
 });

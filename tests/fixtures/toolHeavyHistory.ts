@@ -5,7 +5,8 @@ type Json = Record<string, any>;
 // So each turn has five tool calls, and 200 turns have 1,000.
 export const TOOL_CALLS_PER_TURN = 5;
 
-export function toolHeavyHistory(turns = 200, lastReply = 'From the real protocol'): Json[] {
+// `detail` adds a paragraph to each reply. The reply rail marks only replies with 500 or more characters.
+export function toolHeavyHistory(turns = 200, lastReply = 'From the real protocol', detail = ''): Json[] {
   let time = 1700000000000, id = 0;
   const rows: Json[] = [];
   const meta = { sentFrom: 'cli' };
@@ -34,8 +35,9 @@ export function toolHeavyHistory(turns = 200, lastReply = 'From the real protoco
     agent({ t: 'text', text: `Subagent found config${turn}.json` }, { subagent });
     agent({ t: 'stop' }, { subagent });
     agent({ t: 'tool-call-end', call: parent }, { subagent });
-    agent({ t: 'text', text: turn === turns ? lastReply
-      : `### Result ${turn}\n\nThe build **passed** with a [report](https://example.com/${turn}).\n\n| Check | Status |\n| --- | --- |\n| Tests | Ready |` });
+    const extra = detail ? `\n\n${detail}` : '';
+    agent({ t: 'text', text: turn === turns ? lastReply + extra
+      : `### Result ${turn}\n\nThe build **passed** with a [report](https://example.com/${turn}).\n\n| Check | Status |\n| --- | --- |\n| Tests | Ready |${extra}` });
     agent({ t: 'turn-end', status: 'completed' });
   }
   return rows;

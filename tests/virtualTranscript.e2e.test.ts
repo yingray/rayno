@@ -1,10 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { HappyServer } from './fixtures/HappyServer';
-import { toolHeavyHistory } from './fixtures/toolHeavyHistory';
+import { toolHeavyHistory as baseHistory } from './fixtures/toolHeavyHistory';
 import { VirtualTranscriptPage } from './pages/VirtualTranscriptPage';
 import { RecapPage } from './pages/RecapPage';
 import { MermaidPage } from './pages/MermaidPage';
 import { SideChatsPage } from './pages/SideChatsPage';
+
+// Each reply needs 500 or more characters, so each one gets a tick on the reply rail.
+const DETAIL = Array.from({ length: 6 }, (_, index) =>
+  `Step ${index + 1} of the check read the build log, compared the output with the last run, and found no new warning.`).join(' ');
+const toolHeavyHistory = (turns: number) => baseHistory(turns, undefined, DETAIL);
 
 async function arrange(page: import('@playwright/test').Page, rows = toolHeavyHistory(120)) {
   const server = new HappyServer();
