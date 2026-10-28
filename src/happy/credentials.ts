@@ -1,6 +1,7 @@
 import { unbase64 } from './encoding';
 
 export const CLIENT_ID = 'web/1.0.0-rayno';
+// The hosted Happy server. The login screen does not fill it in; a user types it to use that server.
 export const DEFAULT_SERVER = 'https://api.cluster-fluster.com';
 export const CREDENTIALS_KEY = 'rayno.credentials';
 // Survives sign-out so the next login on this device starts with the same server.
@@ -38,9 +39,9 @@ export function readCredentials(): Credentials | null {
 export function readLastServer(): string {
   try {
     const value = localStorage.getItem(SERVER_KEY);
-    return value ? serverOrigin(value) : DEFAULT_SERVER;
+    return value ? serverOrigin(value) : '';
   } catch {
-    return DEFAULT_SERVER;
+    return '';
   }
 }
 export function saveCredentials(value: Credentials, remember: boolean) {

@@ -21,9 +21,15 @@ test('a custom Happy server should be checked on blur and stay after sign-out', 
   await page.goto('/');
   await workspace.expectSignIn();
   await workspace.openServerField();
-  // Assert
-  await expect(workspace.serverField()).toHaveValue('https://api.cluster-fluster.com');
+  // Assert: no server is filled in, and an empty field is not an error before connecting.
+  await expect(workspace.serverField()).toHaveValue('');
   await expect(page.getByRole('button', { name: /^Copy git clone/ })).toBeVisible();
+  await workspace.serverField().focus();
+  await workspace.serverField().press('Tab');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByRole('textbox', { name: 'Happy recovery key', exact: true }).fill(recoveryKey);
+  await expect(page.getByRole('button', { name: 'Connect account', exact: true })).toBeDisabled();
+  await page.getByRole('textbox', { name: 'Happy recovery key', exact: true }).fill('');
 
   // Act
   await workspace.serverField().fill(`http://${customHost}`);

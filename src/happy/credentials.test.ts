@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearCredentials,
-  DEFAULT_SERVER,
   readLastServer,
   saveCredentials,
   SERVER_KEY,
@@ -28,7 +27,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('readLastServer', () => {
   it('should return the default server when no server is saved', () => {
-    expect(readLastServer()).toBe(DEFAULT_SERVER);
+    expect(readLastServer()).toBe('');
   });
 
   it('should keep the remembered server after sign-out', () => {
@@ -45,13 +44,13 @@ describe('readLastServer', () => {
     saveCredentials(credentials, false);
     // Assert
     expect(localStorage.getItem(SERVER_KEY)).toBeNull();
-    expect(readLastServer()).toBe(DEFAULT_SERVER);
+    expect(readLastServer()).toBe('');
   });
 
   it('should return the default server when the saved value is not an HTTPS origin', () => {
     // Arrange
     localStorage.setItem(SERVER_KEY, 'http://happy.example.com');
     // Act / Assert
-    expect(readLastServer()).toBe(DEFAULT_SERVER);
+    expect(readLastServer()).toBe('');
   });
 });

@@ -503,7 +503,9 @@ export class LiveWorkspacePage extends WorkspacePage {
   async openServerField() {
     await expect(this.serverField()).toBeVisible();
   }
-  async signInWithKey(key: string) {
+  /** Fills the server only when the field is empty, so a test can set another server first. */
+  async signInWithKey(key: string, server = 'https://api.cluster-fluster.com') {
+    if (!(await this.serverField().inputValue())) await this.serverField().fill(server);
     await this.page.getByRole('textbox', { name: 'Happy recovery key', exact: true }).fill(key);
     await this.page.getByRole('button', { name: 'Connect account', exact: true }).click();
   }

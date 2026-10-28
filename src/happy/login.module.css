@@ -3,17 +3,19 @@
   overflow: auto;
   height: 100dvh;
   display: grid;
+  grid-template-rows: 1fr auto;
   justify-items: center;
+  gap: 8px;
   padding:
-    max(28px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
-    max(28px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   background: radial-gradient(ellipse at 50% 0%, #261d3d 0%, #09090b 65%);
 }
 .card {
   width: min(100%, 520px);
   min-width: 0;
   margin-block: auto;
-  padding: 32px;
+  padding: 28px 32px;
   border: 1px solid var(--border-control);
   border-radius: 28px;
   background: var(--panel);
@@ -37,7 +39,7 @@
   font-size: 25px;
   letter-spacing: -0.8px;
   line-height: 1.2;
-  margin: 28px 0 10px;
+  margin: 20px 0 8px;
 }
 .card p {
   font-size: 13px;
@@ -85,7 +87,7 @@
 .step {
   display: grid;
   gap: 4px;
-  margin-top: 24px;
+  margin-top: 18px;
 }
 .step h2 {
   font-size: 15px;
@@ -101,7 +103,7 @@
 .field {
   display: grid;
   gap: 9px;
-  margin-top: 14px;
+  margin-top: 8px;
   font-size: 12px;
   color: var(--muted);
 }
@@ -131,19 +133,21 @@
 .remember input {
   accent-color: #8b5cf6;
 }
-.card footer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 22px;
-}
-.card footer button {
+.demo button {
   min-height: 44px;
-  color: var(--muted);
+  padding: 0 12px;
+  color: var(--secondary);
   background: none;
   border: 0;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 12px;
+  opacity: 0.7;
+}
+.demo button:hover,
+.demo button:focus-visible {
+  color: var(--muted);
+  opacity: 1;
 }
 .card .error {
   color: #fca5a5;

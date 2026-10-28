@@ -45,6 +45,14 @@ export function Login({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   function commitServer(): string | null {
+    // An empty field is not an error until the user connects. The button stays off until then.
+    if (!serverDraft.trim()) {
+      if (serverInvalid) {
+        setServerInvalid(false);
+        setError('');
+      }
+      return null;
+    }
     try {
       const origin = serverOrigin(serverDraft);
       setServerDraft(origin);
@@ -97,8 +105,8 @@ export function Login({
           <h2 id="install-heading">Install Happy on your Mac</h2>
           <InstallCommand command={INSTALL_COMMAND} />
           <p>
-            It needs Node.js 24, pnpm, and Tailscale with HTTPS turned on. It starts your own Happy
-            server and prints its address and your recovery key.
+            It needs Node.js 24 and pnpm. With Tailscale HTTPS on, the server works on all of your
+            devices. Without it, the server works only on this Mac.
           </p>
         </section>
         <form
@@ -139,7 +147,7 @@ export function Login({
               onChange={(event) => setSecret(event.target.value)}
               autoComplete="off"
               spellCheck={false}
-              rows={3}
+              rows={2}
               placeholder="XXXXX-XXXXX-XXXXX-…"
               required
             />
@@ -164,10 +172,10 @@ export function Login({
             {busy ? <Spinner /> : 'Connect account'}
           </Button>
         </form>
-        <footer>
-          <button onClick={onDemo}>Explore the demo</button>
-        </footer>
       </section>
+      <footer className={styles.demo}>
+        <button onClick={onDemo}>Explore the demo</button>
+      </footer>
     </main>
   );
 }

@@ -10,8 +10,12 @@
 
 ## Quick start
 
-You need a Mac with Node.js 24, pnpm, and Tailscale with HTTPS turned on.
+You need a Mac with Node.js 24 and pnpm.
 You also need Claude Code or Codex, signed in on the same Mac.
+
+[Tailscale](https://tailscale.com) with HTTPS certificates turned on is optional.
+With it, your server gets an HTTPS address that works on all of your devices.
+Without it, the server address is `http://127.0.0.1:3007`, and it works only in a browser on that Mac.
 
 ### 1. Install your own Happy server
 
@@ -24,6 +28,7 @@ git clone https://github.com/yingray/happy.git ~/happy && ~/happy/.rayno/install
 The script starts a Happy server and links the Happy CLI to it.
 On a new Mac, it also makes a Happy account and signs the CLI in.
 At the end, it prints two values: your **Happy server** address and your **recovery key**.
+The server address is your Tailscale address when Tailscale is ready, and `127.0.0.1` when it is not.
 
 > [!WARNING]
 > Save the recovery key when the script shows it. It is your account, and the script shows it only once.
@@ -33,6 +38,9 @@ At the end, it prints two values: your **Happy server** address and your **recov
 
 Go to https://rayno-co6.pages.dev.
 Paste the **Happy server** address and the **recovery key**, then select **Connect account**.
+
+Chrome asks to let the site access devices on your local network, because your server is on your own network.
+Select **Allow**. Safari does not ask.
 
 Rayno keeps the key in this browser only when **Remember this login on this device** is selected.
 
@@ -49,7 +57,7 @@ Your sessions now show in Rayno.
 ### Use an existing Happy account
 
 If you already use Happy, enter your Happy server in the **Happy server** field.
-The default is the hosted server, `https://api.cluster-fluster.com`.
+For the hosted Happy server, enter `https://api.cluster-fluster.com`. The field has no default value.
 To get your recovery key, open the Happy app and go to **Settings → Account → Secret Key**.
 
 ## About the name
@@ -76,8 +84,8 @@ browser (Rayno) ──HTTPS/WSS──▶ Happy server ◀──── Happy CLI 
 
 Rayno does not connect to your computer directly.
 The "host" on the login screen is the Happy server that your CLI uses.
-The default is `https://api.cluster-fluster.com`, the hosted Happy server.
-If you run your own Happy server, it must use HTTPS and allow CORS from the Rayno origin.
+The login screen has no default host. For the hosted Happy server, enter `https://api.cluster-fluster.com`.
+If you run your own Happy server, it must use HTTPS and allow CORS from the Rayno origin. A server on the same computer can also use `http://127.0.0.1`.
 
 ## Sign in
 
