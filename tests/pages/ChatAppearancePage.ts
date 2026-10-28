@@ -7,18 +7,26 @@ export class ChatAppearancePage extends ChatActionsPage {
   input() { return this.chat().getByRole('textbox', { name: 'Message', exact: true }); }
   async expectWidth(value: ChatWidth) {
     await expect(this.chat()).toHaveAttribute('data-chat-width', value);
+    await expect(this.chat().locator('article[data-role="assistant"]').first()).toBeVisible();
     await expect.poll(async () => this.chat().evaluate((element, width) => {
       const frame = element.getBoundingClientRect();
       const list = element.querySelector<HTMLElement>('[data-font-size]')!;
       const messages = list.getBoundingClientRect();
       const railSpace = parseFloat(getComputedStyle(list.parentElement!).paddingRight);
-      const composer = element.querySelector('textarea')!.parentElement!.parentElement!.getBoundingClientRect();
+      const input = element.querySelector('textarea')!;
+      const inputBox = input.getBoundingClientRect();
+      const inputStyle = getComputedStyle(input);
+      const replyElement = list.querySelector<HTMLElement>('article[data-role="assistant"]');
+      if (!replyElement) return Infinity;
+      const reply = replyElement.getBoundingClientRect();
+      const composer = input.parentElement!.parentElement!.getBoundingClientRect();
       const max = width === 'full' ? Infinity : width === 'medium' ? 1120 : 880;
-      const expected = Math.min(frame.width - (innerWidth < 768 ? 16 : 24), max);
-      const expectedMessages = Math.min(frame.width - railSpace - (innerWidth < 768 ? 16 : 24), max);
-      return Math.max(Math.abs(messages.width - expectedMessages), Math.abs(composer.width - expected),
+      const expected = Math.min(frame.width - railSpace - (innerWidth < 768 ? 16 : 24), max);
+      return Math.max(Math.abs(messages.width - expected), Math.abs(composer.width - expected),
         Math.abs(messages.left - frame.left - (frame.width - railSpace - messages.width) / 2),
-        Math.abs(composer.left - frame.left - (frame.width - composer.width) / 2));
+        Math.abs(composer.left - messages.left), Math.abs(composer.right - messages.right),
+        Math.abs(reply.left - inputBox.left - parseFloat(inputStyle.paddingLeft)),
+        Math.abs(reply.right - inputBox.right + parseFloat(inputStyle.paddingRight)));
     }, value)).toBeLessThanOrEqual(1);
     await expect(this.chat().getByText(/^Happy ·|^Local demo ·|% week|% context/)).toHaveCount(0);
     await expect(this.chat().getByRole('button', { name: 'Toggle context token count' })).toHaveCount(0);
