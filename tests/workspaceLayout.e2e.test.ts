@@ -63,11 +63,11 @@ test('side chats should reach both 7:3 limits and keep drafts when Sessions coll
   await expect(demo.sessionList()).toBeHidden();
   await demo.activate(page.getByRole('button', { name: 'Open session list', exact: true }));
   await expect(demo.sessionList()).toBeVisible();
-  await demo.activate(demo.sessionList().getByRole('button', { name: 'Collapse session list', exact: true }));
+  await demo.toggleSessions(false);
   await expect(demo.sessionList()).toBeHidden();
   await page.keyboard.press('ControlOrMeta+k');
   await expect(demo.sessionList()).toBeVisible();
-  await expect(demo.listOptions().getByRole('textbox', { name: 'Search sessions', exact: true })).toBeFocused();
+  await expect(demo.sessionSearch()).toBeFocused();
 });
 
 for (const [width, height] of [[320, 640], [360, 740], [390, 844], [430, 932], [390, 360], [844, 390]]) {

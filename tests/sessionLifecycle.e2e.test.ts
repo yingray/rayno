@@ -118,7 +118,7 @@ test('tablet drawers should trap focus, close with Escape, and retain rail prefe
   await expect(list).toBeVisible();
   await expect(list.getByRole('textbox', { name: 'Search sessions' })).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(workspace.listOptions()).toHaveCount(0);
+  await expect(workspace.sessionSearch()).toHaveCount(0);
   await expect(list).toBeVisible();
   await page.keyboard.press('Escape');
   await workspace.info();

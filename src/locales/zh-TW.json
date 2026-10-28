@@ -821,5 +821,10 @@
   "Sign in on another device or browser": "用來在其他裝置或瀏覽器登入",
   "Copy recovery key": "複製復原金鑰",
   "The demo uses a sample server and a sample key. Nothing connects.": "示範使用範例伺服器和範例金鑰，不會真的連線。",
-  "Simulated: Rayno now uses this server": "模擬：Rayno 已改用這個伺服器"
+  "Simulated: Rayno now uses this server": "模擬：Rayno 已改用這個伺服器",
+  "Close session search": "關閉 session 搜尋",
+  "Try a sample PNG": "試用 PNG 範例",
+  "Archived sessions": "已封存的 sessions",
+  "Show active sessions": "顯示使用中的 sessions",
+  "Show archived sessions": "顯示已封存的 sessions"
 }

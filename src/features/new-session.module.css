@@ -537,3 +537,5 @@
 }
 
 .attached button { min-height: 44px; min-width: 44px; overflow-wrap: anywhere; }
+
+.attached > button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }

@@ -14,6 +14,7 @@ import { invocationDemoId, createInvocationDemo } from './invocationDemo';
 import { replyOptionsDemoId, createReplyOptionsDemo, replyOptionsDemoChoices } from './replyOptionsDemo';
 import { toolTimelineDemoId, createToolTimelineDemo } from './toolTimelineDemo';
 import { gitDiffDemoId, createGitDiffDemo } from './gitDiffDemo';
+import { createComposerDemo } from './composerDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
 import { createMarkdownAppearanceDemo, markdownAppearanceDemoId } from './markdownAppearanceDemo';
 import { createReplyNavigatorDemo, replyNavigatorDemoId } from './replyNavigatorDemo';
@@ -56,7 +57,16 @@ export function DemoProvider({
     const fallback = createInitialState();
     try {
       const restored = restoreState(localStorage.getItem(STORAGE_KEY), fallback);
-      const examples = createWorkspaceLayoutDemo().filter(example => !restored.sessions.some(session => session.id === example.id));
+      // Update only the built-in instructions. Keep saved messages and account choices.
+      for (const example of createComposerDemo()) {
+        const saved = restored.sessions.find(session => session.id === example.id);
+        if (!saved) continue;
+        saved.messages = saved.messages.map(message => {
+          const intro = example.messages.find(item => item.id === message.id);
+          return intro && message.role === 'assistant' ? { ...message, content: intro.content } : message;
+        });
+      }
+      const examples = [...createWorkspaceLayoutDemo(), ...createComposerDemo()].filter(example => !restored.sessions.some(session => session.id === example.id));
       if (examples.length) restored.sessions = [...restored.sessions, ...examples];
       if (!restored.sessions.some(session => session.id === markdownAppearanceDemoId))
         restored.sessions = [...restored.sessions, createMarkdownAppearanceDemo()];
@@ -163,7 +173,7 @@ export function DemoProvider({
           draft,
           !!machines.find((machine) => machine.id === draft.machineId)?.online,
         );
-        if (error) throw new Error(error);
+        if (error && !(attachments.length && error === 'Describe what the agent should do.')) throw new Error(error);
         dispatch({ type: 'rememberModel', key: modelChoiceKey(draft.agent, draft.machineId),
           value: { model: draft.model, effort: draft.effort || null } });
         dispatch({ type: 'rememberPermission', key: modelChoiceKey(draft.agent, draft.machineId), value: draft.permissionMode });
@@ -180,7 +190,7 @@ export function DemoProvider({
           type: 'create',
           session: {
             id,
-            title: draft.prompt.trim().slice(0, 110),
+            title: draft.prompt.trim().slice(0, 110) || 'Review the attached images',
             workspace: path.split('/').filter(Boolean).pop() || 'workspace',
             project: 'Your sessions',
             path,

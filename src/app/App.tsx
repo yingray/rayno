@@ -60,7 +60,6 @@ export function App() {
     try { localStorage.setItem('rayno.sessions.collapsed', String(!visible)); }
     catch { /* Keep the control usable when browser storage is unavailable. */ }
   }, []);
-  const collapseSessions = useCallback(() => setSessionsVisible(false), [setSessionsVisible]);
   const [searchRequested, setSearchRequested] = useState(false);
   const searchHandled = useCallback(() => setSearchRequested(false), []);
   const closeList = useCallback(() => setListOpen(false), []);
@@ -267,8 +266,7 @@ export function App() {
           </div>
         ) : (
           <ResizablePanel kind="sessions" id="session-list-panel" hidden={sessionsCollapsed}>
-            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled}
-              onCollapse={collapseSessions} /></LazyBoundary>
+            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled} /></LazyBoundary>
           </ResizablePanel>
         ))}
         {!(mobile && path === '/sessions') && (

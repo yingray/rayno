@@ -3,26 +3,28 @@ import type { Page } from '@playwright/test';
 
 export class WorkspacePage {
   constructor(readonly page: Page) {}
-  listOptions() { return this.page.getByRole('dialog', { name: 'Session list options', exact: true }); }
-  listOptionsButton() { return this.page.getByRole('button', { name: 'Session list options', exact: true }); }
-  async openListOptions() {
-    if (!await this.listOptions().isVisible()) await this.listOptionsButton().click();
-    await expect(this.listOptions()).toBeVisible();
+  sessionList() { return this.page.getByRole('region', { name: 'Session list', exact: true }); }
+  sessionSearch() { return this.sessionList().getByRole('textbox', { name: 'Search sessions', exact: true }); }
+  archiveToggle() { return this.sessionList().getByRole('button', { name: 'Archived sessions', exact: true }); }
+  searchButton() { return this.sessionList().getByRole('button', { name: 'Search sessions', exact: true }); }
+  async openSessionSearch() {
+    if (!await this.sessionSearch().isVisible()) await this.searchButton().click();
+    await this.sessionSearch().focus();
+    await expect(this.sessionSearch()).toBeFocused();
   }
-  async closeListOptions() {
-    await this.listOptions().getByRole('button', { name: 'Done', exact: true }).click();
-    await expect(this.listOptions()).toHaveCount(0);
+  async closeSessionSearch() {
+    await this.sessionList().getByRole('button', { name: 'Close session search', exact: true }).click();
+    await expect(this.sessionSearch()).toHaveCount(0);
   }
   async searchSessions(query: string) {
-    await this.openListOptions();
-    await this.listOptions().getByRole('textbox', { name: 'Search sessions', exact: true }).fill(query);
-    await this.closeListOptions();
+    await this.openSessionSearch();
+    await this.sessionSearch().fill(query);
+    await this.sessionSearch().press('Enter');
   }
   async setListVisibility(archived: boolean) {
-    await this.openListOptions();
-    await this.listOptions().getByRole('group', { name: 'Session visibility', exact: true })
-      .getByRole('button', { name: archived ? 'Archived' : 'Active', exact: true }).click();
-    await this.closeListOptions();
+    if (await this.archiveToggle().getAttribute('aria-pressed') !== String(archived)) await this.archiveToggle().click();
+    await expect(this.archiveToggle()).toHaveAttribute('aria-pressed', String(archived));
+    if (await this.sessionSearch().count()) await this.closeSessionSearch();
   }
   async open() {
     await this.page.goto('/sessions');

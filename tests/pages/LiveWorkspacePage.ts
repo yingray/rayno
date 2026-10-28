@@ -94,14 +94,12 @@ export class LiveWorkspacePage extends WorkspacePage {
     await expect(this.page.getByRole('heading', { name: archived ? 'Archived' : 'Sessions', exact: true })).toBeVisible();
   }
   async expectArchiveTouchTarget() {
-    await this.openListOptions();
-    for (const button of [this.listOptionsButton(), ...await this.listOptions().getByRole('group', { name: 'Session visibility', exact: true }).getByRole('button').all()]) {
+    for (const button of [this.searchButton(), this.archiveToggle()]) {
       await button.scrollIntoViewIfNeeded();
       const bounds = (await button.boundingBox())!;
       expect(bounds.width).toBeGreaterThanOrEqual(44);
       expect(bounds.height).toBeGreaterThanOrEqual(44);
     }
-    await this.closeListOptions();
   }
   newModelPicker() { return this.page.getByRole('dialog', { name: 'Choose model', exact: true }); }
   async expectNewSessionFullscreen() {

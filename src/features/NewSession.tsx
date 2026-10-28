@@ -9,13 +9,14 @@ import { modelOptions, effortOptions, effortLabel } from '../happy/modelOptions'
 import { validateDraft } from '../data/reducer';
 import type { Agent, Attachment, NewSessionDraft } from '../data/types';
 import styles from './new-session.module.css';
+import { AttachmentThumbnail } from '../components/AttachmentThumbnail';
 import { AgentChoices } from './AgentChoices';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { draftInWorkspace, recentWorkspaceOptions } from '../data/workspaces';
 import { modelChoiceKey, recentModelChoice, resolveModelChoice } from '../happy/modelPreferences';
 import { newSessionCatalog, permissionOptions, resolveNewSessionPermission } from '../happy/permissionOptions';
 import type { ModelChoice } from '../data/types';
-import { selectedImages } from '../happy/attachments';
+import { pastedImages, selectedImages } from '../happy/attachments';
 import { DirectoryApprovalError } from '../happy/errors';
 import { FolderApprovalDialog } from './SessionPrompts';
 import { handoffRequestPrompt } from '../happy/handoff';
@@ -288,7 +289,14 @@ export function NewSession() {
                 onChange={(type) => dispatch({ type: 'newDraft', value: { type } })}
               />
             </div>
-            <div className={styles.inputWell} data-focus-frame>
+            <div className={styles.inputWell} data-focus-frame onPaste={event => {
+              if (busy || !(event.target instanceof HTMLTextAreaElement)) return;
+              const files = pastedImages(event.clipboardData);
+              if (!files.length) return;
+              event.preventDefault();
+              try { setAttachments(selectedImages(files, attachments)); setError(''); }
+              catch (error) { setError(error instanceof Error ? error.message : 'Could not attach images.'); }
+            }}>
               {draft.handoff && (
                 <div className={styles.handoff}>
                   <Icon name="swapHorizontalOutline" size={14} />
@@ -309,7 +317,7 @@ export function NewSession() {
                       onClick={() => setAttachments((files) => files.filter((_, i) => i !== index))}
                       aria-label={`Remove ${file.name}`}
                     >
-                      <Icon name="documentTextOutline" size={12} />
+                      <AttachmentThumbnail file={file} />
                       {file.name}
                       <Icon name="close" size={12} />
                     </button>
@@ -320,14 +328,14 @@ export function NewSession() {
                 <input
                   ref={fileInput}
                   type="file"
-                  accept={mode === 'live' ? "image/png,image/jpeg,image/gif,image/webp" : undefined}
+                  accept="image/png,image/jpeg,image/gif,image/webp"
                   aria-label={t("Choose new session images")}
                   multiple
                   hidden
                   onChange={(event) => {
                     try {
                       const files = Array.from(event.target.files || []);
-                      setAttachments(mode === 'live' ? selectedImages(files, attachments) : [...attachments, ...files].slice(0, 5));
+                      setAttachments(selectedImages(files, attachments));
                       setError('');
                     } catch (error) { setError(error instanceof Error ? error.message : 'Could not attach images.'); }
                     event.target.value = '';

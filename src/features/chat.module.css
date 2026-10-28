@@ -1623,3 +1623,5 @@
   cursor: pointer;
 }
 .copyResponse:hover { color: var(--text); background: var(--well); }
+
+.sampleImage { min-width: 44px; min-height: 44px; align-self: flex-start; }

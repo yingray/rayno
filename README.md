@@ -117,8 +117,12 @@ After sign-in, open **Settings > Account > Sign-in** to:
 Server changes synchronize across clients. Rename, archive, and delete affect the shared session.
 Restore removes the archive marker. It does not start an offline agent.
 The default list hides explicitly archived sessions and ended CLI sessions, as the Happy app does.
-Open the list options button above the list and choose Archived to read their history. A disconnected Rig session stays visible.
-The same glass menu contains search, Flat/Projects grouping, and Reset. Command/Ctrl+K opens it and focuses search.
+Use the archive icon in the session list header to read their history. Select it again to return to active sessions. A disconnected Rig session stays visible.
+Flat/Projects stays above the list. The archive toggle replaces the list header’s collapse control and stays highlighted while archived sessions are visible. The search icon replaces the Sessions title with a search field.
+Command/Ctrl+K also opens search. Use × or Escape to clear the query and restore the title.
+Open `/session/paste-search-demo?demo=1` to try these controls and PNG paste.
+Paste a PNG into the message or new-session task field to attach it. Preview or remove the thumbnail before you send.
+The demo has a repeatable sample PNG button; sends and agent replies are simulated.
 An ended CLI session has no archive or restore action in Rayno.
 Use Resume session when the original computer is online and its daemon advertises recovery support. Otherwise use Hand Off to start a new session.
 Archived Claude and Codex sessions show Resume even when the server still reports them as active. The owning daemon checks for an existing process.

@@ -1,5 +1,5 @@
 import { useText } from "../i18n";
-import { lazy, memo, useCallback, useDeferredValue, useEffect, useMemo, useId, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, memo, useCallback, useDeferredValue, useEffect, useMemo, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Avatar,
@@ -103,9 +103,8 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
     && previous.onAction === next.onAction && shallowEqual(previousSummary, nextSummary);
 });
 
-export const SessionList = memo(function SessionList({ onSelect, onNew, onCollapse, searchRequested, onSearchHandled }: {
+export const SessionList = memo(function SessionList({ onSelect, onNew, searchRequested, onSearchHandled }: {
   onSelect?: () => void; onNew?: () => void; searchRequested?: boolean; onSearchHandled?: () => void;
-  onCollapse?: () => void;
 }) {
   const t = useText();
   const { allSessions, loading, offline } = useDemo((store) => ({
@@ -116,74 +115,42 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, onCollap
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<'flat' | 'projects'>('flat');
   const [archived, setArchived] = useState(false);
-  const [optionsOpen, setOptionsOpen] = useState(false);
-  const [optionsPosition, setOptionsPosition] = useState({ top: 70, maxHeight: 420 });
-  const optionsId = useId();
+  const [searchOpen, setSearchOpen] = useState(false);
   const list = useRef<HTMLElement>(null);
-  const optionsButton = useRef<HTMLButtonElement>(null);
-  const optionsPanel = useRef<HTMLDivElement>(null);
-  const focusSearch = useRef(false);
+  const searchButton = useRef<HTMLButtonElement>(null);
+  const restoreSearchFocus = useRef(false);
   const [actionSession, setActionSession] = useState<Session | null>(null);
   const search = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!searchRequested) return;
-    focusSearch.current = !search.current;
-    setOptionsOpen(true);
+    setSearchOpen(true);
     search.current?.focus();
     onSearchHandled?.();
   }, [searchRequested, onSearchHandled]);
-  function closeOptions(restoreFocus = true) {
-    setOptionsOpen(false);
-    if (restoreFocus) optionsButton.current?.focus({ preventScroll: true });
-  }
   useLayoutEffect(() => {
-    if (!optionsOpen) return;
-    const position = () => {
-      if (!list.current || !optionsButton.current) return;
-      const bounds = list.current.getBoundingClientRect();
-      const button = optionsButton.current.getBoundingClientRect();
-      const reserved = parseFloat(getComputedStyle(list.current).paddingBottom) || 0;
-      const viewport = window.visualViewport;
-      const bottom = Math.min(bounds.bottom - reserved, viewport ? viewport.height + viewport.offsetTop : innerHeight);
-      setOptionsPosition({ top: button.bottom - bounds.top + 8, maxHeight: Math.max(80, Math.min(420, bottom - button.bottom - 20)) });
-    };
-    position();
-    const observer = new ResizeObserver(position);
-    if (list.current) observer.observe(list.current);
-    window.addEventListener('resize', position);
-    window.visualViewport?.addEventListener('resize', position);
-    window.visualViewport?.addEventListener('scroll', position);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', position);
-      window.visualViewport?.removeEventListener('resize', position);
-      window.visualViewport?.removeEventListener('scroll', position);
-    };
-  }, [optionsOpen]);
+    if (searchOpen) search.current?.focus();
+    else if (restoreSearchFocus.current) {
+      searchButton.current?.focus({ preventScroll: true });
+      restoreSearchFocus.current = false;
+    }
+  }, [searchOpen]);
+  function closeSearch() {
+    restoreSearchFocus.current = true;
+    setQuery('');
+    setSearchOpen(false);
+  }
   useEffect(() => {
-    if (!optionsOpen) return;
-    if (focusSearch.current) search.current?.focus();
-    else optionsPanel.current?.focus({ preventScroll: true });
-    focusSearch.current = false;
-    const outside = (event: Event) => {
-      const target = event.target as Node;
-      if (!optionsPanel.current?.contains(target) && !optionsButton.current?.contains(target)) closeOptions(false);
-    };
+    if (!searchOpen) return;
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
+      if (event.key !== 'Escape' || !list.current?.contains(event.target as Node)) return;
       event.preventDefault();
       event.stopPropagation();
-      closeOptions();
+      closeSearch();
     };
-    document.addEventListener('pointerdown', outside);
-    document.addEventListener('focusin', outside);
+    // Handle search before a containing drawer handles Escape at the document.
     window.addEventListener('keydown', escape, true);
-    return () => {
-      document.removeEventListener('pointerdown', outside);
-      document.removeEventListener('focusin', outside);
-      window.removeEventListener('keydown', escape, true);
-    };
-  }, [optionsOpen]);
+    return () => window.removeEventListener('keydown', escape, true);
+  }, [searchOpen]);
   const deferredQuery = useDeferredValue(query);
   const sessions = useMemo(() => allSessions
     .filter(
@@ -202,31 +169,28 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, onCollap
     navigate(`/session/${id}`);
     onSelect?.();
   }, [navigate, onSelect]);
-  const filtered = !!query.trim() || mode !== 'flat' || archived;
   return (
     <section className={styles.list} aria-label={t("Session list")} ref={list}>
       <div className={styles.surface}>
       <header className={styles.header}>
         <div className={styles.heading}>
-          <span className={styles.mobileLogo}>
-            <Mark size={36} />
-          </span>
-          <h1>{archived ? t("Archived") : t("Sessions")}</h1>
-          {onCollapse && <Button variant="ghost" icon="sidebarOutline" aria-label={t('Collapse session list')}
-            className={styles.collapseButton} onClick={onCollapse} />}
-          <button
-            ref={optionsButton}
-            className={`${styles.optionsButton} ${filtered ? styles.filtered : ''}`}
-            aria-label={t("Session list options")}
-            aria-haspopup="dialog"
-            aria-expanded={optionsOpen}
-            aria-controls={optionsId}
-            title={t("Search, grouping, and archived sessions")}
-            onClick={() => setOptionsOpen((open) => !open)}
-          >
-            <Icon name="optionsOutline" size={19} />
-            {filtered && <span className={styles.filterDot} role="img" aria-label={t("Active list filters")} />}
-          </button>
+          {searchOpen ? <div className={styles.search} data-focus-frame role="search" aria-label={t('Search sessions')}>
+            <Icon name="searchOutline" size={17} />
+            <input ref={search} aria-label={t('Search sessions')} placeholder={t('Search sessions')}
+              value={query} onChange={event => setQuery(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); }
+              }} />
+            <Button icon="close" variant="ghost" aria-label={t('Close session search')} onClick={closeSearch} />
+          </div> : <>
+            <span className={styles.mobileLogo}><Mark size={36} /></span>
+            <h1>{archived ? t('Archived') : t('Sessions')}</h1>
+            <button ref={searchButton} className={styles.searchButton} type="button"
+              aria-label={t('Search sessions')} onClick={() => setSearchOpen(true)}><Icon name="searchOutline" size={19} /></button>
+          </>}
+          <Button variant="ghost" icon="archiveOutline" aria-label={t('Archived sessions')}
+            title={archived ? t('Show active sessions') : t('Show archived sessions')}
+            aria-pressed={archived} className={styles.archiveToggle} onClick={() => setArchived(value => !value)} />
           <Button
             className={styles.newDesktop}
             variant="accent"
@@ -238,6 +202,14 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, onCollap
               onNew?.();
             }}
           />
+        </div>
+        <div className={styles.filters}>
+          <Segment label={t('Session list mode')} value={mode} onChange={setMode}
+            options={[
+              { value: 'flat', label: <span className={styles.filterLabel}><Icon name="listOutline" size={15} />{t('Flat')}</span> },
+              { value: 'projects', label: <span className={styles.filterLabel}><Icon name="folderOutline" size={15} />{t('Projects')}</span> },
+            ]} />
+
         </div>
         <OfflineStatus label={t("Session list availability")} />
       </header>
@@ -266,9 +238,9 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, onCollap
           groups.map((group) => (
             <div key={group}>
               {group && (
-                <h2 className={styles.groupLabel}>
-                  {group}
-                  <span>{sessions.filter((session) => session.project === group).length}</span>
+                <h2 className={styles.groupLabel} title={group}>
+                  <WorkspaceTag name={group} />
+                  <span className={styles.groupCount}>{sessions.filter((session) => session.project === group).length}</span>
                 </h2>
               )}
               {sessions
@@ -285,45 +257,6 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, onCollap
         )}
       </div>
       </div>
-      {optionsOpen && (
-        <div
-          ref={optionsPanel}
-          id={optionsId}
-          role="dialog"
-          aria-label={t("Session list options")}
-          tabIndex={-1}
-          className={styles.optionsPanel}
-          style={{ top: optionsPosition.top, maxHeight: optionsPosition.maxHeight }}
-        >
-          <header className={styles.optionsHeading}>
-            <div><h2>{t("List options")}</h2><span>{sessions.length} {sessions.length === 1 ? t("session") : t("sessions")}</span></div>
-            <Button icon="close" variant="ghost" aria-label={t("Close list options")} onClick={() => closeOptions()} />
-          </header>
-          <label className={styles.search} data-focus-frame>
-            <Icon name="searchOutline" size={17} />
-            <input
-              ref={search}
-              aria-label={t("Search sessions")}
-              placeholder={t("Search sessions")}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); closeOptions(); } }}
-            />
-            {query && <Button icon="close" variant="ghost" aria-label={t("Clear session search")} onClick={() => { setQuery(''); search.current?.focus(); }} />}
-          </label>
-          <p className={styles.optionLabel}>{t("Group by")}</p>
-          <Segment label={t("Session list mode")} value={mode} onChange={setMode}
-            options={[{ value: 'flat', label: 'Flat' }, { value: 'projects', label: 'Projects' }]} />
-          <p className={styles.optionLabel}>{t("Show")}</p>
-          <Segment label={t("Session visibility")} value={archived ? "archived" : "active"}
-            onChange={(value) => setArchived(value === 'archived')}
-            options={[{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }]} />
-          <footer className={styles.optionsFooter}>
-            <Button variant="ghost" disabled={!filtered} onClick={() => { setQuery(''); setMode('flat'); setArchived(false); }}>{t("Reset")}</Button>
-            <Button variant="accent" onClick={() => closeOptions()}>{t("Done")}</Button>
-          </footer>
-        </div>
-      )}
       <SessionUsage />
       <Button
         className={styles.fab}

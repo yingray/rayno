@@ -10,7 +10,7 @@ export class SideChatsPage extends SessionOperationsPage {
       else {
         await expect(this.panel()).toBeVisible();
         await this.page.keyboard.press('ControlOrMeta+k');
-        await this.closeListOptions();
+        await this.closeSessionSearch();
       }
     } else if (!await this.sessionList().isVisible()) {
       await this.page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('button', { name: 'Sessions', exact: true }).click();

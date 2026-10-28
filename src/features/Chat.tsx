@@ -16,9 +16,11 @@ import { countOpenSideChats, hasUnreadSideChats, showSideChatEntry, SIDE_CHAT_TI
 import styles from './chat.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { useEventCallback } from '../components/useEventCallback';
+import { AttachmentThumbnail } from '../components/AttachmentThumbnail';
+import { composerDemoId, samplePng } from '../data/composerDemo';
 import { DraftComposer } from './DraftComposer';
 import { ContextMeter, ContextWarning } from './ContextMeter';
-import { selectedImages } from '../happy/attachments';
+import { pastedImages, selectedImages } from '../happy/attachments';
 import { ResumeSession } from './ResumeSession';
 import { TerminalControl } from './TerminalControl';
 import { ChatSessionMenu } from './ChatSessionMenu';
@@ -350,7 +352,7 @@ export const Chat = memo(function Chat({
 
   function addImages(files: File[]) {
     if (pendingRef.current) return;
-    try { setAttachments(mode === 'live' ? selectedImages(files, attachments) : [...attachments, ...files].slice(0, 5)); setError(''); }
+    try { setAttachments(selectedImages(files, attachments)); setError(''); }
     catch (error) { setError(messageError(error)); }
   }
   async function send(value: string, dismissKeyboard = false) {
@@ -587,11 +589,16 @@ export const Chat = memo(function Chat({
                   onGoalAction={goalAction} />
               </div>
             </div>
+            {mode === 'demo' && session.id === composerDemoId && <Button className={styles.sampleImage}
+              variant="ghost" icon="attachOutline" disabled={pending}
+              onClick={() => { void samplePng().then(file => addImages([file]), error => setError(messageError(error))); }}>
+              {t('Try a sample PNG')}
+            </Button>}
             <div className={styles.composer} data-focus-frame
               onInput={stopRecapSpeech}
               onPaste={event => {
-                if (mode !== 'live' || disabled || pending) return;
-                const files = Array.from(event.clipboardData.files).filter(file => file.type.startsWith('image/'));
+                if (disabled || pending || session.agent === 'Happy Agent' || !(event.target instanceof HTMLTextAreaElement)) return;
+                const files = pastedImages(event.clipboardData);
                 if (files.length) { event.preventDefault(); addImages(files); }
               }}
               onDragOver={event => { if (!disabled && !pending && event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
@@ -605,7 +612,7 @@ export const Chat = memo(function Chat({
                   {attachments.map((file, index) => (
                     <span key={`${file.name}-${index}`}>
                       <button disabled={pending} onClick={() => setPreview(file)}>
-                        <Icon name="documentTextOutline" size={13} />
+                        <AttachmentThumbnail file={file} />
                         {file.name}
                       </button>
                       <button
@@ -627,7 +634,7 @@ export const Chat = memo(function Chat({
               >
                 <input
                   type="file"
-                  accept={mode === 'live' ? "image/png,image/jpeg,image/gif,image/webp" : undefined}
+                  accept="image/png,image/jpeg,image/gif,image/webp"
                   aria-label={t("Choose chat images")}
                   multiple
                   hidden

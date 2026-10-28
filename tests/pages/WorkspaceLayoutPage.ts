@@ -17,20 +17,20 @@ export class WorkspaceLayoutPage extends ResizablePanelsPage {
   async expectSessionsUsable() {
     const list = this.sessionList();
     expect(await list.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
-    for (const control of [list.getByRole('button', { name: 'Collapse session list', exact: true }),
-      this.listOptionsButton(), list.getByRole('button', { name: 'New session', exact: true })]) {
+    for (const control of [this.archiveToggle(),
+      this.searchButton(), list.getByRole('button', { name: 'New session', exact: true })]) {
       await this.expectInViewport(control);
       const listBox = (await list.boundingBox())!, box = (await control.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(listBox.x);
       expect(box.x + box.width).toBeLessThanOrEqual(listBox.x + listBox.width);
       if (await this.page.evaluate(() => navigator.maxTouchPoints > 0)) await this.expectTouchTarget(control);
     }
-    await this.openListOptions();
-    const search = this.listOptions().getByRole('textbox', { name: 'Search sessions', exact: true });
+    await this.openSessionSearch();
+    const search = this.sessionList().getByRole('textbox', { name: 'Search sessions', exact: true });
     await search.fill('Workspace layout');
     await expect(this.sessionRow('Workspace layout · Interactive demo')).toBeVisible();
     await search.fill('');
-    await this.closeListOptions();
+    await this.closeSessionSearch();
     await this.expectNoPageOverflow();
   }
   async resizeSessionsWithEscape() {

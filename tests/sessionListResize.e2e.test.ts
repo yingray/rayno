@@ -114,15 +114,15 @@ test('saved desktop list widths should preserve phone and landscape search, navi
     await view.openDemo();
     await page.keyboard.press('ControlOrMeta+k');
     await expect(view.separator('sessions')).toHaveCount(0);
-    const search = view.listOptions().getByRole('textbox', { name: 'Search sessions', exact: true });
+    const search = view.sessionSearch();
     await expect(search).toBeFocused();
     await search.fill('Workspace layout');
     await expect(view.sessionRow('Workspace layout · Interactive demo')).toBeVisible();
-    for (const control of [view.listOptions().getByRole('button', { name: 'Projects', exact: true }),
-      view.listOptions().getByRole('button', { name: 'Done', exact: true })]) {
+    for (const control of [view.sessionList().getByRole('button', { name: 'Projects', exact: true }),
+      view.sessionList().getByRole('button', { name: 'Close session search', exact: true })]) {
       await view.expectInViewport(control); await view.expectTouchTarget(control);
     }
-    await view.closeListOptions();
+    await view.closeSessionSearch();
     await view.activate(view.sessionRow('Workspace layout · Interactive demo'));
     await expect(view.mainChat()).toBeVisible();
     await view.mainChat().getByRole('textbox', { name: 'Message', exact: true }).fill(`Draft at ${width}x${height}`);

@@ -3,6 +3,14 @@ import type { Attachment } from '../data/types';
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024 - 40;
 export const MAX_IMAGES = 20;
 const imageTypes = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+// Some browsers expose pasted screenshots through items without a files entry.
+export function pastedImages(data: DataTransfer): File[] {
+  const files = Array.from(data.files).filter(file => file.type.startsWith('image/'));
+  if (files.length) return files;
+  return Array.from(data.items)
+    .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+    .map(item => item.getAsFile()).filter((file): file is File => file !== null);
+}
 export function validateImages(files: readonly Attachment[]) {
   if (files.length > MAX_IMAGES) throw new Error('Attach up to 20 images per message.');
   for (const file of files) {
