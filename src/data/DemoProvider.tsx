@@ -15,6 +15,7 @@ import { gitDiffDemoId, createGitDiffDemo } from './gitDiffDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
 import { createMarkdownAppearanceDemo, markdownAppearanceDemoId } from './markdownAppearanceDemo';
 import { createReplyNavigatorDemo, replyNavigatorDemoId } from './replyNavigatorDemo';
+import { createChatScrollDemo, chatScrollDemoId } from './chatScrollDemo';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 // The simulated recap answer comes before a normal reply, so the chat can show the waiting state.
@@ -54,6 +55,8 @@ export function DemoProvider({
         restored.sessions = [...restored.sessions, createToolTimelineDemo()];
       if (!restored.sessions.some(session => session.id === replyNavigatorDemoId))
         restored.sessions = [...restored.sessions, createReplyNavigatorDemo()];
+      if (!restored.sessions.some(session => session.id === chatScrollDemoId))
+        restored.sessions = [...restored.sessions, createChatScrollDemo()];
       if (window.location.pathname === `/session/${replyOptionsDemoId}`
         && !restored.sessions.some(session => session.id === replyOptionsDemoId)) {
         return { ...restored, sessions: [...restored.sessions, createReplyOptionsDemo()] };

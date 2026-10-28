@@ -261,16 +261,20 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
     if (!element || !ready) return;
     let timer: number | undefined;
     let previousTop = element.scrollTop;
+    let previousHeight = element.scrollHeight, previousClientHeight = element.clientHeight;
+    let pointerActive = false;
     const save = () => { const anchor = capture(); if (anchor) persist(anchor); userScrolling.current = false; };
     const scrolled = () => {
       const gap = element.scrollHeight - element.clientHeight - element.scrollTop;
       const atEnd = gap <= 1;
       // Large browser jumps also leave follow. Small layout corrections do not claim user intent.
-      const movedUp = !enabled && gap >= 90 && element.scrollTop < previousTop - 1;
+      const layoutChanged = element.scrollHeight !== previousHeight || element.clientHeight !== previousClientHeight;
+      const movedUp = !enabled && !layoutChanged && gap >= 90 && element.scrollTop < previousTop - 1;
       const movedDown = element.scrollTop > previousTop + 1;
       previousTop = element.scrollTop;
+      previousHeight = element.scrollHeight; previousClientHeight = element.clientHeight;
       // Layout and virtual measurements can change offsets without a reader gesture.
-      if (initialized.current && !jumping.current && !manualRef.current && (userScrolling.current || movedUp || atEnd)) {
+      if (initialized.current && !jumping.current && !manualRef.current && (userScrolling.current || pointerActive || movedUp || atEnd)) {
         if (movedUp) { anchored.current = undefined; userScrolling.current = true; }
         // A small upward gesture owns the viewport even inside the former 90px threshold.
         // Only a downward move to the actual end resumes follow after user input.
@@ -283,35 +287,57 @@ export function TranscriptViewport({ blocks, enabled, full, scroll, pinned, cont
       if (initialized.current && !jumping.current) capture();
       clearTimeout(timer); timer = window.setTimeout(save, 250);
     };
-    const input = () => {
+    const input = (towardEarlier = true) => {
       clearTimeout(timer);
-      generation.current++; jumping.current = false; anchored.current = undefined; userScrolling.current = true;
-      pinned.current = false; onPinned(false); manualRef.current = false;
+      generation.current++; jumping.current = false; anchored.current = undefined;
+      // A downward gesture at the end cannot produce a scroll event that restores follow.
+      const atEnd = element.scrollHeight - element.clientHeight - element.scrollTop <= 1;
+      pinned.current = atEnd && !towardEarlier;
+      userScrolling.current = !pinned.current;
+      onPinned(pinned.current); manualRef.current = false;
       if (followFrame.current !== undefined) { cancelAnimationFrame(followFrame.current); followFrame.current = undefined; }
       virtualizer.cancelScroll(); setForced(new Set());
     };
     const pointer = (event: PointerEvent) => {
-      if (!(event.target as Element).closest('button, summary, input, textarea, select, [contenteditable]')) input();
+      if (!(event.target as Element).closest('button, summary, input, textarea, select, [contenteditable]')) {
+        pointerActive = true; input(false);
+      }
     };
+    const pointerEnd = () => { pointerActive = false; };
     const keyboard = (event: KeyboardEvent) => {
       if (['Home', 'End', 'PageUp', 'PageDown', 'ArrowUp', 'ArrowDown', ' '].includes(event.key)
-        && !(event.target as Element).closest('input, textarea, select, button, summary, [contenteditable]')) input();
+        && !(event.target as Element).closest('input, textarea, select, button, summary, [contenteditable]'))
+        input(['Home', 'PageUp', 'ArrowUp'].includes(event.key) || event.key === ' ' && event.shiftKey);
+    };
+    const wheel = (event: WheelEvent) => { if (event.deltaY) input(event.deltaY < 0); };
+    let touchY: number | undefined;
+    const touchStart = (event: TouchEvent) => { touchY = event.touches[0]?.clientY; };
+    const touchMove = (event: TouchEvent) => {
+      const nextY = event.touches?.[0]?.clientY;
+      if (nextY === undefined || touchY === undefined) input();
+      else if (nextY !== touchY) input(nextY > touchY);
+      touchY = nextY;
     };
     const browserFind = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && ['f', 'g'].includes(event.key.toLowerCase())) input(); };
     document.addEventListener('keydown', browserFind);
     const hidden = () => { if (document.visibilityState === 'hidden') save(); };
     window.addEventListener('pagehide', save); document.addEventListener('visibilitychange', hidden);
     element.addEventListener('pointerdown', pointer, { passive: true });
+    document.addEventListener('pointerup', pointerEnd, { passive: true });
+    document.addEventListener('pointercancel', pointerEnd, { passive: true });
     element.addEventListener('keydown', keyboard);
     element.addEventListener('scroll', scrolled, { passive: true });
-    element.addEventListener('wheel', input, { passive: true });
-    element.addEventListener('touchmove', input, { passive: true });
+    element.addEventListener('wheel', wheel, { passive: true });
+    element.addEventListener('touchstart', touchStart, { passive: true });
+    element.addEventListener('touchmove', touchMove, { passive: true });
     return () => {
       clearTimeout(timer); if (memory.anchor) persist(memory.anchor); generation.current++; jumping.current = false;
       document.removeEventListener('keydown', browserFind);
       window.removeEventListener('pagehide', save); document.removeEventListener('visibilitychange', hidden);
       element.removeEventListener('pointerdown', pointer); element.removeEventListener('keydown', keyboard);
-      element.removeEventListener('scroll', scrolled); element.removeEventListener('wheel', input); element.removeEventListener('touchmove', input);
+      document.removeEventListener('pointerup', pointerEnd); document.removeEventListener('pointercancel', pointerEnd);
+      element.removeEventListener('scroll', scrolled); element.removeEventListener('wheel', wheel);
+      element.removeEventListener('touchstart', touchStart); element.removeEventListener('touchmove', touchMove);
     };
   }, [scroll, capture, persist, virtualizer, ready, enabled]);
   useLayoutEffect(() => () => { const anchor = capture(); if (anchor) persist(anchor); }, [capture, persist]);

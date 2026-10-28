@@ -24,6 +24,17 @@ async function arrange(page: import('@playwright/test').Page, count: number, fas
 }
 
 for (const [count, faster] of [[40, false], [320, false], [320, true]] as const) {
+  test(`chat should keep following after a downward gesture at latest in a ${count}-reply ${faster ? 'virtual' : 'full'} session`, async ({ page }, info) => {
+    // Arrange
+    const { server, view } = await arrange(page, count, faster);
+    // Act
+    await view.scrollDownAtLatest(info.project.name === 'mobile-webkit');
+    await server.pushReply('Continue following after a gesture at the bottom.\n\n' + 'New detail.\n\n'.repeat(18));
+    // Assert
+    await expect(page.getByText('Continue following after a gesture at the bottom.', { exact: true })).toBeAttached();
+    await expect.poll(async () => (await view.conversationPosition()).remaining).toBeLessThan(2);
+    await expect(view.latestShortcut()).toHaveCount(0);
+  });
   for (const size of ['desktop', '320x568', '360x640', '390x844', '430x932', '390x360', '844x390'] as const)
   test(`chat should stop following after a small upward scroll in a ${count}-reply ${faster ? 'virtual' : 'full'} session at ${size}`, async ({ page }, info) => {
     test.skip((size === 'desktop') === !!info.project.use.hasTouch, 'Run each size in its matching input projects.');
@@ -45,6 +56,58 @@ for (const [count, faster] of [[40, false], [320, false], [320, true]] as const)
     await expect.poll(async () => (await view.conversationPosition()).remaining).toBeLessThan(2);
   });
 }
+
+for (const faster of [false, true]) {
+  test(`chat scroll demo should keep latest gestures and new replies usable in ${faster ? 'virtual' : 'full'} mode across viewports`, async ({ page }, info) => {
+    test.setTimeout(90000);
+    // Arrange
+    const view = new ChatScrollPage(page);
+    await view.openScrollDemo(faster);
+    const mobile = !!info.project.use.hasTouch;
+    const keyboard = info.project.name === 'mobile-webkit';
+    const sizes = mobile ? [[320, 568], [360, 640], [390, 844], [430, 932], [390, 360], [844, 390]] : [[1440, 900]];
+    for (const [width, height] of sizes) {
+      // Act / Assert: the same controls work with touch, short viewports and landscape.
+      await page.setViewportSize({ width, height });
+      await view.expectLatestHidden();
+      await view.scrollDownAtLatest(keyboard);
+      await view.touchDownAtLatest();
+      await view.tapConversation(mobile);
+      await view.scrollUpStep(40, keyboard);
+      await expect(view.latestShortcut()).toBeVisible();
+      await view.scrollBackToLatest(keyboard);
+      await view.expectLatestReachable(mobile);
+      await view.expectLatestHidden();
+      await view.expectNoPageOverflow();
+    }
+    // New replies still follow after a gesture that does not move the viewport.
+    await view.send('Keep following the demo reply.');
+    await view.waitForSentMessage('Keep following the demo reply.');
+    await view.scrollDownAtLatest(keyboard);
+    await view.expectSimulatedReplies(1);
+    await view.expectLatestHidden();
+    // The example repeats, and an upward gesture retains the reading row during a reply.
+    await view.send('Let me read earlier replies.');
+    await view.waitForSentMessage('Let me read earlier replies.');
+    await view.scrollUpStep(40, keyboard);
+    const anchor = await view.readingRow();
+    await view.expectSimulatedReplies(2);
+    await view.expectNoDownwardPull(anchor);
+    await expect(view.latestShortcut()).toBeVisible();
+    await view.returnToLatest();
+  });
+}
+
+test('chat scroll demo should restore its example without losing older sessions, drafts or preferences', async ({ page }) => {
+  // Arrange
+  const view = new ChatScrollPage(page);
+  await view.openScrollDemo();
+  await view.removeSavedScrollDemo();
+  // Act
+  await view.openScrollDemo();
+  // Assert
+  await view.expectSavedDemoPreserved();
+});
 
 for (const count of [40, 320]) {
   test(`chat should show the latest shortcut after a browser scroll in a ${count}-reply session`, async ({ page }, info) => {
@@ -130,6 +193,7 @@ for (const count of [40, 320]) {
     // Act / Assert
     for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [390, 360], [844, 390]]) {
       await page.setViewportSize({ width, height });
+      await view.waitForLatestLayout();
       await view.expectLatestReachable(true);
       await view.moveReadingPosition(true);
       const anchor = await view.readingRow();

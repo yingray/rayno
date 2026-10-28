@@ -186,7 +186,8 @@ export const Chat = memo(function Chat({
   const [managedTranscript, setManagedTranscript] = useState(false);
   const onTranscriptPinned = useCallback((value: boolean) => {
     const element = scroll.current;
-    setAwayFromLatest(!value || !!element && element.scrollHeight - element.scrollTop - element.clientHeight >= 90);
+    const gap = element ? element.scrollHeight - element.scrollTop - element.clientHeight : 0;
+    setAwayFromLatest(gap > 1 && (!value || gap >= 90));
   }, []);
   const sideOpen = location.pathname === `/session/${session.id}/side`;
   const parentId = session.isSideChat && parentKnown ? session.parentSessionId : undefined;
@@ -245,13 +246,14 @@ export const Chat = memo(function Chat({
   }
 
   function updateScrollPosition(element: HTMLDivElement, scrollEvent = false) {
-    const nearEnd = element.scrollHeight - element.scrollTop - element.clientHeight < 90;
+    const gap = element.scrollHeight - element.scrollTop - element.clientHeight;
+    const nearEnd = gap < 90;
     // A queued scroll event can arrive after a taller reply changes the scroll height.
     if (!managedTranscript && !virtualMode && (!scrollEvent || !pinned.current
       || element.scrollTop < previousScrollTop.current - 1 || nearEnd)) pinned.current = nearEnd;
     previousScrollTop.current = element.scrollTop;
     // Follow intent can lag a browser scroll. Keep the shortcut tied to the visible position too.
-    setAwayFromLatest(!pinned.current || !nearEnd);
+    setAwayFromLatest(gap > 1 && (!pinned.current || !nearEnd));
     live?.setSessionReading(session.id, pinned.current);
   }
 
