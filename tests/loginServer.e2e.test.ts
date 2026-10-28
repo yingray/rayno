@@ -6,16 +6,11 @@ const customHost = 'happy.example.com';
 // Base64 of 32 bytes with the value 7: a valid recovery key format.
 const recoveryKey = 'BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=';
 
-test('a custom Happy server should apply on blur and stay after sign-out', async ({ page }) => {
+test('a custom Happy server should be checked on blur and stay after sign-out', async ({ page }) => {
   // Arrange
-  const pairingHosts: string[] = [];
   let authHost = '';
   await page.route(/^https:\/\/[^/]+\/v1\//, async (route) => {
     const url = new URL(route.request().url());
-    if (url.pathname === '/v1/auth/account/request') {
-      pairingHosts.push(url.host);
-      return route.fulfill({ json: { state: 'requested' } });
-    }
     if (url.pathname === '/v1/auth') {
       authHost = url.host;
       return route.fulfill({ json: { token: 'custom-token' } });
@@ -25,17 +20,10 @@ test('a custom Happy server should apply on blur and stay after sign-out', async
   const workspace = new LiveWorkspacePage(page);
   await page.goto('/');
   await workspace.expectSignIn();
-  await workspace.showQrSignIn();
-  await expect.poll(() => pairingHosts.length).toBeGreaterThan(0);
   await workspace.openServerField();
-  // Act
-  await workspace.serverField().fill('');
-  await workspace.serverField().pressSequentially(`https://${customHost}`);
-  const hostsWhileTyping = new Set(pairingHosts);
-  await workspace.serverField().press('Tab');
   // Assert
-  expect(hostsWhileTyping).toEqual(new Set(['api.cluster-fluster.com']));
-  await expect.poll(() => pairingHosts.at(-1)).toBe(customHost);
+  await expect(workspace.serverField()).toHaveValue('https://api.cluster-fluster.com');
+  await expect(page.getByRole('button', { name: /^Copy git clone/ })).toBeVisible();
 
   // Act
   await workspace.serverField().fill(`http://${customHost}`);
@@ -44,8 +32,14 @@ test('a custom Happy server should apply on blur and stay after sign-out', async
   await expect(page.getByRole('alert')).toHaveText('Use an HTTPS Happy server address.');
 
   // Act
-  await workspace.serverField().fill(`https://${customHost}`);
+  await workspace.serverField().fill(`https://${customHost}/`);
   await workspace.serverField().press('Tab');
+  // Assert
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(workspace.serverField()).toHaveValue(`https://${customHost}`);
+  expect(authHost).toBe('');
+
+  // Act
   await workspace.signInWithKey(recoveryKey);
   // Assert
   await expect.poll(() => authHost).toBe(customHost);
@@ -71,16 +65,16 @@ test('sign-in and the first click of a remembered session should ask the browser
     // WebKit can give the page a new StorageManager after this script, so stub the prototype.
     Object.assign(StorageManager.prototype, { persist: async () => { calls.persist++; return false; }, persisted: async () => false });
   });
-  await page.route(/^https:\/\/[^/]+\/v1\//, (route) => new URL(route.request().url()).pathname === '/v1/auth/account/request'
-    ? route.fulfill({ json: { state: 'requested' } }) : route.fulfill({ status: 503, json: { error: 'Not part of this test' } }));
+  await page.route(/^https:\/\/[^/]+\/v1\//, (route) => route.fulfill({ status: 503, json: { error: 'Not part of this test' } }));
   const workspace = new LiveWorkspacePage(page);
   const calls = () => page.evaluate(() => (window as unknown as { __persist: { persist: number } }).__persist.persist);
   await page.goto('/');
   await workspace.expectSignIn();
   // Act
-  await workspace.showQrSignIn();
+  await workspace.signInWithKey(recoveryKey);
   // Assert
   await expect.poll(calls).toBe(1);
+  await expect(page.getByRole('alert')).toBeVisible();
   // Arrange: a session that signed in on an earlier visit.
   const server = new HappyServer();
   await server.install(page);

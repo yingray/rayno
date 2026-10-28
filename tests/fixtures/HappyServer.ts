@@ -204,6 +204,7 @@ export class HappyServer {
           ),
         });
       }
+      if (path === '/v1/auth' && method === 'POST') return json({ success: true, token: this.credentials.token });
       if (this.denied) return json({ error: 'Expired authorization' }, 401);
       if (path === '/v1/usage/query' && method === 'POST') {
         this.usageQueries.push(request.postDataJSON());

@@ -44,85 +44,8 @@
   color: var(--muted);
   line-height: 1.6;
 }
-.tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  padding: 16px 0;
-}
 .card button {
   min-height: 44px;
-}
-.tabs button {
-  padding-inline: 8px;
-}
-.signIn h2 {
-  font-size: 15px;
-  margin: 4px 0 12px;
-}
-.methods {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  margin-bottom: 20px;
-  background: var(--well);
-  border: 1px solid var(--border-control);
-  border-radius: 16px;
-}
-.methods button {
-  padding-inline: 6px;
-  border-radius: 12px;
-}
-.install > p:first-child {
-  margin-bottom: 20px;
-}
-.steps {
-  list-style: none;
-  counter-reset: step;
-  padding: 0;
-  margin: 0;
-}
-.steps li {
-  counter-increment: step;
-  margin-bottom: 24px;
-}
-.steps h2 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 15px;
-  margin-bottom: 10px;
-}
-.steps h2::before {
-  content: counter(step);
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  border: 1px solid var(--border-control);
-  border-radius: 50%;
-  color: var(--accent-soft);
-  font-size: 12px;
-}
-.appLinks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.appLinks a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--border-control);
-  border-radius: 12px;
-  color: var(--accent-soft);
-  font-size: 13px;
-}
-.appLinks a:hover {
-  background: var(--well);
 }
 .command {
   margin-block: 10px;
@@ -159,31 +82,21 @@
 .copyStatus:empty {
   display: none;
 }
-.card .alternative {
-  margin-bottom: 0;
-}
-.pairing {
+.step {
   display: grid;
-  justify-items: center;
-  text-align: center;
-  gap: 10px;
+  gap: 4px;
+  margin-top: 24px;
 }
-.qr {
-  width: 232px;
-  height: 232px;
-  display: grid;
-  place-items: center;
-  background: #fff;
-  color: #111;
-  border-radius: 18px;
-}
-.pairing p {
-  max-width: 300px;
-  margin: 6px 0 0;
+.step h2 {
+  font-size: 15px;
+  margin: 0 0 6px;
 }
 .card form {
-  display: grid;
-  gap: 14px;
+  gap: 10px;
+}
+.card .hint {
+  margin: 0;
+  font-size: 12px;
 }
 .field {
   display: grid;
@@ -209,7 +122,7 @@
   gap: 9px;
   font-size: 12px;
   color: var(--muted);
-  margin: 20px 0;
+  margin: 0;
   min-height: 44px;
   border: 1px solid transparent;
   border-radius: 10px;
@@ -217,17 +130,6 @@
 }
 .remember input {
   accent-color: #8b5cf6;
-}
-.card details {
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.card summary {
-  cursor: pointer;
-  min-height: 44px;
-  align-content: center;
 }
 .card footer {
   display: flex;

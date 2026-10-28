@@ -10,25 +10,33 @@
 
 ## Quick start
 
-You need three things:
+You need a Mac with Node.js 24, pnpm, and Tailscale with HTTPS turned on.
+You also need Claude Code or Codex, signed in on the same Mac.
 
-- A Happy account
-- The Happy CLI on your computer
-- Claude Code or Codex, signed in on the same computer
+### 1. Install your own Happy server
 
-### 1. Create a Happy account
-
-Install the Happy app on your phone ([iOS](https://apps.apple.com/us/app/happy-claude-code-client/id6748571505) or [Android](https://play.google.com/store/apps/details?id=com.ex3ndr.happy)).
-You can also use the [Happy web app](https://app.happy.engineering).
-Select **Create account**.
-
-### 2. Install the Happy CLI
+Run this command in a terminal:
 
 ```bash
-npm install -g happy
+git clone https://github.com/yingray/happy.git ~/happy && ~/happy/.rayno/install.sh
 ```
 
-### 3. Connect your computer
+The script starts a Happy server and links the Happy CLI to it.
+On a new Mac, it also makes a Happy account and signs the CLI in.
+At the end, it prints two values: your **Happy server** address and your **recovery key**.
+
+> [!WARNING]
+> Save the recovery key when the script shows it. It is your account, and the script shows it only once.
+> Anyone with the key can read all of your sessions.
+
+### 2. Sign in to Rayno
+
+Go to https://rayno-co6.pages.dev.
+Paste the **Happy server** address and the **recovery key**, then select **Connect account**.
+
+Rayno keeps the key in this browser only when **Remember this login on this device** is selected.
+
+### 3. Start an agent
 
 Go to a project folder and start an agent:
 
@@ -36,24 +44,13 @@ Go to a project folder and start an agent:
 happy claude   # or: happy codex
 ```
 
-The first time, the CLI asks you to sign in.
-Scan the QR code with the Happy app, then approve the request.
-The CLI also starts a background daemon. Rayno uses the daemon to start new sessions on this computer.
-
-### 4. Open Rayno
-
-Go to https://rayno-co6.pages.dev, select **Sign in**, and choose one of these methods:
-
-| Method | In the Happy app | In Rayno |
-|---|---|---|
-| Scan QR code | **Settings → Account → Link New Device** | Scan the QR code on the screen |
-| Recovery key | **Settings → Account → Secret Key**, then copy the key | Select **Recovery key** and paste it |
-
 Your sessions now show in Rayno.
 
-> [!WARNING]
-> Keep your secret key private. It decrypts all of your sessions.
-> Rayno keeps the key in this browser only when **Remember this login on this device** is selected.
+### Use an existing Happy account
+
+If you already use Happy, enter your Happy server in the **Happy server** field.
+The default is the hosted server, `https://api.cluster-fluster.com`.
+To get your recovery key, open the Happy app and go to **Settings → Account → Secret Key**.
 
 ## About the name
 
@@ -84,14 +81,13 @@ If you run your own Happy server, it must use HTTPS and allow CORS from the Rayn
 
 ## Sign in
 
-The login screen opens **How to install** first, with the setup steps above and commands that you can copy.
-After setup, select **Sign in**, then choose **Scan QR code** or **Recovery key**:
+The login screen shows the install command, with a copy button, and a sign-in form with two fields:
 
-- Scan the QR code with a signed-in Happy mobile app, then approve this browser.
-- Paste your Happy account recovery key. The key is the 32-byte account secret.
+- **Happy server**: the HTTPS origin of the Happy server that your CLI uses.
+- **Recovery key**: your Happy account recovery key. The key is the 32-byte account secret.
+  Rayno accepts the grouped base32 form that the installer and the Happy app show, and the base64 form.
 
-To use another Happy server, open **Happy server** on the login screen and enter its HTTPS origin.
-The address applies when the field loses focus, when you press Enter, or when you connect with a key.
+The address is checked when the field loses focus, when you press Enter, or when you connect.
 Rayno does not send requests to a partial address while you type.
 An HTTP address is rejected, except for `localhost`.
 

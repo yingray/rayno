@@ -164,22 +164,33 @@ test('new connected session should spawn once and send the encrypted initial pro
   expect(JSON.stringify(server.sends)).not.toContain('Create an isolated contract test');
 });
 
-test('QR authorization should unlock the independent client with its own account key', async ({
-  page,
-}) => {
+test('a recovery key from the installer should unlock the independent client', async ({ page }) => {
   // Arrange
   const server = new HappyServer();
   await server.install(page, false);
   const workspace = new LiveWorkspacePage(page);
+  // The installer prints the account secret as base32 in groups of five.
+  let bits = 0;
+  let value = 0;
+  let base32 = '';
+  for (const byte of server.secret) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      bits -= 5;
+      base32 += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'[(value >> bits) & 31];
+    }
+  }
+  if (bits > 0) base32 += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'[(value << (5 - bits)) & 31];
+  const recoveryKey = base32.match(/.{1,5}/g)!.join('-');
   await page.goto('/session/real-session');
   await workspace.expectSignIn();
-  await workspace.showQrSignIn();
-  await workspace.expectQr();
   // Act
-  server.authorized = true;
+  await workspace.signInWithKey(recoveryKey);
   // Assert
   await workspace.expectConnected();
   await expect(page.getByText('From the real protocol', { exact: true })).toBeVisible();
+  expect(server.requests.some((request) => request.path === '/v1/auth' && request.method === 'POST')).toBe(true);
   expect(server.mutations).toEqual([]);
 });
 
