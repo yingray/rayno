@@ -70,6 +70,8 @@ import {
   checkmarkCircle,
   radioButtonOnOutline,
   ellipseOutline,
+  serverOutline,
+  keyOutline,
 } from 'ionicons/icons';
 import { useDemo } from '../data/store';
 import type { Agent } from '../data/types';
@@ -142,6 +144,8 @@ const icons = {
   checkmarkCircle,
   radioButtonOnOutline,
   ellipseOutline,
+  serverOutline,
+  keyOutline,
 };
 export type IconName = keyof typeof icons;
 export const Icon = memo(function Icon({

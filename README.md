@@ -107,6 +107,13 @@ The server address stays, so the next login starts with the same server.
 Without **Remember**, the login stays in this tab's session storage and the server address is not saved.
 Anyone with access to this browser profile can read a remembered secret.
 
+After sign-in, open **Settings > Account > Sign-in** to:
+
+- **Copy** the recovery key, to sign in on another device or browser.
+- **Change** the Happy server. Rayno signs in to the new server with the same key before it leaves the current one.
+  When the new server refuses, nothing changes. A server without this account makes a new, empty account.
+  Your preferences move to the new server. The cached data of the old server is cleared, as on sign-out.
+
 Server changes synchronize across clients. Rename, archive, and delete affect the shared session.
 Restore removes the archive marker. It does not start an offline agent.
 The default list hides explicitly archived sessions and ended CLI sessions, as the Happy app does.

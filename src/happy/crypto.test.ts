@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import sodium from 'libsodium-wrappers';
-import { authProof, base64, deriveKey, HappyCrypto, recoverySecret, unbase64 } from './crypto';
+import { authProof, base64, deriveKey, formatRecoveryKey, HappyCrypto, recoverySecret, unbase64 } from './crypto';
 
 const secret = new Uint8Array(32).fill(7);
 afterEach(() => vi.restoreAllMocks());
@@ -142,5 +142,15 @@ describe('Happy encryption compatibility', () => {
     expect(formatted).toEqual(bytes);
     expect(recoverySecret(base64(secret, true))).toEqual(secret);
     expect(() => recoverySecret('invalid')).toThrow('valid');
+  });
+  it('should format a secret as the grouped recovery key that sign-in accepts', () => {
+    // Arrange
+    const bytes = Uint8Array.from({ length: 32 }, (_, index) => index * 7 + 3);
+    // Act
+    const key = formatRecoveryKey(bytes);
+    // Assert
+    expect(key).toMatch(/^([A-Z2-7]{5}-){10}[A-Z2-7]{2}$/);
+    expect(formatRecoveryKey(new Uint8Array(32))).toBe('AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AAAAA-AA');
+    expect(recoverySecret(key)).toEqual(bytes);
   });
 });

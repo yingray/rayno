@@ -13,6 +13,10 @@ export type Store = {
   live?: HappyClient;
   snapshot?: Snapshot;
   server?: string;
+  // The signed-in account as the grouped key that the Happy app shows.
+  recoveryKey?: string;
+  // Signs in to another Happy server with the same account. It rejects when that server refuses.
+  changeServer?: (server: string) => Promise<void>;
   logout?: () => void;
   switchMode: () => void;
   state: DemoState;

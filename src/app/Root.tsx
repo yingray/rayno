@@ -40,6 +40,7 @@ export function Root() {
       <LiveProvider
         key={credentials.server + credentials.token}
         credentials={credentials}
+        login={login}
         logout={logout}
         switchMode={switchMode}
       >

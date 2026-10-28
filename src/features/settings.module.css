@@ -270,7 +270,8 @@
 .recapStyleReset {
   margin-left: 46px;
 }
-.updateButton {
+.updateButton,
+.rowAction {
   flex: none;
 }
 .note {
@@ -623,7 +624,9 @@
     height: 44px;
   }
   .recapStyleReset,
-  .updateButton {
+  .updateButton,
+  .rowAction,
+  .serverForm footer button {
     height: 44px;
   }
   .fontSize button {

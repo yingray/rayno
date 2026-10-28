@@ -2,7 +2,8 @@ import { useText } from "../i18n";
 import { lazy, useEffect, useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Button, Dialog, Empty, Icon, Segment, Toggle } from '../components/ui';
+import { Button, copyText, Dialog, Empty, Icon, Segment, Toggle } from '../components/ui';
+import { messageError } from '../happy/errors';
 import { version } from '../../package.json';
 import { checkForUpdate, currentBuild, forceUpdate, formatBuildTime } from '../app/appUpdate';
 import type { UpdateCheck } from '../app/appUpdate';
@@ -170,12 +171,65 @@ function AboutGroup() {
   );
 }
 
+function ServerDialog({ server, changeServer, onClose }: {
+  server: string;
+  changeServer: (server: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const t = useText();
+  const [draft, setDraft] = useState(server);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  async function submit() {
+    setBusy(true);
+    setError('');
+    try {
+      await changeServer(draft);
+      onClose();
+    } catch (failure) {
+      setError(messageError(failure));
+      setBusy(false);
+    }
+  }
+  return (
+    <Dialog title={t("Change Happy server")} onClose={() => { if (!busy) onClose(); }}>
+      <form className={styles.serverForm} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+        <label>
+          {t("Happy server")}
+          <input
+            autoFocus
+            type="url"
+            inputMode="url"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="https://your-mac.your-tailnet.ts.net:3007"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            disabled={busy}
+          />
+        </label>
+        <p>{t("Rayno signs in to the new server with the same recovery key. A server without this account makes a new, empty one. The sessions of the current server leave this browser.")}</p>
+        {error && <p role="alert">{error}</p>}
+        <footer>
+          <Button disabled={busy} onClick={onClose}>{t("Cancel")}</Button>
+          <Button type="submit" variant="accent" disabled={busy || !draft.trim()}>
+            {busy ? t("Wait…") : t("Connect")}
+          </Button>
+        </footer>
+      </form>
+    </Dialog>
+  );
+}
+
 export function Settings() {
   const t = useText();
-  const { preferences, dispatch, reset, mode, machines, server, logout, switchMode } = useDemo((store) => ({
+  const { preferences, dispatch, reset, mode, machines, server, logout, switchMode, recoveryKey, changeServer, notify } = useDemo((store) => ({
     preferences: store.state.preferences, dispatch: store.dispatch, reset: store.reset, mode: store.mode,
     machines: store.machines, server: store.server, logout: store.logout, switchMode: store.switchMode,
+    recoveryKey: store.recoveryKey, changeServer: store.changeServer, notify: store.notify,
   }));
+  const [editServer, setEditServer] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const recapStyleId = useId();
@@ -410,6 +464,31 @@ export function Settings() {
                 <span className={styles.localChip}>{mode === 'demo' ? t("Local") : t("Live")}</span>
               </Row>
             </Group>
+            {server && recoveryKey && changeServer && (
+              <Group
+                label={t("Sign-in")}
+                footer={mode === 'demo'
+                  ? t("The demo uses a sample server and a sample key. Nothing connects.")
+                  : t("Anyone with the recovery key can read all of your sessions. Keep it private.")}
+              >
+                <Row icon="serverOutline" title={t("Happy server")} subtitle={server}>
+                  <Button className={styles.rowAction} onClick={() => setEditServer(true)}>{t("Change")}</Button>
+                </Row>
+                <Row icon="keyOutline" title={t("Recovery key")} subtitle={t("Sign in on another device or browser")}>
+                  <Button
+                    className={styles.rowAction}
+                    icon="copyOutline"
+                    aria-label={t("Copy recovery key")}
+                    onClick={() => void copyText(recoveryKey, notify)}
+                  >
+                    {t("Copy")}
+                  </Button>
+                </Row>
+              </Group>
+            )}
+            {editServer && server && changeServer && (
+              <ServerDialog server={server} changeServer={changeServer} onClose={() => setEditServer(false)} />
+            )}
             <p className={styles.note}>
               {mode === 'demo'
                 ? t("This demo does not require sign-in.")

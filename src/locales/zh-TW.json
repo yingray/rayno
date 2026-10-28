@@ -810,5 +810,16 @@
   "Simulated repository": "模擬儲存庫",
   "Git not read": "Git 未讀取",
   "Git status has not been reported. Open Session info → View changes to read it.": "尚未回報 Git 狀態，請開啟 Session info → View changes 讀取。",
-  "file": "個檔案"
+  "file": "個檔案",
+  "Change Happy server": "變更 Happy 伺服器",
+  "Happy server": "Happy 伺服器",
+  "Rayno signs in to the new server with the same recovery key. A server without this account makes a new, empty one. The sessions of the current server leave this browser.": "Rayno 會用同一把復原金鑰登入新伺服器。新伺服器沒有這個帳號時，會建立一個新的空帳號。目前伺服器的 session 會從這個瀏覽器移除。",
+  "Connect": "連線",
+  "Sign-in": "登入",
+  "Anyone with the recovery key can read all of your sessions. Keep it private.": "任何拿到復原金鑰的人都能讀取你所有的 session。請妥善保管。",
+  "Recovery key": "復原金鑰",
+  "Sign in on another device or browser": "用來在其他裝置或瀏覽器登入",
+  "Copy recovery key": "複製復原金鑰",
+  "The demo uses a sample server and a sample key. Nothing connects.": "示範使用範例伺服器和範例金鑰，不會真的連線。",
+  "Simulated: Rayno now uses this server": "模擬：Rayno 已改用這個伺服器"
 }

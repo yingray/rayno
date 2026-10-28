@@ -222,9 +222,9 @@ export class HappyClient implements DemoAdapter {
   private constructor(
     readonly credentials: Credentials,
     readonly encryption: HappyCrypto,
-    scope: string,
+    storageKey: string,
   ) {
-    this.storageKey = `rayno.account.${scope}.`;
+    this.storageKey = storageKey;
     this.cache = new OfflineCache(this.storageKey, encryption);
     if (globalThis.navigator?.onLine === false)
       this.snapshot = { ...this.snapshot, offline: true, connection: 'disconnected', loading: false };
@@ -232,15 +232,19 @@ export class HappyClient implements DemoAdapter {
     this.attentionInitialized = this.readLocal('attentionInitialized') === 'true';
     this.sentTimes = readSentTimes(this.readLocal('lastMessageSentAt'));
   }
-  static async create(credentials: Credentials) {
+  // Each server and account pair keeps its local data under its own key prefix.
+  static async storageKeyFor(credentials: Credentials) {
     const bytes = await crypto.subtle.digest(
       'SHA-256',
       new TextEncoder().encode(credentials.server + ':' + credentials.secret),
     );
+    return `rayno.account.${base64(new Uint8Array(bytes), true).slice(0, 24)}.`;
+  }
+  static async create(credentials: Credentials) {
     const client = new HappyClient(
       credentials,
       await HappyCrypto.create(unbase64(credentials.secret)),
-      base64(new Uint8Array(bytes), true).slice(0, 24),
+      await HappyClient.storageKeyFor(credentials),
     );
     await client.restoreWorkspace();
     client.cacheReady = true;

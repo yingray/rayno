@@ -4,6 +4,8 @@ import { createInitialState, machines, usageReadings } from './fixtures';
 import { restoreState, STORAGE_KEY, validateDraft } from './reducer';
 import type { DemoAdapter, DemoState, NewSessionDraft, Attachment } from './types';
 import { modelChoiceKey } from '../happy/modelPreferences';
+import { serverOrigin } from '../happy/credentials';
+import { formatRecoveryKey } from '../happy/crypto';
 import { StoreProvider } from './store';
 import { useUIState } from './useUIState';
 import { questionDemoId, createQuestionDemo } from './questionDemo';
@@ -21,12 +23,22 @@ const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(r
 // The simulated recap answer comes before a normal reply, so the chat can show the waiting state.
 const RECAP_REPLY_DELAY = 1500;
 const recapTimer = (id: string) => `recap:${id}`;
+// A sample sign-in for Settings > Account. It is not a real account.
+const DEMO_SERVER = 'https://your-mac.your-tailnet.ts.net:3007';
+const DEMO_RECOVERY_KEY = formatRecoveryKey(Uint8Array.from({ length: 32 }, (_, index) => index));
 
 export function DemoProvider({
   children,
   switchMode,
 }: PropsWithChildren<{ switchMode: () => void }>) {
   const [toast, setToast] = useState('');
+  const [server, setServer] = useState(DEMO_SERVER);
+  const changeServer = useCallback(async (value: string) => {
+    const next = serverOrigin(value);
+    await delay(600);
+    setServer(next);
+    setToast('Simulated: Rayno now uses this server');
+  }, []);
   const timers = useRef(new Map<string, number>());
   const replyPrompts = useRef(new Map<string, string[]>());
   const saveFailed = useRef(false);
@@ -267,6 +279,9 @@ export function DemoProvider({
         toast,
         notify: setToast,
         reset,
+        server,
+        recoveryKey: DEMO_RECOVERY_KEY,
+        changeServer,
       }}
     >
       {children}

@@ -7,7 +7,10 @@ import type { DemoAdapter, DemoState } from '../data/types';
 import { HappyClient } from './client';
 import { messageError } from './errors';
 import { modelChoiceKey } from './modelPreferences';
+import { loginWithKey, saveCredentials, serverOrigin } from './auth';
 import type { Credentials } from './auth';
+import { formatRecoveryKey } from './crypto';
+import { unbase64 } from './encoding';
 import { Button, Mark, Spinner } from '../components/ui';
 import styles from './login.module.css';
 import { useUIState } from '../data/useUIState';
@@ -34,10 +37,16 @@ const emptyState = (): DemoState => ({
 });
 export function LiveProvider({
   credentials,
+  login,
   logout,
   switchMode,
   children,
-}: PropsWithChildren<{ credentials: Credentials; logout: () => void; switchMode: () => void }>) {
+}: PropsWithChildren<{
+  credentials: Credentials;
+  login: (value: Credentials) => void;
+  logout: () => void;
+  switchMode: () => void;
+}>) {
   const [client, setClient] = useState<HappyClient | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -73,17 +82,23 @@ export function LiveProvider({
       </div>
     );
   return (
-    <Connected client={client} logout={logout} switchMode={switchMode}>
+    <Connected client={client} login={login} logout={logout} switchMode={switchMode}>
       {children}
     </Connected>
   );
 }
 function Connected({
   client,
+  login,
   logout,
   switchMode,
   children,
-}: PropsWithChildren<{ client: HappyClient; logout: () => void; switchMode: () => void }>) {
+}: PropsWithChildren<{
+  client: HappyClient;
+  login: (value: Credentials) => void;
+  logout: () => void;
+  switchMode: () => void;
+}>) {
   const snapshot = useSyncExternalStore(client.subscribe, client.getSnapshot);
   const recapCache = useMemo(() => new RecapAudioCache(client.storageKey, client.encryption), [client]);
   useLayoutEffect(() => activateRecapAudioCache(recapCache), [recapCache]);
@@ -186,6 +201,26 @@ function Connected({
     await client.clearLocal();
     logout();
   }, [client, logout, recapCache]);
+  const recoveryKey = useMemo(() => formatRecoveryKey(unbase64(client.credentials.secret)), [client]);
+  // The new server must accept the account before Rayno leaves the current one.
+  // The preferences move to the new server. The cached sessions of the old server are cleared, as on sign-out.
+  const changeServer = useCallback(async (value: string) => {
+    const server = serverOrigin(value);
+    if (server === client.credentials.server) return;
+    const next = await loginWithKey(server, client.credentials.secret);
+    let remember = false;
+    try { remember = !!localStorage.getItem(CREDENTIALS_KEY); } catch { /* Storage is unavailable. */ }
+    const nextKey = await HappyClient.storageKeyFor(next);
+    const preferences = ui.getState().preferences;
+    client.dispose();
+    await recapCache.clear();
+    await client.clearLocal();
+    saveCredentials(next, remember);
+    try {
+      (remember ? localStorage : sessionStorage).setItem(`${nextKey}ui`, JSON.stringify({ ...emptyState(), preferences }));
+    } catch { /* The new server starts with the default preferences. */ }
+    login(next);
+  }, [client, login, recapCache, ui]);
   const reset = useCallback(() => dispatch({ type: 'reset', state: emptyState() }), []);
   return (
     <StoreProvider
@@ -200,6 +235,8 @@ function Connected({
         live: client,
         snapshot,
         server: client.credentials.server,
+        recoveryKey,
+        changeServer,
         toast,
         notify,
         logout: signOut,

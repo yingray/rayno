@@ -36,6 +36,23 @@ export function recoverySecret(value: string): Uint8Array {
   if (result.length !== 32) throw new Error('The recovery key must contain 32 bytes.');
   return new Uint8Array(result);
 }
+// The text that the Happy app shows under Settings > Account > Secret Key: base32 in groups of 5.
+export function formatRecoveryKey(secret: Uint8Array): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let buffer = 0,
+    bits = 0,
+    text = '';
+  for (const byte of secret) {
+    buffer = ((buffer << 8) | byte) & 0xffff;
+    bits += 8;
+    while (bits >= 5) {
+      bits -= 5;
+      text += alphabet[(buffer >> bits) & 31];
+    }
+  }
+  if (bits > 0) text += alphabet[(buffer << (5 - bits)) & 31];
+  return text.match(/.{1,5}/g)!.join('-');
+}
 export async function deriveKey(seed: Uint8Array, usage: string, path: string[]) {
   async function hmac(key: Uint8Array, data: Uint8Array) {
     const imported = await crypto.subtle.importKey(
