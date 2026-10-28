@@ -328,7 +328,7 @@ The Pages build image does not read the pnpm version from `package.json` or the 
 
 `public/_headers` sets the response headers:
 
-- A Content Security Policy. `connect-src` allows any HTTPS and WSS origin, because each user enters a Happy server.
+- A Content Security Policy. `connect-src` allows any HTTPS and WSS origin, because each user enters a Happy server. It also allows HTTP and WS on `127.0.0.1` and `localhost`, for a server on the same computer.
   `'wasm-unsafe-eval'` lets libsodium compile its WebAssembly module.
 - A one-year immutable cache for `/assets/*`. Vite adds a content hash to those file names.
 
