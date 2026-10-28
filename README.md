@@ -16,6 +16,8 @@ You also need Claude Code or Codex, signed in on the same Mac.
 [Tailscale](https://tailscale.com) with HTTPS certificates turned on is optional.
 With it, your server gets an HTTPS address that works on all of your devices.
 Without it, the server address is `http://127.0.0.1:3007`, and it works only in a browser on that Mac.
+In that case, use Rayno in Chrome. Safari blocks an HTTPS page from calling an HTTP address,
+so in Safari use the web app at `http://127.0.0.1:3008` that the script also starts.
 
 ### 1. Install your own Happy server
 
