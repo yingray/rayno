@@ -182,7 +182,7 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         )
       )
         preferences.bubble = parsed.preferences.bubble as typeof preferences.bubble;
-      for (const key of ['compactTools', 'fasterTranscript', 'enterToSend', 'recapAutoplay', 'alwaysShowContextSize'] as const)
+      for (const key of ['compactTools', 'fasterTranscript', 'enterToSend', 'recapAutoplay', 'alwaysShowContextSize', 'sessionListArchived'] as const)
         if (typeof parsed.preferences[key] === 'boolean')
           preferences[key] = parsed.preferences[key];
       if (parsed.preferences.language === 'en' || parsed.preferences.language === 'zh-TW') preferences.language = parsed.preferences.language;
@@ -201,6 +201,8 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         preferences.glassStyle = parsed.preferences.glassStyle as typeof preferences.glassStyle;
       if (['full', 'medium', 'standard'].includes(String(parsed.preferences.chatWidth)))
         preferences.chatWidth = parsed.preferences.chatWidth as typeof preferences.chatWidth;
+      if (parsed.preferences.sessionListMode === 'flat' || parsed.preferences.sessionListMode === 'projects')
+        preferences.sessionListMode = parsed.preferences.sessionListMode;
       for (const element of markdownElements) {
         const storedText = parsed.preferences[element.textKey], storedBackground = parsed.preferences[element.backgroundKey];
         preferences[element.textKey] = restoreMarkdownTextTheme(storedText, element.defaultText);

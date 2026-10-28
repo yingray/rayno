@@ -15,7 +15,7 @@ import { useDemo } from '../data/store';
 import { shallowEqual } from '../data/subscriptions';
 import { titleOf } from '../data/reducer';
 import { compareSessionActivity, isSessionFaded, sessionActivityAt } from '../data/sessionList';
-import type { Session } from '../data/types';
+import type { Session, SessionListMode } from '../data/types';
 import styles from './sessions.module.css';
 import { SessionUsage } from './SessionUsage';
 import { OfflineStatus } from '../components/OfflineStatus';
@@ -113,14 +113,16 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
   onSelect?: () => void; onNew?: () => void; searchRequested?: boolean; onSearchHandled?: () => void;
 }) {
   const t = useText();
-  const { allSessions, loading, offline } = useDemo((store) => ({
+  const { allSessions, loading, offline, mode, archived, dispatch } = useDemo((store) => ({
     allSessions: store.state.sessions, loading: store.snapshot?.loading, offline: store.snapshot?.offline,
+    mode: store.state.preferences.sessionListMode || 'flat', archived: store.state.preferences.sessionListArchived ?? false, dispatch: store.dispatch,
   }));
   const navigate = useNavigate();
   const location = useLocation();
   const [query, setQuery] = useState('');
-  const [mode, setMode] = useState<'flat' | 'projects'>('flat');
-  const [archived, setArchived] = useState(false);
+  const setMode = useCallback((sessionListMode: SessionListMode) => {
+    dispatch({ type: 'preferences', value: { sessionListMode } });
+  }, [dispatch]);
   const [searchOpen, setSearchOpen] = useState(false);
   const list = useRef<HTMLElement>(null);
   const searchButton = useRef<HTMLButtonElement>(null);
@@ -196,7 +198,8 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
           </>}
           <Button variant="ghost" icon="archiveOutline" aria-label={t('Archived sessions')}
             title={archived ? t('Show active sessions') : t('Show archived sessions')}
-            aria-pressed={archived} className={styles.archiveToggle} onClick={() => setArchived(value => !value)} />
+            aria-pressed={archived} className={styles.archiveToggle}
+            onClick={() => dispatch({ type: 'preferences', value: { sessionListArchived: !archived } })} />
           <Button
             className={styles.newDesktop}
             variant="accent"

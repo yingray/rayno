@@ -249,3 +249,42 @@ describe('Browser state restoration', () => {
     expect(result.sessions).toEqual([]);
   });
 });
+
+describe('Session list preferences', () => {
+  it.each(['flat', 'projects'] as const)('should restore %s mode and archive visibility independently', (mode) => {
+    // Arrange
+    const initial = createInitialState(1000000);
+    initial.drafts.keep = 'Keep this draft';
+    const grouped = demoReducer(initial, { type: 'preferences', value: { sessionListMode: mode } });
+    const archived = demoReducer(grouped, { type: 'preferences', value: { sessionListArchived: true } });
+
+    // Act
+    const restored = restoreState(JSON.stringify(archived), createInitialState(2000000));
+    const active = demoReducer(restored, { type: 'preferences', value: { sessionListArchived: false } });
+    const reopened = restoreState(JSON.stringify(active), createInitialState(3000000));
+
+    // Assert
+    expect(restored.preferences.sessionListMode).toBe(mode);
+    expect(restored.preferences.sessionListArchived).toBe(true);
+    expect(reopened.preferences.sessionListMode).toBe(mode);
+    expect(reopened.preferences.sessionListArchived).toBe(false);
+    expect(reopened.drafts.keep).toBe('Keep this draft');
+  });
+
+  it('should default old or invalid list choices without removing other saved data', () => {
+    // Arrange
+    const initial = createInitialState(1000000);
+    const { sessionListMode: _mode, sessionListArchived: _archived, ...olderPreferences } = initial.preferences;
+    const older = { ...initial, preferences: { ...olderPreferences, chatWidth: 'standard' } };
+    const invalid = { ...older, preferences: { ...older.preferences, sessionListMode: 'other', sessionListArchived: 'true' } };
+
+    // Act / Assert
+    for (const saved of [older, invalid]) {
+      const restored = restoreState(JSON.stringify(saved), createInitialState(2000000));
+      expect(restored.preferences.sessionListMode).toBe('flat');
+      expect(restored.preferences.sessionListArchived).toBe(false);
+      expect(restored.preferences.chatWidth).toBe('standard');
+      expect(restored.sessions.map(session => session.id)).toEqual(initial.sessions.map(session => session.id));
+    }
+  });
+});

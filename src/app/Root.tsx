@@ -1,4 +1,4 @@
-import { lazy, useCallback, useState } from 'react';
+import { lazy, useCallback, useEffect, useState } from 'react';
 import { clearCredentials, readCredentials } from '../happy/credentials';
 import type { Credentials } from '../happy/credentials';
 import { LazyBoundary } from '../components/LazyBoundary';
@@ -13,6 +13,10 @@ export function Root() {
   const [demo, setDemo] = useState(() =>
     new URLSearchParams(window.location.search).get('demo') === '1'
     || localStorage.getItem('rayno.mode') === 'demo');
+  useEffect(() => {
+    if (!demo) return;
+    try { localStorage.setItem('rayno.mode', 'demo'); } catch { /* Keep demo mode for this visit when storage is unavailable. */ }
+  }, [demo]);
   const login = useCallback((value: Credentials) => {
     localStorage.setItem('rayno.mode', 'live');
     setDemo(false);

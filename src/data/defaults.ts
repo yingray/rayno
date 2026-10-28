@@ -20,6 +20,8 @@ export const defaultPreferences: Preferences = {
   bubble: 'rayno',
   fontSize: 'medium',
   chatWidth: 'medium',
+  sessionListMode: 'flat',
+  sessionListArchived: false,
   ...defaultMarkdownAppearance,
   glassStyle: 'standard',
   compactTools: false,

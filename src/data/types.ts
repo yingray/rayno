@@ -126,6 +126,7 @@ export type FontSize = 'small' | 'medium' | 'large';
 export type AvatarStyle = 'provider' | 'initials' | 'planets';
 export type GlassStyle = 'standard' | 'intense';
 export type ChatWidth = 'full' | 'medium' | 'standard';
+export type SessionListMode = 'flat' | 'projects';
 export type Preferences = MarkdownAppearancePreferences & {
   language: 'en' | 'zh-TW';
   alwaysShowContextSize: boolean;
@@ -133,6 +134,8 @@ export type Preferences = MarkdownAppearancePreferences & {
   bubble: BubbleColor;
   fontSize: FontSize;
   chatWidth: ChatWidth;
+  sessionListMode: SessionListMode;
+  sessionListArchived: boolean;
   glassStyle: GlassStyle;
   compactTools: boolean;
   fasterTranscript: boolean;
