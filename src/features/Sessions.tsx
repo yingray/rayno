@@ -23,8 +23,9 @@ import { WorkspaceTag } from '../components/WorkspaceTag';
 import { LazyBoundary } from '../components/LazyBoundary';
 const SessionActions = lazy(() => import('./SessionActions').then((module) => ({ default: module.SessionActions })));
 
-const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAction }: {
-  session: Session; selected: boolean; onSelect: (id: string) => void; onAction: (session: Session) => void;
+const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, onSelect, onAction }: {
+  session: Session; selected: boolean; showWorkspace: boolean;
+  onSelect: (id: string) => void; onAction: (session: Session) => void;
 }) {
   const t = useText();
   const longPress = useRef<number | undefined>(undefined);
@@ -34,7 +35,7 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
     <div className={styles.rowWrap} key={session.id}>
       <button
         type="button"
-        className={`${styles.row} ${selected ? styles.selected : ''} ${isSessionFaded(session) ? styles.faded : ''}`}
+        className={`${styles.row} ${!showWorkspace ? styles.projectRow : ''} ${selected ? styles.selected : ''} ${isSessionFaded(session) ? styles.faded : ''}`}
         aria-current={selected ? "page" : undefined}
         onContextMenu={(event) => {
           event.preventDefault();
@@ -62,11 +63,16 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
       >
         <Avatar sessionId={session.id} agent={session.agent} />
         <span className={styles.rowBody}>
-          <span className={styles.rowHeading}>
-            <WorkspaceTag name={session.workspace} />
+          {showWorkspace ? <>
+            <span className={styles.rowHeading}>
+              <WorkspaceTag name={session.workspace} />
+              <RelativeTime time={sessionActivityAt(session)} />
+            </span>
+            <span className={styles.summary}>{titleOf(session)}</span>
+          </> : <span className={`${styles.rowHeading} ${styles.projectHeading}`}>
+            <span className={styles.summary}>{titleOf(session)}</span>
             <RelativeTime time={sessionActivityAt(session)} />
-          </span>
-          <span className={styles.summary}>{titleOf(session)}</span>
+          </span>}
         </span>
         <span className={styles.indicator}>
           {!isSessionFaded(session) && session.status === 'running' && (
@@ -99,7 +105,7 @@ const SessionRow = memo(function SessionRow({ session, selected, onSelect, onAct
 }, (previous, next) => {
   const { messages: _previousMessages, ...previousSummary } = previous.session;
   const { messages: _nextMessages, ...nextSummary } = next.session;
-  return previous.selected === next.selected && previous.onSelect === next.onSelect
+  return previous.selected === next.selected && previous.showWorkspace === next.showWorkspace && previous.onSelect === next.onSelect
     && previous.onAction === next.onAction && shallowEqual(previousSummary, nextSummary);
 });
 
@@ -248,7 +254,7 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
                 .map((session) => {
                   const selected = location.pathname.includes(`/session/${session.id}`);
                   return (
-                    <SessionRow key={session.id} session={session} selected={selected}
+                    <SessionRow key={session.id} session={session} selected={selected} showWorkspace={mode === 'flat' || !group}
                       onSelect={selectSession} onAction={setActionSession} />
                   );
                 })}

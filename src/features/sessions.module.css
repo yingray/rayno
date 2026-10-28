@@ -116,6 +116,10 @@
 .row:hover {
   background: #151519;
 }
+.row.projectRow { min-height: 72px; }
+.rowHeading.projectHeading { align-items: flex-start; }
+.projectHeading .summary { flex: 1; min-width: 0; padding-right: 0; }
+.projectHeading time { min-width: 56px; text-align: right; }
 .row.selected {
   background: #1f1d26;
 }
@@ -175,6 +179,7 @@
   padding-right: 56px;
 }
 .rowHeading time {
+  margin-left: auto;
   color: var(--muted);
   font-size: 12.5px;
   line-height: 22px;
