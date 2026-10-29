@@ -18,7 +18,7 @@ import type { MessageRecord } from './normalize';
 import { agentSubagentTurn, agentSubagentWork, codexCollabTurn, codexReasoningSection, taskSubagentTurn } from './subagentEnvelopes.fixture';
 import { groupChatActivity } from '../data/chatBlocks';
 import { claudeWindows, codexWindows } from './manualUsage';
-import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt } from './systemPrompt';
+import { DEFAULT_RECAP_STYLE, RECAP_REQUEST, RECAP_STYLE_LIMIT, recapPrompt, systemPrompt, mermaidPrompt } from './systemPrompt';
 
 const row = (id: string, seq: number, raw: object, localId?: string): MessageRecord => ({
   id,
@@ -244,13 +244,15 @@ describe('Happy record normalization', () => {
   it('should send the option and recap instructions with every message', () => {
     // Arrange
     const sessions = [{}, { client: { id: 'rig' } }];
-    const combined = systemPrompt + '\n\n' + recapPrompt('auto');
+    const combined = systemPrompt + '\n\n' + mermaidPrompt + '\n\n' + recapPrompt('auto');
     // Act
     const prompts = sessions.map((metadata) => messageMeta(metadata, {}).appendSystemPrompt);
     // Assert
     expect(prompts).toEqual([combined, combined]);
     expect(prompts[0]).toContain('<options>');
     expect(prompts[0]).toContain('<rayno-recap>');
+    expect(prompts[0]).toContain('When a Mermaid diagram helps explain the situation');
+    expect(prompts[0]).toContain('a diagram is optional when plain text is clearer');
     expect(prompts[0].startsWith(systemPrompt)).toBe(true);
   });
   it('should put the recap style before the format rules', () => {

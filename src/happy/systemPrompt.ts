@@ -16,6 +16,12 @@ Always prefer to use the options mode to the text mode. Try to keep options mini
 
 When you are in the plan mode, you must use the options mode to give the user a easy way to answer your questions if you know possible answers. Do not assume what is needed, when there is discrepancy between what you need and what you have, you must use the options mode.`;
 
+export const mermaidPrompt = `# Mermaid diagrams
+
+When a Mermaid diagram helps explain the situation, supplement the text with a diagram in a fenced mermaid code block.
+Use diagrams when they clarify flows, relationships, architecture, sequences, or state changes. Keep them concise and readable.
+Use your judgment; a diagram is optional when plain text is clearer.`;
+
 // Claude Code runs "/recap" as a local command, so the model never sees it. Rayno sends this text instead.
 export const RECAP_REQUEST = '[rayno] Recap your previous reply.';
 

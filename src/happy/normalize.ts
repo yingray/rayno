@@ -1,7 +1,7 @@
 import type { Agent, AgentEvent, Machine, Message, MessageSettings, RecapMode, Session, ToolCall, UsageReading, UsageWindow, ContextUsage } from '../data/types';
 import { compareVersionsWithPrerelease, isWellFormedVersion } from './versionUtils';
 import { stripLeadingTaskNotificationWrappers } from './controlMessages';
-import { RECAP_REQUEST, recapPrompt, systemPrompt } from './systemPrompt';
+import { RECAP_REQUEST, recapPrompt, systemPrompt, mermaidPrompt } from './systemPrompt';
 import { resultPermission } from './toolDecisions';
 import { SIDE_CHAT_TITLE } from '../data/sideChats';
 
@@ -68,7 +68,7 @@ export function messageMeta(
   recapStyle?: string,
 ): Json {
   const mode = record(metadata.draft || metadata.lastMode);
-  const meta: Json = { sentFrom: 'web', appendSystemPrompt: systemPrompt + '\n\n' + recapPrompt(recapMode, recapStyle) };
+  const meta: Json = { sentFrom: 'web', appendSystemPrompt: systemPrompt + '\n\n' + mermaidPrompt + '\n\n' + recapPrompt(recapMode, recapStyle) };
   const permission = options.permissionMode || currentPermission(metadata);
   if (!isRig(metadata) && permission === 'dontAsk')
     throw new Error(
