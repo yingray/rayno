@@ -63,6 +63,7 @@ import { createReplyNavigatorDemo } from './replyNavigatorDemo';
 import { createToolTimelineDemo } from './toolTimelineDemo';
 import { createGitDiffDemo } from './gitDiffDemo';
 import { createComposerDemo } from './composerDemo';
+import { createSessionIdsDemo } from './sessionIdsDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
 import { createMarkdownAppearanceDemo } from './markdownAppearanceDemo';
 
@@ -226,6 +227,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createToolTimelineDemo(now));
   sessions.push(createGitDiffDemo(now));
   sessions.push(...createComposerDemo(now));
+  sessions.push(...createSessionIdsDemo(now));
   sessions.push(...createWorkspaceLayoutDemo(now));
   sessions.push(createMarkdownAppearanceDemo(now));
   sessions.push(createReplyNavigatorDemo(now));

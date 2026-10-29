@@ -286,6 +286,7 @@
   display: none;
 }
 .toast {
+  pointer-events: none;
   position: fixed;
   left: 50%;
   bottom: 28px;

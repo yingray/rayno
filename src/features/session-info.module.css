@@ -168,6 +168,26 @@
 .facts button:hover {
   border-color: #494052;
 }
+.sessionIds {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sessionIds button {
+  min-height: 72px;
+  padding-right: 36px;
+}
+.facts.sessionIds button > strong {
+  font-size: 14px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.sessionIds button:disabled {
+  cursor: default;
+  color: var(--muted);
+}
+.sessionIds button:disabled:hover {
+  border-color: #1c1c21;
+}
 .sectionLabel {
   font-size: 10px;
   letter-spacing: 0.07em;
@@ -250,8 +270,8 @@
   }
   .header .back {
     display: flex;
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
   }
   .header .close {
     display: none;

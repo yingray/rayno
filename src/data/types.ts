@@ -58,6 +58,8 @@ export type AgentEvent =
 export type ContextUsage = { size: number; window?: number };
 export type Session = {
   id: string;
+  // The agent's own conversation ID, separate from the Happy session ID.
+  agentSessionId?: string;
   title: string;
   customTitle?: string;
   workspace: string;

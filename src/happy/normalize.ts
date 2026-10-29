@@ -181,8 +181,11 @@ export function normalizeSession(
     worktreeIndex < 0 ? '' : path.slice(worktreeIndex + WORKTREE_MARKER.length),
   );
   const pending = pendingPermissions(a).length || pendingCommunications(a).length;
+  const providerId = isRig(m) ? undefined : agentName(m.flavor) === 'Codex'
+    ? m.codexThreadId : agentName(m.flavor) === 'Claude' ? m.claudeSessionId : undefined;
   return {
     id: wire.id,
+    agentSessionId: typeof providerId === 'string' && providerId.trim() ? providerId.trim() : undefined,
     title: text(m.summary?.text, m.isSideChat === true ? SIDE_CHAT_TITLE : path.split('/').filter(Boolean).pop() || 'Untitled session'),
     customTitle: m.name || undefined,
     workspace: m.bot?.id

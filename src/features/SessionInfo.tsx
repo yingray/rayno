@@ -78,6 +78,11 @@ export function SessionInfo({
       }),
     },
   ];
+  const sessionIds = [
+    { label: 'Happy session ID', copy: 'Copy Happy session ID', value: session.id },
+    { label: session.agent === 'Codex' ? 'Codex thread ID' : session.agent === 'Claude' ? 'Claude session ID' : 'Agent session ID',
+      copy: 'Copy agent session ID', value: session.agentSessionId },
+  ];
   const bot = !!metadata?.bot;
   function archive() {
     if (archiveLabel === 'Restore session') void run(() => adapter.archiveSession(session.id));
@@ -240,6 +245,16 @@ export function SessionInfo({
               <Icon name="chevronForwardOutline" size={13} />
             </button>
           )}
+        </div>
+        <div className={`${styles.facts} ${styles.sessionIds}`}>
+          {sessionIds.map((item) => (
+            <button key={item.copy} aria-label={t(item.copy)} disabled={!item.value}
+              onClick={() => item.value && void copyText(item.value, notify)}>
+              <span>{t(item.label)}</span>
+              <strong>{item.value || t('Not reported')}</strong>
+              {item.value && <Icon name="copyOutline" size={14} />}
+            </button>
+          ))}
         </div>
         <div className={styles.facts}>
           {facts.map((fact) => (

@@ -28,6 +28,24 @@ const row = (id: string, seq: number, raw: object, localId?: string): MessageRec
   createdAt: 1000,
 });
 describe('Happy record normalization', () => {
+  it.each([
+    [{ flavor: 'claude', claudeSessionId: 'claude-id', codexThreadId: 'stale-thread' }, 'claude-id'],
+    [{ flavor: 'codex', codexThreadId: 'codex-thread', claudeSessionId: 'stale-claude' }, 'codex-thread'],
+    [{ claudeSessionId: 'legacy-claude' }, 'legacy-claude'],
+    [{ flavor: 'claude', claudeSessionId: '  ' }, undefined],
+    [{ flavor: 'codex', codexThreadId: 42 }, undefined],
+    [{ flavor: 'codex', claudeSessionId: 'other-agent' }, undefined],
+    [{ flavor: 'rig', claudeSessionId: 'other-agent' }, undefined],
+    [{ client: { id: 'rig' }, claudeSessionId: 'other-agent' }, undefined],
+  ])('session IDs - metadata %j - should preserve only the active agent ID', (metadata, expected) => {
+    // Arrange
+    const source = { wire: { id: 'happy-id' }, metadata, agentState: {}, key: null };
+    // Act
+    const session = normalizeSession(source, []);
+    // Assert
+    expect(session.id).toBe('happy-id');
+    expect(session.agentSessionId).toBe(expected);
+  });
   it('should retain tool start and end times when the CLI sends no result body', () => {
     // Arrange
     const start = { ...row('start', 1, { role: 'session', content: { id: 'start', time: 1000, role: 'agent', turn: 'turn',
