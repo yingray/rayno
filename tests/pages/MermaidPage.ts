@@ -50,6 +50,45 @@ export class MermaidPage extends PerformancePage {
     expect(box.width).toBeGreaterThanOrEqual(43.5);
     expect(box.height).toBeGreaterThanOrEqual(43.5);
   }
+  async openReadingDemo() {
+    await this.page.goto('/session/paste-search-demo?demo=1');
+    // Loading the demo can restore the conversation scroll position.
+    await expect.poll(async () => {
+      await this.preview().locator('summary').scrollIntoViewIfNeeded();
+      return this.image().count();
+    }, { timeout: 15000 }).toBe(1);
+    await this.expectRendered();
+  }
+  async readLongDiagram() {
+    await this.expectTouchTarget(this.expandButton());
+    expect((await this.layout()).shown).toBeCloseTo(1, 2);
+    await this.expandButton().tap();
+    const viewer = this.viewer();
+    const image = viewer.getByRole('img', { name: 'Mermaid diagram', exact: true });
+    const natural = await this.image().evaluate((element: HTMLImageElement) => element.naturalWidth);
+    await expect(viewer.getByText('150%', { exact: true })).toBeVisible();
+    await expect(image).toBeVisible();
+    expect(await this.viewerImageWidth()).toBe(Math.round(natural * 1.5));
+    for (const name of ['Zoom in', 'Zoom out', 'Fit diagram to screen', 'Show diagram at actual size', 'Close Mermaid diagram']) {
+      const button = viewer.getByRole('button', { name, exact: true });
+      await this.expectTouchTarget(button);
+      await expect(button).toBeInViewport();
+    }
+    const region = viewer.getByRole('region', { name: 'Full screen diagram', exact: true });
+    await region.focus();
+    await region.press('ArrowRight');
+    await expect.poll(() => region.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    await viewer.getByRole('button', { name: 'Fit diagram to screen', exact: true }).tap();
+    expect(await this.viewerImageWidth()).toBeLessThanOrEqual(await region.evaluate((element) => element.clientWidth));
+    await viewer.getByRole('button', { name: 'Show diagram at actual size', exact: true }).tap();
+    expect(await this.viewerImageWidth()).toBeCloseTo(natural, 0);
+    await viewer.getByRole('button', { name: 'Zoom in', exact: true }).tap();
+    await expect(viewer.getByText('150%', { exact: true })).toBeVisible();
+    await viewer.getByRole('button', { name: 'Close Mermaid diagram', exact: true }).tap();
+    await expect(viewer).toHaveCount(0);
+    await expect(this.expandButton()).toBeFocused();
+    await this.expectNoPageOverflow();
+  }
   async expectPhoneDiagramUsable() {
     await this.diagram().scrollIntoViewIfNeeded();
     const scroll = this.diagram();
