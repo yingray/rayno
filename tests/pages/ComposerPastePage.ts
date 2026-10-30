@@ -71,12 +71,12 @@ export class ComposerPastePage extends WorkspaceLayoutPage {
     await this.page.keyboard.press('ControlOrMeta+k');
     await expect(this.sessionSearch()).toBeFocused();
     await this.sessionSearch().fill('PNG paste');
-    await expect(this.sessionRow('PNG paste and session search · Interactive demo')).toBeVisible();
-    await expect(this.sessionRow('PNG paste and session search · Interactive demo').getByText('rayno', { exact: true })).toBeVisible();
+    await expect(this.sessionRow('PNG paste, search and Mermaid · Interactive demo')).toBeVisible();
+    await expect(this.sessionRow('PNG paste, search and Mermaid · Interactive demo').getByText('rayno', { exact: true })).toBeVisible();
     await this.activate(this.sessionList().getByRole('button', { name: 'Projects', exact: true }));
     await expect(this.sessionList().getByRole('heading', { level: 2 }).filter({ hasText: 'Rayno' })).toBeVisible();
-    await expect(this.sessionRow('PNG paste and session search · Interactive demo').getByText('rayno', { exact: true })).toHaveCount(0);
-    await this.expectProjectRowLayout('PNG paste and session search · Interactive demo');
+    await expect(this.sessionRow('PNG paste, search and Mermaid · Interactive demo').getByText('rayno', { exact: true })).toHaveCount(0);
+    await this.expectProjectRowLayout('PNG paste, search and Mermaid · Interactive demo');
     await this.activate(this.archiveToggle());
     await expect(this.archiveToggle()).toHaveAttribute('aria-pressed', 'true');
     await expect(this.sessionList()).toBeVisible();
@@ -85,10 +85,10 @@ export class ComposerPastePage extends WorkspaceLayoutPage {
     await this.expectProjectRowLayout('PNG paste · Archived example');
     await this.activate(this.archiveToggle());
     await this.activate(this.sessionList().getByRole('button', { name: 'Flat', exact: true }));
-    await expect(this.sessionRow('PNG paste and session search · Interactive demo').getByText('rayno', { exact: true })).toBeVisible();
+    await expect(this.sessionRow('PNG paste, search and Mermaid · Interactive demo').getByText('rayno', { exact: true })).toBeVisible();
     await this.closeSessionSearch();
     await expect(this.sessionList().getByRole('heading', { name: 'Sessions', exact: true })).toBeVisible();
-    await this.activate(this.sessionRow('PNG paste and session search · Interactive demo'));
+    await this.activate(this.sessionRow('PNG paste, search and Mermaid · Interactive demo'));
   }
   async exerciseNewSessionPaste() {
     await this.page.goto('/new?demo=1');

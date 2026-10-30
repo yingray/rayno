@@ -33,7 +33,7 @@ export class SessionListPreferencesPage extends WorkspaceLayoutPage {
   }
   async selectAndReturn(archived: boolean) {
     const title = this.mode === 'demo'
-      ? archived ? 'PNG paste · Archived example' : 'PNG paste and session search · Interactive demo'
+      ? archived ? 'PNG paste · Archived example' : 'PNG paste, search and Mermaid · Interactive demo'
       : archived ? 'Older workspace' : 'Connected workspace';
     await this.activate(this.sessionRow(title));
     await expect(this.mainChat()).toBeVisible();

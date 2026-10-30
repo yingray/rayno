@@ -27,7 +27,7 @@ test('paste demo should preserve older saved sessions, preferences, and drafts',
     }));
   });
   await page.goto('/sessions?demo=1');
-  await expect(demo.sessionRow('PNG paste and session search · Interactive demo')).toBeVisible();
+  await expect(demo.sessionRow('PNG paste, search and Mermaid · Interactive demo')).toBeVisible();
   await demo.openPasteDemo();
   await page.reload();
   await expect(demo.message()).toBeVisible();
