@@ -14,16 +14,17 @@ import {
 import { useDemo } from '../data/store';
 import { shallowEqual } from '../data/subscriptions';
 import { titleOf } from '../data/reducer';
-import { compareSessionActivity, isSessionFaded, sessionActivityAt } from '../data/sessionList';
+import { isSessionFaded, listedSessions, sessionActivityAt, sessionGroups, sessionListOrder } from '../data/sessionList';
 import type { Session, SessionListMode } from '../data/types';
 import styles from './sessions.module.css';
 import { SessionUsage } from './SessionUsage';
 import { OfflineStatus } from '../components/OfflineStatus';
 import { WorkspaceTag } from '../components/WorkspaceTag';
 import { ChatSessionMenu } from './ChatSessionMenu';
+import { publishListedOrder, shortcutPrefix, useShortcutHints } from './sessionShortcuts';
 
-const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, menuOpen, onSelect, onAction }: {
-  session: Session; selected: boolean; showWorkspace: boolean; menuOpen: boolean;
+const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, menuOpen, shortcut, onSelect, onAction }: {
+  session: Session; selected: boolean; showWorkspace: boolean; menuOpen: boolean; shortcut?: number;
   onSelect: (id: string) => void; onAction: (session: Session, anchor: HTMLElement, expanded?: boolean) => void;
 }) {
   const t = useText();
@@ -63,6 +64,7 @@ const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, 
         }}
       >
         <Avatar sessionId={session.id} agent={session.agent} />
+        {shortcut && <kbd className={styles.shortcut} data-testid="session-shortcut">{shortcutPrefix}{shortcut}</kbd>}
         <span className={styles.rowBody}>
           {showWorkspace ? <>
             <span className={styles.rowHeading}>
@@ -108,7 +110,7 @@ const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, 
 }, (previous, next) => {
   const { messages: _previousMessages, ...previousSummary } = previous.session;
   const { messages: _nextMessages, ...nextSummary } = next.session;
-  return previous.menuOpen === next.menuOpen && previous.selected === next.selected && previous.showWorkspace === next.showWorkspace && previous.onSelect === next.onSelect
+  return previous.menuOpen === next.menuOpen && previous.shortcut === next.shortcut && previous.selected === next.selected && previous.showWorkspace === next.showWorkspace && previous.onSelect === next.onSelect
     && previous.onAction === next.onAction && shallowEqual(previousSummary, nextSummary);
 });
 
@@ -163,18 +165,12 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
     return () => window.removeEventListener('keydown', escape, true);
   }, [searchOpen]);
   const deferredQuery = useDeferredValue(query);
-  const sessions = useMemo(() => allSessions
-    .filter(
-      (session) =>
-        !session.isSideChat &&
-        session.archived === archived &&
-        `${session.workspace} ${titleOf(session)} ${session.project}`
-          .toLowerCase()
-          .includes(deferredQuery.trim().toLowerCase()),
-    )
-    .sort(compareSessionActivity), [allSessions, archived, deferredQuery]);
-  const groups = useMemo(() => mode === 'projects'
-    ? Array.from(new Set(sessions.map((session) => session.project))) : [''], [mode, sessions]);
+  const sessions = useMemo(() => listedSessions(allSessions, archived, deferredQuery), [allSessions, archived, deferredQuery]);
+  const groups = useMemo(() => sessionGroups(sessions, mode), [mode, sessions]);
+  // The shortcut numbers follow the rows as they show now, group by group.
+  const shortcutIds = useMemo(() => sessionListOrder(sessions, groups).slice(0, 9).map(session => session.id), [groups, sessions]);
+  useEffect(() => publishListedOrder(shortcutIds), [shortcutIds]);
+  const shortcutHints = useShortcutHints();
   const actionKey = useRef(0);
   const openActions = useCallback((session: Session, anchor: HTMLElement, expanded = true) => {
     // Safari does not focus tapped buttons, so keep focus on the trigger when it closes.
@@ -267,9 +263,10 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
                 .filter((session) => !group || session.project === group)
                 .map((session) => {
                   const selected = location.pathname.includes(`/session/${session.id}`);
+                  const shortcut = shortcutHints ? shortcutIds.indexOf(session.id) + 1 || undefined : undefined;
                   return (
                     <SessionRow key={session.id} session={session} selected={selected} showWorkspace={mode === 'flat' || !group}
-                      menuOpen={actionSession?.session.id === session.id && actionSession.open}
+                      menuOpen={actionSession?.session.id === session.id && actionSession.open} shortcut={shortcut}
                       onSelect={selectSession} onAction={openActions} />
                   );
                 })}

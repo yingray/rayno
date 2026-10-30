@@ -11,6 +11,9 @@ import type { MessageSettings } from '../data/types';
 import { sideChatTitle } from '../data/sideChats';
 import { applyFavicon, attentionTitle, tabAttention } from './tabAttention';
 import { useSideChatNavigation } from './useSideChatNavigation';
+import { useSessionShortcuts } from '../features/sessionShortcuts';
+import { listedSessions, sessionGroups, sessionListOrder } from '../data/sessionList';
+import type { Store } from '../data/store';
 import { ResizablePanel } from './ResizablePanel';
 import { UpdateIcon, UpdateNotice, useNavigationUpdate } from './NavigationUpdate';
 const Chat = lazy(() => import('../features/Chat').then((module) => ({ default: module.Chat })));
@@ -34,6 +37,14 @@ function subscribeViewport(listener: () => void) {
 }
 const viewportBreakpoint = () => window.innerWidth < 768 ? 0 : window.innerWidth < 1024 ? 768 : window.innerWidth < 1280 ? 1024 : 1280;
 const useViewport = () => useSyncExternalStore(subscribeViewport, viewportBreakpoint);
+
+// The first nine rows of the session list without a search filter. A mounted list replaces them with its own rows.
+function shortcutSessionIds(store: Store) {
+  const { sessionListArchived, sessionListMode } = store.state.preferences;
+  const sessions = listedSessions(store.state.sessions, sessionListArchived ?? false);
+  return sessionListOrder(sessions, sessionGroups(sessions, sessionListMode || 'flat')).slice(0, 9).map(session => session.id);
+}
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, index) => id === b[index]);
 
 export function App() {
   const t = useText();
@@ -115,7 +126,8 @@ export function App() {
         setSearchRequested(true);
       }
       if (event.key === 'Escape') {
-        if (document.querySelector('[role="dialog"]')) return;
+        // The chat already used this Escape to stop a running response.
+        if (event.defaultPrevented || document.querySelector('[role="dialog"]')) return;
         if (listOpen) setListOpen(false);
         else if ((infoOpen || sideOpen) && session) navigate(`/session/${session.id}`);
         else if (path === '/new') navigate('/sessions');
@@ -133,6 +145,8 @@ export function App() {
       window.removeEventListener('offline', update);
     };
   }, []);
+  const shortcutIds = useDemo(shortcutSessionIds, sameIds);
+  useSessionShortcuts(shortcutIds, useCallback((id: string) => navigate(`/session/${id}`), [navigate]));
   const attention = useDemo((store) => tabAttention(store.state.sessions));
   const hasUnread = useDemo(store => store.state.sessions.some(item => !item.archived && !item.isSideChat && item.unread));
   useEffect(() => {

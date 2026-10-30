@@ -395,6 +395,26 @@ export const Chat = memo(function Chat({
       setStopping(false);
     }
   }
+  // Escape stops a running response, like Esc in Claude Code. Open popups and other fields keep their own Escape.
+  const root = useRef<HTMLElement>(null);
+  const escapeStop = useEventCallback((event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || event.defaultPrevented || event.repeat || event.isComposing) return;
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+    if (!running || disabled || view !== 'chat' || !root.current) return;
+    if (document.querySelector('[role="dialog"], [role="menu"], [role="listbox"]')) return;
+    const target = event.target instanceof Element ? event.target : null;
+    const inside = !!target && root.current.contains(target);
+    // A side chat answers only while focus is in it. The main chat ignores Escape from a side chat.
+    if (embedded ? !inside : target?.closest('[data-embedded]')) return;
+    if (!inside && target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+    event.preventDefault();
+    void stop();
+  });
+  useEffect(() => {
+    // The document runs before the app shell's window listener, and after React handlers that stop Escape.
+    document.addEventListener('keydown', escapeStop);
+    return () => document.removeEventListener('keydown', escapeStop);
+  }, [escapeStop]);
   const chooseReply = useEventCallback((messageId: string, key: string, text: string) => {
     if (pendingRef.current || disabled || answeredOptions.current.has(messageId) || !unansweredMessages.has(messageId)) return;
     dispatch({ type: 'draftOption', id: session.id, key, messageId, text });
@@ -426,6 +446,7 @@ export const Chat = memo(function Chat({
 
   return (
     <section
+      ref={root}
       className={styles.chat}
       data-view={view}
       data-chat-width={preferences.chatWidth}
@@ -687,7 +708,7 @@ export const Chat = memo(function Chat({
                     className={styles.stop}
                     icon="stop"
                     aria-label={t("Stop response")}
-                    title={t("Stop response")}
+                    title={t("Stop response (Esc)")}
                     disabled={disabled || stopping}
                     onClick={() => void stop()}
                   />

@@ -117,6 +117,23 @@
   background: #151519;
 }
 .row.projectRow { min-height: 72px; }
+/* Shows while the shortcut modifier is held. It sits on the avatar so the row layout does not move. */
+.shortcut {
+  position: absolute;
+  top: 34px;
+  left: 4px;
+  z-index: 1;
+  min-width: 28px;
+  padding: 2px 6px;
+  border: 1px solid var(--accent-soft);
+  border-radius: 8px;
+  background: #1f1d26;
+  color: var(--text);
+  font: 600 12px/16px ui-sans-serif, system-ui, sans-serif;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+}
 .rowHeading.projectHeading { align-items: flex-start; }
 .projectHeading .summary { flex: 1; min-width: 0; padding-right: 0; }
 .projectHeading time { min-width: 56px; text-align: right; }
