@@ -1,7 +1,7 @@
 import { useText } from "../i18n";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dialog, Icon } from '../components/ui';
 import { useDemo } from '../data/store';
 import type { MessageSettings, Session } from '../data/types';
@@ -17,7 +17,10 @@ import { archiveAction, countOpenSideChats, hasUnreadSideChats, leaveRoute, show
 
 type Point = { id: string; text: string; timestamp: number };
 
-export function ChatSessionMenu({ session, settings }: { session: Session; settings: MessageSettings }) {
+export function ChatSessionMenu({ session, settings, anchor, expanded, onExpandedChange }: {
+  session: Session; settings: MessageSettings; anchor?: HTMLElement;
+  expanded?: boolean; onExpandedChange?: (expanded: boolean) => void;
+}) {
   const t = useText();
   const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, sideUnread, parentKnown, sideEntry } = useDemo(store => ({
     parentKnown: !!session.parentSessionId && store.state.sessions.some(item => item.id === session.parentSessionId),
@@ -30,7 +33,14 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
     metadata: store.snapshot?.sessionData[session.id]?.metadata, newDraft: store.state.newDraft,
   }));
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const viewingSession = location.pathname.split('/')[2] === session.id;
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = expanded ?? localOpen;
+  function setOpen(value: boolean) {
+    setLocalOpen(value);
+    onExpandedChange?.(value);
+  }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -57,34 +67,42 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
   const workspaceDraft = draftInWorkspace(source, session.agent === 'Happy Agent' ? 'Claude' : session.agent);
   function close(focus = true) {
     setOpen(false);
-    if (focus) trigger.current?.focus({ preventScroll: true });
+    if (focus) (anchor ?? trigger.current)?.focus({ preventScroll: true });
   }
   useLayoutEffect(() => {
     if (!open) return;
     const update = () => {
-      const button = trigger.current?.getBoundingClientRect();
+      const button = (anchor ?? trigger.current)?.getBoundingClientRect();
       if (!button) return;
       const viewport = window.visualViewport;
       const bottom = viewport ? viewport.height + viewport.offsetTop : innerHeight;
-      setPosition({ top: button.bottom + 6, right: Math.max(8, innerWidth - button.right),
-        maxHeight: Math.max(44, Math.min(360, bottom - button.bottom - 18)) });
+      const start = viewport?.offsetTop ?? 0;
+      const below = bottom - button.bottom - 18;
+      const above = button.top - start - 18;
+      const flip = below < 176 && above > below;
+      const height = Math.max(44, Math.min(360, flip ? above : below));
+      setPosition({ top: flip ? Math.max(start + 8, button.top - height - 6) : Math.max(start + 8, button.bottom + 6),
+        right: Math.max(8, Math.min(innerWidth - 280, innerWidth - button.right)), maxHeight: height });
     };
     update();
     window.addEventListener('resize', update);
+    const scroll = (event: Event) => { if (!(event.target instanceof Node) || !panel.current?.contains(event.target)) update(); };
+    window.addEventListener('scroll', scroll, true);
     window.visualViewport?.addEventListener('resize', update);
     window.visualViewport?.addEventListener('scroll', update);
     return () => {
       window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', scroll, true);
       window.visualViewport?.removeEventListener('resize', update);
       window.visualViewport?.removeEventListener('scroll', update);
     };
-  }, [open]);
+  }, [open, anchor]);
   useEffect(() => {
     if (!open) return;
     panel.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true });
     const outside = (event: Event) => {
       const target = event.target;
-      if (target instanceof Node && !panel.current?.contains(target) && !trigger.current?.contains(target)) close(false);
+      if (target instanceof Node && !panel.current?.contains(target) && !(anchor ?? trigger.current)?.contains(target)) close(false);
     };
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); close(); return; }
@@ -132,19 +150,23 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
     setDuplicate(false); setFolder(null); close(false); navigate(`/session/${newId}`);
   }
   return <>
-    <button ref={trigger} type="button" className={`${chatStyles.sessionMenuButton} ${styles.trigger}`}
+    {!anchor && <button ref={trigger} type="button" className={`${chatStyles.sessionMenuButton} ${styles.trigger}`}
       aria-label={t("Session actions")} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined}
-      onClick={() => { setError(''); setOpen(value => !value); }}>
+      onClick={() => { setError(''); setOpen(!open); }}>
       <Icon name="menuOutline" />
       {sideUnread && <i className={styles.triggerUnread} role="img" aria-label={t("New reply")} />}
-    </button>
+    </button>}
     {open && createPortal(<div ref={panel} id={id} role="menu" aria-label={t("Session actions")} className={styles.menu} style={position}>
       <p className={styles.title}>{titleOf(session)}</p>
+      {anchor && <button role="menuitem" onClick={() => { close(false); navigate(`/session/${session.id}/info`); }}>
+        <Icon name="informationCircleOutline" />{t("Session info & rename")}</button>}
+      {anchor && session.status === 'running' && <button role="menuitem" disabled={busy || disconnected}
+        onClick={() => void run(() => adapter.stopSession(session.id))}><Icon name="stopCircleOutline" />{t("Stop response")}</button>}
       {ended && <button role="menuitem" disabled={busy || disconnected || !!recoveryReason}
         onClick={() => void run(() => live!.resumeSession(session.id))}><Icon name="refreshOutline" />{t("Resume session")}</button>}
       {archiveLabel && <button role="menuitem" disabled={busy || disconnected} onClick={() => void run(async () => {
         if (archiveLabel === 'Restore session') await adapter.archiveSession(session.id);
-        else if (await cleanup.guard(session.id, () => adapter.archiveSession(session.id))) navigate(leave);
+        else if (await cleanup.guard(session.id, () => adapter.archiveSession(session.id)) && (!anchor || viewingSession)) navigate(leave);
       })}><Icon name="archiveOutline" />{archiveLabel}</button>}
       {recoveryReason && <p className={styles.reason}>{recoveryReason}</p>}
       <button role="menuitem" disabled={busy || !workspaceDraft} onClick={() => {
@@ -172,7 +194,7 @@ export function ChatSessionMenu({ session, settings }: { session: Session; setti
       <footer><Button disabled={busy} onClick={() => setConfirmDelete(false)}>{t("Cancel")}</Button>
         <Button variant="danger" disabled={busy} onClick={() => void run(async () => {
           if (!await cleanup.guard(session.id, () => adapter.deleteSession(session.id))) return;
-          setConfirmDelete(false); navigate(leave);
+          setConfirmDelete(false); if (!anchor || viewingSession) navigate(leave);
         })}>{t("Delete session")}</Button></footer>
     </Dialog>}
     {cleanup.dialog}

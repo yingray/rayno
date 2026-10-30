@@ -1,5 +1,5 @@
 import { useText } from "../i18n";
-import { lazy, memo, useCallback, useDeferredValue, useEffect, useMemo, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Avatar,
@@ -20,16 +20,16 @@ import styles from './sessions.module.css';
 import { SessionUsage } from './SessionUsage';
 import { OfflineStatus } from '../components/OfflineStatus';
 import { WorkspaceTag } from '../components/WorkspaceTag';
-import { LazyBoundary } from '../components/LazyBoundary';
-const SessionActions = lazy(() => import('./SessionActions').then((module) => ({ default: module.SessionActions })));
+import { ChatSessionMenu } from './ChatSessionMenu';
 
-const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, onSelect, onAction }: {
-  session: Session; selected: boolean; showWorkspace: boolean;
-  onSelect: (id: string) => void; onAction: (session: Session) => void;
+const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, menuOpen, onSelect, onAction }: {
+  session: Session; selected: boolean; showWorkspace: boolean; menuOpen: boolean;
+  onSelect: (id: string) => void; onAction: (session: Session, anchor: HTMLElement, expanded?: boolean) => void;
 }) {
   const t = useText();
   const longPress = useRef<number | undefined>(undefined);
   const didLongPress = useRef(false);
+  const actionWasOpen = useRef(false);
   useEffect(() => () => clearTimeout(longPress.current), []);
   return (
     <div className={styles.rowWrap} key={session.id}>
@@ -39,14 +39,15 @@ const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, 
         aria-current={selected ? "page" : undefined}
         onContextMenu={(event) => {
           event.preventDefault();
-          onAction(session);
+          onAction(session, event.currentTarget);
         }}
         onPointerDown={(event) => {
           if (event.pointerType === 'touch') {
             didLongPress.current = false;
+            const anchor = event.currentTarget;
             longPress.current = window.setTimeout(() => {
               didLongPress.current = true;
-              onAction(session);
+              onAction(session, anchor);
             }, 550);
           }
         }}
@@ -96,7 +97,9 @@ const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, 
       <button
         className={styles.more}
         aria-label={`Actions for ${titleOf(session)}`}
-        onClick={() => onAction(session)}
+        aria-haspopup="menu" aria-expanded={menuOpen}
+        onPointerDown={() => { actionWasOpen.current = menuOpen; }}
+        onClick={(event) => onAction(session, event.currentTarget, event.detail === 0 ? !menuOpen : !actionWasOpen.current)}
       >
         <Icon name="ellipsisHorizontal" size={15} />
       </button>
@@ -105,7 +108,7 @@ const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, 
 }, (previous, next) => {
   const { messages: _previousMessages, ...previousSummary } = previous.session;
   const { messages: _nextMessages, ...nextSummary } = next.session;
-  return previous.selected === next.selected && previous.showWorkspace === next.showWorkspace && previous.onSelect === next.onSelect
+  return previous.menuOpen === next.menuOpen && previous.selected === next.selected && previous.showWorkspace === next.showWorkspace && previous.onSelect === next.onSelect
     && previous.onAction === next.onAction && shallowEqual(previousSummary, nextSummary);
 });
 
@@ -127,7 +130,7 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
   const list = useRef<HTMLElement>(null);
   const searchButton = useRef<HTMLButtonElement>(null);
   const restoreSearchFocus = useRef(false);
-  const [actionSession, setActionSession] = useState<Session | null>(null);
+  const [actionSession, setActionSession] = useState<{ session: Session; anchor: HTMLElement; key: number; open: boolean } | null>(null);
   const search = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!searchRequested) return;
@@ -172,7 +175,15 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
     .sort(compareSessionActivity), [allSessions, archived, deferredQuery]);
   const groups = useMemo(() => mode === 'projects'
     ? Array.from(new Set(sessions.map((session) => session.project))) : [''], [mode, sessions]);
-  const closeActions = useCallback(() => setActionSession(null), []);
+  const actionKey = useRef(0);
+  const openActions = useCallback((session: Session, anchor: HTMLElement, expanded = true) => {
+    // Safari does not focus tapped buttons, so keep focus on the trigger when it closes.
+    anchor.focus({ preventScroll: true });
+    const key = ++actionKey.current;
+    setActionSession(current => current?.anchor === anchor && current.session.id === session.id
+      ? { ...current, open: expanded }
+      : { session, anchor, key, open: expanded });
+  }, []);
   const selectSession = useCallback((id: string) => {
     navigate(`/session/${id}`);
     onSelect?.();
@@ -258,7 +269,8 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
                   const selected = location.pathname.includes(`/session/${session.id}`);
                   return (
                     <SessionRow key={session.id} session={session} selected={selected} showWorkspace={mode === 'flat' || !group}
-                      onSelect={selectSession} onAction={setActionSession} />
+                      menuOpen={actionSession?.session.id === session.id && actionSession.open}
+                      onSelect={selectSession} onAction={openActions} />
                   );
                 })}
             </div>
@@ -279,7 +291,10 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
         }}
       />
       {actionSession && (
-        <LazyBoundary><SessionActions session={actionSession} onClose={closeActions} /></LazyBoundary>
+        <ChatSessionMenu key={actionSession.key} session={actionSession.session} anchor={actionSession.anchor}
+          settings={{ model: actionSession.session.model, effort: actionSession.session.effort }}
+          expanded={actionSession.open} onExpandedChange={open => setActionSession(current =>
+            current?.key === actionSession.key ? { ...current, open } : current)} />
       )}
     </section>
   );

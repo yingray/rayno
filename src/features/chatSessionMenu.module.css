@@ -1,5 +1,5 @@
 .trigger { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 50%; background: var(--panel); color: var(--secondary); cursor: pointer; }
-.menu { position: fixed; z-index: 50; width: min(272px, calc(100vw - 16px)); padding: 8px; border: 1px solid #ffffff24; border-radius: 20px; background: linear-gradient(155deg, #2a2532f5, #17151ef5); box-shadow: 0 18px 48px #0009; backdrop-filter: blur(24px); overflow: auto; overscroll-behavior: contain; }
+.menu { position: fixed; z-index: 110; width: min(272px, calc(100vw - 16px)); padding: 8px; border: 1px solid #ffffff24; border-radius: 20px; background: linear-gradient(155deg, #2a2532f5, #17151ef5); box-shadow: 0 18px 48px #0009; backdrop-filter: blur(24px); overflow: auto; overscroll-behavior: contain; }
 .title { margin: 4px 10px 8px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu > button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text); font-size: 14px; text-align: left; cursor: pointer; }
 .menu > button:hover:not(:disabled) { background: #ffffff0c; }

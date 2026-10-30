@@ -305,8 +305,17 @@
     height: 26px;
   }
   .more {
-    display: none;
+    display: flex;
+    opacity: 1;
+    width: 44px;
+    height: 44px;
+    bottom: 0;
+    right: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 14px;
   }
+  .indicator { right: 48px; }
   .list {
     padding-bottom: var(--mobile-list-reserve);
     gap: 0;
@@ -328,3 +337,14 @@
 
 .searchButton { display: grid; place-items: center; background: transparent; border: 0; border-radius: 12px; color: var(--secondary); cursor: pointer; }
 .searchButton:hover { background: var(--well); }
+
+@media (max-width: 767px) and (max-height: 600px) {
+  .fab { display: none; }
+  .newDesktop { display: flex; }
+  .mobileLogo { display: none; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .more { width: 44px; height: 44px; bottom: 0; right: 0; opacity: 1; }
+  .indicator { right: 48px; }
+}
