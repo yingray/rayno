@@ -2,10 +2,13 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { useEventCallback } from '../components/useEventCallback';
 
 // Command+1–9 on Apple keyboards, Control+1–9 elsewhere, like browser tab shortcuts.
+// Safari keeps Command+1–9 for its tabs and favorites and never sends them to the page, so Safari uses Control+1–9.
+const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 const appleKeyboard = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
-const modifierKey = appleKeyboard ? 'Meta' : 'Control';
-export const shortcutPrefix = appleKeyboard ? '⌘' : 'Ctrl+';
-const modifierHeld = (event: KeyboardEvent) => (appleKeyboard ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey);
+const safari = /Safari\//.test(userAgent) && !/Chrome\/|Chromium\/|CriOS|FxiOS|EdgiOS|Edg\//.test(userAgent);
+const modifierKey = appleKeyboard && !safari ? 'Meta' : 'Control';
+export const shortcutPrefix = !appleKeyboard ? 'Ctrl+' : safari ? '⌃' : '⌘';
+const modifierHeld = (event: KeyboardEvent) => (modifierKey === 'Meta' ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey);
 
 let hints = false;
 // A mounted session list publishes its rows, including its search filter. Without a list, the app shell order applies.

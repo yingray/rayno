@@ -4,10 +4,16 @@ import { WorkspacePage } from './pages/WorkspacePage';
 
 const stopButton = (page: Page) => page.getByRole('button', { name: 'Stop response', exact: true });
 const hints = (page: Page) => page.getByTestId('session-shortcut');
-const modifier = (page: Page) => page.evaluate(() => /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? 'Meta' : 'Control');
+// Mirrors the app: Command on Apple keyboards, Control in Safari and off Apple.
+const shortcut = (page: Page) => page.evaluate(() => {
+  const apple = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  const safari = /Safari\//.test(navigator.userAgent) && !/Chrome\/|Chromium\/|CriOS|FxiOS|EdgiOS|Edg\//.test(navigator.userAgent);
+  return { key: apple && !safari ? 'Meta' : 'Control', prefix: !apple ? 'Ctrl+' : safari ? '⌃' : '⌘' };
+});
+const modifier = async (page: Page) => (await shortcut(page)).key;
 
-async function expectSequentialHints(page: Page, key: string) {
-  const prefix = key === 'Meta' ? '⌘' : 'Ctrl+';
+async function expectSequentialHints(page: Page) {
+  const { prefix } = await shortcut(page);
   const texts = await hints(page).allTextContents();
   expect(texts.length).toBeGreaterThan(1);
   expect(texts.length).toBeLessThanOrEqual(9);
@@ -90,7 +96,7 @@ for (const [width, height] of [[320, 740], [360, 740], [390, 844], [430, 932], [
     // Act
     await page.keyboard.down(key);
     // Assert
-    if (listed) await expectSequentialHints(page, key);
+    if (listed) await expectSequentialHints(page);
     else await expect(hints(page)).toHaveCount(0);
     for (const box of await hints(page).evaluateAll(items => items.map(item => item.getBoundingClientRect().toJSON()))) {
       expect(box.left).toBeGreaterThanOrEqual(0);
@@ -117,9 +123,9 @@ test('shortcut numbers should follow the project grouping order', async ({ page 
   // Act
   await page.keyboard.down(key);
   // Assert
-  await expectSequentialHints(page, key);
+  await expectSequentialHints(page);
   const third = hints(page).nth(2).locator('xpath=ancestor::button[1]');
-  const title = (await third.textContent())!.replace(/^(⌘|Ctrl\+)\d/, '');
+  const title = (await third.textContent())!.replace(/^(⌘|⌃|Ctrl\+)\d/, '');
   // Act
   await page.keyboard.press('Digit3');
   await page.keyboard.up(key);
