@@ -5,6 +5,7 @@ import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { Button } from '../components/ui';
 import { useDemo, useDraft } from '../data/store';
 import { useTextareaSize } from '../components/useTextareaSize';
+import { useImeEnter } from '../components/useImeEnter';
 import { applySuggestion, findActiveWord } from '../happy/suggestions';
 import { ComposerSuggestions, type Suggestion } from './ComposerSuggestions';
 import styles from './chat.module.css';
@@ -38,7 +39,8 @@ export const DraftComposer = memo(function DraftComposer({
     enterToSend: store.state.preferences.enterToSend,
     dispatch: store.dispatch,
   }));
-  const composing = useRef(false);
+  const ime = useImeEnter();
+  const composing = ime.composing;
   const listId = useId();
   const [caret, setCaret] = useState<{ start: number; end: number } | null>(null);
   const [dismissed, setDismissed] = useState('');
@@ -91,8 +93,11 @@ export const DraftComposer = memo(function DraftComposer({
     element?.focus();
   }
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    // Safari can clear isComposing before the Enter that confirms an IME choice.
-    if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+    // The Enter that confirms an IME choice only ends the composition.
+    if (ime.confirms(event)) {
+      if (event.key === 'Enter') event.preventDefault();
+      return;
+    }
     // Return inserts a line on touch devices, including when suggestions are open.
     if (touchKeyboard && event.key === 'Enter' && !event.metaKey && !event.ctrlKey) return;
     if (open && !event.altKey && !event.metaKey && !event.ctrlKey) {
@@ -143,8 +148,8 @@ export const DraftComposer = memo(function DraftComposer({
       onSelect={(event) => readCaret(event.currentTarget)}
       onFocus={(event) => readCaret(event.currentTarget)}
       onBlur={() => setCaret(null)}
-      onCompositionStart={() => { composing.current = true; }}
-      onCompositionEnd={() => { composing.current = false; }}
+      onCompositionStart={ime.onCompositionStart}
+      onCompositionEnd={ime.onCompositionEnd}
       onKeyDown={keyDown}
       disabled={archived}
       rows={1}

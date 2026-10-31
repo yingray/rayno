@@ -10,6 +10,7 @@ import { validateDraft } from '../data/reducer';
 import type { Agent, Attachment, NewSessionDraft } from '../data/types';
 import styles from './new-session.module.css';
 import { AttachmentThumbnail } from '../components/AttachmentThumbnail';
+import { useImeEnter } from '../components/useImeEnter';
 import { AgentChoices } from './AgentChoices';
 import { LazyBoundary } from '../components/LazyBoundary';
 import { draftInWorkspace, recentWorkspaceOptions } from '../data/workspaces';
@@ -133,7 +134,6 @@ export function NewSession() {
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (
       event.key === 'Enter' &&
-      !event.nativeEvent.isComposing &&
       ((enterToSend && !touchKeyboard && !event.shiftKey) || event.metaKey || event.ctrlKey)
     ) {
       event.preventDefault();
@@ -394,6 +394,7 @@ function NewSessionPrompt({ handoff, touchKeyboard, onKeyDown }: {
   const prompt = useNewSessionPrompt();
   const dispatch = useDemo(store => store.dispatch);
   const input = useRef<HTMLTextAreaElement>(null);
+  const ime = useImeEnter();
   useEffect(() => {
     const field = input.current;
     if (field && (field.value || handoff)) {
@@ -406,5 +407,13 @@ function NewSessionPrompt({ handoff, touchKeyboard, onKeyDown }: {
     aria-label={t('Task description')}
     placeholder={handoff ? t('Add instructions, or start to continue the work') : t('What should the agent do?')}
     value={prompt} onChange={event => dispatch({ type: 'newDraft', value: { prompt: event.target.value } })}
-    onKeyDown={onKeyDown} rows={4} />;
+    onCompositionStart={ime.onCompositionStart} onCompositionEnd={ime.onCompositionEnd}
+    onKeyDown={event => {
+      // The Enter that confirms an IME choice only ends the composition.
+      if (ime.confirms(event)) {
+        if (event.key === 'Enter') event.preventDefault();
+        return;
+      }
+      onKeyDown(event);
+    }} rows={4} />;
 }
