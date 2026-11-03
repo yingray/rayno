@@ -16,6 +16,8 @@ import { listedSessions, sessionGroups, sessionListOrder } from '../data/session
 import type { Store } from '../data/store';
 import { ResizablePanel } from './ResizablePanel';
 import { UpdateIcon, UpdateNotice, useNavigationUpdate } from './NavigationUpdate';
+import { SessionList } from '../features/Sessions';
+import { ConversationSkeleton } from '../components/WorkspaceSkeleton';
 const Chat = lazy(() => import('../features/Chat').then((module) => ({ default: module.Chat })));
 const NewSession = lazy(() => import('../features/NewSession').then((module) => ({ default: module.NewSession })));
 const SessionInfo = lazy(() => import('../features/SessionInfo').then((module) => ({ default: module.SessionInfo })));
@@ -24,7 +26,6 @@ const Monitor = lazy(() => import('../features/Monitor').then((module) => ({ def
 const MachineDetail = lazy(() => import('../features/Monitor').then((module) => ({ default: module.MachineDetail })));
 const Inbox = lazy(() => import('../features/Inbox').then((module) => ({ default: module.Inbox })));
 const SideChats = lazy(() => import('../features/SideChats').then((module) => ({ default: module.SideChats })));
-const SessionList = lazy(() => import('../features/Sessions').then((module) => ({ default: module.SessionList })));
 
 const navigation: { key: string; name: string; icon: IconName; route: string }[] = [
   { key: 'sessions', name: 'Sessions', icon: 'codeSlash', route: '/sessions' },
@@ -79,12 +80,12 @@ export function App() {
   const sessionId = sessionRoute ? path.split('/')[2] : undefined;
   const sessionsArea = path === '/sessions' || sessionRoute || path === '/new';
   const showConversation = sessionRoute || (!mobile && path === '/sessions');
-  const { session, sideTitle, dispatch, toast, mode, live, logout, loading, offlineWorkspace, retrying, unauthorized, connectionError } = useDemo((store) => ({
+  const { session, sideTitle, dispatch, toast, mode, live, logout, loading, workspacePending, offlineWorkspace, retrying, unauthorized, connectionError } = useDemo((store) => ({
     session: sessionRoute ? store.state.sessions.find((item) => item.id === sessionId)
       : showConversation ? store.state.sessions.find((item) => !item.archived && !item.isSideChat) : undefined,
     sideTitle: sessionRoute ? sideChatTitle(store.state.sessions, sessionId) : undefined,
     dispatch: store.dispatch, toast: store.toast, mode: store.mode, live: store.live, logout: store.logout,
-    loading: store.snapshot?.loading, offlineWorkspace: store.snapshot?.offline, retrying: store.snapshot?.retrying,
+    loading: store.workspaceLoading || store.snapshot?.loading, workspacePending: store.workspacePending, offlineWorkspace: store.snapshot?.offline, retrying: store.snapshot?.retrying,
     unauthorized: store.snapshot?.unauthorized, connectionError: store.snapshot?.error || store.snapshot?.connectionError,
   }));
   useEffect(() => {
@@ -111,8 +112,8 @@ export function App() {
     (mobile && ['/sessions', '/inbox', '/monitor'].includes(path)) ||
     (mobile && path.startsWith('/settings'));
   useEffect(() => {
-    setListOpen(false);
-  }, [path]);
+    setListOpen(width >= 768 && width < 1024 && path === '/sessions');
+  }, [path, width]);
   useEffect(() => {
     if (!live && sessionId) dispatch({ type: 'read', id: sessionId });
   }, [sessionId, dispatch, live]);
@@ -201,6 +202,7 @@ export function App() {
         </div>
       )}
       <div
+        inert={workspacePending || undefined}
         className={`${styles.shell} ${path === '/new' ? styles.newSessionShell : ''} ${showConnectionError ? styles.statusShell : ''} ${expanded ? styles.expandedShell : ''}`}
       >
         {!mobile && (
@@ -315,6 +317,8 @@ export function App() {
                 listExpanded={width >= 1024 && !sessionsCollapsed}
                 onSettings={keepSettings}
               />
+            ) : loading ? (
+              <ConversationSkeleton />
             ) : (
               <Empty
                 title={sessionRoute

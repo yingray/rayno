@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { PropsWithChildren } from 'react';
+import { WorkspacePendingProvider } from '../data/WorkspacePendingProvider';
 import { StoreProvider } from '../data/store';
 import { defaultNewDraft, defaultPreferences } from '../data/defaults';
 import { restoreState } from '../data/reducer';
@@ -11,7 +12,7 @@ import { loginWithKey, saveCredentials, serverOrigin } from './auth';
 import type { Credentials } from './auth';
 import { formatRecoveryKey } from './crypto';
 import { unbase64 } from './encoding';
-import { Button, Mark, Spinner } from '../components/ui';
+import { Button, Mark } from '../components/ui';
 import styles from './login.module.css';
 import { useUIState } from '../data/useUIState';
 import { CREDENTIALS_KEY } from './credentials';
@@ -70,13 +71,14 @@ export function LiveProvider({
       connection?.dispose();
     };
   }, [credentials]);
+  if (!client && !error) return <WorkspacePendingProvider>{children}</WorkspacePendingProvider>;
   if (!client)
     return (
       <div className={styles.screen}>
         <div className={styles.card}>
           <Mark />
-          <h1>{error ? 'Could not open Rayno' : 'Open your workspace'}</h1>
-          {error ? <p role="alert">{error}</p> : <Spinner />}
+          <h1>Could not open Rayno</h1>
+          <p role="alert">{error}</p>
           <Button onClick={logout}>Back to sign in</Button>
         </div>
       </div>

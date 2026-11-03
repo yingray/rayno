@@ -19,6 +19,7 @@ import { createSessionIdsDemo } from './sessionIdsDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
 import { createMarkdownAppearanceDemo, markdownAppearanceDemoId } from './markdownAppearanceDemo';
 import { createReplyNavigatorDemo, replyNavigatorDemoId } from './replyNavigatorDemo';
+import { createWorkspaceLoadingDemo, workspaceLoadingDemoId } from './workspaceLoadingDemo';
 import { createChatScrollDemo, chatScrollDemoId } from './chatScrollDemo';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -34,6 +35,18 @@ export function DemoProvider({
   switchMode,
 }: PropsWithChildren<{ switchMode: () => void }>) {
   const [toast, setToast] = useState('');
+  const [loadingDemo] = useState(() => new URLSearchParams(window.location.search).get('workspaceLoading') === '1');
+  const [workspaceLoading, setWorkspaceLoading] = useState(loadingDemo);
+  const loadingTimer = useRef<number | undefined>(undefined);
+  const replayWorkspaceLoading = useCallback(() => {
+    clearTimeout(loadingTimer.current);
+    setWorkspaceLoading(true);
+    loadingTimer.current = window.setTimeout(() => setWorkspaceLoading(false), 2400);
+  }, []);
+  useEffect(() => {
+    if (loadingDemo) replayWorkspaceLoading();
+    return () => clearTimeout(loadingTimer.current);
+  }, [loadingDemo, replayWorkspaceLoading]);
   const [server, setServer] = useState(DEMO_SERVER);
   const changeServer = useCallback(async (value: string) => {
     const next = serverOrigin(value);
@@ -67,6 +80,8 @@ export function DemoProvider({
           return intro && message.role === 'assistant' ? { ...message, content: intro.content } : message;
         });
       }
+      if (!restored.sessions.some(session => session.id === workspaceLoadingDemoId))
+        restored.sessions = [...restored.sessions, createWorkspaceLoadingDemo()];
       const examples = [...createWorkspaceLayoutDemo(), ...createComposerDemo(), ...createSessionIdsDemo()].filter(example => !restored.sessions.some(session => session.id === example.id));
       if (examples.length) restored.sessions = [...restored.sessions, ...examples];
       if (!restored.sessions.some(session => session.id === markdownAppearanceDemoId))
@@ -280,10 +295,12 @@ export function DemoProvider({
     <StoreProvider
       value={{
         mode: 'demo',
+        workspaceLoading,
+        replayWorkspaceLoading: loadingDemo ? replayWorkspaceLoading : undefined,
         machines,
         usage: usageReadings,
         switchMode,
-        state,
+        state: workspaceLoading ? { ...state, sessions: [] } : state,
         ui,
         dispatch,
         adapter,

@@ -17,6 +17,7 @@ import { titleOf } from '../data/reducer';
 import { isSessionFaded, listedSessions, sessionActivityAt, sessionGroups, sessionListOrder } from '../data/sessionList';
 import type { Session, SessionListMode } from '../data/types';
 import styles from './sessions.module.css';
+import { SessionListSkeleton } from '../components/WorkspaceSkeleton';
 import { SessionUsage } from './SessionUsage';
 import { OfflineStatus } from '../components/OfflineStatus';
 import { WorkspaceTag } from '../components/WorkspaceTag';
@@ -118,8 +119,8 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
   onSelect?: () => void; onNew?: () => void; searchRequested?: boolean; onSearchHandled?: () => void;
 }) {
   const t = useText();
-  const { allSessions, loading, offline, mode, archived, dispatch } = useDemo((store) => ({
-    allSessions: store.state.sessions, loading: store.snapshot?.loading, offline: store.snapshot?.offline,
+  const { allSessions, loading, offline, mode, archived, dispatch, replayWorkspaceLoading } = useDemo((store) => ({
+    allSessions: store.state.sessions, loading: store.workspaceLoading || store.snapshot?.loading, replayWorkspaceLoading: store.replayWorkspaceLoading, offline: store.snapshot?.offline,
     mode: store.state.preferences.sessionListMode || 'flat', archived: store.state.preferences.sessionListArchived ?? false, dispatch: store.dispatch,
   }));
   const navigate = useNavigate();
@@ -229,8 +230,12 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
         </div>
         <OfflineStatus label={t("Session list availability")} />
       </header>
-      <div className={styles.rows}>
-        {!sessions.length ? (
+      {replayWorkspaceLoading && <div className={styles.loadingDemo}>
+        <span>{t('Simulated workspace loading')}</span>
+        <Button onClick={replayWorkspaceLoading} disabled={loading}>{t('Replay loading')}</Button>
+      </div>}
+      <div className={styles.rows} aria-busy={!!loading && !allSessions.length}>
+        {loading && !allSessions.length ? <SessionListSkeleton /> : !sessions.length ? (
           <Empty
             title={
               offline && !allSessions.length

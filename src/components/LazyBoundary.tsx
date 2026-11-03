@@ -1,5 +1,5 @@
 import { Component, Suspense } from 'react';
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { currentBuild, isChunkError, recoverShell } from '../app/appUpdate';
 import { Button, Spinner } from './ui';
 
@@ -40,6 +40,6 @@ class ScreenErrorBoundary extends Component<PropsWithChildren, { error: Error | 
   }
 }
 
-export function LazyBoundary({ children }: PropsWithChildren) {
-  return <ScreenErrorBoundary><Suspense fallback={<PanelLoading />}>{children}</Suspense></ScreenErrorBoundary>;
+export function LazyBoundary({ children, fallback }: PropsWithChildren<{ fallback?: ReactNode }>) {
+  return <ScreenErrorBoundary><Suspense fallback={fallback ?? <PanelLoading />}>{children}</Suspense></ScreenErrorBoundary>;
 }

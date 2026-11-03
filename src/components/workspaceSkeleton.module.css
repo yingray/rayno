@@ -1,0 +1,18 @@
+.sessions { overflow: hidden; }
+.row { position: relative; height: 100px; padding: 10px; display: flex; gap: 12px; }
+.row i { width: 36px; height: 36px; border-radius: 50%; flex: none; background: var(--border); }
+.row::before, .row::after, .title::before, .message::before, .message::after {
+  content: ''; display: block; border-radius: 6px; background: var(--border); opacity: .6;
+}
+.row::before { position: absolute; left: 58px; top: 13px; width: 30%; height: 18px; }
+.row::after { position: absolute; left: 58px; right: 25px; top: 42px; height: 32px; }
+.conversation { height: 100%; min-height: 0; overflow: hidden; padding: 24px; }
+.title { height: 68px; border-bottom: 1px solid var(--border); }
+.title::before { height: 20px; width: min(220px, 60%); }
+.message { margin: 44px auto; max-width: 680px; }
+.message::before { height: 16px; width: 70%; }
+.message::after { height: 48px; margin-top: 14px; }
+@media (prefers-reduced-motion: no-preference) {
+  .sessions, .conversation { animation: breathe 1.8s ease-in-out infinite alternate; }
+}
+@keyframes breathe { to { opacity: .5; } }

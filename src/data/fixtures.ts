@@ -57,6 +57,7 @@ export { defaultNewDraft, defaultPreferences } from './defaults';
 import { defaultNewDraft, defaultPreferences } from './defaults';
 import { createQuestionDemo } from './questionDemo';
 import { createImageDemo } from './imageDemo';
+import { createWorkspaceLoadingDemo } from './workspaceLoadingDemo';
 import { createChatScrollDemo } from './chatScrollDemo';
 import { createReplyOptionsDemo } from './replyOptionsDemo';
 import { createReplyNavigatorDemo } from './replyNavigatorDemo';
@@ -232,6 +233,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createMarkdownAppearanceDemo(now));
   sessions.push(createReplyNavigatorDemo(now));
   sessions.push(createChatScrollDemo(now));
+  sessions.push(createWorkspaceLoadingDemo(now));
   return {
     version: 1,
     sessions,

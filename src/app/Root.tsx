@@ -3,7 +3,8 @@ import { clearCredentials, readCredentials } from '../happy/credentials';
 import type { Credentials } from '../happy/credentials';
 import { LazyBoundary } from '../components/LazyBoundary';
 
-const App = lazy(() => import('./App').then((module) => ({ default: module.App })));
+import { App } from './App';
+import { WorkspacePendingProvider } from '../data/WorkspacePendingProvider';
 const DemoProvider = lazy(() => import('../data/DemoProvider').then((module) => ({ default: module.DemoProvider })));
 const LiveProvider = lazy(() => import('../happy/LiveProvider').then((module) => ({ default: module.LiveProvider })));
 const Login = lazy(() => import('../happy/Login').then((module) => ({ default: module.Login })));
@@ -40,7 +41,7 @@ export function Root() {
     );
   if (!credentials) return <LazyBoundary><Login onLogin={login} onDemo={switchMode} /></LazyBoundary>;
   return (
-    <LazyBoundary>
+    <LazyBoundary fallback={<WorkspacePendingProvider><App /></WorkspacePendingProvider>}>
       <LiveProvider
         key={credentials.server + credentials.token}
         credentials={credentials}

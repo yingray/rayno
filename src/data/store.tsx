@@ -8,6 +8,9 @@ import { LanguageContext } from '../i18n';
 
 export type Store = {
   mode: 'demo' | 'live';
+  workspaceLoading?: boolean;
+  workspacePending?: boolean;
+  replayWorkspaceLoading?: () => void;
   machines: Machine[];
   usage: UsageReading[];
   live?: HappyClient;

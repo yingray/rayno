@@ -835,5 +835,7 @@
   "Try a sample PNG": "試用 PNG 範例",
   "Archived sessions": "已封存的 sessions",
   "Show active sessions": "顯示使用中的 sessions",
-  "Show archived sessions": "顯示已封存的 sessions"
+  "Show archived sessions": "顯示已封存的 sessions",
+  "Simulated workspace loading": "模擬工作區載入",
+  "Replay loading": "重播載入"
 }

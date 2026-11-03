@@ -365,3 +365,6 @@
   .more { width: 44px; height: 44px; bottom: 0; right: 0; opacity: 1; }
   .indicator { right: 48px; }
 }
+
+.loadingDemo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 18px 12px; color: var(--muted); font-size: 12px; }
+.loadingDemo button { min-width: 44px; min-height: 44px; }
