@@ -59,6 +59,7 @@ import { createQuestionDemo } from './questionDemo';
 import { createImageDemo } from './imageDemo';
 import { createWorkspaceLoadingDemo } from './workspaceLoadingDemo';
 import { createChatScrollDemo } from './chatScrollDemo';
+import { createModelSelectionDemo } from './modelSelectionDemo';
 import { createReplyOptionsDemo } from './replyOptionsDemo';
 import { createReplyNavigatorDemo } from './replyNavigatorDemo';
 import { createToolTimelineDemo } from './toolTimelineDemo';
@@ -233,6 +234,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createMarkdownAppearanceDemo(now));
   sessions.push(createReplyNavigatorDemo(now));
   sessions.push(createChatScrollDemo(now));
+  sessions.push(createModelSelectionDemo(now));
   sessions.push(createWorkspaceLoadingDemo(now));
   return {
     version: 1,

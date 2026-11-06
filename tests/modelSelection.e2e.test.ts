@@ -7,6 +7,38 @@ const rigCatalog = [
   { id: 'same-model', providerId: 'provider-two', providerName: 'Provider Two', name: 'Shared model', thinkingLevels: ['low'], defaultThinkingLevel: 'low' },
 ];
 
+test('Codex fallback choices should reach encrypted messages with their supported efforts', async ({ page }) => {
+  // Arrange
+  const server = new HappyServer();
+  await server.install(page);
+  const source = server.sessions[0];
+  const metadata = await server.encryption.decrypt<Record<string, unknown>>(source.metadata, server.dataKey);
+  source.metadata = await server.encryption.encrypt({ ...metadata, flavor: 'codex', models: undefined, model: 'gpt-6.1-sol' }, server.dataKey);
+  const workspace = new LiveWorkspacePage(page);
+  const choices = [
+    ['GPT-6.1 Sol', 'gpt-6.1-sol', 'Ultra', 'ultra'],
+    ['GPT-6.1 Terra', 'gpt-6.1-terra', 'Max', 'max'],
+    ['GPT-6 Sol', 'gpt-6-sol', 'Ultra', 'ultra'],
+    ['GPT-6 Luna', 'gpt-6-luna', 'Max', 'max'],
+  ];
+  await workspace.openSession();
+  // Act
+  for (const [label, , effort] of choices) {
+    await workspace.openModelSettings();
+    await workspace.chooseModel(label);
+    await workspace.chooseEffort(effort);
+    await workspace.closeModelSettings();
+    await workspace.send(`Use ${label} with ${effort}`);
+    await workspace.expectDraft('');
+  }
+  // Assert
+  expect(server.sends).toHaveLength(choices.length);
+  for (const [index, [, model, , effort]] of choices.entries()) {
+    const raw = await server.encryption.decrypt<Record<string, unknown>>(server.sends[index].content, server.dataKey);
+    expect(raw).toMatchObject({ meta: { model, effort } });
+  }
+});
+
 test('a CLI session without a model catalog should offer concrete models and explicit effort choices', async ({ page }) => {
   // Arrange
   const server = new HappyServer();
@@ -67,27 +99,28 @@ test('model and effort picks should persist and reach encrypted messages with th
   expect(server.spawns).toEqual([]);
 });
 
-test('a new CLI session should apply the selected model and effort to both spawn and its first message', async ({ page }) => {
+test('a new Codex session should apply Terra and Ultra to both spawn and its first message', async ({ page }) => {
   // Arrange
   const server = new HappyServer();
   await server.install(page);
   const workspace = new LiveWorkspacePage(page);
   await workspace.route('/new');
   // Act
-  await workspace.chooseNewModel('Opus 5');
-  await workspace.chooseNewEffort('Max');
+  await workspace.chooseNewAgent('Codex');
+  await workspace.chooseNewModel('GPT-6.1 Terra');
+  await workspace.chooseNewEffort('Ultra');
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('Opus 5');
-  await expect(page.getByRole('button', { name: 'Choose effort', exact: true })).toContainText('Max');
+  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('GPT-6.1 Terra');
+  await expect(page.getByRole('button', { name: 'Choose effort', exact: true })).toContainText('Ultra');
   await page.getByLabel('Folder', { exact: true }).fill('/real/project');
   await page.getByRole('textbox', { name: 'Task description' }).fill('Start with the selected effort');
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   // Assert
   await expect(page).toHaveURL(/\/session\/created-session$/);
   expect(server.spawns).toHaveLength(1);
-  expect(server.spawns[0]).toMatchObject({ modelMode: 'claude-opus-5', effortLevel: 'max' });
+  expect(server.spawns[0]).toMatchObject({ modelMode: 'gpt-6.1-terra', effortLevel: 'ultra' });
   const raw = await server.encryption.decrypt<Record<string, unknown>>(server.sends[0].content, server.dataKey);
-  expect(raw).toMatchObject({ meta: { model: 'claude-opus-5', effort: 'max' } });
+  expect(raw).toMatchObject({ meta: { model: 'gpt-6.1-terra', effort: 'ultra' } });
 });
 
 test('new-session controls should hide Happy Agent and migrate a saved legacy draft to a concrete CLI choice', async ({ page }) => {

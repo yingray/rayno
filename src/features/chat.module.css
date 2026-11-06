@@ -934,6 +934,7 @@
 }
 .modelSettings > button {
   margin-top: 18px;
+  min-height: 44px;
 }
 .model > span {
   min-width: 0;

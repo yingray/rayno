@@ -243,8 +243,10 @@ Like that popup, each window shows when the provider reports it, so a plan with 
 The compact summary and the Monitor card show the weekly window. Without one, they show the 5-hour window:
 the summary marks it `5h`, and the Monitor card says `of 5 hours used`.
 Other provider windows stay hidden. The composer warning and the Model & effort reading show context use, not plan windows.
-Codex effort choices follow `CODEX_EFFORTS_BY_MODEL` in `components/modelModeOptions.ts`. A model outside
-that table gets `low` through `xhigh`. The `thinkingLevels` of a published computer catalog still win.
+Codex fallback models and efforts were checked against Codex 0.167.0 `model/list` on 2026-11-06.
+GPT-6.1 Sol and Terra, GPT-6 Astra and Sol, and GPT-5.6 Sol and Terra support `low` through `ultra`.
+GPT-6 Luna and GPT-5.6 Luna stop at `max`. Ultra includes automatic task delegation.
+A model outside that table gets `low` through `xhigh`. The `thinkingLevels` of a published computer catalog still win.
 The current session's source computer is preferred in the compact summary; expanded details retain
 all computers' readings separately.
 

@@ -89,6 +89,11 @@ The "host" on the login screen is the Happy server that your CLI uses.
 The login screen has no default host. For the hosted Happy server, enter `https://api.cluster-fluster.com`.
 If you run your own Happy server, it must use HTTPS and allow CORS from the Rayno origin. A server on the same computer can also use `http://127.0.0.1`.
 
+Open `/session/model-selection-demo?demo=1` to try the model and effort picker without a Happy account.
+The Codex fallback catalog includes GPT-6.1 Terra, Max and Ultra for Sol, and Max for Luna.
+Choose a model and effort, send a simulated message, then reload to check that your selection stays.
+Ultra does not start subagents in the demo. A published computer catalog takes precedence over the fallback list.
+
 ## Sign in
 
 The login screen shows the install command, with a copy button, and a sign-in form with two fields:
