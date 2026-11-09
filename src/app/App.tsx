@@ -4,7 +4,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dialog, Empty, Icon, Mark } from '../components/ui';
 import type { IconName } from '../components/ui';
 import { useDemo } from '../data/store';
-import { OfflineStatus } from '../components/OfflineStatus';
+import { SyncStatus } from '../components/SyncStatus';
 import styles from './app.module.css';
 import { LazyBoundary } from '../components/LazyBoundary';
 import type { MessageSettings } from '../data/types';
@@ -182,7 +182,10 @@ export function App() {
     }
     navigate(item.route);
   };
-  const showConnectionError = !!connectionError && !offlineWorkspace && !retrying;
+  // An expired sign-in needs its own prompt. Sync failures show in the status area of the list or the chat.
+  const showConnectionError = !!unauthorized && !!connectionError && !offlineWorkspace && !retrying;
+  const chatOnScreen = !!session && showConversation && knownRoute && !(mobile && (infoOpen || sideOpen));
+  const listOnScreen = (showList && !(width >= 1024 && sessionsCollapsed)) || (!mobile && listOpen);
   return (
     <>
       {offline ? (
@@ -278,11 +281,11 @@ export function App() {
         )}
         {showList && (mobile ? (
           <div id="session-list-panel" className={styles.listPanel}>
-            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled} /></LazyBoundary>
+            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled} syncActions={!chatOnScreen} /></LazyBoundary>
           </div>
         ) : (
           <ResizablePanel kind="sessions" id="session-list-panel" hidden={sessionsCollapsed}>
-            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled} /></LazyBoundary>
+            <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled} syncActions={!chatOnScreen} /></LazyBoundary>
           </ResizablePanel>
         ))}
         {!(mobile && path === '/sessions') && (
@@ -333,7 +336,6 @@ export function App() {
                     : offlineWorkspace ? t("Open this conversation online once to save it on this device.")
                       : t("This session may have been deleted.")
                   : t("Pick a computer and start a conversation.")}
-                {offlineWorkspace && <OfflineStatus label={t("Conversation availability")} />}
               </Empty>
             )}</LazyBoundary>
           </main>
@@ -361,7 +363,7 @@ export function App() {
         {!mobile && listOpen && (
           <Dialog title={t("Sessions")} onClose={closeList} className={styles.listDrawer}>
             <LazyBoundary><SessionList searchRequested={searchRequested} onSearchHandled={searchHandled}
-              onSelect={closeList} onNew={closeList} /></LazyBoundary>
+              onSelect={closeList} onNew={closeList} syncActions={!chatOnScreen} /></LazyBoundary>
           </Dialog>
         )}
         {showTabs && (
@@ -384,6 +386,7 @@ export function App() {
           </nav>
         )}
       </div>
+      {!chatOnScreen && !listOnScreen && <SyncStatus actions failuresOnly label={t('Workspace sync')} />}
       <UpdateNotice update={update} expanded={expanded} />
       {toast && (
         <div className={styles.toast} role="status">

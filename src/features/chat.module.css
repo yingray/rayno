@@ -47,14 +47,8 @@
   transition: filter .12s, transform .12s;
 }
 .header > button:hover:not(:disabled) { filter: brightness(1.1); }
-.chat[data-view='chat'] > [data-offline-status] {
-  position: absolute;
-  top: 66px;
-  left: 0;
-  right: 0;
-  z-index: 4;
-  pointer-events: none;
-}
+.chat > .syncStatus { top: 74px; }
+.chat[data-embedded] > .syncStatus { top: 8px; }
 .titleCapsule {
   height: 52px;
   max-width: 470px;

@@ -2396,3 +2396,157 @@ describe('Happy client request load', () => {
     expect(reads('/messages')).toBe(0);
   });
 });
+describe('Happy client resume', () => {
+  const listener = (target: 'window' | 'document', name: string) => {
+    const host = target === 'window' ? window : document;
+    return vi.mocked(host.addEventListener).mock.calls.find(([event]) => event === name)![1] as (event?: unknown) => void;
+  };
+  const messageReads = () => fetchMock.mock.calls.filter(([url]) => String(url).includes('/v3/sessions/session/messages')).length;
+  const hide = (at: number) => {
+    vi.mocked(Date.now).mockReturnValue(at);
+    Object.assign(document, { visibilityState: 'hidden', hasFocus: () => false });
+    listener('document', 'visibilitychange')({ type: 'visibilitychange' });
+  };
+  const show = (at: number, focus = true) => {
+    vi.mocked(Date.now).mockReturnValue(at);
+    Object.assign(document, { visibilityState: 'visible', hasFocus: () => focus });
+    listener('document', 'visibilitychange')({ type: 'visibilitychange' });
+  };
+
+  it('should replace a frozen chat read and the realtime connection after a long background stay', async () => {
+    // Arrange: the first forward read never answers, like a request that a frozen PWA left open.
+    await start();
+    client.watchSession('session');
+    await vi.waitFor(() => expect(client.getSnapshot().histories.session?.loaded).toBe(true));
+    const original = fetchMock.getMockImplementation()! as (url: string, init?: RequestInit) => Promise<Response>;
+    let frozen = true, waiting = 0;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (!frozen || !url.includes('/messages')) return original(url, init);
+      waiting++;
+      return new Promise<Response>((_, reject) => init!.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))));
+    });
+    void client.loadHistory('session', 'forward', true).catch(() => {});
+    await vi.waitFor(() => expect(waiting).toBe(1));
+    const disconnect = vi.spyOn(socket, 'disconnect');
+    socket.connected = true;
+    hide(1000000);
+    frozen = false;
+    const before = messageReads();
+    // Act
+    show(1000000 + 60000, false);
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot()).toMatchObject({ syncing: false, error: '', syncedAt: 1060000 }));
+    expect(disconnect).toHaveBeenCalledOnce();
+    expect(socket.connected).toBe(true);
+    expect(messageReads()).toBeGreaterThan(before);
+    expect(client.getSnapshot().histories.session).toMatchObject({ loading: false, loaded: true, error: '' });
+  });
+
+  it('should keep an open read and the connection after a short background stay', async () => {
+    // Arrange
+    await start();
+    client.watchSession('session');
+    await vi.waitFor(() => expect(client.getSnapshot().histories.session?.loaded).toBe(true));
+    socket.connected = true;
+    const disconnect = vi.spyOn(socket, 'disconnect');
+    hide(1000000);
+    // Act
+    show(1005000);
+    // Assert
+    await vi.waitFor(() => expect(client.getSnapshot().syncing).toBe(false));
+    expect(disconnect).not.toHaveBeenCalled();
+    expect(client.getSnapshot().syncedAt).toBe(1005000);
+  });
+
+  it('should count focus and visibility from one resume once', async () => {
+    // Arrange
+    await start();
+    socket.connected = true;
+    const disconnect = vi.spyOn(socket, 'disconnect');
+    hide(1000000);
+    // Act
+    show(1100000);
+    listener('window', 'focus')({ type: 'focus' });
+    // Assert
+    expect(disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('should show the offline state when the network disappeared while the app was hidden', async () => {
+    // Arrange
+    await start();
+    hide(1000000);
+    vi.stubGlobal('navigator', { onLine: false });
+    // Act
+    show(1100000);
+    // Assert
+    expect(client.getSnapshot()).toMatchObject({ offline: true, connection: 'disconnected', syncing: false });
+    // Act: the network returns without an online event.
+    vi.stubGlobal('navigator', { onLine: true });
+    hide(1100000);
+    show(1101000);
+    // Assert
+    expect(client.getSnapshot().offline).toBe(false);
+    expect(socket.connected).toBe(true);
+  });
+
+  it('should keep a failed first load on screen while a background read retries it', async () => {
+    // Arrange
+    await start();
+    const original = fetchMock.getMockImplementation()! as (url: string, init?: RequestInit) => Promise<Response>;
+    let failing = true;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) =>
+      failing && url.includes('/messages') ? Promise.resolve(response({ error: 'Internal Server Error' }, 500)) : original(url, init));
+    await client.loadHistory('session').catch(() => {});
+    expect(client.getSnapshot().histories.session).toMatchObject({ loaded: false, loading: false, error: 'Internal Server Error' });
+    const states: unknown[] = [];
+    const stop = client.subscribe(() => states.push({ ...client.getSnapshot().histories.session }));
+    // Act: a background retry fails again.
+    await client.loadHistory('session', 'forward', true).catch(() => {});
+    // Assert: the notice did not change, so its Retry button stays in place.
+    expect(states.every(state => (state as { loading: boolean }).loading === false)).toBe(true);
+    expect(client.getSnapshot().histories.session.error).toBe('Internal Server Error');
+    // Act: a background retry succeeds.
+    failing = false;
+    await client.loadHistory('session', 'forward', true);
+    stop();
+    // Assert
+    expect(client.getSnapshot().histories.session).toMatchObject({ loaded: true, loading: false, error: '' });
+  });
+
+  it('should show a Retry at once while a background read of the failed chat still runs', async () => {
+    // Arrange: the first load fails, and a background read of the chat does not answer yet.
+    await start();
+    const original = fetchMock.getMockImplementation()! as (url: string, init?: RequestInit) => Promise<Response>;
+    let hold = false, waiting = false, answer: () => void = () => {};
+    const failed = () => response({ error: 'Internal Server Error' }, 500);
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => !url.includes('/messages') ? original(url, init)
+      : hold ? new Promise<Response>(resolve => { waiting = true; answer = () => resolve(failed()); }) : Promise.resolve(failed()));
+    await client.loadHistory('session').catch(() => {});
+    hold = true;
+    const background = client.loadHistory('session', 'forward', true).catch(() => {});
+    await vi.waitFor(() => expect(waiting).toBe(true));
+    // Act
+    const retry = client.loadHistory('session', 'initial').catch(() => {});
+    // Assert: the Retry shows its loading state before the background read ends.
+    expect(client.getSnapshot().histories.session).toMatchObject({ loading: true, error: '' });
+    // Act: the background read fails. The Retry still reads, and its failure ends the loading state.
+    hold = false;
+    answer();
+    await background;
+    await retry;
+    // Assert
+    expect(client.getSnapshot().histories.session).toMatchObject({ loading: false, error: 'Internal Server Error' });
+  });
+
+  it('should treat a page from the back-forward cache as a long background stay', async () => {
+    // Arrange
+    await start();
+    socket.connected = true;
+    const disconnect = vi.spyOn(socket, 'disconnect');
+    // Act
+    listener('window', 'pageshow')({ type: 'pageshow', persisted: true });
+    // Assert
+    expect(disconnect).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(client.getSnapshot().syncing).toBe(false));
+  });
+});

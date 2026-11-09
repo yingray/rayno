@@ -4,6 +4,8 @@ import type { Action, DemoAdapter, DemoState, Machine, UsageReading } from './ty
 import type { HappyClient, Snapshot } from '../happy/client';
 import { createExternalStore, createSelection, shallowEqual } from './subscriptions';
 import type { UIState } from './uiState';
+import type { SyncInput } from './syncStatus';
+import type { SyncDemoStep } from './syncStatusDemo';
 import { LanguageContext } from '../i18n';
 
 export type Store = {
@@ -15,6 +17,11 @@ export type Store = {
   usage: UsageReading[];
   live?: HappyClient;
   snapshot?: Snapshot;
+  // The simulated sync state of the sync status demo. Live mode reads `snapshot`.
+  syncDemo?: { input: SyncInput; sessionId: string; step: (step: SyncDemoStep) => void; retry: () => void; retryMessages: () => void };
+  // A simulated version update for the demo. Live mode checks the server.
+  updateDemo?: { commit: string; install: () => Promise<void> };
+  showUpdateDemo?: () => void;
   server?: string;
   // The signed-in account as the grouped key that the Happy app shows.
   recoveryKey?: string;

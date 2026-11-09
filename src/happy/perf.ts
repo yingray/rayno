@@ -11,7 +11,8 @@ export type RecoveryMark =
   | 'transport-connected'
   | 'list-refreshed'
   | 'active-chat-caught-up'
-  | 'first-rpc-ok';
+  | 'first-rpc-ok'
+  | 'resume-stale';
 
 export type StageStats = { count: number; total: number; max: number; mean: number };
 

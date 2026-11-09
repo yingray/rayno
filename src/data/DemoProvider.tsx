@@ -22,6 +22,8 @@ import { createReplyNavigatorDemo, replyNavigatorDemoId } from './replyNavigator
 import { createWorkspaceLoadingDemo, workspaceLoadingDemoId } from './workspaceLoadingDemo';
 import { createChatScrollDemo, chatScrollDemoId } from './chatScrollDemo';
 import { createModelSelectionDemo, modelSelectionDemoId } from './modelSelectionDemo';
+import { createSyncStatusDemo, initialSyncDemo, syncDemoStep, syncStatusDemoId, syncStatusDemoUpdate, type SyncDemoStep } from './syncStatusDemo';
+import type { SyncInput } from './syncStatus';
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 // The simulated recap answer comes before a normal reply, so the chat can show the waiting state.
@@ -48,6 +50,31 @@ export function DemoProvider({
     if (loadingDemo) replayWorkspaceLoading();
     return () => clearTimeout(loadingTimer.current);
   }, [loadingDemo, replayWorkspaceLoading]);
+  // The sync status demo. Each step can schedule the states that follow it.
+  const [syncInput, setSyncInputState] = useState<SyncInput>(() => initialSyncDemo());
+  const syncCurrent = useRef(syncInput);
+  const setSyncInput = useCallback((state: SyncInput) => { syncCurrent.current = state; setSyncInputState(state); }, []);
+  const syncTimers = useRef<number[]>([]);
+  const stepSync = useCallback((step: SyncDemoStep) => {
+    syncTimers.current.forEach(clearTimeout);
+    const next = syncDemoStep(syncCurrent.current, step);
+    setSyncInput(next.state);
+    syncTimers.current = next.then.map(([wait, state]) => window.setTimeout(() => setSyncInput(state), wait));
+  }, [setSyncInput]);
+  useEffect(() => () => syncTimers.current.forEach(clearTimeout), []);
+  const syncDemo = useMemo(() => ({ input: syncInput, sessionId: syncStatusDemoId, step: stepSync,
+    retry: () => stepSync('retry'), retryMessages: () => stepSync('retryMessages') }), [syncInput, stepSync]);
+  const [updateShown, setUpdateShown] = useState(false);
+  const updateDemo = useMemo(() => updateShown ? { commit: syncStatusDemoUpdate, install: async () => {
+    await delay(900);
+    setUpdateShown(false);
+    setToast('Simulated: Rayno reloads with the new version. Your drafts stay on this device.');
+  } } : undefined, [updateShown]);
+  const showUpdateDemo = useCallback(() => {
+    try { sessionStorage.removeItem('rayno.dismissedUpdate'); } catch { /* The notice opens for this visit. */ }
+    setUpdateShown(false);
+    window.setTimeout(() => setUpdateShown(true), 0);
+  }, []);
   const [server, setServer] = useState(DEMO_SERVER);
   const changeServer = useCallback(async (value: string) => {
     const next = serverOrigin(value);
@@ -98,6 +125,8 @@ export function DemoProvider({
         restored.sessions = [...restored.sessions, createChatScrollDemo()];
       if (!restored.sessions.some(session => session.id === modelSelectionDemoId))
         restored.sessions = [...restored.sessions, createModelSelectionDemo()];
+      if (!restored.sessions.some(session => session.id === syncStatusDemoId))
+        restored.sessions = [...restored.sessions, createSyncStatusDemo()];
       if (window.location.pathname === `/session/${replyOptionsDemoId}`
         && !restored.sessions.some(session => session.id === replyOptionsDemoId)) {
         return { ...restored, sessions: [...restored.sessions, createReplyOptionsDemo()] };
@@ -292,8 +321,10 @@ export function DemoProvider({
     timers.current.clear();
     replyPrompts.current.clear();
     dispatch({ type: 'reset', state: createInitialState() });
+    stepSync('reset');
+    setUpdateShown(false);
     setToast('Demo data reset');
-  }, []);
+  }, [stepSync]);
   return (
     <StoreProvider
       value={{
@@ -313,6 +344,9 @@ export function DemoProvider({
         server,
         recoveryKey: DEMO_RECOVERY_KEY,
         changeServer,
+        syncDemo,
+        updateDemo,
+        showUpdateDemo,
       }}
     >
       {children}

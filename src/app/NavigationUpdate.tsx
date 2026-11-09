@@ -13,7 +13,7 @@ const OFFLINE = 'Cannot check for updates. Check your connection.';
 
 export function useNavigationUpdate() {
   const t = useText();
-  const notify = useDemo(store => store.notify);
+  const { notify, updateDemo } = useDemo(store => ({ notify: store.notify, updateDemo: store.updateDemo }));
   const [latest, setLatest] = useState<BuildInfo | null>(null);
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -46,8 +46,16 @@ export function useNavigationUpdate() {
       if (alive.current) setChecking(false);
     }
   });
+  // The demo shows a simulated version. It does not check the server.
+  useEffect(() => {
+    if (!updateDemo) return;
+    setLatest({ commit: updateDemo.commit, builtAt: '' });
+    setOpen(dismissed.current !== updateDemo.commit);
+    return () => { setLatest(null); setOpen(false); };
+  }, [updateDemo]);
   useEffect(() => {
     alive.current = true;
+    if (updateDemo) return () => { alive.current = false; };
     const refresh = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) void check();
     };
@@ -61,7 +69,7 @@ export function useNavigationUpdate() {
       window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [check]);
+  }, [check, updateDemo]);
   const dismiss = () => {
     if (latest) {
       dismissed.current = latest.commit;
@@ -74,6 +82,7 @@ export function useNavigationUpdate() {
     if (updating.current) return;
     updating.current = true; setInstalling(true);
     try {
+      if (updateDemo) { await updateDemo.install(); return; }
       const result = await forceUpdate();
       if (alive.current && result.status === 'offline') notify(t(OFFLINE));
     } catch {
@@ -95,8 +104,8 @@ export function UpdateIcon({ update, mobile = false }: { update: NavigationUpdat
     title={t('Update Rayno')}
     disabled={update.checking || update.installing} data-update-available
     onClick={() => void update.install()}>
-    <Icon name="refreshOutline" size={mobile ? 20 : 21} />
-    <span>{t('Updates')}</span>
+    <Icon name="arrowUpCircleOutline" size={mobile ? 20 : 21} />
+    <span>{t('New version')}</span>
     <span className={styles.navBadge} role="img" aria-label={t('Update available')} />
   </button>;
 }
@@ -108,12 +117,13 @@ export function UpdateNotice({ update, expanded }: { update: NavigationUpdateSta
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); update.dismiss(); }
   };
   return <section className={styles.updateNotice} role="region" aria-label={t('Rayno update')} data-expanded={expanded || undefined} onKeyDown={escape}>
-    <header><strong role="status">{t('A Rayno update is ready.')}</strong>
+    <header><span className={styles.updateTitle}><Icon name="arrowUpCircleOutline" size={18} />
+      <strong role="status">{t('A new version of Rayno is ready.')}</strong></span>
       <Button icon="close" aria-label={t('Dismiss update notification')} onClick={update.dismiss} />
     </header>
-    <p>{t('Update now reloads Rayno. Drafts, sessions, and preferences stay on this device.')}</p>
+    <p>{t('This is an app update. Your messages keep syncing. Update now reloads Rayno; drafts, sessions, and preferences stay on this device.')}</p>
     <Button variant="accent" disabled={update.installing || update.checking} onClick={() => void update.install()}>
-      {t(update.installing ? 'Installing the latest version…' : 'Reload and update')}
+      {t(update.installing ? 'Installing the new version…' : 'Reload and update')}
     </Button>
   </section>;
 }

@@ -10,7 +10,7 @@ import { permissionOptions, permissionLabel, canSelectPermission } from '../happ
 import { messageError } from '../happy/errors';
 import { titleOf } from '../data/reducer';
 import { latestAgentMode, latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, type SentModes, type SessionModes } from '../happy/modelPreferences';
-import { OfflineStatus } from '../components/OfflineStatus';
+import { SyncStatus } from '../components/SyncStatus';
 import type { Attachment, MessageSettings, Session } from '../data/types';
 import { countOpenSideChats, hasUnreadSideChats, showSideChatEntry, SIDE_CHAT_TITLE, sideChatTitle } from '../data/sideChats';
 import styles from './chat.module.css';
@@ -38,12 +38,14 @@ import type { TranscriptController } from './TranscriptViewport';
 import { ActivityWaiting } from './ActivityTicker';
 import { SessionGitInfo } from './SessionGitInfo';
 import { toolTimelineDemoId } from '../data/toolTimelineDemo';
+import { syncStatusDemoId } from '../data/syncStatusDemo';
 import { markdownThemeStyle } from '../data/markdownAppearance';
 import { markdownAppearanceDemoId } from '../data/markdownAppearanceDemo';
 
 const MessageList = lazy(() => import('./MessageList').then((module) => ({ default: module.MessageList })));
 const Requests = lazy(() => import('../happy/Requests').then((module) => ({ default: module.Requests })));
 const DemoQuestions = lazy(() => import('./DemoQuestions').then((module) => ({ default: module.DemoQuestions })));
+const DemoSyncStatus = lazy(() => import('./DemoSyncStatus').then((module) => ({ default: module.DemoSyncStatus })));
 const DemoToolTimeline = lazy(() => import('./DemoToolTimeline').then((module) => ({ default: module.DemoToolTimeline })));
 const WorkspaceFiles = lazy(() => import('../happy/WorkspaceFiles').then((module) => ({ default: module.WorkspaceFiles })));
 const GitChanges = lazy(() => import('./GitChanges').then((module) => ({ default: module.GitChanges })));
@@ -498,7 +500,8 @@ export const Chat = memo(function Chat({
         )}
         <ChatSessionMenu session={session} settings={messageSettings} />
       </header>}
-      <OfflineStatus label={embedded ? t("Side chat availability") : t("Conversation availability")} />
+      <SyncStatus className={styles.syncStatus} sessionId={session.id} actions={!embedded}
+        label={embedded ? t("Side chat availability") : t("Conversation availability")} />
       {view === 'chat' ? (
         <>
           <div
@@ -549,6 +552,7 @@ export const Chat = memo(function Chat({
               {hasRequests && <LazyBoundary><Requests sessionId={session.id} /></LazyBoundary>}
               {mode === 'demo' && session.id === questionDemoId && <LazyBoundary><DemoQuestions /></LazyBoundary>}
               {mode === 'demo' && session.id === toolTimelineDemoId && <LazyBoundary><DemoToolTimeline session={session} /></LazyBoundary>}
+              {mode === 'demo' && session.id === syncStatusDemoId && <LazyBoundary><DemoSyncStatus /></LazyBoundary>}
               {mode === 'demo' && session.id === markdownAppearanceDemoId && <div className={styles.activityDemo}>
                 <Button icon="colorPaletteOutline" onClick={() => navigate('/settings/appearance?demo=1#markdown')}>{t('Appearance settings')}</Button>
               </div>}

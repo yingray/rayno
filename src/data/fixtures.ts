@@ -58,6 +58,7 @@ import { defaultNewDraft, defaultPreferences } from './defaults';
 import { createQuestionDemo } from './questionDemo';
 import { createImageDemo } from './imageDemo';
 import { createWorkspaceLoadingDemo } from './workspaceLoadingDemo';
+import { createSyncStatusDemo } from './syncStatusDemo';
 import { createChatScrollDemo } from './chatScrollDemo';
 import { createModelSelectionDemo } from './modelSelectionDemo';
 import { createReplyOptionsDemo } from './replyOptionsDemo';
@@ -236,6 +237,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createChatScrollDemo(now));
   sessions.push(createModelSelectionDemo(now));
   sessions.push(createWorkspaceLoadingDemo(now));
+  sessions.push(createSyncStatusDemo(now));
   return {
     version: 1,
     sessions,

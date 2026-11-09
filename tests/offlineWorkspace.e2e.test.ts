@@ -133,8 +133,14 @@ test('a yellow connection warning should appear only after failure and stay hidd
   // Act / Assert
   server.workspaceFailure = true;
   release();
-  await expect(workspace.connectionError()).toContainText('Could not read the workspace');
+  await expect(workspace.connectionError()).toContainText('Could not sync');
   await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
+  // The technical error stays in the details until the user opens them.
+  await expect(page.getByText(/Could not read the workspace/)).toHaveCount(0);
+  await workspace.connectionError().getByRole('button', { name: /Show sync details/ }).click();
+  await expect(page.getByRole('region', { name: 'Sync details', exact: true })).toContainText('Last synced');
+  await page.getByText('Technical details', { exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Sync details', exact: true })).toContainText('Could not read the workspace');
   const retryBounds = (await page.getByRole('button', { name: 'Retry', exact: true }).boundingBox())!;
   expect(retryBounds.height).toBeGreaterThanOrEqual(44);
   server.workspaceFailure = false;

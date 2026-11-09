@@ -83,8 +83,17 @@ function updateQueue(body: Json) {
 }
 const REQUEST_TIMEOUT = 'timeout';
 const REQUEST_CLOSED = 'closed';
+const REQUEST_STALE = 'stale';
+// A read that the client cancels after the app resumes. A newer read replaces it, so it is not a sync failure.
+export class StaleRequestError extends Error {
+  constructor() { super('Rayno restarted this read after the app resumed.'); }
+}
 const abortError = (signal: AbortSignal, timeout: string) =>
-  new Error(signal.reason === REQUEST_TIMEOUT ? timeout : 'The connection closed before Happy answered.');
+  signal.reason === REQUEST_STALE ? new StaleRequestError()
+    : new Error(signal.reason === REQUEST_TIMEOUT ? timeout : 'The connection closed before Happy answered.');
+// The browser can freeze a background PWA and its network requests. After the app is hidden this long,
+// a resume cancels the open reads and opens a new realtime connection, because the old ones may not answer.
+const STALE_AFTER = 30000;
 // A failed background read tries again with backoff, like the Happy Web sync (utils/time.ts backoff).
 const SYNC_RETRY_MIN = 1000;
 const SYNC_RETRY_MAX = 30000;
@@ -116,6 +125,10 @@ export type Snapshot = {
   offline: boolean;
   cachedAt: number;
   retrying: boolean;
+  // A background sync of the session list and the open chats is in progress.
+  syncing: boolean;
+  // The time of the last sync that read the list and every open chat.
+  syncedAt: number;
   loading: boolean;
   error: string;
   unauthorized: boolean;
@@ -135,6 +148,8 @@ export const emptySnapshot: Snapshot = {
   offline: false,
   cachedAt: 0,
   retrying: false,
+  syncing: false,
+  syncedAt: 0,
   loading: true,
   error: '',
   unauthorized: false,
@@ -155,7 +170,8 @@ export class HappyClient implements DemoAdapter {
   private socket: Socket | null = null;
   private disposed = false;
   private listeners = new Set<() => void>();
-  private controllers = new Set<AbortController>();
+  // Each open request, and whether it only reads data. A resume cancels only the reads.
+  private controllers = new Map<AbortController, boolean>();
   private sessions = new Map<string, SessionRecord>();
   private machines = new Map<string, MachineRecord>();
   private messages = new Map<string, Map<string, MessageRecord>>();
@@ -168,7 +184,8 @@ export class HappyClient implements DemoAdapter {
   private historyRequests = new Map<string, Promise<void>>();
   private transcriptWrites = new Map<string, Promise<void>>();
   // One follow-up read for each session and direction, shared by the callers that came during a running read.
-  private queuedHistory = new Map<string, { promise: Promise<void>; quiet: boolean }>();
+  // `retry` marks a follow-up read that runs even when the running read fails.
+  private queuedHistory = new Map<string, { promise: Promise<void>; quiet: boolean; retry: boolean }>();
   private activeSessions = new Set<string>();
   private sending = new Set<string>();
   private resuming = new Map<string, Promise<void>>();
@@ -193,6 +210,9 @@ export class HappyClient implements DemoAdapter {
   private refreshRequest: Promise<void> | null = null;
   private syncTimer: number | undefined;
   private syncFailures = 0;
+  private syncsRunning = 0;
+  // The time when the page became hidden. Zero while it is visible.
+  private hiddenAt = 0;
   private lastSyncError: unknown;
   private sessionsChangedAt = 0;
   private fullRefresh = false;
@@ -513,7 +533,7 @@ export class HappyClient implements DemoAdapter {
     this.assertAlive();
     if (this.snapshot.offline) throw new Error('Reconnect to Happy before this request.');
     const controller = new AbortController();
-    this.controllers.add(controller);
+    this.controllers.set(controller, !init.method || init.method === 'GET');
     const timer = window.setTimeout(() => controller.abort(REQUEST_TIMEOUT), 25000);
     try {
       const response = await fetch(this.credentials.server + path, {
@@ -597,13 +617,24 @@ export class HappyClient implements DemoAdapter {
       void next.then(() => { if (this.events.get(key) === next) this.events.delete(key); });
     });
     this.socket.on('ephemeral', (event) => this.ephemeral(record(event)));
-    const visibility = () => {
-      if (this.socket?.connected) this.socket.emit('app-state', { state: activity() });
-      if (activity() !== 'active') void this.flushCache();
-      if (activity() === 'active' && !this.snapshot.offline) {
-        this.readingSessions.forEach((id) => this.setSessionReading(id, true));
-        this.syncInBackground();
+    const visibility = (event?: Event) => {
+      const state = activity();
+      if (this.socket?.connected) this.socket.emit('app-state', { state });
+      if (state !== 'active') void this.flushCache();
+      if (document.visibilityState !== 'visible') {
+        this.hiddenAt ||= Date.now();
+        return;
       }
+      if (state === 'active' && !this.snapshot.offline)
+        this.readingSessions.forEach((id) => this.setSessionReading(id, true));
+      // A visible page resumes without focus, too. iOS can show a PWA before it gives the page focus.
+      if (event?.type !== 'blur') this.resume();
+    };
+    // A page from the back-forward cache was frozen. Treat it as a long background stay.
+    const pageshow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      this.hiddenAt = Math.min(this.hiddenAt || Date.now(), Date.now() - STALE_AFTER);
+      visibility(event);
     };
     const storageChanged = (event: StorageEvent) => {
       if (event.key === this.storageKey + 'lastMessageSentAt') {
@@ -621,20 +652,9 @@ export class HappyClient implements DemoAdapter {
     window.addEventListener('blur', visibility);
     document.addEventListener('visibilitychange', visibility);
     window.addEventListener('storage', storageChanged);
-    const offline = () => {
-      this.patch({ offline: true, connection: 'disconnected', loading: false, error: '', connectionError: '', retrying: false });
-      this.socket?.disconnect();
-      window.clearTimeout(this.syncTimer);
-      this.syncTimer = undefined;
-      this.controllers.forEach((controller) => controller.abort(REQUEST_CLOSED));
-      void this.flushCache();
-    };
-    const online = () => {
-      this.patch({ offline: false, connection: 'connecting', error: '', connectionError: '' });
-      this.socket?.connect();
-      // The socket connect reads the open chats.
-      this.syncInBackground(false, false);
-    };
+    window.addEventListener('pageshow', pageshow);
+    const offline = () => this.goOffline();
+    const online = () => this.goOnline();
     const save = () => { void this.flushCache(); };
     window.addEventListener('offline', offline);
     window.addEventListener('online', online);
@@ -643,6 +663,7 @@ export class HappyClient implements DemoAdapter {
       window.removeEventListener('focus', visibility);
       window.removeEventListener('blur', visibility);
       document.removeEventListener('visibilitychange', visibility);
+      window.removeEventListener('pageshow', pageshow);
       window.removeEventListener('storage', storageChanged);
       window.removeEventListener('offline', offline);
       window.removeEventListener('online', online);
@@ -655,6 +676,54 @@ export class HappyClient implements DemoAdapter {
     }
   }
   private cleanup = () => {};
+  private goOffline() {
+    this.patch({ offline: true, connection: 'disconnected', loading: false, error: '', connectionError: '', retrying: false });
+    this.socket?.disconnect();
+    window.clearTimeout(this.syncTimer);
+    this.syncTimer = undefined;
+    this.controllers.forEach((_, controller) => controller.abort(REQUEST_CLOSED));
+    void this.flushCache();
+  }
+  private goOnline() {
+    this.patch({ offline: false, connection: 'connecting', error: '', connectionError: '' });
+    this.socket?.connect();
+    // The socket connect reads the open chats.
+    this.syncInBackground(false, false);
+  }
+  // The page is visible again. The browser can skip the online and offline events while a PWA is frozen,
+  // so check the network first. After a long stay in the background, replace the reads and the realtime
+  // connection that the freeze can leave open without an answer. Then read the open chats and the list.
+  // Focus, visibility, and pageshow can come together. Only the first one after a hide counts as a resume.
+  private resume() {
+    if (this.disposed) return;
+    const away = this.hiddenAt ? Date.now() - this.hiddenAt : 0;
+    this.hiddenAt = 0;
+    if (globalThis.navigator?.onLine === false) {
+      if (!this.snapshot.offline) this.goOffline();
+      return;
+    }
+    if (this.snapshot.offline) return this.goOnline();
+    if (away >= STALE_AFTER) {
+      markRecovery('resume-stale');
+      this.cancelReads();
+      if (this.socket?.connected) this.socket.disconnect();
+    }
+    if (this.socket && !this.socket.connected) this.socket.connect();
+    this.syncInBackground(this.fullRefresh);
+  }
+  // Cancel the open reads. The shared read promises are cleared, so new reads do not wait for the old ones.
+  private cancelReads() {
+    let cancelled = false;
+    this.controllers.forEach((read, controller) => {
+      if (!read) return;
+      controller.abort(REQUEST_STALE);
+      cancelled = true;
+    });
+    if (!cancelled) return;
+    this.refreshRequest = null;
+    this.historyRequests.clear();
+    this.queuedHistory.clear();
+  }
   dispose() {
     void this.flushCache();
     this.disposed = true;
@@ -665,7 +734,7 @@ export class HappyClient implements DemoAdapter {
     this.socket?.removeAllListeners();
     this.socket?.disconnect();
     this.socket = null;
-    this.controllers.forEach((controller) => controller.abort(REQUEST_CLOSED));
+    this.controllers.forEach((_, controller) => controller.abort(REQUEST_CLOSED));
     this.listeners.clear();
     this.sessions.clear();
     this.messages.clear();
@@ -691,15 +760,17 @@ export class HappyClient implements DemoAdapter {
     // list is large because each session row carries its encrypted metadata.
     const full = this.fullRefresh || !this.sessionsChangedAt;
     this.fullRefresh = false;
-    this.refreshRequest = this.refreshRecords(full)
+    const request: Promise<void> = this.refreshRecords(full)
       .catch((error) => {
         if (full) this.fullRefresh = true;
         throw error;
       })
       .finally(() => {
-        this.refreshRequest = null;
+        // A resume can replace a cancelled read before it settles.
+        if (this.refreshRequest === request) this.refreshRequest = null;
       });
-    return this.refreshRequest;
+    this.refreshRequest = request;
+    return request;
   }
   async retry() {
     if (this.snapshot.offline || this.disposed) return;
@@ -711,6 +782,7 @@ export class HappyClient implements DemoAdapter {
     try {
       await this.syncWorkspace();
     } catch (error) {
+      if (error instanceof StaleRequestError) return;
       // A manual retry shows its failure at once. The background backoff continues after it.
       this.patch({ loading: false, error: messageError(error) });
       this.syncFailed(error);
@@ -722,6 +794,15 @@ export class HappyClient implements DemoAdapter {
   // An open chat that this client already knows reads at the same time as the list. So a slow list read, a cache save,
   // or the attention scans of other sessions do not delay it. An open chat that is not known yet waits for the list.
   private async syncWorkspace(force = false, histories = true) {
+    if (!this.syncsRunning++) this.patch({ syncing: true });
+    try {
+      await this.readWorkspace(force, histories);
+      if (histories || !this.activeSessions.size) this.patch({ syncedAt: Date.now() });
+    } finally {
+      if (!--this.syncsRunning) this.patch({ syncing: false });
+    }
+  }
+  private async readWorkspace(force: boolean, histories: boolean) {
     const list = this.refresh(force);
     if (histories) {
       list.catch(() => { /* The await below reports the failure. */ });
@@ -743,7 +824,9 @@ export class HappyClient implements DemoAdapter {
     if (this.snapshot.offline || this.disposed) return;
     window.clearTimeout(this.syncTimer);
     this.syncTimer = undefined;
-    void this.syncWorkspace(force, histories).catch((error) => this.syncFailed(error));
+    void this.syncWorkspace(force, histories).catch((error) => {
+      if (!(error instanceof StaleRequestError)) this.syncFailed(error);
+    });
   }
   // Before the first readable server read, the warning appears at once. A cached copy does not count as a read.
   // After it, the warning waits for SYNC_WARNING_FAILURES failures in a row.
@@ -1255,21 +1338,31 @@ export class HappyClient implements DemoAdapter {
     quiet = false,
   ): Promise<void> {
     const running = this.historyRequests.get(id);
+    // A Retry on a visible failure shows its loading state at once, also while a background read runs.
+    // Its read runs after the running read, even when that read fails, so the loading state always ends.
+    const shown = this.snapshot.histories[id];
+    const retry = !!running && !quiet && !!shown?.error;
+    if (retry)
+      this.patch({ histories: { ...this.snapshot.histories, [id]: { ...shown, loading: true, error: '', direction } } });
     if (running) {
       // Callers that come during a read share one later read. A failure of the running read reaches them, as before.
       const key = `${id}:${direction}`, queued = this.queuedHistory.get(key);
-      if (queued) {
+      if (queued && (queued.retry || !retry)) {
         queued.quiet &&= quiet;
         return queued.promise;
       }
-      const entry = { quiet, promise: Promise.resolve() };
-      entry.promise = running.finally(() => this.queuedHistory.delete(key))
+      const entry = { quiet, retry, promise: Promise.resolve() };
+      entry.promise = (retry ? running.catch(() => { /* The Retry reads again. */ }) : running)
+        .finally(() => { if (this.queuedHistory.get(key) === entry) this.queuedHistory.delete(key); })
         .then(() => this.loadHistory(id, direction, entry.quiet));
       this.queuedHistory.set(key, entry);
       return entry.promise;
     }
     if (direction === 'initial' && this.snapshot.histories[id]?.loaded) direction = 'forward';
-    const promise = this.fetchHistory(id, direction, quiet).finally(() => this.historyRequests.delete(id));
+    const promise: Promise<void> = this.fetchHistory(id, direction, quiet).finally(() => {
+      // A resume can replace a cancelled read before it settles.
+      if (this.historyRequests.get(id) === promise) this.historyRequests.delete(id);
+    });
     this.historyRequests.set(id, promise);
     return promise;
   }
@@ -1290,7 +1383,14 @@ export class HappyClient implements DemoAdapter {
           [id]: { ...this.snapshot.histories[id], ...previous, ...value, direction },
         },
       });
-    history({ loading: true, error: '', direction });
+    // A quiet read of a loaded chat, or of a chat that shows a failure, does not change its visible state.
+    // The workspace sync status shows it, and a failure notice with its Retry button stays on screen.
+    // Its success still clears a failed first load or a failed update.
+    const silent = quiet && (previous.loaded || !!previous.error);
+    const settled = (value: Partial<History>) => {
+      if (!silent || (previous.error && previous.direction !== 'older')) history(value);
+    };
+    if (!silent) history({ loading: true, error: '', direction });
     try {
       const stored = [...(this.messages.get(id)?.values() || [])];
       let cursor =
@@ -1316,12 +1416,12 @@ export class HappyClient implements DemoAdapter {
           );
         this.publish(id);
         if (!forward) {
-          history({ loading: false, loaded: true, hasMore: !!result.hasMore, error: '' });
+          settled({ loading: false, loaded: true, hasMore: !!result.hasMore, error: '' });
           break;
         }
         const next = Math.max(cursor, ...result.messages.map((row: Json) => row.seq));
         if (!result.hasMore) {
-          history({ loading: false, loaded: true, error: '' });
+          settled({ loading: false, loaded: true, error: '' });
           break;
         }
         if (next <= cursor) throw new Error('The message cursor did not advance.');
@@ -1330,7 +1430,12 @@ export class HappyClient implements DemoAdapter {
       this.scheduleCache(id);
       await this.flushCache();
     } catch (error) {
-      history({ loading: false, error: this.snapshot.offline || (quiet && previous.loaded) ? '' : messageError(error) });
+      // A resume cancelled this read. A newer read owns the state; without one, only stop the loading state.
+      if (error instanceof StaleRequestError) {
+        if (!silent && !this.historyRequests.has(id)) history({ loading: false });
+        throw error;
+      }
+      if (!silent) history({ loading: false, error: this.snapshot.offline ? '' : messageError(error) });
       if (this.snapshot.offline) return;
       throw error;
     }
@@ -1712,7 +1817,7 @@ export class HappyClient implements DemoAdapter {
   private async transfer<T = void>(value: string, init: RequestInit, read?: (response: Response) => Promise<T>): Promise<T> {
     const url = transferUrl(value, this.credentials.server);
     const controller = new AbortController();
-    this.controllers.add(controller);
+    this.controllers.set(controller, false);
     const timer = window.setTimeout(() => controller.abort(REQUEST_TIMEOUT), 45000);
     try {
       const headers = new Headers(init.headers);

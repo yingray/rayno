@@ -24,9 +24,13 @@
   gap: 14px;
 }
 .list .header {
+  position: relative;
+  z-index: 2;
   align-items: stretch;
   margin-bottom: 0;
 }
+/* The status floats below the header, over the first rows, so the list does not move. */
+.header > .syncStatus { top: calc(100% + 2px); }
 .list > footer {
   margin-top: 0;
 }

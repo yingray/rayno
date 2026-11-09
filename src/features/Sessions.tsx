@@ -19,7 +19,7 @@ import type { Session, SessionListMode } from '../data/types';
 import styles from './sessions.module.css';
 import { SessionListSkeleton } from '../components/WorkspaceSkeleton';
 import { SessionUsage } from './SessionUsage';
-import { OfflineStatus } from '../components/OfflineStatus';
+import { SyncStatus } from '../components/SyncStatus';
 import { WorkspaceTag } from '../components/WorkspaceTag';
 import { ChatSessionMenu } from './ChatSessionMenu';
 import { publishListedOrder, shortcutPrefix, useShortcutHints } from './sessionShortcuts';
@@ -115,8 +115,10 @@ const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, 
     && previous.onAction === next.onAction && shallowEqual(previousSummary, nextSummary);
 });
 
-export const SessionList = memo(function SessionList({ onSelect, onNew, searchRequested, onSearchHandled }: {
+export const SessionList = memo(function SessionList({ onSelect, onNew, searchRequested, onSearchHandled, syncActions = true }: {
   onSelect?: () => void; onNew?: () => void; searchRequested?: boolean; onSearchHandled?: () => void;
+  // False when a conversation on screen owns the workspace failure and its Retry button.
+  syncActions?: boolean;
 }) {
   const t = useText();
   const { allSessions, loading, offline, mode, archived, dispatch, replayWorkspaceLoading } = useDemo((store) => ({
@@ -228,7 +230,7 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
             ]} />
 
         </div>
-        <OfflineStatus label={t("Session list availability")} />
+        <SyncStatus className={styles.syncStatus} actions={syncActions} label={t("Session list availability")} />
       </header>
       {replayWorkspaceLoading && <div className={styles.loadingDemo}>
         <span>{t('Simulated workspace loading')}</span>

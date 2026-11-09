@@ -182,6 +182,8 @@
 .updateNotice[data-expanded] { left: 240px; max-width: calc(100vw - 256px); }
 .updateNotice > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .updateNotice > header strong { font-size: 14px; }
+.updateTitle { display: flex; align-items: center; gap: 8px; color: var(--accent-soft); }
+.updateTitle > strong { color: var(--body); }
 .updateNotice > header button { min-width: 44px; min-height: 44px; flex: none; }
 .updateNotice > p { margin: 8px 0 14px; font-size: 13px; line-height: 1.5; color: var(--secondary); }
 .updateNotice > button { min-height: 44px; }
