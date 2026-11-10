@@ -36,13 +36,13 @@ test('new sessions and handoffs should reuse concrete choices for each agent and
   await workspace.openSession();
   await workspace.openModelSettings();
   await expect(page.getByRole('radio', { name: 'Agent default', exact: true })).toHaveCount(0);
-  await workspace.chooseModel('Fable 5.1');
+  await workspace.chooseModel('Fable 5.2');
   await workspace.chooseEffort('Low');
   await workspace.closeModelSettings();
   await page.goto('/new');
   await page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Claude', exact: true }).click();
   // Assert
-  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('Fable 5.1');
+  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('Fable 5.2');
   await expect(page.getByRole('button', { name: 'Choose effort', exact: true })).toContainText('Low');
   expect(server.spawns).toEqual([]);
   expect(server.sends).toEqual([]);

@@ -6,6 +6,7 @@ describe('Model and effort selection', () => {
   it('should offer the v1 CLI fallback catalog when the daemon publishes no models', () => {
     // Act / Assert
     expect(modelOptions({ flavor: 'claude' }).map((model) => model.value)).toContain('claude-opus-5');
+    expect(modelOptions({ flavor: 'claude' })).toContainEqual({ value: 'claude-fable-5-2', label: 'Fable 5.2' });
     expect(modelOptions({ flavor: 'codex' }).map((model) => model.value)).toContain('gpt-6-astra');
     expect(modelOptions({ flavor: 'codex' }).map((model) => model.value)).toContain('gpt-6.1-terra');
   });
