@@ -138,6 +138,8 @@ export type Preferences = MarkdownAppearancePreferences & {
   chatWidth: ChatWidth;
   sessionListMode: SessionListMode;
   sessionListArchived: boolean;
+  // Session IDs that stay at the top of the session list. This browser keeps them.
+  pinnedSessions: string[];
   glassStyle: GlassStyle;
   compactTools: boolean;
   fasterTranscript: boolean;

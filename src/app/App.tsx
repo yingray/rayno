@@ -41,8 +41,8 @@ const useViewport = () => useSyncExternalStore(subscribeViewport, viewportBreakp
 
 // The first nine rows of the session list without a search filter. A mounted list replaces them with its own rows.
 function shortcutSessionIds(store: Store) {
-  const { sessionListArchived, sessionListMode } = store.state.preferences;
-  const sessions = listedSessions(store.state.sessions, sessionListArchived ?? false);
+  const { sessionListArchived, sessionListMode, pinnedSessions } = store.state.preferences;
+  const sessions = listedSessions(store.state.sessions, sessionListArchived ?? false, '', pinnedSessions);
   return sessionListOrder(sessions, sessionGroups(sessions, sessionListMode || 'flat')).slice(0, 9).map(session => session.id);
 }
 const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id, index) => id === b[index]);

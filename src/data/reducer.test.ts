@@ -287,4 +287,20 @@ describe('Session list preferences', () => {
       expect(restored.sessions.map(session => session.id)).toEqual(initial.sessions.map(session => session.id));
     }
   });
+
+  it('should restore valid pinned sessions and default old or invalid pins', () => {
+    // Arrange
+    const initial = createInitialState(1000000);
+    const pinned = demoReducer(initial, { type: 'preferences', value: { pinnedSessions: ['a', 'b'] } });
+    const { pinnedSessions: _pinned, ...olderPreferences } = initial.preferences;
+    const mixed = { ...initial, preferences: { ...initial.preferences, pinnedSessions: ['a', 7, '', 'a', null, 'b'] } };
+    const invalid = { ...initial, preferences: { ...initial.preferences, pinnedSessions: 'a' } };
+
+    // Act / Assert
+    const restore = (saved: unknown) => restoreState(JSON.stringify(saved), createInitialState(2000000)).preferences.pinnedSessions;
+    expect(restore(pinned)).toEqual(['a', 'b']);
+    expect(restore(mixed)).toEqual(['a', 'b']);
+    expect(restore({ ...initial, preferences: olderPreferences })).toEqual([]);
+    expect(restore(invalid)).toEqual([]);
+  });
 });

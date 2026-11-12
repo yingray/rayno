@@ -67,6 +67,7 @@ import { createToolTimelineDemo } from './toolTimelineDemo';
 import { createGitDiffDemo } from './gitDiffDemo';
 import { createComposerDemo } from './composerDemo';
 import { createSessionIdsDemo } from './sessionIdsDemo';
+import { createPinSessionsDemo } from './pinSessionsDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
 import { createMarkdownAppearanceDemo } from './markdownAppearanceDemo';
 
@@ -231,6 +232,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createGitDiffDemo(now));
   sessions.push(...createComposerDemo(now));
   sessions.push(...createSessionIdsDemo(now));
+  sessions.push(createPinSessionsDemo(now));
   sessions.push(...createWorkspaceLayoutDemo(now));
   sessions.push(createMarkdownAppearanceDemo(now));
   sessions.push(createReplyNavigatorDemo(now));

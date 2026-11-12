@@ -24,8 +24,8 @@ import { WorkspaceTag } from '../components/WorkspaceTag';
 import { ChatSessionMenu } from './ChatSessionMenu';
 import { publishListedOrder, shortcutPrefix, useShortcutHints } from './sessionShortcuts';
 
-const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, menuOpen, shortcut, onSelect, onAction }: {
-  session: Session; selected: boolean; showWorkspace: boolean; menuOpen: boolean; shortcut?: number;
+const SessionRow = memo(function SessionRow({ session, selected, pinned, showWorkspace, menuOpen, shortcut, onSelect, onAction }: {
+  session: Session; selected: boolean; pinned: boolean; showWorkspace: boolean; menuOpen: boolean; shortcut?: number;
   onSelect: (id: string) => void; onAction: (session: Session, anchor: HTMLElement, expanded?: boolean) => void;
 }) {
   const t = useText();
@@ -79,6 +79,7 @@ const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, 
           </span>}
         </span>
         <span className={styles.indicator}>
+          {pinned && <span className={styles.pin} role="img" aria-label={t("Pinned")} title={t("Pinned")}><Icon name="pin" size={13} /></span>}
           {!isSessionFaded(session) && session.status === 'running' && (
             <Spinner />
           )}
@@ -111,7 +112,7 @@ const SessionRow = memo(function SessionRow({ session, selected, showWorkspace, 
 }, (previous, next) => {
   const { messages: _previousMessages, ...previousSummary } = previous.session;
   const { messages: _nextMessages, ...nextSummary } = next.session;
-  return previous.menuOpen === next.menuOpen && previous.shortcut === next.shortcut && previous.selected === next.selected && previous.showWorkspace === next.showWorkspace && previous.onSelect === next.onSelect
+  return previous.menuOpen === next.menuOpen && previous.shortcut === next.shortcut && previous.selected === next.selected && previous.pinned === next.pinned && previous.showWorkspace === next.showWorkspace && previous.onSelect === next.onSelect
     && previous.onAction === next.onAction && shallowEqual(previousSummary, nextSummary);
 });
 
@@ -121,7 +122,8 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
   syncActions?: boolean;
 }) {
   const t = useText();
-  const { allSessions, loading, offline, mode, archived, dispatch, replayWorkspaceLoading } = useDemo((store) => ({
+  const { allSessions, loading, offline, mode, archived, pinned, dispatch, replayWorkspaceLoading } = useDemo((store) => ({
+    pinned: store.state.preferences.pinnedSessions,
     allSessions: store.state.sessions, loading: store.workspaceLoading || store.snapshot?.loading, replayWorkspaceLoading: store.replayWorkspaceLoading, offline: store.snapshot?.offline,
     mode: store.state.preferences.sessionListMode || 'flat', archived: store.state.preferences.sessionListArchived ?? false, dispatch: store.dispatch,
   }));
@@ -168,7 +170,7 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
     return () => window.removeEventListener('keydown', escape, true);
   }, [searchOpen]);
   const deferredQuery = useDeferredValue(query);
-  const sessions = useMemo(() => listedSessions(allSessions, archived, deferredQuery), [allSessions, archived, deferredQuery]);
+  const sessions = useMemo(() => listedSessions(allSessions, archived, deferredQuery, pinned), [allSessions, archived, deferredQuery, pinned]);
   const groups = useMemo(() => sessionGroups(sessions, mode), [mode, sessions]);
   // The shortcut numbers follow the rows as they show now, group by group.
   const shortcutIds = useMemo(() => sessionListOrder(sessions, groups).slice(0, 9).map(session => session.id), [groups, sessions]);
@@ -272,7 +274,7 @@ export const SessionList = memo(function SessionList({ onSelect, onNew, searchRe
                   const selected = location.pathname.includes(`/session/${session.id}`);
                   const shortcut = shortcutHints ? shortcutIds.indexOf(session.id) + 1 || undefined : undefined;
                   return (
-                    <SessionRow key={session.id} session={session} selected={selected} showWorkspace={mode === 'flat' || !group}
+                    <SessionRow key={session.id} session={session} selected={selected} pinned={pinned.includes(session.id)} showWorkspace={mode === 'flat' || !group}
                       menuOpen={actionSession?.session.id === session.id && actionSession.open} shortcut={shortcut}
                       onSelect={selectSession} onAction={openActions} />
                   );

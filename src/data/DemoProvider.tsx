@@ -16,6 +16,7 @@ import { toolTimelineDemoId, createToolTimelineDemo } from './toolTimelineDemo';
 import { gitDiffDemoId, createGitDiffDemo } from './gitDiffDemo';
 import { createComposerDemo } from './composerDemo';
 import { createSessionIdsDemo } from './sessionIdsDemo';
+import { createPinSessionsDemo } from './pinSessionsDemo';
 import { createWorkspaceLayoutDemo } from './workspaceLayoutDemo';
 import { createMarkdownAppearanceDemo, markdownAppearanceDemoId } from './markdownAppearanceDemo';
 import { createReplyNavigatorDemo, replyNavigatorDemoId } from './replyNavigatorDemo';
@@ -110,7 +111,7 @@ export function DemoProvider({
       }
       if (!restored.sessions.some(session => session.id === workspaceLoadingDemoId))
         restored.sessions = [...restored.sessions, createWorkspaceLoadingDemo()];
-      const examples = [...createWorkspaceLayoutDemo(), ...createComposerDemo(), ...createSessionIdsDemo()].filter(example => !restored.sessions.some(session => session.id === example.id));
+      const examples = [...createWorkspaceLayoutDemo(), ...createComposerDemo(), ...createSessionIdsDemo(), createPinSessionsDemo()].filter(example => !restored.sessions.some(session => session.id === example.id));
       if (examples.length) restored.sessions = [...restored.sessions, ...examples];
       if (!restored.sessions.some(session => session.id === markdownAppearanceDemoId))
         restored.sessions = [...restored.sessions, createMarkdownAppearanceDemo()];

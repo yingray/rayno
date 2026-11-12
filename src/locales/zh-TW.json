@@ -871,5 +871,8 @@
   "Fail a message update": "讓訊息更新失敗",
   "Show a new version": "顯示新版本",
   "Reset example": "重設範例",
+  "Pin session": "釘選對話",
+  "Unpin session": "取消釘選",
+  "Pinned": "已釘選",
   "Simulated: Rayno reloads with the new version. Your drafts stay on this device.": "模擬：Rayno 以新版本重新載入，草稿保留在此裝置。"
 }

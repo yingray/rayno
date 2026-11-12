@@ -13,6 +13,7 @@ import chatStyles from './chat.module.css';
 import { needsSessionResume } from '../happy/resume';
 import { buildHandoffDraft } from '../happy/handoff';
 import { draftInWorkspace } from '../data/workspaces';
+import { togglePinnedSession } from '../data/sessionList';
 import { archiveAction, countOpenSideChats, hasUnreadSideChats, leaveRoute, showSideChatEntry } from '../data/sideChats';
 
 type Point = { id: string; text: string; timestamp: number };
@@ -22,7 +23,8 @@ export function ChatSessionMenu({ session, settings, anchor, expanded, onExpande
   expanded?: boolean; onExpandedChange?: (expanded: boolean) => void;
 }) {
   const t = useText();
-  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, sideUnread, parentKnown, sideEntry } = useDemo(store => ({
+  const { live, adapter, mode, dispatch, connection, offline, machine, metadata, newDraft, sideChats, sideUnread, parentKnown, sideEntry, pinnedSessions } = useDemo(store => ({
+    pinnedSessions: store.state.preferences.pinnedSessions,
     parentKnown: !!session.parentSessionId && store.state.sessions.some(item => item.id === session.parentSessionId),
     sideChats: session.isSideChat ? 0 : countOpenSideChats(store.state.sessions, session.id),
     sideUnread: !session.isSideChat && hasUnreadSideChats(store.state.sessions, session.id),
@@ -169,6 +171,9 @@ export function ChatSessionMenu({ session, settings, anchor, expanded, onExpande
         else if (await cleanup.guard(session.id, () => adapter.archiveSession(session.id)) && (!anchor || viewingSession)) navigate(leave);
       })}><Icon name="archiveOutline" />{archiveLabel}</button>}
       {recoveryReason && <p className={styles.reason}>{recoveryReason}</p>}
+      {!session.isSideChat && <button role="menuitem" disabled={busy} onClick={() => {
+        dispatch({ type: 'preferences', value: { pinnedSessions: togglePinnedSession(pinnedSessions, session.id) } }); close();
+      }}><Icon name="pinOutline" />{pinnedSessions.includes(session.id) ? t("Unpin session") : t("Pin session")}</button>}
       <button role="menuitem" disabled={busy || !workspaceDraft} onClick={() => {
         if (!workspaceDraft) return;
         dispatch({ type: 'newDraft', value: workspaceDraft }); close(false); navigate('/new');

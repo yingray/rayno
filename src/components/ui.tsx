@@ -75,6 +75,8 @@ import {
   ellipseOutline,
   serverOutline,
   keyOutline,
+  pin,
+  pinOutline,
 } from 'ionicons/icons';
 import { useDemo } from '../data/store';
 import type { Agent } from '../data/types';
@@ -88,6 +90,8 @@ const icons = {
   arrowForward,
   arrowBack,
   archiveOutline,
+  pin,
+  pinOutline,
   searchOutline,
   codeSlash,
   mailOutline,

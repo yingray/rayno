@@ -217,6 +217,10 @@
   bottom: 12px;
   right: 13px;
 }
+.pin {
+  display: flex;
+  color: var(--secondary);
+}
 .dot {
   width: 9px;
   height: 9px;
@@ -300,6 +304,8 @@
     max-height: none;
     overflow: auto;
   }
+  /* Lets the last row scroll clear of the New session button. */
+  .rows::after { content: ''; display: block; height: 64px; }
   .row {
     min-height: 101px;
     border-radius: 22px;
@@ -361,6 +367,7 @@
 
 @media (max-width: 767px) and (max-height: 600px) {
   .fab { display: none; }
+  .rows::after { display: none; }
   .newDesktop { display: flex; }
   .mobileLogo { display: none; }
 }

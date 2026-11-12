@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from './fixtures';
-import { compareSessionActivity, formatSessionTimestamp, isSessionFaded } from './sessionList';
+import { compareSessionActivity, formatSessionTimestamp, isSessionFaded, listedSessions, PINNED_SESSION_LIMIT, sessionGroups, sessionListOrder, togglePinnedSession } from './sessionList';
 
 describe('Session list presentation', () => {
   it('should sort by published activity with stable IDs and no active-first step', () => {
@@ -48,5 +48,34 @@ describe('Session list presentation', () => {
     expect(isSessionFaded({ ...base, machineOffline: false })).toBe(false);
     expect(isSessionFaded({ ...base, machineOffline: true })).toBe(true);
     expect(isSessionFaded({ ...base, machineOffline: false, archived: true })).toBe(true);
+  });
+
+  it('should list pinned sessions first and keep the activity order in each part', () => {
+    // Arrange
+    const base = { ...createInitialState().sessions[0], archived: false, isSideChat: false };
+    const sessions = [
+      { ...base, id: 'new', project: 'A', lastActivityAt: 400 },
+      { ...base, id: 'old-pin', project: 'B', lastActivityAt: 100 },
+      { ...base, id: 'mid', project: 'B', lastActivityAt: 300 },
+      { ...base, id: 'new-pin', project: 'A', lastActivityAt: 200 },
+      { ...base, id: 'archived-pin', project: 'A', lastActivityAt: 500, archived: true },
+    ];
+    const pinned = ['old-pin', 'new-pin', 'archived-pin', 'deleted'];
+    // Act
+    const flat = listedSessions(sessions, false, '', pinned);
+    const projects = sessionListOrder(flat, sessionGroups(flat, 'projects'));
+    // Assert
+    expect(flat.map(session => session.id)).toEqual(['new-pin', 'old-pin', 'new', 'mid']);
+    expect(projects.map(session => session.id)).toEqual(['new-pin', 'new', 'old-pin', 'mid']);
+    expect(listedSessions(sessions, false).map(session => session.id)).toEqual(['new', 'mid', 'new-pin', 'old-pin']);
+  });
+
+  it('should toggle a pin and replace the oldest pin at the limit', () => {
+    // Arrange
+    const full = Array.from({ length: PINNED_SESSION_LIMIT }, (_, index) => `s${index}`);
+    // Act / Assert
+    expect(togglePinnedSession(['a'], 'b')).toEqual(['a', 'b']);
+    expect(togglePinnedSession(['a', 'b'], 'a')).toEqual(['b']);
+    expect(togglePinnedSession(full, 'next')).toEqual([...full.slice(1), 'next']);
   });
 });

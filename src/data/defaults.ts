@@ -22,6 +22,7 @@ export const defaultPreferences: Preferences = {
   chatWidth: 'medium',
   sessionListMode: 'flat',
   sessionListArchived: false,
+  pinnedSessions: [],
   ...defaultMarkdownAppearance,
   glassStyle: 'standard',
   compactTools: false,

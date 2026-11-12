@@ -4,6 +4,7 @@ import { rememberWorkspace } from './workspaces';
 import { shallowEqual } from './subscriptions';
 import { PREVIOUS_RECAP_STYLES, RECAP_STYLE_LIMIT } from '../happy/systemPrompt';
 import { resolveNewSessionPermission } from '../happy/permissionOptions';
+import { PINNED_SESSION_LIMIT } from './sessionList';
 import { markdownElements, restoreMarkdownBackgroundTheme, restoreMarkdownTextTheme } from './markdownAppearance';
 
 export const STORAGE_KEY = 'rayno.demo.v1';
@@ -164,6 +165,9 @@ function validSession(value: unknown): value is Session {
   );
 }
 
+const restorePinnedSessions = (saved: unknown[]) =>
+  Array.from(new Set(saved.filter((id): id is string => typeof id === 'string' && !!id))).slice(0, PINNED_SESSION_LIMIT);
+
 export function restoreState(raw: string | null, fallback: DemoState): DemoState {
   try {
     const parsed: unknown = raw ? JSON.parse(raw) : null;
@@ -203,6 +207,8 @@ export function restoreState(raw: string | null, fallback: DemoState): DemoState
         preferences.chatWidth = parsed.preferences.chatWidth as typeof preferences.chatWidth;
       if (parsed.preferences.sessionListMode === 'flat' || parsed.preferences.sessionListMode === 'projects')
         preferences.sessionListMode = parsed.preferences.sessionListMode;
+      if (Array.isArray(parsed.preferences.pinnedSessions))
+        preferences.pinnedSessions = restorePinnedSessions(parsed.preferences.pinnedSessions);
       for (const element of markdownElements) {
         const storedText = parsed.preferences[element.textKey], storedBackground = parsed.preferences[element.backgroundKey];
         preferences[element.textKey] = restoreMarkdownTextTheme(storedText, element.defaultText);
