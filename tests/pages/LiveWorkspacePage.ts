@@ -413,7 +413,7 @@ export class LiveWorkspacePage extends WorkspacePage {
     });
   }
   async expectWorkspaceLoading(loading: boolean) {
-    await expect(this.page.getByRole('progressbar', { name: 'Load workspace' })).toHaveCount(loading ? 1 : 0);
+    await expect(this.page.locator('[data-workspace-loading]')).toHaveCount(loading ? 1 : 0);
   }
   contextMeter() { return this.page.getByRole('dialog', { name: 'Model & effort' }).getByRole('meter', { name: 'Context window', exact: true }); }
   contextWarning() {

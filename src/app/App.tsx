@@ -188,15 +188,7 @@ export function App() {
   const listOnScreen = (showList && !(width >= 1024 && sessionsCollapsed)) || (!mobile && listOpen);
   return (
     <>
-      {offline ? (
-        <div className={`${styles.networkBar} ${styles.offline}`} title={t("Network offline")} />
-      ) : loading ? (
-        <div
-          className={`${styles.networkBar} ${styles.loading}`}
-          role="progressbar"
-          aria-label={t("Load workspace")}
-        />
-      ) : null}
+      {offline && <div className={`${styles.networkBar} ${styles.offline}`} title={t("Network offline")} />}
       {showConnectionError && (
         <div className={styles.connection} role="alert" aria-label={t("Connection error")}>
           <span>{connectionError}</span>
@@ -206,6 +198,7 @@ export function App() {
       )}
       <div
         inert={workspacePending || undefined}
+        data-workspace-loading={loading ? '' : undefined}
         className={`${styles.shell} ${path === '/new' ? styles.newSessionShell : ''} ${showConnectionError ? styles.statusShell : ''} ${expanded ? styles.expandedShell : ''}`}
       >
         {!mobile && (
