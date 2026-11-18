@@ -9,9 +9,13 @@ describe('Model and effort selection', () => {
     expect(modelOptions({ flavor: 'claude' })).toContainEqual({ value: 'claude-fable-5-2', label: 'Fable 5.2' });
     expect(modelOptions({ flavor: 'codex' }).map((model) => model.value)).toContain('gpt-6-astra');
     expect(modelOptions({ flavor: 'codex' }).map((model) => model.value)).toContain('gpt-6.1-terra');
+    expect(modelOptions({ flavor: 'codex' })).toContainEqual({ value: 'gpt-6.2-sol', label: 'GPT-6.2 Sol' });
+    expect(modelOptions({ flavor: 'codex' })).toContainEqual({ value: 'gpt-6.2-astra', label: 'GPT-6.2 Astra' });
   });
   it('should take Codex efforts from the per-model table and keep unknown models at the shared set', () => {
     // Act / Assert
+    expect(effortOptions({ flavor: 'codex' }, 'gpt-6.2-sol')).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
+    expect(effortOptions({ flavor: 'codex' }, 'gpt-6.2-astra')).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
     expect(effortOptions({ flavor: 'codex' }, 'gpt-6-astra')).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
     expect(effortOptions({ flavor: 'codex' }, 'gpt-5.6-terra')).toEqual(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']);
     expect(effortOptions({ flavor: 'codex' }, 'gpt-5.6-luna')).toEqual(['low', 'medium', 'high', 'xhigh', 'max']);
@@ -26,10 +30,14 @@ describe('Model and effort selection', () => {
     const metadata = { flavor: 'codex', models: [
       { code: 'gpt-6-astra', value: 'GPT-6 Astra', thinkingLevels: ['low', 'high'] },
       { code: 'gpt-6.1-sol', value: 'GPT-6.1 Sol', thinkingLevels: ['medium', 'xhigh', 'max', 'ultra'] },
+      { code: 'gpt-6.2-sol', value: 'GPT-6.2 Sol', thinkingLevels: ['medium', 'high'], defaultThinkingLevel: 'medium' },
     ] };
     // Act / Assert
     expect(effortOptions(metadata, 'gpt-6-astra')).toEqual(['low', 'high']);
     expect(effortOptions(metadata, 'gpt-6.1-sol')).toEqual(['medium', 'xhigh', 'max', 'ultra']);
+    expect(effortOptions(metadata, 'gpt-6.2-sol')).toEqual(['medium', 'high']);
+    expect(defaultEffort(metadata, 'gpt-6.2-sol')).toBe('medium');
+    expect(modelOptions(metadata).map(model => model.value)).not.toContain('gpt-6.2-astra');
   });
   it('should use the reported catalog and keep identical model IDs distinct by provider', () => {
     // Arrange

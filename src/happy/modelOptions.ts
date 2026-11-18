@@ -17,15 +17,18 @@ const CLAUDE_MODELS = [
   ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-haiku-5-5', 'Haiku 5.5'],
 ];
 const CODEX_MODELS = [
+  ['gpt-6.2-sol', 'GPT-6.2 Sol'], ['gpt-6.2-astra', 'GPT-6.2 Astra'],
   ['gpt-6-astra', 'GPT-6 Astra'], ['gpt-6.1-sol', 'GPT-6.1 Sol'],
   ['gpt-6.1-terra', 'GPT-6.1 Terra'],
   ['gpt-6-sol', 'GPT-6 Sol'], ['gpt-6-luna', 'GPT-6 Luna'],
   ['gpt-5.6-sol', 'GPT-5.6 Sol'], ['gpt-5.6-terra', 'GPT-5.6 Terra'],
   ['gpt-5.6-luna', 'GPT-5.6 Luna'],
 ];
-// Codex 0.167.0 model/list, checked on 2026-11-06. Published catalogs take precedence.
+// Codex 0.169.1 model/list, checked on 2026-11-18. Published catalogs take precedence.
 // Ultra includes maximum reasoning and automatic task delegation. Luna stops at max.
 const CODEX_EFFORTS_BY_MODEL: Record<string, readonly string[]> = {
+  'gpt-6.2-sol': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+  'gpt-6.2-astra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
   'gpt-6-astra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
   'gpt-6.1-sol': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
   'gpt-6.1-terra': ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],

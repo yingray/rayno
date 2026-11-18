@@ -124,8 +124,12 @@ export function DemoProvider({
         restored.sessions = [...restored.sessions, createReplyNavigatorDemo()];
       if (!restored.sessions.some(session => session.id === chatScrollDemoId))
         restored.sessions = [...restored.sessions, createChatScrollDemo()];
-      if (!restored.sessions.some(session => session.id === modelSelectionDemoId))
-        restored.sessions = [...restored.sessions, createModelSelectionDemo()];
+      const modelDemo = createModelSelectionDemo();
+      const savedModelDemo = restored.sessions.find(session => session.id === modelSelectionDemoId);
+      if (!savedModelDemo) restored.sessions = [...restored.sessions, modelDemo];
+      else savedModelDemo.messages = savedModelDemo.messages.map(message =>
+        message.id === modelDemo.messages[0].id && message.role === 'assistant'
+          ? { ...message, content: modelDemo.messages[0].content } : message);
       if (!restored.sessions.some(session => session.id === syncStatusDemoId))
         restored.sessions = [...restored.sessions, createSyncStatusDemo()];
       if (window.location.pathname === `/session/${replyOptionsDemoId}`

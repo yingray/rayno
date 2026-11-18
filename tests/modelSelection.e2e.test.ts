@@ -16,6 +16,8 @@ test('Codex fallback choices should reach encrypted messages with their supporte
   source.metadata = await server.encryption.encrypt({ ...metadata, flavor: 'codex', models: undefined, model: 'gpt-6.1-sol' }, server.dataKey);
   const workspace = new LiveWorkspacePage(page);
   const choices = [
+    ['GPT-6.2 Sol', 'gpt-6.2-sol', 'Max', 'max'],
+    ['GPT-6.2 Astra', 'gpt-6.2-astra', 'Ultra', 'ultra'],
     ['GPT-6.1 Sol', 'gpt-6.1-sol', 'Ultra', 'ultra'],
     ['GPT-6.1 Terra', 'gpt-6.1-terra', 'Max', 'max'],
     ['GPT-6 Sol', 'gpt-6-sol', 'Ultra', 'ultra'],
@@ -99,29 +101,31 @@ test('model and effort picks should persist and reach encrypted messages with th
   expect(server.spawns).toEqual([]);
 });
 
-test('a new Codex session should apply Terra and Ultra to both spawn and its first message', async ({ page }) => {
-  // Arrange
-  const server = new HappyServer();
-  await server.install(page);
-  const workspace = new LiveWorkspacePage(page);
-  await workspace.route('/new');
-  // Act
-  await workspace.chooseNewAgent('Codex');
-  await workspace.chooseNewModel('GPT-6.1 Terra');
-  await workspace.chooseNewEffort('Ultra');
-  await page.reload();
-  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('GPT-6.1 Terra');
-  await expect(page.getByRole('button', { name: 'Choose effort', exact: true })).toContainText('Ultra');
-  await page.getByLabel('Folder', { exact: true }).fill('/real/project');
-  await page.getByRole('textbox', { name: 'Task description' }).fill('Start with the selected effort');
-  await page.getByRole('button', { name: 'Start', exact: true }).click();
-  // Assert
-  await expect(page).toHaveURL(/\/session\/created-session$/);
-  expect(server.spawns).toHaveLength(1);
-  expect(server.spawns[0]).toMatchObject({ modelMode: 'gpt-6.1-terra', effortLevel: 'ultra' });
-  const raw = await server.encryption.decrypt<Record<string, unknown>>(server.sends[0].content, server.dataKey);
-  expect(raw).toMatchObject({ meta: { model: 'gpt-6.1-terra', effort: 'ultra' } });
-});
+for (const [label, model] of [['GPT-6.2 Sol', 'gpt-6.2-sol'], ['GPT-6.2 Astra', 'gpt-6.2-astra'], ['GPT-6.1 Terra', 'gpt-6.1-terra']]) {
+  test(`a new Codex session should apply ${label} and Ultra to both spawn and its first message`, async ({ page }) => {
+    // Arrange
+    const server = new HappyServer();
+    await server.install(page);
+    const workspace = new LiveWorkspacePage(page);
+    await workspace.route('/new');
+    // Act
+    await workspace.chooseNewAgent('Codex');
+    await workspace.chooseNewModel(label);
+    await workspace.chooseNewEffort('Ultra');
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText(label);
+    await expect(page.getByRole('button', { name: 'Choose effort', exact: true })).toContainText('Ultra');
+    await page.getByLabel('Folder', { exact: true }).fill('/real/project');
+    await page.getByRole('textbox', { name: 'Task description' }).fill('Start with the selected effort');
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    // Assert
+    await expect(page).toHaveURL(/\/session\/created-session$/);
+    expect(server.spawns).toHaveLength(1);
+    expect(server.spawns[0]).toMatchObject({ modelMode: model, effortLevel: 'ultra' });
+    const raw = await server.encryption.decrypt<Record<string, unknown>>(server.sends[0].content, server.dataKey);
+    expect(raw).toMatchObject({ meta: { model, effort: 'ultra' } });
+  });
+}
 
 test('new-session controls should hide Happy Agent and migrate a saved legacy draft to a concrete CLI choice', async ({ page }) => {
   // Arrange

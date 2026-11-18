@@ -46,6 +46,6 @@ export class ModelSelectionDemoPage extends LiveWorkspacePage {
     await this.activate(this.page.getByRole('button', { name: 'Send message', exact: true }));
     await expect(input).toHaveValue('');
     await expect(this.page.getByRole('button', { name: 'Stop response', exact: true })).toBeHidden({ timeout: 10000 });
-    await expect(this.page.getByText('simulated response', { exact: false })).toBeVisible();
+    await expect(this.page.getByText('simulated response', { exact: false }).last()).toBeVisible();
   }
 }
