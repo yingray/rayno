@@ -1613,13 +1613,14 @@
 
 .sideUnread { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--accent-soft); }
 
-.responseActions { display: flex; margin-top: 4px; }
-.copyResponse {
+.messageActions { display: flex; margin-top: 4px; }
+.userMessage > .messageActions { justify-content: flex-end; }
+.copyMessage {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   flex: none;
   border: 0;
@@ -1628,6 +1629,10 @@
   color: var(--muted);
   cursor: pointer;
 }
-.copyResponse:hover { color: var(--text); background: var(--well); }
+.copyMessage:hover { color: var(--text); background: var(--well); }
+.copyMessage:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+@media (max-width: 767px), (max-width: 1024px) and (max-height: 480px), (any-pointer: coarse) {
+  .copyMessage { width: 44px; height: 44px; }
+}
 
 .sampleImage { min-width: 44px; min-height: 44px; align-self: flex-start; }

@@ -376,19 +376,22 @@ export class LiveWorkspacePage extends WorkspacePage {
   }
   async expectReplyTargetsReachable() {
     for (const button of await this.replyOptions().getByRole('button').all()) {
-      // Scroll past the floating composer before checking the touch target.
-      await button.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-      const target = (await button.boundingBox())!;
-      expect(target.width).toBeGreaterThanOrEqual(44);
-      expect(target.height).toBeGreaterThanOrEqual(44);
-      expect(target.x).toBeGreaterThanOrEqual(0);
-      expect(target.y).toBeGreaterThanOrEqual(0);
-      expect(target.x + target.width).toBeLessThanOrEqual(this.page.viewportSize()!.width);
-      expect(target.y + target.height).toBeLessThanOrEqual(this.page.viewportSize()!.height);
-      expect(await button.evaluate((element) => {
-        const rect = element.getBoundingClientRect();
-        return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
-      })).toBe(true);
+      // The composer and transcript can resize together after a send receipt.
+      await expect(async () => {
+        const target = await button.evaluate((element) => {
+          element.scrollIntoView({ block: 'center' });
+          const { x, y, width, height } = element.getBoundingClientRect();
+          const reachable = element.contains(document.elementFromPoint(x + width / 2, y + height / 2));
+          return { x, y, width, height, reachable };
+        });
+        expect(target.width).toBeGreaterThanOrEqual(44);
+        expect(target.height).toBeGreaterThanOrEqual(44);
+        expect(target.x).toBeGreaterThanOrEqual(0);
+        expect(target.y).toBeGreaterThanOrEqual(0);
+        expect(target.x + target.width).toBeLessThanOrEqual(this.page.viewportSize()!.width);
+        expect(target.y + target.height).toBeLessThanOrEqual(this.page.viewportSize()!.height);
+        expect(target.reachable).toBe(true);
+      }).toPass({ timeout: 5000 });
     }
   }
   async tapReply(text: string) {

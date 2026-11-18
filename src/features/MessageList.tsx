@@ -265,8 +265,15 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
     ? <RecapCard key="recap" messageId={message.id} value={recap} writing={recapWriting} onJump={onJump} onReveal={onReveal} notify={notify} />
     : null;
   const optionsAt = card ? parts.findIndex((part) => part.kind === 'options') : -1;
-  const canCopy = message.role === 'assistant' && parts.some((part) =>
+  let request = message.role === 'user' ? message.content : '';
+  if (command) {
+    request = [command.name, command.args].filter(Boolean).join(' ');
+    if (command.remainder) request += '\n\n' + command.remainder;
+  }
+  const canCopyRequest = !!request.trim();
+  const canCopyResponse = message.role === 'assistant' && parts.some((part) =>
     part.kind === 'options' || part.kind === 'markdown' && !!part.content.trim());
+  const copyLabel = canCopyRequest ? t("Copy request") : t("Copy response");
   function copyResponse() {
     const text = parts.flatMap((part) => part.kind === 'markdown' && part.content.trim() ? [part.content.trim()]
       : part.kind === 'options' ? [part.items.map((item) => `- ${item}`).join('\n')] : []).join('\n\n');
@@ -316,9 +323,10 @@ const MessageBlock = memo(function MessageBlock({ sessionId, message, response, 
           {optionsAt === -1 && card}
         </div>
       )}
-      {canCopy && <div className={styles.responseActions}>
-        <button type="button" className={styles.copyResponse} aria-label={t("Copy response")} title={t("Copy response")} onClick={copyResponse}>
-          <Icon name="copyOutline" size={15} />
+      {(canCopyRequest || canCopyResponse) && <div className={styles.messageActions}>
+        <button type="button" className={styles.copyMessage} aria-label={copyLabel} title={copyLabel}
+          onClick={canCopyRequest ? () => void copyText(request, notify) : copyResponse}>
+          <Icon name="copyOutline" size={14} />
         </button>
       </div>}
     </article>

@@ -24,6 +24,7 @@ import { createWorkspaceLoadingDemo, workspaceLoadingDemoId } from './workspaceL
 import { createChatScrollDemo, chatScrollDemoId } from './chatScrollDemo';
 import { createModelSelectionDemo, modelSelectionDemoId } from './modelSelectionDemo';
 import { createVisualizationDemo, visualizationDemoId } from './visualizationDemo';
+import { createCopyRequestDemo, copyRequestDemoId } from './copyRequestDemo';
 import { createSyncStatusDemo, initialSyncDemo, syncDemoStep, syncStatusDemoId, syncStatusDemoUpdate, type SyncDemoStep } from './syncStatusDemo';
 import type { SyncInput } from './syncStatus';
 
@@ -101,8 +102,9 @@ export function DemoProvider({
     const fallback = createInitialState();
     try {
       const restored = restoreState(localStorage.getItem(STORAGE_KEY), fallback);
+      const copyRequestDemo = createCopyRequestDemo();
       // Update only the built-in instructions. Keep saved messages and account choices.
-      for (const example of createComposerDemo()) {
+      for (const example of [...createComposerDemo(), copyRequestDemo]) {
         const saved = restored.sessions.find(session => session.id === example.id);
         if (!saved) continue;
         saved.messages = saved.messages.map(message => {
@@ -135,6 +137,8 @@ export function DemoProvider({
         restored.sessions = [...restored.sessions, createSyncStatusDemo()];
       if (!restored.sessions.some(session => session.id === visualizationDemoId))
         restored.sessions = [...restored.sessions, createVisualizationDemo()];
+      if (!restored.sessions.some(session => session.id === copyRequestDemoId))
+        restored.sessions = [...restored.sessions, copyRequestDemo];
       if (window.location.pathname === `/session/${replyOptionsDemoId}`
         && !restored.sessions.some(session => session.id === replyOptionsDemoId)) {
         return { ...restored, sessions: [...restored.sessions, createReplyOptionsDemo()] };

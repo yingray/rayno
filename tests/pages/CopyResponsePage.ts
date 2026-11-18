@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 import { PriorityFeaturesPage } from './PriorityFeaturesPage';
 
 export class CopyResponsePage extends PriorityFeaturesPage {
@@ -20,15 +20,19 @@ export class CopyResponsePage extends PriorityFeaturesPage {
     return this.page.evaluate(() => (window as unknown as { copiedResponse?: string }).copiedResponse);
   }
   async copy(text: string, touch: boolean) {
-    const button = this.copyButton(text);
-    await button.scrollIntoViewIfNeeded();
-    await expect(button).toBeInViewport();
-    await this.expectTouchTarget(button);
-    expect(await button.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      return element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
-    })).toBe(true);
-    if (touch) await button.tap();
-    else await button.click();
+    await this.activateCopy(this.copyButton(text), touch);
+  }
+  protected async activateCopy(button: Locator, touch: boolean) {
+    await expect(async () => {
+      expect(await button.evaluate((element) => {
+        element.scrollIntoView({ block: 'center', inline: 'nearest' });
+        const box = element.getBoundingClientRect();
+        return element.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+      })).toBe(true);
+    }).toPass({ timeout: 5000 });
+    if (touch) {
+      await this.expectTouchTarget(button);
+      await button.tap();
+    } else await button.click();
   }
 }
