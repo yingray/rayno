@@ -1,4 +1,4 @@
-import { Children, isValidElement, memo } from 'react';
+import { Children, isValidElement, memo, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
 import { useText } from '../i18n';
@@ -7,12 +7,23 @@ import { isLocalImageLink, isLocalImageSource } from '../happy/localImages';
 import { MermaidDiagram } from './MermaidDiagram';
 import { LocalImage } from './LocalImage';
 import { CodeBlock } from './CodeBlock';
+import { visualizationParts } from '../data/visualizationReferences';
+import { VisualizationReferenceCard } from './VisualizationReferenceCard';
 import styles from './chat.module.css';
 
-export const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFilename, notify, sessionId, messageId }: {
+type MarkdownProps = {
   content: string; codeFilename: string; notify: (message: string) => void;
   sessionId: string; messageId: string;
-}) {
+};
+
+export const RenderedMarkdown = memo(function RenderedMarkdown({ content, ...props }: MarkdownProps) {
+  const parts = useMemo(() => visualizationParts(content), [content]);
+  return <>{parts.map((part, index) => 'reference' in part
+    ? <VisualizationReferenceCard key={index + ':' + part.reference.path} reference={part.reference} sessionId={props.sessionId} messageId={props.messageId} />
+    : <MarkdownText key={index} content={part.text} {...props} />)}</>;
+});
+
+function MarkdownText({ content, codeFilename, notify, sessionId, messageId }: MarkdownProps) {
   const t = useText();
   return (
     <Markdown
@@ -53,4 +64,4 @@ export const RenderedMarkdown = memo(function RenderedMarkdown({ content, codeFi
       {content}
     </Markdown>
   );
-});
+}

@@ -50,6 +50,14 @@ Metadata uses the existing version-conflict retry. A lost metadata acknowledgeme
 Saved refs use the normal authenticated download, decryption, and encrypted offline cache. No GitHub upload or public URL is involved.
 The existing CLI workspace path checks remain in force; imports do not run shell commands or bypass them for outside paths.
 
+Codex `visualize` references on a separate Markdown line show an Open visualization card.
+An explicit open reads an HTML file of up to 1 MB from the same session with `listDirectory` and `readFile`.
+Rayno checks the path and each directory entry before it reads the file. Links and files outside the workspace are unavailable.
+Rayno extracts numeric scatter configurations from `script[type="application/json"][data-viz-chart]` in a detached template.
+The chart uses Rayno controls. The file's scripts, markup, and resources do not load in the chat.
+The account's encrypted offline asset cache holds the parsed chart data with the session and message reference.
+The preview does not upload an attachment or start an agent turn.
+
 Complete leading task-notification wrappers do not create visible messages or attention changes.
 Trailing user text and inline or incomplete examples remain visible. Stop accepts authenticated empty
 RPC replies from older CLIs; other reads still require JSON. Encrypted RPC errors reach the caller.

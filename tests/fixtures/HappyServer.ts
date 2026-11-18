@@ -392,9 +392,13 @@ export class HappyServer {
           if (payload.method.endsWith(':ripgrep'))
             result = { success: true, exitCode: 0, stdout: this.ripgrepStdout, stderr: '' };
           if (payload.method.endsWith(':listDirectory')) {
-            const images = [...this.localImages].filter(([path]) => path.slice(0, path.lastIndexOf('/')) === params.path);
-            result = { success: true, entries: images.length ? images.map(([path, data]) => ({ name: path.slice(path.lastIndexOf('/') + 1), type: 'file', size: data.length }))
-              : [{ name: 'README.md', type: 'file', size: 17 }] };
+            const entries = new Map<string, { name: string; type: string; size?: number }>();
+            for (const [path, data] of this.localImages) {
+              if (!path.startsWith(params.path + '/')) continue;
+              const [name, child] = path.slice(params.path.length + 1).split('/');
+              entries.set(name, child ? { name, type: 'directory' } : { name, type: 'file', size: data.length });
+            }
+            result = { success: true, entries: entries.size ? [...entries.values()] : [{ name: 'README.md', type: 'file', size: 17 }] };
           }
           if (payload.method.endsWith(':readFile')) {
             this.localImageReads.push(params.path);

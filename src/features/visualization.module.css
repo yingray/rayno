@@ -1,0 +1,36 @@
+.reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.reference strong { flex: 1 1 150px; min-width: 0; }
+.reference button, .viewer button { min-height: 44px; min-width: 44px; }
+.viewer { width: 720px; }
+.viewer.wide { width: 980px; }
+.viewer h2, .chart h3, .failure code { overflow-wrap: anywhere; }
+.loading { display: flex; align-items: center; gap: 8px; }
+.failure { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.chart + .chart { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 20px; }
+.chart h3 { margin: 0; font-size: 16px; }
+.chart p { margin: 4px 0 8px; overflow-wrap: anywhere; }
+.plot { display: block; width: 100%; }
+.plot line { stroke: var(--border-control); }
+.plot text { fill: var(--secondary); font-size: 11px; }
+.axis { display: block; color: var(--secondary); font-size: 13px; text-align: center; overflow-wrap: anywhere; }
+.legend, .values { display: flex; flex-wrap: wrap; gap: 6px 14px; overflow-wrap: anywhere; }
+.legend { padding: 0; list-style: none; font-size: 13px; }
+.legend li { display: flex; align-items: center; gap: 6px; max-width: 100%; }
+.legend li i { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; }
+.legend li span { min-width: 0; }
+.pointPicker select { min-height: 44px; font-size: 16px; min-width: 0; }
+.pointPicker select:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; box-shadow: none; }
+.values { font-size: 14px; }
+@media (max-width: 480px), (pointer: coarse) and (max-height: 500px) {
+  .viewer { padding: 14px; max-height: min(calc(100dvh - 40px), calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8px)); }
+}

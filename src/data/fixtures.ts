@@ -61,6 +61,7 @@ import { createWorkspaceLoadingDemo } from './workspaceLoadingDemo';
 import { createSyncStatusDemo } from './syncStatusDemo';
 import { createChatScrollDemo } from './chatScrollDemo';
 import { createModelSelectionDemo } from './modelSelectionDemo';
+import { createVisualizationDemo } from './visualizationDemo';
 import { createReplyOptionsDemo } from './replyOptionsDemo';
 import { createReplyNavigatorDemo } from './replyNavigatorDemo';
 import { createToolTimelineDemo } from './toolTimelineDemo';
@@ -238,6 +239,7 @@ export function createInitialState(now = Date.now()): DemoState {
   sessions.push(createReplyNavigatorDemo(now));
   sessions.push(createChatScrollDemo(now));
   sessions.push(createModelSelectionDemo(now));
+  sessions.push(createVisualizationDemo(now));
   sessions.push(createWorkspaceLoadingDemo(now));
   sessions.push(createSyncStatusDemo(now));
   return {

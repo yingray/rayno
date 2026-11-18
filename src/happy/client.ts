@@ -59,6 +59,7 @@ import { SIDE_CHAT_AGENT_LIMIT } from '../data/sideChats';
 import type { GoalAction } from './agentGoal';
 import { imageMime, transferUrl, validateImages } from './attachments';
 import { localImageKey, localImagePath, MAX_LOCAL_IMAGE_BYTES, savedLocalImage } from './localImages';
+import type { ScatterChart } from './visualizations';
 import { resumeUnavailable } from './resume';
 import { RECAP_REQUEST } from './systemPrompt';
 import { parseUsageReport, usageQuery, type UsagePeriod } from './usageReport';
@@ -1879,6 +1880,27 @@ export class HappyClient implements DemoAdapter {
     this.assertAlive();
     return new Blob([bytes as BlobPart], { type });
   }
+  async loadVisualization(id: string, messageId: string, source: string): Promise<ScatterChart[]> {
+    const session = this.getSession(id);
+    const ref = JSON.stringify(['visualization', messageId, source]);
+    const cached = await this.cache.visualization(id, ref);
+    this.assertAlive();
+    if (cached) return cached;
+    if (this.snapshot.offline || this.snapshot.connection !== 'connected')
+      throw new Error('Connect to load this visualization from the computer.');
+    if (!session.wire.active || isSessionArchived(session))
+      throw new Error('Resume this session to load its visualization.');
+    const { readWorkspaceVisualization } = await import('./visualizations');
+    const charts = await readWorkspaceVisualization(source, session.metadata.path || '', (method, params) => this.rpc(id, method, params));
+    this.assertAlive();
+    this.cacheWrite = this.cacheWrite.then(async () => {
+      if (!this.disposed && !this.cacheDisabled) await this.cache.saveVisualization(id, ref, charts);
+    });
+    await this.cacheWrite;
+    this.assertAlive();
+    return charts;
+  }
+
   importLocalImage(id: string, messageId: string, source: string): Promise<Attachment> {
     const key = JSON.stringify([id, messageId, source]);
     const pending = this.localImageImports.get(key);

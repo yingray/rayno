@@ -1,6 +1,7 @@
-import { base64, type HappyCrypto } from './crypto';
+import { base64, unbase64, type HappyCrypto } from './crypto';
 import type { History, Json, MessageRecord, SavedSubagent } from './normalize';
 import { timeStageAsync } from './perf';
+import type { ScatterChart } from './visualizations';
 
 export type CachedWorkspace = {
   version: 1;
@@ -286,6 +287,18 @@ export class OfflineCache {
 
   async saveImage(id: string, ref: string, data: Uint8Array): Promise<void> {
     await this.storeImage(id, ref, base64(data));
+  }
+
+  // Charts use the same encrypted asset budget and session cleanup as images.
+  async visualization(id: string, ref: string): Promise<ScatterChart[] | null> {
+    const data = await this.image(id, ref);
+    if (!data) return null;
+    try { return JSON.parse(new TextDecoder().decode(unbase64(data))); }
+    catch { return null; }
+  }
+
+  async saveVisualization(id: string, ref: string, charts: ScatterChart[]): Promise<void> {
+    await this.saveImage(id, ref, new TextEncoder().encode(JSON.stringify(charts)));
   }
 
   private async storeImage(id: string, ref: string, data: string, legacyKey?: string, retried = false): Promise<void> {

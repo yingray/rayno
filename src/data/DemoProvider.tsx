@@ -23,6 +23,7 @@ import { createReplyNavigatorDemo, replyNavigatorDemoId } from './replyNavigator
 import { createWorkspaceLoadingDemo, workspaceLoadingDemoId } from './workspaceLoadingDemo';
 import { createChatScrollDemo, chatScrollDemoId } from './chatScrollDemo';
 import { createModelSelectionDemo, modelSelectionDemoId } from './modelSelectionDemo';
+import { createVisualizationDemo, visualizationDemoId } from './visualizationDemo';
 import { createSyncStatusDemo, initialSyncDemo, syncDemoStep, syncStatusDemoId, syncStatusDemoUpdate, type SyncDemoStep } from './syncStatusDemo';
 import type { SyncInput } from './syncStatus';
 
@@ -132,6 +133,8 @@ export function DemoProvider({
           ? { ...message, content: modelDemo.messages[0].content } : message);
       if (!restored.sessions.some(session => session.id === syncStatusDemoId))
         restored.sessions = [...restored.sessions, createSyncStatusDemo()];
+      if (!restored.sessions.some(session => session.id === visualizationDemoId))
+        restored.sessions = [...restored.sessions, createVisualizationDemo()];
       if (window.location.pathname === `/session/${replyOptionsDemoId}`
         && !restored.sessions.some(session => session.id === replyOptionsDemoId)) {
         return { ...restored, sessions: [...restored.sessions, createReplyOptionsDemo()] };
