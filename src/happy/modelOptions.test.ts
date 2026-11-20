@@ -5,15 +5,20 @@ import { messageMeta } from './normalize';
 describe('Model and effort selection', () => {
   it('should offer the v1 CLI fallback catalog when the daemon publishes no models', () => {
     // Act / Assert
-    expect(modelOptions({ flavor: 'claude' }).map((model) => model.value)).toContain('claude-opus-5');
-    expect(modelOptions({ flavor: 'claude' })).toContainEqual({ value: 'claude-fable-5-2', label: 'Fable 5.2' });
+    expect(modelOptions({ flavor: 'claude' })).toEqual([
+      { value: 'claude-fable-5-2', label: 'Fable 5.2' }, { value: 'claude-opus-5-5', label: 'Opus 5.5' },
+      { value: 'claude-sonnet-5-5', label: 'Sonnet 5.5' }, { value: 'claude-haiku-5-5', label: 'Haiku 5.5' },
+    ]);
     expect(modelOptions({ flavor: 'codex' })).toEqual([
       { value: 'gpt-6.2-sol', label: 'GPT-6.2 Sol' }, { value: 'gpt-6.2-astra', label: 'GPT-6.2 Astra' },
       { value: 'gpt-6.1-terra', label: 'GPT-6.1 Terra' }, { value: 'gpt-6-luna', label: 'GPT-6 Luna' },
     ]);
   });
-  it('should keep a retired Codex model that the session reports or used', () => {
+  it('should keep a retired model that the session reports or used', () => {
     // Act / Assert
+    expect(modelOptions({ currentModelCode: 'claude-opus-5' })).toContainEqual({ value: 'claude-opus-5', label: 'Opus 5' });
+    expect(modelOptions({ flavor: 'claude' }, undefined, ['claude-fable-5-1']).map((model) => model.label))
+      .toEqual(['Fable 5.2', 'Opus 5.5', 'Sonnet 5.5', 'Haiku 5.5', 'Fable 5.1']);
     expect(modelOptions({ flavor: 'codex', currentModelCode: 'gpt-6.1-sol' }))
       .toContainEqual({ value: 'gpt-6.1-sol', label: 'GPT-6.1 Sol' });
     expect(modelOptions({ flavor: 'codex' }, undefined, ['gpt-6-astra']).map((model) => model.label))

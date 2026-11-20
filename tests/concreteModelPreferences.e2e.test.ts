@@ -10,21 +10,21 @@ test('new sessions and handoffs should reuse concrete choices for each agent and
   const workspace = new LiveWorkspacePage(page);
   await page.goto('/new');
   // Act
-  await workspace.chooseNewModel('Opus 5');
+  await workspace.chooseNewModel('Opus 5.5');
   await workspace.chooseNewEffort('Max');
   await page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Codex', exact: true }).click();
   await workspace.chooseNewModel('GPT-6.1 Terra');
   await workspace.chooseNewEffort('High');
   await page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Claude', exact: true }).click();
   // Assert
-  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('Opus 5');
+  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('Opus 5.5');
   await expect(page.getByRole('button', { name: 'Choose effort', exact: true })).toContainText('Max');
   // Act
   await page.reload();
   await workspace.openSession();
   await page.goto('/new');
   // Assert
-  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('Opus 5');
+  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('Opus 5.5');
   await expect(page.getByRole('button', { name: 'Choose effort', exact: true })).toContainText('Max');
   // Act
   await workspace.openSession();

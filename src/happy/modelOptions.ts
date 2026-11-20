@@ -11,16 +11,17 @@ export type ModelOption = {
 
 // Adapted from the inspected v1 catalog. Daemon catalogs take precedence.
 const CLAUDE_MODELS = [
-  ['claude-fable-5-2', 'Fable 5.2'], ['claude-fable-5-1', 'Fable 5.1'],
-  ['claude-fable-5', 'Fable 5'],
-  ['claude-opus-5-5', 'Opus 5.5'], ['claude-opus-5', 'Opus 5'],
+  ['claude-fable-5-2', 'Fable 5.2'], ['claude-opus-5-5', 'Opus 5.5'],
   ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-haiku-5-5', 'Haiku 5.5'],
+];
+// Earlier models. A session that already uses one keeps it. New sessions do not offer them.
+const RETIRED_CLAUDE_MODELS = [
+  ['claude-fable-5-1', 'Fable 5.1'], ['claude-fable-5', 'Fable 5'], ['claude-opus-5', 'Opus 5'],
 ];
 const CODEX_MODELS = [
   ['gpt-6.2-sol', 'GPT-6.2 Sol'], ['gpt-6.2-astra', 'GPT-6.2 Astra'],
   ['gpt-6.1-terra', 'GPT-6.1 Terra'], ['gpt-6-luna', 'GPT-6 Luna'],
 ];
-// Earlier Codex models. A session that already uses one keeps it. New sessions do not offer them.
 const RETIRED_CODEX_MODELS = [
   ['gpt-6.1-sol', 'GPT-6.1 Sol'], ['gpt-6-sol', 'GPT-6 Sol'], ['gpt-6-astra', 'GPT-6 Astra'],
   ['gpt-5.6-sol', 'GPT-5.6 Sol'], ['gpt-5.6-terra', 'GPT-5.6 Terra'], ['gpt-5.6-luna', 'GPT-5.6 Luna'],
@@ -52,7 +53,7 @@ export const effortLabel = (value: string | null) => value === null
 export const isConcreteModel = (value: unknown): value is string => typeof value === 'string' &&
   !!value.trim() && !['default', 'Agent default'].includes(value) && !value.endsWith(':default');
 
-/** `inUse` names the models that the session itself used. They keep a retired Codex model available. */
+/** `inUse` names the models that the session itself used. They keep a retired model available. */
 export function modelOptions(metadata: Json, configured = currentModel(metadata), inUse: readonly string[] = []): ModelOption[] {
   const rig = isRig(metadata);
   let options: ModelOption[] = (Array.isArray(metadata.models) ? metadata.models : [])
@@ -70,10 +71,10 @@ export function modelOptions(metadata: Json, configured = currentModel(metadata)
       }];
     });
   if (!options.length && !rig) {
-    const catalog = metadata.flavor === 'codex'
-      ? [...CODEX_MODELS, ...RETIRED_CODEX_MODELS.filter(([value]) => value === configured || inUse.includes(value))]
-      : !metadata.flavor || metadata.flavor === 'claude' ? CLAUDE_MODELS : [];
-    options = catalog.map(([value, label]) => ({ value, label }));
+    const [catalog, retired] = metadata.flavor === 'codex' ? [CODEX_MODELS, RETIRED_CODEX_MODELS]
+      : !metadata.flavor || metadata.flavor === 'claude' ? [CLAUDE_MODELS, RETIRED_CLAUDE_MODELS] : [[], []];
+    options = [...catalog, ...retired.filter(([value]) => value === configured || inUse.includes(value))]
+      .map(([value, label]) => ({ value, label }));
   }
   const custom = metadata.customCodexModel;
   if (metadata.flavor === 'codex' && isConcreteModel(custom) && !options.some(option => option.value === custom))

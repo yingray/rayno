@@ -50,7 +50,7 @@ test('a CLI session without a model catalog should offer concrete models and exp
   await workspace.openSession();
   // Act
   await workspace.openModelSettings();
-  await workspace.chooseModel('Opus 5');
+  await workspace.chooseModel('Opus 5.5');
   await workspace.chooseEffort('Max');
   await workspace.closeModelSettings();
   await workspace.send('Use maximum effort');
@@ -63,8 +63,8 @@ test('a CLI session without a model catalog should offer concrete models and exp
   // Assert
   const first = await server.encryption.decrypt<Record<string, unknown>>(server.sends[0].content, server.dataKey);
   const second = await server.encryption.decrypt<Record<string, unknown>>(server.sends[1].content, server.dataKey);
-  expect(first).toMatchObject({ meta: { model: 'claude-opus-5', effort: 'max' } });
-  expect(second).toMatchObject({ meta: { model: 'claude-opus-5', effort: 'high' } });
+  expect(first).toMatchObject({ meta: { model: 'claude-opus-5-5', effort: 'max' } });
+  expect(second).toMatchObject({ meta: { model: 'claude-opus-5-5', effort: 'high' } });
 });
 
 test('model and effort picks should persist and reach encrypted messages with the correct Rig provider', async ({ page }, testInfo) => {

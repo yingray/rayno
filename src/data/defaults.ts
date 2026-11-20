@@ -6,7 +6,7 @@ export const defaultNewDraft: NewSessionDraft = {
   machineId: 'mbp',
   path: '~/Developer/happy',
   worktree: 'main',
-  model: 'claude-opus-5',
+  model: 'claude-opus-5-5',
   effort: 'high',
   permissionMode: 'bypassPermissions',
   agent: 'Claude',
