@@ -92,8 +92,20 @@ export class HappyServer {
   workspaceFailure = false;
   historyFailure = false;
   historyReady: Promise<void> = Promise.resolve();
+  // Set to false in a test that holds the placeholder workspace open on purpose.
+  waitForPlaceholderEnd = true;
   async install(page: Page, signedIn = true) {
     page.on('close', () => { this.storageServer?.closeAllConnections(); this.storageServer?.close(); });
+    // Wait for the placeholder workspace to end after each page load. Its shell is inert for a user, but scripted
+    // actions (`selectOption`, `fill`, `focus`) still reach it, and the real workspace then discards their result.
+    for (const method of ['goto', 'reload'] as const) {
+      const load = page[method].bind(page) as (...args: unknown[]) => ReturnType<Page['goto']>;
+      (page as unknown as Record<string, unknown>)[method] = async (...args: unknown[]) => {
+        const response = await load(...args);
+        if (this.waitForPlaceholderEnd) await page.waitForFunction(() => !document.querySelector('[inert]'));
+        return response;
+      };
+    }
     this.encryption = await HappyCrypto.create(this.secret);
     await sodium.ready;
     const recipient = sodium.crypto_box_seed_keypair(

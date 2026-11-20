@@ -28,6 +28,7 @@ test('signed-in startup should show the session list during account initializati
   const server = new HappyServer();
   let release!: () => void;
   server.workspaceReady = new Promise<void>(resolve => { release = resolve; });
+  server.waitForPlaceholderEnd = false;
   await server.install(page);
   await page.addInitScript(serverOrigin => {
     const digest = crypto.subtle.digest.bind(crypto.subtle);
