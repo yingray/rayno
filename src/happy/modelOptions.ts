@@ -18,11 +18,12 @@ const CLAUDE_MODELS = [
 ];
 const CODEX_MODELS = [
   ['gpt-6.2-sol', 'GPT-6.2 Sol'], ['gpt-6.2-astra', 'GPT-6.2 Astra'],
-  ['gpt-6-astra', 'GPT-6 Astra'], ['gpt-6.1-sol', 'GPT-6.1 Sol'],
-  ['gpt-6.1-terra', 'GPT-6.1 Terra'],
-  ['gpt-6-sol', 'GPT-6 Sol'], ['gpt-6-luna', 'GPT-6 Luna'],
-  ['gpt-5.6-sol', 'GPT-5.6 Sol'], ['gpt-5.6-terra', 'GPT-5.6 Terra'],
-  ['gpt-5.6-luna', 'GPT-5.6 Luna'],
+  ['gpt-6.1-terra', 'GPT-6.1 Terra'], ['gpt-6-luna', 'GPT-6 Luna'],
+];
+// Earlier Codex models. A session that already uses one keeps it. New sessions do not offer them.
+const RETIRED_CODEX_MODELS = [
+  ['gpt-6.1-sol', 'GPT-6.1 Sol'], ['gpt-6-sol', 'GPT-6 Sol'], ['gpt-6-astra', 'GPT-6 Astra'],
+  ['gpt-5.6-sol', 'GPT-5.6 Sol'], ['gpt-5.6-terra', 'GPT-5.6 Terra'], ['gpt-5.6-luna', 'GPT-5.6 Luna'],
 ];
 // Codex 0.169.1 model/list, checked on 2026-11-18. Published catalogs take precedence.
 // Ultra includes maximum reasoning and automatic task delegation. Luna stops at max.
@@ -51,7 +52,8 @@ export const effortLabel = (value: string | null) => value === null
 export const isConcreteModel = (value: unknown): value is string => typeof value === 'string' &&
   !!value.trim() && !['default', 'Agent default'].includes(value) && !value.endsWith(':default');
 
-export function modelOptions(metadata: Json, configured = currentModel(metadata)): ModelOption[] {
+/** `inUse` names the models that the session itself used. They keep a retired Codex model available. */
+export function modelOptions(metadata: Json, configured = currentModel(metadata), inUse: readonly string[] = []): ModelOption[] {
   const rig = isRig(metadata);
   let options: ModelOption[] = (Array.isArray(metadata.models) ? metadata.models : [])
     .flatMap((raw: unknown) => {
@@ -68,7 +70,8 @@ export function modelOptions(metadata: Json, configured = currentModel(metadata)
       }];
     });
   if (!options.length && !rig) {
-    const catalog = metadata.flavor === 'codex' ? CODEX_MODELS
+    const catalog = metadata.flavor === 'codex'
+      ? [...CODEX_MODELS, ...RETIRED_CODEX_MODELS.filter(([value]) => value === configured || inUse.includes(value))]
       : !metadata.flavor || metadata.flavor === 'claude' ? CLAUDE_MODELS : [];
     options = catalog.map(([value, label]) => ({ value, label }));
   }

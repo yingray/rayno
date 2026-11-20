@@ -52,12 +52,12 @@ test('an opened session should show the modes of its last message when metadata 
 
   // Act: an explicit pick outranks the older message.
   await workspace.openModelSettings();
-  await workspace.chooseModel('GPT-5.6 Sol');
+  await workspace.chooseModel('GPT-6.1 Terra');
   await workspace.chooseEffort('Low');
   await workspace.closeModelSettings();
   await page.reload();
   // Assert
-  await expect(model).toHaveText('GPT-5.6 Sol · Low');
+  await expect(model).toHaveText('GPT-6.1 Terra · Low');
   await expect(workspace.permissionMode()).toHaveText('Mode: Yolo');
 
   // Act: another device sends a newer message with other modes.

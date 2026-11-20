@@ -10,7 +10,7 @@ export function createModelSelectionDemo(now = Date.now()): Session {
     createdAt: now, updatedAt: now, additions: 0, deletions: 0,
     messages: [{
       id: `${modelSelectionDemoId}-intro`, role: 'assistant', sentAt: now,
-      content: '### Try model and effort selection\n\nOpen **Model and effort** beside the message field. Try **GPT-6.2 Sol → Max or Ultra** and **GPT-6.2 Astra → Max or Ultra**. Older models remain available, including **GPT-6.1 Terra → Ultra** and **GPT-6 Luna → Max**. Luna does not offer Ultra.\n\nChoose **Done**, send a message, then reopen the picker or reload to check your selection. Choose another model and effort to repeat. You can also try these choices when you start a new Codex session.\n\nReplies are simulated in this browser. Max does not run deeper reasoning here, and Ultra does not start subagents.',
+      content: '### Try model and effort selection\n\nOpen **Model and effort** beside the message field. Try **GPT-6.2 Sol → Max or Ultra** and **GPT-6.2 Astra → Max or Ultra**. The list has the latest model of each family, including **GPT-6.1 Terra → Ultra** and **GPT-6 Luna → Max**. Luna does not offer Ultra. A session that already uses an earlier model keeps it.\n\nChoose **Done**, send a message, then reopen the picker or reload to check your selection. Choose another model and effort to repeat. You can also try these choices when you start a new Codex session.\n\nReplies are simulated in this browser. Max does not run deeper reasoning here, and Ultra does not start subagents.',
     }],
   };
 }

@@ -18,9 +18,7 @@ test('Codex fallback choices should reach encrypted messages with their supporte
   const choices = [
     ['GPT-6.2 Sol', 'gpt-6.2-sol', 'Max', 'max'],
     ['GPT-6.2 Astra', 'gpt-6.2-astra', 'Ultra', 'ultra'],
-    ['GPT-6.1 Sol', 'gpt-6.1-sol', 'Ultra', 'ultra'],
     ['GPT-6.1 Terra', 'gpt-6.1-terra', 'Max', 'max'],
-    ['GPT-6 Sol', 'gpt-6-sol', 'Ultra', 'ultra'],
     ['GPT-6 Luna', 'gpt-6-luna', 'Max', 'max'],
   ];
   await workspace.openSession();

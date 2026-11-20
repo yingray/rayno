@@ -15,11 +15,20 @@ export function recentModelChoice(sessions: Session[], agent: Agent, machineId: 
   return source ? { model: source.model, effort: source.effort || source.model.split(' · ')[1]?.toLowerCase() || null } : undefined;
 }
 
-/** Resolve saved choices against the current catalog before any send or spawn. */
-export function resolveModelChoice(metadata: Json, candidates: (Partial<ModelChoice> | null | undefined)[] = []): ModelChoice {
+/** The models that the session itself used: the explicit pick and the last sent message. */
+export function sessionModels(saved: SessionModes | null | undefined, sent: SentModes | undefined): string[] {
+  return [typeof saved?.at === 'number' ? saved.model : undefined, sent?.model].filter(isConcreteModel);
+}
+
+/** Resolve saved choices against the current catalog before any send or spawn. `inUse` comes from `sessionModels`. */
+export function resolveModelChoice(
+  metadata: Json,
+  candidates: (Partial<ModelChoice> | null | undefined)[] = [],
+  inUse: readonly string[] = [],
+): ModelChoice {
   const reported = { model: currentModel(metadata), effort: currentEffort(metadata) };
   const choices = [...candidates, reported];
-  const options = modelOptions(metadata);
+  const options = modelOptions(metadata, undefined, inUse);
   let model = '';
   if (!canSelectModel(metadata)) model = isConcreteModel(reported.model) ? reported.model : '';
   else {

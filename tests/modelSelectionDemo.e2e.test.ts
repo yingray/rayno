@@ -9,7 +9,7 @@ for (const [width, height] of [[320, 568], [360, 640], [390, 844], [430, 932], [
     await demo.open();
     // Act / Assert
     await demo.openModelSettings();
-    for (const model of ['GPT-6.2 Sol', 'GPT-6.2 Astra', 'GPT-6.1 Sol', 'GPT-6.1 Terra', 'GPT-6 Sol']) {
+    for (const model of ['GPT-6.2 Sol', 'GPT-6.2 Astra', 'GPT-6.1 Terra']) {
       await demo.chooseModel(model);
       await demo.chooseEffort('Max');
       await demo.expectSelection(model, 'Max');

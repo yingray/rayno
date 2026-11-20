@@ -47,7 +47,7 @@ import { buildManualUsageCommand, parseManualUsage } from './manualUsage';
 import { compareSessionActivity } from '../data/sessionList';
 import { modelOptions, effortOptions, canSelectModel, defaultEffort, isConcreteModel } from './modelOptions';
 import { permissionOptions, canSelectPermission, resolveNewSessionPermission, newSessionCatalog } from './permissionOptions';
-import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, type SessionModes, type SentModes } from './modelPreferences';
+import { latestAgentMode, latestSentModes, modeBeforePlan, rankSessionModes, resolveModelChoice, sessionModels, type SessionModes, type SentModes } from './modelPreferences';
 import { canSearchFiles, parseRipgrepFiles, type FileItem } from './suggestions';
 import { attentionMessage, receiveAttention, restoreClassifiedAttention, mergeAttention, userTurn, type SessionAttention } from './sessionAttention';
 import { OfflineCache, type CachedHistory, type CachedWorkspace } from './offlineCache';
@@ -2087,7 +2087,7 @@ export class HappyClient implements DemoAdapter {
     const sent = latestSentModes(messages) || await this.findSentModes(id);
     const ranked = rankSessionModes(saved, sent, currentPermission(source.metadata),
       latestAgentMode(messages, source.agentState, source.metadata));
-    const choice = resolveModelChoice(source.metadata, ranked.modelCandidates);
+    const choice = resolveModelChoice(source.metadata, ranked.modelCandidates, sessionModels(saved, sent));
     if (!choice.model) throw new Error('No model is available for this session.');
     const permission = ranked.permission || currentPermission(source.metadata);
     // Recheck ownership and availability after the message lookup.

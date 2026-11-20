@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../data/fixtures';
 import { demoReducer, restoreState } from '../data/reducer';
 import { isConcreteModel, modelOptions } from './modelOptions';
-import { latestAgentMode, latestSentModes, modeBeforePlan, modelChoiceKey, rankSessionModes, recentModelChoice, resolveModelChoice } from './modelPreferences';
+import { latestAgentMode, latestSentModes, modeBeforePlan, modelChoiceKey, rankSessionModes, recentModelChoice, resolveModelChoice, sessionModels } from './modelPreferences';
 import { visibleMessages, type MessageRecord } from './normalize';
 
 describe('Concrete model preferences', () => {
@@ -82,9 +82,12 @@ describe('Session composer modes', () => {
     const legacy = { model: 'gpt-5.6-sol', effort: 'medium', permission: 'default' };
     // Act
     const ranked = rankSessionModes(legacy, sent);
-    const choice = resolveModelChoice(metadata, [...ranked.modelCandidates, ranked.legacy]);
+    const choice = resolveModelChoice(metadata, [...ranked.modelCandidates, ranked.legacy], sessionModels(legacy, sent));
     // Assert
     expect(choice).toEqual({ model: 'gpt-6.1-sol', effort: 'xhigh' });
+    // A new session has no used model. It takes a current model.
+    expect(resolveModelChoice(metadata, [sent])).toEqual({ model: 'gpt-6.2-sol', effort: 'high' });
+    expect(sessionModels(legacy, sent)).toEqual(['gpt-6.1-sol']);
     expect(ranked.permission).toBe('yolo');
     expect(ranked.legacy).toBe(legacy);
   });

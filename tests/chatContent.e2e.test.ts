@@ -163,7 +163,7 @@ test('model and permission picks should wait for the next message without interr
   // Act
   await chat.openModelSettings();
   await chat.expectSettingTiming();
-  await chat.chooseModel('GPT-6.1 Sol');
+  await chat.chooseModel('GPT-6.1 Terra');
   await chat.chooseEffort('High');
   await chat.closeModelSettings();
   await chat.openPermissionSettings();
@@ -177,6 +177,6 @@ test('model and permission picks should wait for the next message without interr
   await chat.expectDraft('');
   // Assert
   const raw = await server.encryption.decrypt<Record<string, unknown>>(server.sends[0].content, server.dataKey);
-  expect(raw).toMatchObject({ meta: { model: 'gpt-6.1-sol', effort: 'high', permissionMode: 'read-only' } });
+  expect(raw).toMatchObject({ meta: { model: 'gpt-6.1-terra', effort: 'high', permissionMode: 'read-only' } });
   expect(server.mutations.filter(method => method.endsWith(':abort'))).toEqual([]);
 });

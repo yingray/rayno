@@ -9,7 +9,7 @@ import { currentPermission, pendingCommunications, pendingPermissions, type Json
 import { permissionOptions, permissionLabel, canSelectPermission } from '../happy/permissionOptions';
 import { messageError } from '../happy/errors';
 import { titleOf } from '../data/reducer';
-import { latestAgentMode, latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, type SentModes, type SessionModes } from '../happy/modelPreferences';
+import { latestAgentMode, latestSentModes, modelChoiceKey, rankSessionModes, resolveModelChoice, sessionModels, type SentModes, type SessionModes } from '../happy/modelPreferences';
 import { SyncStatus } from '../components/SyncStatus';
 import type { Attachment, MessageSettings, Session } from '../data/types';
 import { countOpenSideChats, hasUnreadSideChats, showSideChatEntry, SIDE_CHAT_TITLE, sideChatTitle } from '../data/sideChats';
@@ -147,13 +147,15 @@ export const Chat = memo(function Chat({
   const ranked = useMemo(() => rankSessionModes(savedModes, sentModes, inheritedPermission, agentMode),
     [savedModes, sentModes, inheritedPermission, agentMode]);
   const preferenceKey = modelChoiceKey(session.agent, session.machineId);
+  const usedModels = useMemo(() => [...sessionModels(savedModes, sentModes), session.model.split(' · ')[0]],
+    [savedModes, sentModes, session.model]);
   const selection = useMemo(() => resolveModelChoice(metadata, [
     ...ranked.modelCandidates,
     { model: session.model, effort: session.effort || session.model.split(' · ')[1]?.toLowerCase() || null },
     ranked.legacy, savedChoice,
-  ]), [metadata, ranked, session.model, session.effort, savedChoice]);
+  ], usedModels), [metadata, ranked, session.model, session.effort, savedChoice, usedModels]);
   const { model, effort: selectedEffort } = selection;
-  const models = useMemo(() => modelOptions(metadata), [metadata]);
+  const models = useMemo(() => modelOptions(metadata, undefined, usedModels), [metadata, usedModels]);
   const efforts = useMemo(() => effortOptions(metadata, model), [metadata, model]);
   const modelLabel = models.find((option) => option.value === model)?.label || model || 'No model available';
   // A reported agent mode outranks a value that an older build saved without a pick.
@@ -243,10 +245,10 @@ export const Chat = memo(function Chat({
     if (value.model) dispatch({ type: 'rememberModel', key: preferenceKey, value });
   }
   function chooseModel(value: string) {
-    rememberChoice(resolveModelChoice(metadata, [{ model: value, effort: selectedEffort }]));
+    rememberChoice(resolveModelChoice(metadata, [{ model: value, effort: selectedEffort }], usedModels));
   }
   function chooseEffort(value: string) {
-    rememberChoice(resolveModelChoice(metadata, [{ model, effort: value }]));
+    rememberChoice(resolveModelChoice(metadata, [{ model, effort: value }], usedModels));
   }
 
   function updateScrollPosition(element: HTMLDivElement, scrollEvent = false) {

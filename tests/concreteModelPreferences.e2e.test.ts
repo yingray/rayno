@@ -13,7 +13,7 @@ test('new sessions and handoffs should reuse concrete choices for each agent and
   await workspace.chooseNewModel('Opus 5');
   await workspace.chooseNewEffort('Max');
   await page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Codex', exact: true }).click();
-  await workspace.chooseNewModel('GPT-6.1 Sol');
+  await workspace.chooseNewModel('GPT-6.1 Terra');
   await workspace.chooseNewEffort('High');
   await page.getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Claude', exact: true }).click();
   // Assert
@@ -30,7 +30,7 @@ test('new sessions and handoffs should reuse concrete choices for each agent and
   await workspace.openSession();
   await workspace.handOff();
   // Assert
-  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('GPT-6.1 Sol');
+  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('GPT-6.1 Terra');
   await expect(page.getByRole('button', { name: 'Choose effort', exact: true })).toContainText('High');
   // Act
   await workspace.openSession();
@@ -63,7 +63,7 @@ test('phone selectors should support touch, narrow widths, keyboard-height scrol
     await expect(dialog.getByRole('group', { name: 'Agent', exact: true }).getByRole('button')).toHaveCount(2);
     await expect(dialog.getByRole('radio', { name: 'Agent default', exact: true })).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Codex', exact: true }).click();
-    await dialog.getByRole('radio', { name: 'GPT-6.1 Sol', exact: true }).click();
+    await dialog.getByRole('radio', { name: 'GPT-6.1 Terra', exact: true }).click();
     await dialog.getByRole('radio', { name: 'High', exact: true }).click();
     await workspace.expectPickerUsableOnPhone();
     if (width === 320 || width === 844) {
@@ -83,6 +83,6 @@ test('phone selectors should support touch, narrow widths, keyboard-height scrol
   await workspace.startDraft();
   // Assert
   await expect(page).toHaveURL(/\/session\/created-session$/);
-  expect(server.spawns[0]).toMatchObject({ agent: 'codex', modelMode: 'gpt-6.1-sol', effortLevel: 'high' });
+  expect(server.spawns[0]).toMatchObject({ agent: 'codex', modelMode: 'gpt-6.1-terra', effortLevel: 'high' });
   expect(server.sends).toHaveLength(1);
 });

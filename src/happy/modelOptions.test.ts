@@ -7,10 +7,17 @@ describe('Model and effort selection', () => {
     // Act / Assert
     expect(modelOptions({ flavor: 'claude' }).map((model) => model.value)).toContain('claude-opus-5');
     expect(modelOptions({ flavor: 'claude' })).toContainEqual({ value: 'claude-fable-5-2', label: 'Fable 5.2' });
-    expect(modelOptions({ flavor: 'codex' }).map((model) => model.value)).toContain('gpt-6-astra');
-    expect(modelOptions({ flavor: 'codex' }).map((model) => model.value)).toContain('gpt-6.1-terra');
-    expect(modelOptions({ flavor: 'codex' })).toContainEqual({ value: 'gpt-6.2-sol', label: 'GPT-6.2 Sol' });
-    expect(modelOptions({ flavor: 'codex' })).toContainEqual({ value: 'gpt-6.2-astra', label: 'GPT-6.2 Astra' });
+    expect(modelOptions({ flavor: 'codex' })).toEqual([
+      { value: 'gpt-6.2-sol', label: 'GPT-6.2 Sol' }, { value: 'gpt-6.2-astra', label: 'GPT-6.2 Astra' },
+      { value: 'gpt-6.1-terra', label: 'GPT-6.1 Terra' }, { value: 'gpt-6-luna', label: 'GPT-6 Luna' },
+    ]);
+  });
+  it('should keep a retired Codex model that the session reports or used', () => {
+    // Act / Assert
+    expect(modelOptions({ flavor: 'codex', currentModelCode: 'gpt-6.1-sol' }))
+      .toContainEqual({ value: 'gpt-6.1-sol', label: 'GPT-6.1 Sol' });
+    expect(modelOptions({ flavor: 'codex' }, undefined, ['gpt-6-astra']).map((model) => model.label))
+      .toEqual(['GPT-6.2 Sol', 'GPT-6.2 Astra', 'GPT-6.1 Terra', 'GPT-6 Luna', 'GPT-6 Astra']);
   });
   it('should take Codex efforts from the per-model table and keep unknown models at the shared set', () => {
     // Act / Assert

@@ -38,7 +38,7 @@ test('the model picker should switch to Codex and preserve its model and effort 
   await page.getByRole('button', { name: 'Choose model', exact: true }).click();
   await workspace.newModelPicker().getByRole('group', { name: 'Agent', exact: true }).getByRole('button', { name: 'Codex', exact: true }).click();
   await workspace.newModelPicker().getByRole('textbox', { name: 'Search models' }).fill('6.1');
-  await workspace.newModelPicker().getByRole('radio', { name: 'GPT-6.1 Sol', exact: true }).click();
+  await workspace.newModelPicker().getByRole('radio', { name: 'GPT-6.1 Terra', exact: true }).click();
   await workspace.newModelPicker().getByRole('radio', { name: 'High', exact: true }).click();
   await workspace.capture(`${testInfo.project.name}-new-model-picker`);
   await workspace.expectNoPageOverflow();
@@ -46,7 +46,7 @@ test('the model picker should switch to Codex and preserve its model and effort 
   // Assert
   await expect(page).toHaveURL(/\/new$/);
   expect(server.spawns).toEqual([]);
-  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('GPT-6.1 Sol');
+  await expect(page.getByRole('button', { name: 'Choose model', exact: true })).toContainText('GPT-6.1 Terra');
   // Act
   await page.reload();
   // Assert
@@ -57,9 +57,9 @@ test('the model picker should switch to Codex and preserve its model and effort 
   await workspace.startDraft();
   // Assert
   await expect(page).toHaveURL(/\/session\/created-session$/);
-  expect(server.spawns[0]).toMatchObject({ agent: 'codex', modelMode: 'gpt-6.1-sol', effortLevel: 'high' });
+  expect(server.spawns[0]).toMatchObject({ agent: 'codex', modelMode: 'gpt-6.1-terra', effortLevel: 'high' });
   const raw = await server.encryption.decrypt<Json>(server.sends[0].content, server.dataKey);
-  expect(raw.meta).toMatchObject({ model: 'gpt-6.1-sol', effort: 'high' });
+  expect(raw.meta).toMatchObject({ model: 'gpt-6.1-terra', effort: 'high' });
 });
 
 test('workspace choices should use real sessions, deduplicate folders, and preserve a selected checkout', async ({ page }, testInfo) => {
